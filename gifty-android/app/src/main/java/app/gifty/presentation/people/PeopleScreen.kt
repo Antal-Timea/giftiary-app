@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -27,7 +25,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +40,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gifty.R
 import app.gifty.domain.model.Person
+import app.gifty.presentation.components.GiftyConfirmDialog
 import app.gifty.presentation.components.GiftyTopBar
 import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
@@ -56,7 +54,7 @@ import java.util.UUID
 fun PeopleScreen(
     onBack: () -> Unit,
     onAddPerson: () -> Unit,
-    onEditPerson: (UUID) -> Unit,
+    onOpenPerson: (UUID) -> Unit,
     viewModel: PeopleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,7 +62,7 @@ fun PeopleScreen(
         state = state,
         onBack = onBack,
         onAddPerson = onAddPerson,
-        onEditPerson = { onEditPerson(it.id) },
+        onOpenPerson = { onOpenPerson(it.id) },
         onDeleteRequested = viewModel::onDeleteRequested,
         onDeleteConfirmed = viewModel::onDeleteConfirmed,
         onDeleteDismissed = viewModel::onDeleteDismissed,
@@ -77,7 +75,7 @@ fun PeopleScreen(
     state: PeopleUiState,
     onBack: () -> Unit,
     onAddPerson: () -> Unit,
-    onEditPerson: (Person) -> Unit,
+    onOpenPerson: (Person) -> Unit,
     onDeleteRequested: (Person) -> Unit,
     onDeleteConfirmed: () -> Unit,
     onDeleteDismissed: () -> Unit,
@@ -112,7 +110,7 @@ fun PeopleScreen(
             } else {
                 PeopleList(
                     people = content.people,
-                    onEditPerson = onEditPerson,
+                    onOpenPerson = onOpenPerson,
                     onDeleteRequested = onDeleteRequested,
                     modifier = contentModifier,
                 )
@@ -121,7 +119,13 @@ fun PeopleScreen(
     }
 
     state.personPendingDeletion?.let { person ->
-        DeletePersonDialog(person = person, onConfirm = onDeleteConfirmed, onDismiss = onDeleteDismissed)
+        GiftyConfirmDialog(
+            title = stringResource(R.string.people_delete_dialog_title, person.name),
+            message = stringResource(R.string.people_delete_dialog_message),
+            confirmLabel = stringResource(R.string.people_delete_confirm),
+            onConfirm = onDeleteConfirmed,
+            onDismiss = onDeleteDismissed,
+        )
     }
 }
 
@@ -145,7 +149,7 @@ private fun AddPersonButton(onClick: () -> Unit) {
 @Composable
 private fun PeopleList(
     people: List<Person>,
-    onEditPerson: (Person) -> Unit,
+    onOpenPerson: (Person) -> Unit,
     onDeleteRequested: (Person) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -156,7 +160,7 @@ private fun PeopleList(
         items(people, key = { it.id }) { person ->
             PersonRow(
                 person = person,
-                onClick = { onEditPerson(person) },
+                onClick = { onOpenPerson(person) },
                 onDeleteClick = { onDeleteRequested(person) },
             )
             HorizontalDivider(
@@ -173,7 +177,7 @@ private fun PersonRow(person: Person, onClick: () -> Unit, onDeleteClick: () -> 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = stringResource(R.string.people_edit), onClick = onClick)
+            .clickable(onClickLabel = stringResource(R.string.people_open), onClick = onClick)
             .padding(start = GiftySpacing.l, end = GiftySpacing.xs, top = GiftySpacing.m, bottom = GiftySpacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -226,35 +230,6 @@ private fun Monogram(name: String) {
     }
 }
 
-@Composable
-private fun DeletePersonDialog(person: Person, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val colors = GiftyTheme.colors
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.people_delete_dialog_title, person.name)) },
-        text = { Text(stringResource(R.string.people_delete_dialog_message)) },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
-            ) {
-                Text(stringResource(R.string.people_delete_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
-            ) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-        containerColor = colors.surfaceElevated,
-        titleContentColor = colors.textPrimary,
-        textContentColor = colors.textSecondary,
-    )
-}
-
 private val MONOGRAM_SIZE = 40.dp
 
 // Keeps the last row reachable above the floating action button.
@@ -273,7 +248,7 @@ private fun PeopleScreenPreview(state: PeopleUiState) {
             state = state,
             onBack = {},
             onAddPerson = {},
-            onEditPerson = {},
+            onOpenPerson = {},
             onDeleteRequested = {},
             onDeleteConfirmed = {},
             onDeleteDismissed = {},

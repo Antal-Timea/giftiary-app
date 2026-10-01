@@ -1,5 +1,7 @@
 package app.gifty.domain.model
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.Instant
@@ -31,6 +33,17 @@ class OccasionTest {
                 occasion(day = day, month = month, year = null)
             }
         }
+    }
+
+    @Test
+    fun `date problems explain why a date does not exist`() {
+        assertNull(Occasion.dateProblem(day = 29, month = 2, year = null))
+        assertNull(Occasion.dateProblem(day = 29, month = 2, year = 2024))
+        assertEquals(OccasionDateProblem.NOT_A_LEAP_YEAR, Occasion.dateProblem(day = 29, month = 2, year = 2025))
+        assertEquals(OccasionDateProblem.DAY_NOT_IN_MONTH, Occasion.dateProblem(day = 31, month = 4, year = null))
+        assertEquals(OccasionDateProblem.DAY_NOT_IN_MONTH, Occasion.dateProblem(day = 0, month = 1, year = null))
+        assertEquals(OccasionDateProblem.INVALID_MONTH, Occasion.dateProblem(day = 1, month = 13, year = null))
+        assertEquals(OccasionDateProblem.INVALID_YEAR, Occasion.dateProblem(day = 1, month = 1, year = Int.MAX_VALUE))
     }
 
     private fun occasion(day: Int, month: Int, year: Int?) = Occasion(

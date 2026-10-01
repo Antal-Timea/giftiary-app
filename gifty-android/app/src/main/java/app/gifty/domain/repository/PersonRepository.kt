@@ -13,6 +13,9 @@ interface PersonRepository {
     /** Active (not deleted) people, re-emitted whenever they change. */
     fun observePeople(): Flow<List<Person>>
 
+    /** Emits null while the person does not exist or after it has been deleted. */
+    fun observePerson(id: UUID): Flow<Person?>
+
     /** Returns null if the person does not exist or has been deleted. */
     suspend fun getPerson(id: UUID): Person?
 
@@ -21,7 +24,7 @@ interface PersonRepository {
     /** @throws PersonNotFoundException if the person does not exist or has been deleted. */
     suspend fun updatePerson(id: UUID, name: String, relationship: String?)
 
-    /** Deleting a person that is already gone is a no-op. */
+    /** Also deletes the person's occasions. Deleting a person that is already gone is a no-op. */
     suspend fun deletePerson(id: UUID)
 }
 

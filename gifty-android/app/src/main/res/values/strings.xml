@@ -28,4 +28,45 @@
     <string name="person_editor_save_failed">Could not save. Please try again.</string>
     <string name="person_editor_not_found">This person no longer exists.</string>
     <string name="person_editor_load_failed">This person could not be loaded.</string>
+
+    <string name="people_open">Open</string>
+
+    <string name="person_detail_occasions">Occasions</string>
+    <string name="person_detail_add_occasion">Add occasion</string>
+    <string name="person_detail_no_occasions_title">No occasions yet</string>
+    <string name="person_detail_no_occasions_message">Add birthdays, name days and anniversaries so you always know what is coming.</string>
+
+    <string name="occasion_type_birthday">Birthday</string>
+    <string name="occasion_type_name_day">Name day</string>
+    <string name="occasion_type_anniversary">Anniversary</string>
+    <string name="occasion_type_christmas">Christmas</string>
+    <string name="occasion_type_custom">Custom</string>
+    <string name="occasion_date_one_time">%1$s · One-time</string>
+
+    <string name="occasion_editor_add_title">Add occasion</string>
+    <string name="occasion_editor_edit_title">Edit occasion</string>
+    <string name="occasion_editor_type">Occasion</string>
+    <string name="occasion_editor_title">Name</string>
+    <string name="occasion_editor_title_hint">e.g. Graduation</string>
+    <string name="occasion_editor_day">Day</string>
+    <string name="occasion_editor_month">Month</string>
+    <string name="occasion_editor_year">Year</string>
+    <string name="occasion_editor_year_optional">Year (optional)</string>
+    <string name="occasion_editor_repeats_yearly">Repeats every year</string>
+    <string name="occasion_editor_save">Save</string>
+    <string name="occasion_editor_delete">Delete occasion</string>
+    <string name="occasion_editor_write_failed">Could not save the change. Please try again.</string>
+    <string name="occasion_editor_not_found">This occasion no longer exists.</string>
+    <string name="occasion_editor_load_failed">This occasion could not be loaded.</string>
+    <string name="occasion_delete_dialog_title">Delete %1$s?</string>
+    <string name="occasion_delete_dialog_message">This occasion will be removed.</string>
+    <string name="occasion_delete_confirm">Delete</string>
+
+    <string name="occasion_error_title_required">Enter a name for this occasion</string>
+    <string name="occasion_error_day_required">Enter a day</string>
+    <string name="occasion_error_month_required">Choose a month</string>
+    <string name="occasion_error_day_not_in_month">This month doesn’t have that day</string>
+    <string name="occasion_error_not_a_leap_year">%1$d is not a leap year, so it has no 29 February</string>
+    <string name="occasion_error_invalid_year">Enter a valid year</string>
+    <string name="occasion_error_year_required">A one-time occasion needs a year</string>
 </resources>

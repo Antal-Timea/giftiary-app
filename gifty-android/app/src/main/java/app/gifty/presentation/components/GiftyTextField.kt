@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import app.gifty.presentation.theme.GiftyShapes
@@ -28,7 +29,6 @@ fun GiftyTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
-    val colors = GiftyTheme.colors
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -43,33 +43,40 @@ fun GiftyTextField(
         keyboardActions = keyboardActions,
         singleLine = true,
         shape = GiftyShapes.input,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = colors.textPrimary,
-            unfocusedTextColor = colors.textPrimary,
-            disabledTextColor = colors.textMuted,
-            errorTextColor = colors.textPrimary,
-            focusedContainerColor = colors.inputSurface,
-            unfocusedContainerColor = colors.inputSurface,
-            disabledContainerColor = colors.inputSurface,
-            errorContainerColor = colors.inputSurface,
-            cursorColor = colors.inputFocused,
-            errorCursorColor = colors.error,
-            selectionColors = TextSelectionColors(
-                handleColor = colors.inputFocused,
-                backgroundColor = colors.inputFocused.copy(alpha = 0.3f),
-            ),
-            focusedBorderColor = colors.inputFocused,
-            unfocusedBorderColor = colors.border,
-            disabledBorderColor = colors.divider,
-            errorBorderColor = colors.error,
-            focusedLabelColor = colors.inputFocused,
-            unfocusedLabelColor = colors.textLabel,
-            disabledLabelColor = colors.textMuted,
-            errorLabelColor = colors.error,
-            focusedPlaceholderColor = colors.placeholder,
-            unfocusedPlaceholderColor = colors.placeholder,
-            disabledPlaceholderColor = colors.placeholder,
-            errorSupportingTextColor = colors.error,
+        colors = giftyTextFieldColors(),
+    )
+}
+
+/** Shared by every outlined Gifty input so text fields and dropdowns look identical. */
+@Composable
+internal fun giftyTextFieldColors(): TextFieldColors {
+    val colors = GiftyTheme.colors
+    return OutlinedTextFieldDefaults.colors(
+        focusedTextColor = colors.textPrimary,
+        unfocusedTextColor = colors.textPrimary,
+        disabledTextColor = colors.textMuted,
+        errorTextColor = colors.textPrimary,
+        focusedContainerColor = colors.inputSurface,
+        unfocusedContainerColor = colors.inputSurface,
+        disabledContainerColor = colors.inputSurface,
+        errorContainerColor = colors.inputSurface,
+        cursorColor = colors.inputFocused,
+        errorCursorColor = colors.error,
+        selectionColors = TextSelectionColors(
+            handleColor = colors.inputFocused,
+            backgroundColor = colors.inputFocused.copy(alpha = 0.3f),
         ),
+        focusedBorderColor = colors.inputFocused,
+        unfocusedBorderColor = colors.border,
+        disabledBorderColor = colors.divider,
+        errorBorderColor = colors.error,
+        focusedLabelColor = colors.inputFocused,
+        unfocusedLabelColor = colors.textLabel,
+        disabledLabelColor = colors.textMuted,
+        errorLabelColor = colors.error,
+        focusedPlaceholderColor = colors.placeholder,
+        unfocusedPlaceholderColor = colors.placeholder,
+        disabledPlaceholderColor = colors.placeholder,
+        errorSupportingTextColor = colors.error,
     )
 }

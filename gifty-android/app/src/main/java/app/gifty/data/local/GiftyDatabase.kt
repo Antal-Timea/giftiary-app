@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import app.gifty.data.local.converter.EnumConverters
 import app.gifty.data.local.converter.TimeConverters
 import app.gifty.data.local.converter.UuidConverter
+import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
 import app.gifty.data.local.entity.GiftEntity
@@ -33,6 +34,8 @@ import app.gifty.data.local.entity.WishlistEntity
 abstract class GiftyDatabase : RoomDatabase() {
 
     abstract fun personDao(): PersonDao
+
+    abstract fun occasionDao(): OccasionDao
 
     abstract fun syncOperationDao(): SyncOperationDao
 

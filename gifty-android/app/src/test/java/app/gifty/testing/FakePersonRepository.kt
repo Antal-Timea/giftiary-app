@@ -35,6 +35,8 @@ class FakePersonRepository : PersonRepository {
         list
     }
 
+    override fun observePerson(id: UUID): Flow<Person?> = people.map { list -> list.find { it.id == id } }
+
     override suspend fun getPerson(id: UUID): Person? = people.value.find { it.id == id }
 
     override suspend fun addPerson(name: String, relationship: String?): Person {

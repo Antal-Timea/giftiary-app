@@ -10,6 +10,8 @@ import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.local.mapper.toNewEntity
 import app.gifty.data.user.CurrentUserIdProvider
+import app.gifty.domain.model.OccasionType
+import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.flow.first
@@ -33,8 +35,10 @@ class PersonRepositoryImplTest {
     private val clock = MutableClock(Instant.parse("2026-05-01T12:00:00.123Z"))
     private lateinit var database: GiftyDatabase
     private lateinit var repository: PersonRepositoryImpl
+    private lateinit var occasionRepository: OccasionRepositoryImpl
 
     private val personDao get() = database.personDao()
+    private val occasionDao get() = database.occasionDao()
     private val syncDao get() = database.syncOperationDao()
 
     @Before
@@ -43,13 +47,24 @@ class PersonRepositoryImplTest {
             ApplicationProvider.getApplicationContext(),
             GiftyDatabase::class.java,
         ).build()
+        val syncQueue = SyncOperationQueue(database.syncOperationDao(), clock)
+        val currentUserIdProvider = object : CurrentUserIdProvider {
+            override suspend fun currentUserId() = ownerUserId
+        }
         repository = PersonRepositoryImpl(
             database = database,
             personDao = database.personDao(),
-            syncQueue = SyncOperationQueue(database.syncOperationDao(), clock),
-            currentUserIdProvider = object : CurrentUserIdProvider {
-                override suspend fun currentUserId() = ownerUserId
-            },
+            occasionDao = database.occasionDao(),
+            syncQueue = syncQueue,
+            currentUserIdProvider = currentUserIdProvider,
+            clock = clock,
+        )
+        occasionRepository = OccasionRepositoryImpl(
+            database = database,
+            occasionDao = database.occasionDao(),
+            personDao = database.personDao(),
+            syncQueue = syncQueue,
+            currentUserIdProvider = currentUserIdProvider,
             clock = clock,
         )
     }
@@ -199,8 +214,90 @@ class PersonRepositoryImplTest {
         assertNull(pendingOperation(theirs.id))
     }
 
-    private suspend fun pendingOperation(personId: UUID): SyncOperation? =
-        syncDao.findForEntity(SyncEntityType.PERSON, personId)?.operation
+    @Test
+    fun `deleting a person soft-deletes their occasions and keeps them as tombstones`() = runTest {
+        val anna = repository.addPerson("Anna", null)
+        val birthday = occasionRepository.addOccasion(anna.id, birthdayOn(12, 3))
+        val nameDay = occasionRepository.addOccasion(anna.id, birthdayOn(26, 7))
+
+        repository.deletePerson(anna.id)
+
+        assertTrue(occasionRepository.observeOccasionsForPerson(anna.id).first().isEmpty())
+        assertNull(occasionRepository.getOccasion(birthday.id))
+        assertEquals(1, countRows("occasion", birthday.id))
+        assertEquals(1, countRows("occasion", nameDay.id))
+    }
+
+    @Test
+    fun `deleting a person drops pending creates of local-only occasions and queues deletes for synced ones`() =
+        runTest {
+            val anna = repository.addPerson("Anna", null)
+            markSynced(anna.id, version = 1)
+            val localOnly = occasionRepository.addOccasion(anna.id, birthdayOn(12, 3))
+            val synced = occasionRepository.addOccasion(anna.id, birthdayOn(26, 7))
+            markOccasionSynced(synced.id)
+
+            repository.deletePerson(anna.id)
+
+            assertNull(pendingOperation(localOnly.id, SyncEntityType.OCCASION))
+            assertEquals(SyncOperation.DELETE, pendingOperation(synced.id, SyncEntityType.OCCASION))
+            assertEquals(SyncOperation.DELETE, pendingOperation(anna.id))
+        }
+
+    @Test
+    fun `deleting a person leaves other people's occasions untouched`() = runTest {
+        val anna = repository.addPerson("Anna", null)
+        val bela = repository.addPerson("Béla", null)
+        occasionRepository.addOccasion(anna.id, birthdayOn(12, 3))
+        val belasBirthday = occasionRepository.addOccasion(bela.id, birthdayOn(4, 11))
+
+        repository.deletePerson(anna.id)
+
+        assertEquals(listOf(belasBirthday), occasionRepository.observeOccasionsForPerson(bela.id).first())
+        assertEquals(SyncOperation.CREATE, pendingOperation(belasBirthday.id, SyncEntityType.OCCASION))
+    }
+
+    @Test
+    fun `a failure while deleting an occasion rolls back the whole person deletion`() = runTest {
+        val anna = repository.addPerson("Anna", null)
+        val first = occasionRepository.addOccasion(anna.id, birthdayOn(12, 3))
+        val second = occasionRepository.addOccasion(anna.id, birthdayOn(26, 7))
+        // A pending DELETE for an active occasion is inconsistent, so the queue refuses another DELETE.
+        syncDao.delete(syncDao.findForEntity(SyncEntityType.OCCASION, second.id)!!)
+        syncDao.insert(pendingDelete(second.id, SyncEntityType.OCCASION))
+
+        val result = runCatching { repository.deletePerson(anna.id) }
+
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertEquals(anna, repository.getPerson(anna.id))
+        assertEquals(listOf(first, second), occasionRepository.observeOccasionsForPerson(anna.id).first())
+        assertEquals(SyncOperation.CREATE, pendingOperation(first.id, SyncEntityType.OCCASION))
+    }
+
+    private fun birthdayOn(day: Int, month: Int) =
+        OccasionDetails(OccasionType.BIRTHDAY, title = null, day = day, month = month, year = null, repeatsYearly = true)
+
+    private suspend fun markOccasionSynced(occasionId: UUID) {
+        val entity = occasionDao.findActiveById(occasionId, ownerUserId)!!
+        occasionDao.update(entity.copy(remoteState = RemoteState.SYNCED, version = 1))
+        syncDao.findForEntity(SyncEntityType.OCCASION, occasionId)?.let { syncDao.delete(it) }
+    }
+
+    private fun pendingDelete(entityId: UUID, entityType: SyncEntityType) = SyncOperationEntity(
+        id = UUID.randomUUID(),
+        entityType = entityType,
+        entityId = entityId,
+        operation = SyncOperation.DELETE,
+        createdAt = clock.instant,
+        attemptCount = 0,
+        lastAttemptAt = null,
+        lastErrorCode = null,
+    )
+
+    private suspend fun pendingOperation(
+        entityId: UUID,
+        entityType: SyncEntityType = SyncEntityType.PERSON,
+    ): SyncOperation? = syncDao.findForEntity(entityType, entityId)?.operation
 
     /** Simulates a completed push: the backend has the row and nothing is pending. */
     private suspend fun markSynced(personId: UUID, version: Long) {
@@ -209,8 +306,10 @@ class PersonRepositoryImplTest {
         syncDao.findForEntity(SyncEntityType.PERSON, personId)?.let { syncDao.delete(it) }
     }
 
-    private fun countRows(personId: UUID): Int =
+    private fun countRows(personId: UUID): Int = countRows("person", personId)
+
+    private fun countRows(table: String, id: UUID): Int =
         database.openHelper.readableDatabase
-            .query("SELECT COUNT(*) FROM person WHERE id = ?", arrayOf(personId.toString()))
+            .query("SELECT COUNT(*) FROM $table WHERE id = ?", arrayOf(id.toString()))
             .use { cursor -> cursor.moveToFirst(); cursor.getInt(0) }
 }

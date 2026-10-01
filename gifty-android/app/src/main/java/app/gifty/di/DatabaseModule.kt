@@ -3,6 +3,7 @@ package app.gifty.di
 import android.content.Context
 import androidx.room.Room
 import app.gifty.data.local.GiftyDatabase
+import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
 import dagger.Module
@@ -20,6 +21,9 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GiftyDatabase =
         Room.databaseBuilder(context, GiftyDatabase::class.java, GiftyDatabase.NAME).build()
+
+    @Provides
+    fun provideOccasionDao(database: GiftyDatabase): OccasionDao = database.occasionDao()
 
     @Provides
     fun providePersonDao(database: GiftyDatabase): PersonDao = database.personDao()

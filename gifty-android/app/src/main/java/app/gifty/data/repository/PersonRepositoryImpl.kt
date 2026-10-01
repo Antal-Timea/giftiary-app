@@ -3,6 +3,7 @@ package app.gifty.data.repository
 import androidx.room.withTransaction
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
+import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
@@ -25,6 +26,7 @@ import javax.inject.Inject
 class PersonRepositoryImpl @Inject constructor(
     private val database: GiftyDatabase,
     private val personDao: PersonDao,
+    private val occasionDao: OccasionDao,
     private val syncQueue: SyncOperationQueue,
     private val currentUserIdProvider: CurrentUserIdProvider,
     private val clock: Clock,
@@ -33,6 +35,11 @@ class PersonRepositoryImpl @Inject constructor(
     override fun observePeople(): Flow<List<Person>> = flow {
         val ownerUserId = currentUserIdProvider.currentUserId()
         emitAll(personDao.observeActive(ownerUserId).map { people -> people.map { it.toDomain() } })
+    }
+
+    override fun observePerson(id: UUID): Flow<Person?> = flow {
+        val ownerUserId = currentUserIdProvider.currentUserId()
+        emitAll(personDao.observeActiveById(id, ownerUserId).map { it?.toDomain() })
     }
 
     override suspend fun getPerson(id: UUID): Person? =
@@ -74,8 +81,16 @@ class PersonRepositoryImpl @Inject constructor(
         val ownerUserId = currentUserIdProvider.currentUserId()
         database.withTransaction {
             val existing = personDao.findActiveById(id, ownerUserId) ?: return@withTransaction
+            val deletedAt = now()
 
-            personDao.softDelete(id, ownerUserId, deletedAt = now())
+            // Occasions are meaningless without their person. Soft-deleting them here, rather than
+            // relying on a foreign-key cascade, keeps tombstones and queue entries for sync.
+            // Children are queued first so a push can delete them before their person.
+            occasionDao.findActiveForPerson(ownerUserId, id).forEach { occasion ->
+                occasionDao.softDelete(occasion.id, ownerUserId, deletedAt)
+                syncQueue.enqueue(SyncEntityType.OCCASION, occasion.id, SyncOperation.DELETE, occasion.remoteState)
+            }
+            personDao.softDelete(id, ownerUserId, deletedAt)
             syncQueue.enqueue(SyncEntityType.PERSON, id, SyncOperation.DELETE, existing.remoteState)
         }
     }

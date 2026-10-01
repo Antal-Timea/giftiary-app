@@ -27,4 +27,45 @@
     <string name="person_editor_save_failed">A mentés nem sikerült. Próbáld újra.</string>
     <string name="person_editor_not_found">Ez a személy már nem létezik.</string>
     <string name="person_editor_load_failed">Nem sikerült betölteni ezt a személyt.</string>
+
+    <string name="people_open">Megnyitás</string>
+
+    <string name="person_detail_occasions">Alkalmak</string>
+    <string name="person_detail_add_occasion">Alkalom hozzáadása</string>
+    <string name="person_detail_no_occasions_title">Még nincs alkalom</string>
+    <string name="person_detail_no_occasions_message">Add hozzá a születésnapokat, névnapokat és évfordulókat, hogy mindig tudd, mi közeleg.</string>
+
+    <string name="occasion_type_birthday">Születésnap</string>
+    <string name="occasion_type_name_day">Névnap</string>
+    <string name="occasion_type_anniversary">Évforduló</string>
+    <string name="occasion_type_christmas">Karácsony</string>
+    <string name="occasion_type_custom">Egyéb</string>
+    <string name="occasion_date_one_time">%1$s · egyszeri</string>
+
+    <string name="occasion_editor_add_title">Alkalom hozzáadása</string>
+    <string name="occasion_editor_edit_title">Alkalom szerkesztése</string>
+    <string name="occasion_editor_type">Alkalom</string>
+    <string name="occasion_editor_title">Megnevezés</string>
+    <string name="occasion_editor_title_hint">pl. Ballagás</string>
+    <string name="occasion_editor_day">Nap</string>
+    <string name="occasion_editor_month">Hónap</string>
+    <string name="occasion_editor_year">Év</string>
+    <string name="occasion_editor_year_optional">Év (nem kötelező)</string>
+    <string name="occasion_editor_repeats_yearly">Minden évben ismétlődik</string>
+    <string name="occasion_editor_save">Mentés</string>
+    <string name="occasion_editor_delete">Alkalom törlése</string>
+    <string name="occasion_editor_write_failed">Nem sikerült menteni a változást. Próbáld újra.</string>
+    <string name="occasion_editor_not_found">Ez az alkalom már nem létezik.</string>
+    <string name="occasion_editor_load_failed">Nem sikerült betölteni ezt az alkalmat.</string>
+    <string name="occasion_delete_dialog_title">Törlöd: %1$s?</string>
+    <string name="occasion_delete_dialog_message">Az alkalom törlődik.</string>
+    <string name="occasion_delete_confirm">Törlés</string>
+
+    <string name="occasion_error_title_required">Adj meg egy megnevezést</string>
+    <string name="occasion_error_day_required">Add meg a napot</string>
+    <string name="occasion_error_month_required">Válassz hónapot</string>
+    <string name="occasion_error_day_not_in_month">Ebben a hónapban nincs ilyen nap</string>
+    <string name="occasion_error_not_a_leap_year">%1$d nem szökőév, így nincs február 29.</string>
+    <string name="occasion_error_invalid_year">Adj meg érvényes évet</string>
+    <string name="occasion_error_year_required">Egyszeri alkalomhoz add meg az évet</string>
 </resources>

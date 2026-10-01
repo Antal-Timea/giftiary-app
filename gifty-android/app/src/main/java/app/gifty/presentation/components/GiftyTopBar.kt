@@ -1,5 +1,6 @@
 package app.gifty.presentation.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +28,7 @@ fun GiftyTopBar(
     title: String,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = GiftyTheme.colors
     TopAppBar(
@@ -50,11 +52,13 @@ fun GiftyTopBar(
                 }
             }
         },
+        actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = colors.background,
             scrolledContainerColor = colors.background,
             titleContentColor = colors.textPrimary,
             navigationIconContentColor = colors.textPrimary,
+            actionIconContentColor = colors.textPrimary,
         ),
     )
 }

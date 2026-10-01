@@ -27,6 +27,9 @@ interface PersonDao {
     fun observeActive(ownerUserId: UUID): Flow<List<PersonEntity>>
 
     @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
+    fun observeActiveById(id: UUID, ownerUserId: UUID): Flow<PersonEntity?>
+
+    @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
     suspend fun findActiveById(id: UUID, ownerUserId: UUID): PersonEntity?
 
     /** Fails if the id already exists, which for a locally created person indicates a bug. */

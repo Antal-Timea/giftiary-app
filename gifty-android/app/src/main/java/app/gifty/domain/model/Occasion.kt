@@ -4,6 +4,7 @@ import java.time.DateTimeException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.MonthDay
+import java.time.Year
 import java.util.UUID
 
 /**
@@ -23,19 +24,40 @@ data class Occasion(
     val updatedAt: Instant,
 ) {
     init {
-        require(isValidDate(day, month, year)) {
+        require(dateProblem(day, month, year) == null) {
             "Invalid occasion date: day=$day, month=$month, year=$year"
         }
     }
 
-    private companion object {
-        fun isValidDate(day: Int, month: Int, year: Int?): Boolean = try {
-            if (year == null) MonthDay.of(month, day) else LocalDate.of(year, month, day)
-            true
-        } catch (_: DateTimeException) {
-            false
+    companion object {
+
+        /** Returns why the date does not exist on the calendar, or null if it is valid. */
+        fun dateProblem(day: Int, month: Int, year: Int?): OccasionDateProblem? {
+            if (month !in 1..12) return OccasionDateProblem.INVALID_MONTH
+            if (year != null && year !in Year.MIN_VALUE..Year.MAX_VALUE) return OccasionDateProblem.INVALID_YEAR
+            try {
+                MonthDay.of(month, day)
+            } catch (_: DateTimeException) {
+                return OccasionDateProblem.DAY_NOT_IN_MONTH
+            }
+            if (year != null) {
+                try {
+                    LocalDate.of(year, month, day)
+                } catch (_: DateTimeException) {
+                    // MonthDay accepted it, so only 29 February in a common year can fail here.
+                    return OccasionDateProblem.NOT_A_LEAP_YEAR
+                }
+            }
+            return null
         }
     }
+}
+
+enum class OccasionDateProblem {
+    INVALID_MONTH,
+    INVALID_YEAR,
+    DAY_NOT_IN_MONTH,
+    NOT_A_LEAP_YEAR,
 }
 
 enum class OccasionType {
