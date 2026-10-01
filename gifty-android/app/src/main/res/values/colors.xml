@@ -1,3 +1,5 @@
 <resources>
     <color name="ic_launcher_background">#FFD6455D</color>
+    <!-- Shown before Compose draws; matches GiftyColors.background. -->
+    <color name="window_background">#FFF7F2E8</color>
 </resources>

@@ -1,27 +1,75 @@
 package app.gifty.presentation.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 
+/**
+ * Gifty uses its own palette rather than dynamic color, so the brand looks the same on every device.
+ */
 @Composable
 fun GiftyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> darkColorScheme()
-        else -> lightColorScheme()
+    val colors = if (darkTheme) DarkGiftyColors else LightGiftyColors
+    CompositionLocalProvider(LocalGiftyColors provides colors) {
+        MaterialTheme(
+            colorScheme = colors.toMaterialColorScheme(darkTheme),
+            typography = GiftyTypography,
+            shapes = GiftyMaterialShapes,
+            content = content,
+        )
     }
-    MaterialTheme(colorScheme = colorScheme, content = content)
+}
+
+object GiftyTheme {
+    val colors: GiftyColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalGiftyColors.current
+}
+
+/**
+ * Material components that are not styled explicitly still pick Gifty roles through this mapping.
+ */
+private fun GiftyColors.toMaterialColorScheme(darkTheme: Boolean): ColorScheme {
+    val base = if (darkTheme) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = primaryAction,
+        onPrimary = onPrimaryAction,
+        primaryContainer = surfaceContext,
+        onPrimaryContainer = textPrimary,
+        secondary = support,
+        onSecondary = onSupport,
+        secondaryContainer = surfaceContextQuiet,
+        onSecondaryContainer = textPrimary,
+        tertiary = heroFallback,
+        background = background,
+        onBackground = textPrimary,
+        surface = surface,
+        onSurface = textPrimary,
+        surfaceVariant = surfaceContext,
+        onSurfaceVariant = textSecondary,
+        surfaceTint = surface,
+        surfaceBright = surfaceElevated,
+        surfaceDim = background,
+        surfaceContainerLowest = background,
+        surfaceContainerLow = surface,
+        surfaceContainer = surface,
+        surfaceContainerHigh = surfaceElevated,
+        surfaceContainerHighest = surfaceElevated,
+        inverseSurface = textPrimary,
+        inverseOnSurface = background,
+        inversePrimary = primaryActionText,
+        error = error,
+        outline = border,
+        outlineVariant = divider,
+        scrim = scrim,
+    )
 }

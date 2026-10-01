@@ -10,14 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,13 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gifty.R
+import app.gifty.presentation.components.GiftyPrimaryButton
+import app.gifty.presentation.components.GiftyTextField
+import app.gifty.presentation.components.GiftyTopBar
 import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
-import app.gifty.presentation.components.NavigateBackButton
+import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 
 @Composable
@@ -54,7 +51,6 @@ fun PersonEditorScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PersonEditorScreen(
     state: PersonEditorUiState,
@@ -74,21 +70,10 @@ fun PersonEditorScreen(
         }
     }
 
+    val title = if (state.isNewPerson) R.string.person_editor_add_title else R.string.person_editor_edit_title
     Scaffold(
         modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {
-                    val title = if (state.isNewPerson) {
-                        R.string.person_editor_add_title
-                    } else {
-                        R.string.person_editor_edit_title
-                    }
-                    Text(stringResource(title))
-                },
-                navigationIcon = { NavigateBackButton(onClick = onBack) },
-            )
-        },
+        topBar = { GiftyTopBar(title = stringResource(title), onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
@@ -121,54 +106,49 @@ private fun PersonForm(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .imePadding()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = GiftySpacing.xl, vertical = GiftySpacing.l),
+        verticalArrangement = Arrangement.spacedBy(GiftySpacing.l),
     ) {
-        OutlinedTextField(
+        GiftyTextField(
             value = state.name,
             onValueChange = onNameChange,
+            label = stringResource(R.string.person_editor_name),
             modifier = Modifier.fillMaxWidth(),
+            errorMessage = if (state.showNameRequired) stringResource(R.string.person_editor_name_required) else null,
             enabled = canEdit,
-            label = { Text(stringResource(R.string.person_editor_name)) },
-            isError = state.showNameRequired,
-            supportingText = if (state.showNameRequired) {
-                { Text(stringResource(R.string.person_editor_name_required)) }
-            } else {
-                null
-            },
-            singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Next,
             ),
         )
-        OutlinedTextField(
+        GiftyTextField(
             value = state.relationship,
             onValueChange = onRelationshipChange,
+            label = stringResource(R.string.person_editor_relationship),
             modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(R.string.person_editor_relationship_hint),
             enabled = canEdit,
-            label = { Text(stringResource(R.string.person_editor_relationship)) },
-            placeholder = { Text(stringResource(R.string.person_editor_relationship_hint)) },
-            singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 imeAction = ImeAction.Done,
             ),
             keyboardActions = KeyboardActions(onDone = { onSave() }),
         )
-        Button(
+        GiftyPrimaryButton(
+            text = stringResource(R.string.person_editor_save),
             onClick = onSave,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit,
-        ) {
-            Text(stringResource(R.string.person_editor_save))
-        }
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = GiftySpacing.s),
+            enabled = state.status == EditorStatus.EDITING,
+            loading = state.isSaving,
+        )
     }
 }
 
-@Preview
+@PreviewLightDark
 @Composable
-private fun PersonEditorScreenPreview() {
+private fun PersonEditorValidationPreview() {
     GiftyTheme {
         PersonEditorScreen(
             state = PersonEditorUiState(
@@ -176,6 +156,27 @@ private fun PersonEditorScreenPreview() {
                 status = EditorStatus.EDITING,
                 name = " ",
                 showNameRequired = true,
+            ),
+            onBack = {},
+            onNameChange = {},
+            onRelationshipChange = {},
+            onSave = {},
+            onSaveErrorShown = {},
+        )
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun PersonEditorSavingPreview() {
+    GiftyTheme {
+        PersonEditorScreen(
+            state = PersonEditorUiState(
+                isNewPerson = false,
+                status = EditorStatus.EDITING,
+                name = "Anna Kovács",
+                relationship = "Sister",
+                isSaving = true,
             ),
             onBack = {},
             onNameChange = {},
