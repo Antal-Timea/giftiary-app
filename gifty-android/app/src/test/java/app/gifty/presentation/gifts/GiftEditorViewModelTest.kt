@@ -123,7 +123,7 @@ class GiftEditorViewModelTest {
         viewModel.onPersonChange(anna)
         viewModel.onOccasionChange(annasBirthday)
         viewModel.onNameChange(" Book ")
-        viewModel.onPriceChange("12,500")
+        viewModel.onPriceChange("12500")
         viewModel.onDateChange(LocalDate.of(2026, 3, 12))
 
         viewModel.save()

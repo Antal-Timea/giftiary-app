@@ -44,7 +44,7 @@ import java.util.UUID
  * Backs adding and editing a gift. The editor covers the two everyday cases, "I gave" and
  * "I received", so it edits one person; the other side is the user.
  *
- * Prices are parsed and pre-filled with the app's current default locale.
+ * Existing prices are pre-filled with the app's current default locale.
  */
 @HiltViewModel(assistedFactory = GiftEditorViewModel.Factory::class)
 class GiftEditorViewModel @AssistedInject constructor(
@@ -128,7 +128,7 @@ class GiftEditorViewModel @AssistedInject constructor(
         val state = _uiState.value
         if (state.status != GiftEditorStatus.EDITING || state.isBusy) return
 
-        val priceResult = PriceFormat.parse(state.price, state.currencyCode, Locale.getDefault())
+        val priceResult = PriceFormat.parse(state.price, state.currencyCode)
         val price = (priceResult as? PriceFormat.ParseResult.Valid)?.money
         val input = state.toInput(price)
         val errors = saveGift.validate(input)

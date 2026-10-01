@@ -11,32 +11,33 @@ import java.util.Locale
 /**
  * Converts between what people type or read and [Money], without floating point.
  *
- * Input accepts the locale's decimal separator and, since many keypads only offer it, a dot.
- * Whitespace and the locale's grouping separator are ignored. Input with more decimals than the
- * currency has is rejected rather than rounded, so a price is never silently changed.
+ * Input is deliberately simple and locale-independent: digits with at most one decimal
+ * separator, which may be "." or "," since keypads offer one or the other. Grouping separators
+ * are not accepted, because "12,500" cannot be read safely as either 12.5 or 12 500. Input with
+ * more decimals than the currency has is rejected rather than rounded, so a price is never
+ * silently changed. Display formatting, by contrast, follows the locale.
  */
 object PriceFormat {
 
     sealed interface ParseResult {
-        /** [money] is null when the input was empty: no price. */
+        /** [money] is null when the input was blank: no price. */
         data class Valid(val money: Money?) : ParseResult
         data object Negative : ParseResult
         data object TooPrecise : ParseResult
         data object Invalid : ParseResult
     }
 
-    fun parse(text: String, currencyCode: String, locale: Locale): ParseResult {
-        val symbols = DecimalFormatSymbols.getInstance(locale)
-        val normalized = text
-            .filterNot { it.isWhitespace() || it == ' ' || it == ' ' }
-            .let { if (symbols.groupingSeparator != symbols.decimalSeparator) it.replace(symbols.groupingSeparator.toString(), "") else it }
-            .replace(symbols.decimalSeparator, '.')
-        if (normalized.isEmpty()) return ParseResult.Valid(null)
-        if (normalized.startsWith('-') || normalized.startsWith(symbols.minusSign)) return ParseResult.Negative
-        if (!DECIMAL.matches(normalized)) return ParseResult.Invalid
+    fun parse(text: String, currencyCode: String): ParseResult {
+        val input = text.trim()
+        if (input.isEmpty()) return ParseResult.Valid(null)
+        if (!AMOUNT.matches(input)) {
+            val isNegativeNumber = input.first() in MINUS_SIGNS && AMOUNT.matches(input.drop(1))
+            return if (isNegativeNumber) ParseResult.Negative else ParseResult.Invalid
+        }
 
-        val amount = BigDecimal(normalized)
+        val amount = BigDecimal(input.replace(',', '.'))
         val fractionDigits = CurrencyMinorUnits.fractionDigits(currencyCode)
+        // Trailing zeros carry no precision, so "12500,00" is still a whole number of forints.
         if (amount.stripTrailingZeros().scale() > fractionDigits) return ParseResult.TooPrecise
         val amountMinor = try {
             amount.movePointRight(fractionDigits).longValueExact()
@@ -64,5 +65,6 @@ object PriceFormat {
     private fun Money.toDecimal(): BigDecimal =
         BigDecimal.valueOf(amountMinor, CurrencyMinorUnits.fractionDigits(currencyCode))
 
-    private val DECIMAL = Regex("""\d+(\.\d+)?""")
+    private val AMOUNT = Regex("""[0-9]+([.,][0-9]+)?""")
+    private const val MINUS_SIGNS = "-\u2212"
 }
