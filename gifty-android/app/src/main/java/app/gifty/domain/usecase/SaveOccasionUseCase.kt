@@ -32,8 +32,7 @@ class SaveOccasionUseCase @Inject constructor(
         val title = input.title?.trim()?.ifEmpty { null }
         val day = input.day
         val month = input.month
-        // Birthdays, name days and the like repeat by definition; only custom occasions can be one-off.
-        val repeatsYearly = input.type != OccasionType.CUSTOM || input.repeatsYearly
+        val repeatsYearly = input.type.alwaysRepeatsYearly || input.repeatsYearly
 
         val errors = buildSet {
             if (input.type == OccasionType.CUSTOM && title == null) add(OccasionInputError.TITLE_REQUIRED)

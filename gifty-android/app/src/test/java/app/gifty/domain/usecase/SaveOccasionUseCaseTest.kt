@@ -87,18 +87,50 @@ class SaveOccasionUseCaseTest {
     }
 
     @Test
-    fun `only custom occasions can be one-time`() = runTest {
-        saveOccasion.add(personId, birthday.copy(repeatsYearly = false))
-        saveOccasion.add(
-            personId,
-            birthday.copy(type = OccasionType.CUSTOM, title = "Graduation", year = 2027, repeatsYearly = false),
-        )
+    fun `birthdays, name days and Christmas always repeat yearly`() = runTest {
+        listOf(OccasionType.BIRTHDAY, OccasionType.NAME_DAY, OccasionType.CHRISTMAS).forEach { type ->
+            saveOccasion.add(personId, birthday.copy(type = type, year = 2020, repeatsYearly = false))
+        }
+
+        assertEquals(listOf(true, true, true), repository.currentOccasions.map { it.repeatsYearly })
+    }
+
+    @Test
+    fun `an anniversary keeps the user's repeat choice`() = runTest {
+        val anniversary = birthday.copy(type = OccasionType.ANNIVERSARY, year = 2015)
+
+        saveOccasion.add(personId, anniversary.copy(repeatsYearly = true))
+        saveOccasion.add(personId, anniversary.copy(repeatsYearly = false))
 
         assertEquals(listOf(true, false), repository.currentOccasions.map { it.repeatsYearly })
     }
 
     @Test
-    fun `a one-time occasion needs a year`() = runTest {
+    fun `a repeating anniversary may omit the year`() = runTest {
+        val result = saveOccasion.add(personId, birthday.copy(type = OccasionType.ANNIVERSARY, repeatsYearly = true))
+
+        assertEquals(SaveOccasionResult.Saved, result)
+    }
+
+    @Test
+    fun `a one-time anniversary needs a year`() = runTest {
+        val result = saveOccasion.add(personId, birthday.copy(type = OccasionType.ANNIVERSARY, repeatsYearly = false))
+
+        assertEquals(SaveOccasionResult.Invalid(setOf(OccasionInputError.YEAR_REQUIRED)), result)
+    }
+
+    @Test
+    fun `a custom occasion keeps the user's repeat choice`() = runTest {
+        val custom = birthday.copy(type = OccasionType.CUSTOM, title = "Graduation", year = 2027)
+
+        saveOccasion.add(personId, custom.copy(repeatsYearly = false))
+        saveOccasion.add(personId, custom.copy(repeatsYearly = true))
+
+        assertEquals(listOf(false, true), repository.currentOccasions.map { it.repeatsYearly })
+    }
+
+    @Test
+    fun `a one-time custom occasion needs a year`() = runTest {
         val result = saveOccasion.add(
             personId,
             birthday.copy(type = OccasionType.CUSTOM, title = "Graduation", repeatsYearly = false),

@@ -60,10 +60,14 @@ enum class OccasionDateProblem {
     NOT_A_LEAP_YEAR,
 }
 
-enum class OccasionType {
-    BIRTHDAY,
-    NAME_DAY,
-    ANNIVERSARY,
-    CHRISTMAS,
-    CUSTOM,
+/**
+ * [alwaysRepeatsYearly] types recur by definition. Anniversaries usually recur but may mark a
+ * single date, so like custom occasions they leave the choice to the user.
+ */
+enum class OccasionType(val alwaysRepeatsYearly: Boolean) {
+    BIRTHDAY(alwaysRepeatsYearly = true),
+    NAME_DAY(alwaysRepeatsYearly = true),
+    ANNIVERSARY(alwaysRepeatsYearly = false),
+    CHRISTMAS(alwaysRepeatsYearly = true),
+    CUSTOM(alwaysRepeatsYearly = false),
 }

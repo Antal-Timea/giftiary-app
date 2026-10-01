@@ -97,6 +97,79 @@ class OccasionEditorViewModelTest {
     }
 
     @Test
+    fun `an anniversary offers the repeat choice and defaults to yearly`() {
+        val viewModel = viewModel()
+
+        viewModel.onTypeChange(OccasionType.ANNIVERSARY)
+
+        val state = viewModel.uiState.value
+        assertTrue(state.showsRepeatsYearly)
+        assertTrue(state.repeatsYearly)
+        assertFalse(state.yearRequired)
+    }
+
+    @Test
+    fun `birthdays, name days and Christmas hide the repeat choice`() {
+        val viewModel = viewModel()
+
+        listOf(OccasionType.BIRTHDAY, OccasionType.NAME_DAY, OccasionType.CHRISTMAS).forEach { type ->
+            viewModel.onTypeChange(type)
+            assertFalse("$type", viewModel.uiState.value.showsRepeatsYearly)
+        }
+    }
+
+    @Test
+    fun `switching type resets repetition to yearly`() {
+        val viewModel = viewModel()
+        viewModel.onTypeChange(OccasionType.CUSTOM)
+        viewModel.onRepeatsYearlyChange(false)
+
+        viewModel.onTypeChange(OccasionType.ANNIVERSARY)
+        assertTrue(viewModel.uiState.value.repeatsYearly)
+
+        viewModel.onRepeatsYearlyChange(false)
+        viewModel.onTypeChange(OccasionType.BIRTHDAY)
+        assertTrue(viewModel.uiState.value.repeatsYearly)
+
+        viewModel.onTypeChange(OccasionType.CUSTOM)
+        assertTrue(viewModel.uiState.value.repeatsYearly)
+        assertTrue(viewModel.uiState.value.showsRepeatsYearly)
+    }
+
+    @Test
+    fun `reselecting the current type keeps the repeat choice`() {
+        val viewModel = viewModel()
+        viewModel.onTypeChange(OccasionType.ANNIVERSARY)
+        viewModel.onRepeatsYearlyChange(false)
+
+        viewModel.onTypeChange(OccasionType.ANNIVERSARY)
+
+        assertFalse(viewModel.uiState.value.repeatsYearly)
+    }
+
+    @Test
+    fun `a one-time anniversary is saved once it has a year`() = runTest {
+        val viewModel = viewModel()
+        viewModel.onTypeChange(OccasionType.ANNIVERSARY)
+        viewModel.onRepeatsYearlyChange(false)
+        viewModel.onDayChange("18")
+        viewModel.onMonthChange(6)
+
+        viewModel.save()
+        assertEquals(setOf(OccasionInputError.YEAR_REQUIRED), viewModel.uiState.value.errors)
+        assertTrue(viewModel.uiState.value.yearRequired)
+
+        viewModel.onYearChange("2015")
+        viewModel.save()
+
+        assertEquals(OccasionEditorStatus.CLOSED, viewModel.uiState.value.status)
+        val saved = repository.currentOccasions.single()
+        assertEquals(OccasionType.ANNIVERSARY, saved.type)
+        assertFalse(saved.repeatsYearly)
+        assertEquals(2015, saved.year)
+    }
+
+    @Test
     fun `day and year accept digits only`() {
         val viewModel = viewModel()
 

@@ -41,8 +41,19 @@ class OccasionEditorViewModel @AssistedInject constructor(
         if (target is OccasionEditorTarget.Existing) load(target.occasionId)
     }
 
+    /** Every type change starts from repeating yearly; anniversaries and custom ones can then opt out. */
     fun onTypeChange(type: OccasionType) {
-        _uiState.update { it.copy(type = type, errors = it.errors - OccasionInputError.TITLE_REQUIRED) }
+        _uiState.update {
+            if (it.type == type) {
+                it
+            } else {
+                it.copy(
+                    type = type,
+                    repeatsYearly = true,
+                    errors = it.errors - OccasionInputError.TITLE_REQUIRED - OccasionInputError.YEAR_REQUIRED,
+                )
+            }
+        }
     }
 
     fun onTitleChange(title: String) {
@@ -204,8 +215,8 @@ data class OccasionEditorUiState(
 
     val showsTitle: Boolean get() = type == OccasionType.CUSTOM
 
-    /** Other types always repeat yearly, so asking would only add a meaningless control. */
-    val showsRepeatsYearly: Boolean get() = type == OccasionType.CUSTOM
+    /** Types that always repeat yearly would only get a meaningless control. */
+    val showsRepeatsYearly: Boolean get() = !type.alwaysRepeatsYearly
 
     val yearRequired: Boolean get() = showsRepeatsYearly && !repeatsYearly
 
