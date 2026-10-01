@@ -34,9 +34,11 @@ import app.gifty.domain.model.Gift
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.Person
 import app.gifty.domain.repository.GiftEntry
+import app.gifty.domain.repository.GiftIdeaEntry
 import app.gifty.presentation.components.GiftyTopBar
 import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
+import app.gifty.presentation.giftideas.GiftIdeaRow
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 import java.time.Instant
@@ -48,6 +50,8 @@ fun GiftHistoryScreen(
     onBack: () -> Unit,
     onAddGift: () -> Unit,
     onOpenGift: (UUID) -> Unit,
+    onAddGiftIdea: () -> Unit,
+    onOpenGiftIdea: (UUID) -> Unit,
     viewModel: GiftHistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -57,6 +61,8 @@ fun GiftHistoryScreen(
         onFilterChange = viewModel::onFilterChange,
         onAddGift = onAddGift,
         onOpenGift = { onOpenGift(it.gift.id) },
+        onAddGiftIdea = onAddGiftIdea,
+        onOpenGiftIdea = { onOpenGiftIdea(it.idea.id) },
     )
 }
 
@@ -67,29 +73,31 @@ fun GiftHistoryScreen(
     onFilterChange: (GiftFilter) -> Unit,
     onAddGift: () -> Unit,
     onOpenGift: (GiftEntry) -> Unit,
+    onAddGiftIdea: () -> Unit,
+    onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftyTheme.colors
+    val showsIdeas = state.filter == GiftFilter.IDEAS
     Scaffold(
         modifier = modifier,
         topBar = { GiftyTopBar(title = stringResource(R.string.gifts_title), onBack = onBack) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = onAddGift,
+                onClick = if (showsIdeas) onAddGiftIdea else onAddGift,
                 containerColor = colors.primaryAction,
                 contentColor = colors.onPrimaryAction,
                 elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
             ) {
                 Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
                 Spacer(Modifier.width(GiftySpacing.m))
-                Text(stringResource(R.string.gifts_add))
+                Text(stringResource(if (showsIdeas) R.string.gift_ideas_add else R.string.gifts_add))
             }
         },
     ) { contentPadding ->
         Column(modifier = Modifier.padding(contentPadding)) {
-            if (state.content !is GiftHistoryContent.NoGifts) {
-                FilterRow(selected = state.filter, onSelect = onFilterChange)
-            }
+            // Always shown: even without any gifts, the ideas filter must stay reachable.
+            FilterRow(selected = state.filter, onSelect = onFilterChange)
             when (val content = state.content) {
                 GiftHistoryContent.Loading -> LoadingContent()
                 GiftHistoryContent.LoadFailed -> MessageContent(stringResource(R.string.gifts_load_failed))
@@ -102,10 +110,23 @@ fun GiftHistoryScreen(
                         when (state.filter) {
                             GiftFilter.GIVEN -> R.string.gifts_no_given
                             GiftFilter.RECEIVED -> R.string.gifts_no_received
-                            GiftFilter.ALL -> R.string.gifts_empty_title
+                            GiftFilter.ALL, GiftFilter.IDEAS -> R.string.gifts_empty_title
                         },
                     ),
                 )
+                GiftHistoryContent.NoIdeas -> MessageContent(
+                    title = stringResource(R.string.gift_ideas_empty_title),
+                    message = stringResource(R.string.gift_ideas_empty_message),
+                )
+                is GiftHistoryContent.IdeasLoaded -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+                ) {
+                    items(content.ideas, key = { it.idea.id }) { entry ->
+                        GiftIdeaRow(entry = entry, onClick = { onOpenGiftIdea(entry) })
+                        HorizontalDivider(modifier = Modifier.padding(start = GiftySpacing.l), color = colors.divider)
+                    }
+                }
                 is GiftHistoryContent.Loaded -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
@@ -157,6 +178,7 @@ private fun filterLabel(filter: GiftFilter): String = when (filter) {
     GiftFilter.ALL -> stringResource(R.string.gifts_filter_all)
     GiftFilter.GIVEN -> giftDirectionLabel(GiftDirection.GIVEN)
     GiftFilter.RECEIVED -> giftDirectionLabel(GiftDirection.RECEIVED)
+    GiftFilter.IDEAS -> stringResource(R.string.gifts_filter_ideas)
 }
 
 // Keeps the last row reachable above the floating action button.
@@ -204,6 +226,8 @@ private fun GiftHistoryPreview() {
             onFilterChange = {},
             onAddGift = {},
             onOpenGift = {},
+            onAddGiftIdea = {},
+            onOpenGiftIdea = {},
         )
     }
 }
@@ -218,6 +242,8 @@ private fun GiftHistoryEmptyPreview() {
             onFilterChange = {},
             onAddGift = {},
             onOpenGift = {},
+            onAddGiftIdea = {},
+            onOpenGiftIdea = {},
         )
     }
 }

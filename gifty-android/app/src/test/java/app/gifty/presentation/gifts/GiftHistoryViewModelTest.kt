@@ -2,10 +2,13 @@ package app.gifty.presentation.gifts
 
 import androidx.lifecycle.SavedStateHandle
 import app.gifty.domain.model.GiftDirection
+import app.gifty.testing.FakeGiftIdeaRepository
 import app.gifty.testing.FakeGiftRepository
 import app.gifty.testing.MainDispatcherRule
 import app.gifty.testing.giftDetails
 import app.gifty.testing.giftEntry
+import app.gifty.testing.ideaDetails
+import app.gifty.testing.ideaEntry
 import app.gifty.testing.person
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -23,6 +26,7 @@ class GiftHistoryViewModelTest {
 
     private val anna = person("Anna")
     private val repository = FakeGiftRepository()
+    private val ideas = FakeGiftIdeaRepository()
     private val book = giftEntry(giftDetails(GiftDirection.GIVEN, anna, "Book", LocalDate.of(2026, 3, 12)), anna)
     private val headphones = giftEntry(giftDetails(GiftDirection.RECEIVED, anna, "Headphones", LocalDate.of(2025, 11, 4)), anna)
 
@@ -60,6 +64,31 @@ class GiftHistoryViewModelTest {
     }
 
     @Test
+    fun `the ideas filter shows active ideas while all still means actual gifts only`() = runTest {
+        val scarf = ideaEntry(ideaDetails(anna), anna)
+        repository.givenGifts(book)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel()
+        collectState(viewModel)
+
+        assertEquals(GiftHistoryContent.Loaded(listOf(book)), viewModel.uiState.value.content)
+
+        viewModel.onFilterChange(GiftFilter.IDEAS)
+        assertEquals(GiftHistoryContent.IdeasLoaded(listOf(scarf)), viewModel.uiState.value.content)
+    }
+
+    @Test
+    fun `no ideas is its own state, even when there are gifts`() = runTest {
+        repository.givenGifts(book)
+        val viewModel = viewModel()
+        collectState(viewModel)
+
+        viewModel.onFilterChange(GiftFilter.IDEAS)
+
+        assertEquals(GiftHistoryContent.NoIdeas, viewModel.uiState.value.content)
+    }
+
+    @Test
     fun `the selected filter survives recreation`() = runTest {
         val savedState = SavedStateHandle()
         viewModel(savedState).onFilterChange(GiftFilter.RECEIVED)
@@ -67,7 +96,7 @@ class GiftHistoryViewModelTest {
         assertEquals(GiftFilter.RECEIVED, viewModel(savedState).uiState.value.filter)
     }
 
-    private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) = GiftHistoryViewModel(savedState, repository)
+    private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) = GiftHistoryViewModel(savedState, repository, ideas)
 
     private fun TestScope.collectState(viewModel: GiftHistoryViewModel) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }

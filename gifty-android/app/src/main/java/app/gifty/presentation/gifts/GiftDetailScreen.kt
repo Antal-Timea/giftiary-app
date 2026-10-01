@@ -22,10 +22,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gifty.R
@@ -165,37 +163,6 @@ private fun GiftDetails(
             Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = null)
             Spacer(Modifier.width(GiftySpacing.s))
             Text(stringResource(R.string.gift_delete))
-        }
-    }
-}
-
-@Composable
-private fun DetailField(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(GiftySpacing.xs)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = GiftyTheme.colors.textSecondary)
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, color = GiftyTheme.colors.textPrimary)
-    }
-}
-
-@Composable
-private fun ProductLink(url: String) {
-    val uriHandler = LocalUriHandler.current
-    Column(verticalArrangement = Arrangement.spacedBy(GiftySpacing.xs)) {
-        Text(
-            text = stringResource(R.string.gift_product_url),
-            style = MaterialTheme.typography.labelMedium,
-            color = GiftyTheme.colors.textSecondary,
-        )
-        TextButton(
-            // A stored link may not be openable (no browser, unusual scheme); that is not an app error.
-            onClick = { runCatching { uriHandler.openUri(url) } },
-            colors = ButtonDefaults.textButtonColors(contentColor = GiftyTheme.colors.primaryActionText),
-        ) {
-            Text(
-                text = url,
-                style = MaterialTheme.typography.bodyLarge,
-                textDecoration = TextDecoration.Underline,
-            )
         }
     }
 }

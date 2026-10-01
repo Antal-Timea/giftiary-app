@@ -36,9 +36,11 @@ import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.model.Person
 import app.gifty.domain.repository.GiftEntry
+import app.gifty.domain.repository.GiftIdeaEntry
 import app.gifty.presentation.components.GiftyTopBar
 import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
+import app.gifty.presentation.giftideas.GiftIdeaRow
 import app.gifty.presentation.gifts.GiftRow
 import app.gifty.presentation.occasions.occasionDate
 import app.gifty.presentation.occasions.occasionTitle
@@ -56,6 +58,8 @@ fun PersonDetailScreen(
     onEditOccasion: (UUID) -> Unit,
     onAddGift: (UUID) -> Unit,
     onOpenGift: (UUID) -> Unit,
+    onAddGiftIdea: (UUID) -> Unit,
+    onOpenGiftIdea: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     PersonDetailScreen(
@@ -66,6 +70,8 @@ fun PersonDetailScreen(
         onEditOccasion = { onEditOccasion(it.id) },
         onAddGift = { onAddGift(it.id) },
         onOpenGift = { onOpenGift(it.gift.id) },
+        onAddGiftIdea = { onAddGiftIdea(it.id) },
+        onOpenGiftIdea = { onOpenGiftIdea(it.idea.id) },
     )
 }
 
@@ -78,6 +84,8 @@ fun PersonDetailScreen(
     onEditOccasion: (Occasion) -> Unit,
     onAddGift: (Person) -> Unit,
     onOpenGift: (GiftEntry) -> Unit,
+    onAddGiftIdea: (Person) -> Unit,
+    onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val loaded = state as? PersonDetailUiState.Loaded
@@ -111,6 +119,8 @@ fun PersonDetailScreen(
                 onEditOccasion = onEditOccasion,
                 onAddGift = { onAddGift(state.person) },
                 onOpenGift = onOpenGift,
+                onAddGiftIdea = { onAddGiftIdea(state.person) },
+                onOpenGiftIdea = onOpenGiftIdea,
                 modifier = contentModifier,
             )
         }
@@ -124,6 +134,8 @@ private fun PersonDetailContent(
     onEditOccasion: (Occasion) -> Unit,
     onAddGift: () -> Unit,
     onOpenGift: (GiftEntry) -> Unit,
+    onAddGiftIdea: () -> Unit,
+    onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftyTheme.colors
@@ -154,6 +166,24 @@ private fun PersonDetailContent(
             }
         }
         item { AddButton(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion) }
+
+        item { SectionHeading(stringResource(R.string.person_detail_gift_ideas)) }
+        if (state.giftIdeas.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.person_detail_no_gift_ideas),
+                    modifier = Modifier.padding(horizontal = GiftySpacing.l, vertical = GiftySpacing.s),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        } else {
+            items(state.giftIdeas, key = { it.idea.id }) { entry ->
+                GiftIdeaRow(entry = entry, onClick = { onOpenGiftIdea(entry) }, showRecipient = false)
+                HorizontalDivider(modifier = Modifier.padding(start = GiftySpacing.l), color = colors.divider)
+            }
+        }
+        item { AddButton(label = stringResource(R.string.person_detail_add_gift_idea), onClick = onAddGiftIdea) }
 
         item { SectionHeading(stringResource(R.string.person_detail_gifts)) }
         if (state.gifts.isEmpty()) {
@@ -270,6 +300,7 @@ private fun PersonDetailPreview() {
                     previewOccasion(OccasionType.NAME_DAY, 26, 7),
                     previewOccasion(OccasionType.CUSTOM, 1, 9, title = "First day at school"),
                 ),
+                giftIdeas = emptyList(),
                 gifts = emptyList(),
             ),
             onBack = {},
@@ -278,6 +309,8 @@ private fun PersonDetailPreview() {
             onEditOccasion = {},
             onAddGift = {},
             onOpenGift = {},
+            onAddGiftIdea = {},
+            onOpenGiftIdea = {},
         )
     }
 }
@@ -287,13 +320,15 @@ private fun PersonDetailPreview() {
 private fun PersonDetailNoOccasionsPreview() {
     GiftyTheme {
         PersonDetailScreen(
-            state = PersonDetailUiState.Loaded(previewPerson, emptyList(), emptyList()),
+            state = PersonDetailUiState.Loaded(previewPerson, emptyList(), emptyList(), emptyList()),
             onBack = {},
             onEditPerson = {},
             onAddOccasion = {},
             onEditOccasion = {},
             onAddGift = {},
             onOpenGift = {},
+            onAddGiftIdea = {},
+            onOpenGiftIdea = {},
         )
     }
 }

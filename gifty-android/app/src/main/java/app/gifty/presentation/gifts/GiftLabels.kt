@@ -71,6 +71,14 @@ fun giftPrice(price: Money): String = PriceFormat.format(price, LocalConfigurati
 
 @Composable
 @ReadOnlyComposable
+fun priceErrorText(error: PriceError, currencyCode: String): String = when (error) {
+    PriceError.INVALID -> stringResource(R.string.gift_error_price_invalid)
+    PriceError.NEGATIVE -> stringResource(R.string.gift_error_price_negative)
+    PriceError.TOO_PRECISE -> stringResource(R.string.gift_error_price_too_precise, currencyCode)
+}
+
+@Composable
+@ReadOnlyComposable
 fun directionColor(direction: GiftDirection): Color = when (direction) {
     GiftDirection.GIVEN -> GiftyTheme.colors.directionGiven
     GiftDirection.RECEIVED -> GiftyTheme.colors.directionReceived

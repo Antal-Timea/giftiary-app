@@ -301,17 +301,13 @@ data class GiftEditorUiState(
 ) {
     /** Active people, plus the gift's original person while it stays selected, even if deleted. */
     val personOptions: List<Person>
-        get() = activePeople + listOfNotNull(
-            historicalPerson?.takeIf { original -> original.id == personId && activePeople.none { it.id == original.id } },
-        )
+        get() = personChoices(activePeople, historicalPerson, personId)
 
     val selectedPerson: Person? get() = personOptions.find { it.id == personId }
 
     /** "No occasion", the selected person's active occasions and, while selected, the original one. */
     val occasionOptions: List<Occasion?>
-        get() = listOf(null) + personOccasions + listOfNotNull(
-            historicalOccasion?.takeIf { original -> original.id == occasionId && personOccasions.none { it.id == original.id } },
-        )
+        get() = occasionChoices(personOccasions, historicalOccasion, occasionId)
 
     val selectedOccasion: Occasion? get() = occasionOptions.find { it?.id == occasionId && it != null }
 

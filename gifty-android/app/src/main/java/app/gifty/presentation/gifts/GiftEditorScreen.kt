@@ -1,7 +1,5 @@
 package app.gifty.presentation.gifts
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,14 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -28,14 +21,10 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -49,20 +38,18 @@ import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.Person
 import app.gifty.domain.usecase.GiftInputError
+import app.gifty.presentation.components.GiftyDateField
 import app.gifty.presentation.components.GiftyDropdownField
 import app.gifty.presentation.components.GiftyPrimaryButton
 import app.gifty.presentation.components.GiftyTextField
 import app.gifty.presentation.components.GiftyTopBar
 import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
-import app.gifty.presentation.components.giftyTextFieldColors
 import app.gifty.presentation.occasions.occasionTitle
-import app.gifty.presentation.theme.GiftyShapes
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.util.UUID
 
 @Composable
@@ -201,7 +188,13 @@ private fun GiftForm(state: GiftEditorUiState, actions: GiftEditorActions, modif
             modifier = Modifier.fillMaxWidth(),
             enabled = canEdit && state.personId != null,
         )
-        DateField(date = state.givenAt, onDateChange = actions.onDateChange, enabled = canEdit)
+        GiftyDateField(
+            label = stringResource(R.string.gift_date),
+            date = state.givenAt,
+            onDateChange = actions.onDateChange,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = canEdit,
+        )
         GiftyTextField(
             value = state.price,
             onValueChange = actions.onPriceChange,
@@ -290,96 +283,6 @@ private fun NeedsPerson(onOpenPeople: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         )
     }
-}
-
-/**
- * Shows the gift date and opens a date picker. Gift dates always have a year, so the platform
- * picker fits here, unlike for occasions.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DateField(date: LocalDate, onDateChange: (LocalDate) -> Unit, enabled: Boolean) {
-    var picking by rememberSaveable { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(interactionSource, enabled) {
-        interactionSource.interactions.collect { if (it is PressInteraction.Release && enabled) picking = true }
-    }
-    OutlinedTextField(
-        value = giftDate(date),
-        onValueChange = {},
-        modifier = Modifier.fillMaxWidth(),
-        enabled = enabled,
-        readOnly = true,
-        textStyle = MaterialTheme.typography.bodyLarge,
-        label = { Text(stringResource(R.string.gift_date)) },
-        trailingIcon = {
-            IconButton(onClick = { picking = true }, enabled = enabled) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_calendar),
-                    contentDescription = stringResource(R.string.gift_choose_date),
-                )
-            }
-        },
-        singleLine = true,
-        shape = GiftyShapes.input,
-        colors = giftyTextFieldColors(),
-        interactionSource = interactionSource,
-    )
-
-    if (picking) {
-        val colors = GiftyTheme.colors
-        // The picker works in UTC milliseconds; converting at UTC keeps the calendar date unchanged.
-        val pickerState = rememberDatePickerState(
-            initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-        )
-        val pickerColors = DatePickerDefaults.colors(
-            containerColor = colors.surfaceElevated,
-            titleContentColor = colors.textSecondary,
-            headlineContentColor = colors.textPrimary,
-            weekdayContentColor = colors.textSecondary,
-            dayContentColor = colors.textPrimary,
-            selectedDayContainerColor = colors.primaryAction,
-            selectedDayContentColor = colors.onPrimaryAction,
-            todayContentColor = colors.textPrimary,
-            todayDateBorderColor = colors.primaryAction,
-            selectedYearContainerColor = colors.primaryAction,
-            selectedYearContentColor = colors.onPrimaryAction,
-        )
-        DatePickerDialog(
-            onDismissRequest = { picking = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        pickerState.selectedDateMillis?.let {
-                            onDateChange(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate())
-                        }
-                        picking = false
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
-                ) {
-                    Text(stringResource(R.string.gift_date_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { picking = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
-                ) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-            colors = pickerColors,
-        ) {
-            DatePicker(state = pickerState, colors = pickerColors)
-        }
-    }
-}
-
-@Composable
-private fun priceErrorText(error: PriceError, currencyCode: String): String = when (error) {
-    PriceError.INVALID -> stringResource(R.string.gift_error_price_invalid)
-    PriceError.NEGATIVE -> stringResource(R.string.gift_error_price_negative)
-    PriceError.TOO_PRECISE -> stringResource(R.string.gift_error_price_too_precise, currencyCode)
 }
 
 private val previewActions = GiftEditorActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})

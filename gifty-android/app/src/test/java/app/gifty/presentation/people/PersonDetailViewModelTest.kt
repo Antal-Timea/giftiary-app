@@ -2,12 +2,15 @@ package app.gifty.presentation.people
 
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.testing.FakeGiftIdeaRepository
 import app.gifty.testing.FakeGiftRepository
 import app.gifty.testing.FakeOccasionRepository
 import app.gifty.testing.FakePersonRepository
 import app.gifty.testing.MainDispatcherRule
 import app.gifty.testing.giftDetails
 import app.gifty.testing.giftEntry
+import app.gifty.testing.ideaDetails
+import app.gifty.testing.ideaEntry
 import app.gifty.testing.occasion
 import app.gifty.testing.person
 import kotlinx.coroutines.launch
@@ -26,6 +29,7 @@ class PersonDetailViewModelTest {
     private val people = FakePersonRepository()
     private val occasions = FakeOccasionRepository()
     private val gifts = FakeGiftRepository()
+    private val ideas = FakeGiftIdeaRepository()
     private val anna = person("Anna", relationship = "Sister")
 
     @Test
@@ -34,16 +38,16 @@ class PersonDetailViewModelTest {
         val birthday = occasion(anna.id, OccasionDetails(OccasionType.BIRTHDAY, null, 12, 3, null, true))
         people.givenPeople(anna)
         occasions.givenOccasions(nameDay, birthday)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas)
         collectState(viewModel)
 
-        assertEquals(PersonDetailUiState.Loaded(anna, listOf(birthday, nameDay), emptyList()), viewModel.uiState.value)
+        assertEquals(PersonDetailUiState.Loaded(anna, listOf(birthday, nameDay), emptyList(), emptyList()), viewModel.uiState.value)
     }
 
     @Test
     fun `edits to the person and new occasions appear without reloading`() = runTest {
         people.givenPeople(anna)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas)
         collectState(viewModel)
 
         people.updatePerson(anna.id, "Anna K.", "Sister")
@@ -51,7 +55,7 @@ class PersonDetailViewModelTest {
         val added = occasions.addOccasion(anna.id, OccasionDetails(OccasionType.BIRTHDAY, null, 12, 3, null, true))
 
         assertEquals(
-            PersonDetailUiState.Loaded(anna.copy(name = "Anna K."), listOf(added), emptyList()),
+            PersonDetailUiState.Loaded(anna.copy(name = "Anna K."), listOf(added), emptyList(), emptyList()),
             viewModel.uiState.value,
         )
     }
@@ -61,16 +65,28 @@ class PersonDetailViewModelTest {
         val book = giftEntry(giftDetails(person = anna), anna)
         people.givenPeople(anna)
         gifts.givenGifts(book, giftEntry(giftDetails(person = person("Béla")), person("Béla")))
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas)
         collectState(viewModel)
 
-        assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), listOf(book)), viewModel.uiState.value)
+        assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), emptyList(), listOf(book)), viewModel.uiState.value)
+    }
+
+    @Test
+    fun `shows the active gift ideas for the person`() = runTest {
+        val scarf = ideaEntry(ideaDetails(anna), anna)
+        val forSomeoneElse = person("Béla").let { bela -> ideaEntry(ideaDetails(bela), bela) }
+        people.givenPeople(anna)
+        ideas.givenIdeas(scarf, forSomeoneElse)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas)
+        collectState(viewModel)
+
+        assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), listOf(scarf), emptyList()), viewModel.uiState.value)
     }
 
     @Test
     fun `a missing or deleted person shows not found`() = runTest {
         people.givenPeople(anna)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas)
         collectState(viewModel)
 
         people.deletePerson(anna.id)

@@ -32,6 +32,10 @@ interface PersonDao {
     @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
     suspend fun findActiveById(id: UUID, ownerUserId: UUID): PersonEntity?
 
+    /** Includes soft-deleted rows; only for checking references existing records already have. */
+    @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId")
+    suspend fun findById(id: UUID, ownerUserId: UUID): PersonEntity?
+
     /** Fails if the id already exists, which for a locally created person indicates a bug. */
     @Insert
     suspend fun insert(person: PersonEntity)

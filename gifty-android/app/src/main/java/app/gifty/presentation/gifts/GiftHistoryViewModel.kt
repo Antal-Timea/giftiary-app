@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.repository.GiftEntry
+import app.gifty.domain.repository.GiftIdeaEntry
+import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,30 +21,26 @@ import javax.inject.Inject
 class GiftHistoryViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     repository: GiftRepository,
+    giftIdeaRepository: GiftIdeaRepository,
 ) : ViewModel() {
 
     private val filter = savedStateHandle.getStateFlow(KEY_FILTER, GiftFilter.ALL)
 
     private val gifts = repository.observeGifts()
-        .map<List<GiftEntry>, GiftsLoad> { GiftsLoad.Loaded(it) }
-        .catch { emit(GiftsLoad.Failed) }
+        .map<List<GiftEntry>, Load<GiftEntry>> { Load.Loaded(it) }
+        .catch { emit(Load.Failed) }
 
-    // The whole history is filtered in memory: it is small, and switching filters stays instant.
+    private val ideas = giftIdeaRepository.observeGiftIdeas()
+        .map<List<GiftIdeaEntry>, Load<GiftIdeaEntry>> { Load.Loaded(it) }
+        .catch { emit(Load.Failed) }
+
+    // Both collections are small and filtered in memory, so switching filters stays instant.
+    // Gifts and ideas stay separate: "All" means every actual gift, never ideas.
     val uiState: StateFlow<GiftHistoryUiState> =
-        combine(gifts, filter) { load, filter ->
+        combine(gifts, ideas, filter) { gifts, ideas, filter ->
             GiftHistoryUiState(
                 filter = filter,
-                content = when (load) {
-                    GiftsLoad.Failed -> GiftHistoryContent.LoadFailed
-                    is GiftsLoad.Loaded -> {
-                        val matching = load.gifts.filter { filter.matches(it.gift.direction) }
-                        when {
-                            load.gifts.isEmpty() -> GiftHistoryContent.NoGifts
-                            matching.isEmpty() -> GiftHistoryContent.NoMatches
-                            else -> GiftHistoryContent.Loaded(matching)
-                        }
-                    }
-                },
+                content = if (filter == GiftFilter.IDEAS) ideasContent(ideas) else giftsContent(gifts, filter),
             )
         }.stateIn(
             scope = viewModelScope,
@@ -54,9 +52,26 @@ class GiftHistoryViewModel @Inject constructor(
         savedStateHandle[KEY_FILTER] = filter
     }
 
-    private sealed interface GiftsLoad {
-        data class Loaded(val gifts: List<GiftEntry>) : GiftsLoad
-        data object Failed : GiftsLoad
+    private fun giftsContent(load: Load<GiftEntry>, filter: GiftFilter): GiftHistoryContent = when (load) {
+        Load.Failed -> GiftHistoryContent.LoadFailed
+        is Load.Loaded -> {
+            val matching = load.items.filter { filter.matches(it.gift.direction) }
+            when {
+                load.items.isEmpty() -> GiftHistoryContent.NoGifts
+                matching.isEmpty() -> GiftHistoryContent.NoMatches
+                else -> GiftHistoryContent.Loaded(matching)
+            }
+        }
+    }
+
+    private fun ideasContent(load: Load<GiftIdeaEntry>): GiftHistoryContent = when (load) {
+        Load.Failed -> GiftHistoryContent.LoadFailed
+        is Load.Loaded -> if (load.items.isEmpty()) GiftHistoryContent.NoIdeas else GiftHistoryContent.IdeasLoaded(load.items)
+    }
+
+    private sealed interface Load<out T> {
+        data class Loaded<T>(val items: List<T>) : Load<T>
+        data object Failed : Load<Nothing>
     }
 
     private companion object {
@@ -65,17 +80,19 @@ class GiftHistoryViewModel @Inject constructor(
     }
 }
 
-/** History filters. Gift ideas will join these once they exist. */
+/** Filters of the gift area. The first three narrow actual gifts; [IDEAS] shows plans instead. */
 enum class GiftFilter {
     ALL,
     GIVEN,
     RECEIVED,
+    IDEAS,
     ;
 
     fun matches(direction: GiftDirection): Boolean = when (this) {
         ALL -> true
         GIVEN -> direction == GiftDirection.GIVEN
         RECEIVED -> direction == GiftDirection.RECEIVED
+        IDEAS -> false
     }
 }
 
@@ -95,4 +112,8 @@ sealed interface GiftHistoryContent {
     /** There are gifts, but none match the selected filter. */
     data object NoMatches : GiftHistoryContent
     data class Loaded(val gifts: List<GiftEntry>) : GiftHistoryContent
+
+    /** The ideas filter is selected and there are no active ideas. */
+    data object NoIdeas : GiftHistoryContent
+    data class IdeasLoaded(val ideas: List<GiftIdeaEntry>) : GiftHistoryContent
 }

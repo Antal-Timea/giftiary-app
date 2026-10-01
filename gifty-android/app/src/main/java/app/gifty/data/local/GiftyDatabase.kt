@@ -7,6 +7,7 @@ import app.gifty.data.local.converter.EnumConverters
 import app.gifty.data.local.converter.TimeConverters
 import app.gifty.data.local.converter.UuidConverter
 import app.gifty.data.local.dao.GiftDao
+import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
@@ -39,6 +40,8 @@ abstract class GiftyDatabase : RoomDatabase() {
     abstract fun occasionDao(): OccasionDao
 
     abstract fun giftDao(): GiftDao
+
+    abstract fun giftIdeaDao(): GiftIdeaDao
 
     abstract fun syncOperationDao(): SyncOperationDao
 

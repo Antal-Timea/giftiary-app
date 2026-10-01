@@ -11,6 +11,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.gifty.domain.model.GiftDirection
+import app.gifty.presentation.giftideas.GiftIdeaDetailScreen
+import app.gifty.presentation.giftideas.GiftIdeaDetailViewModel
+import app.gifty.presentation.giftideas.GiftIdeaEditorScreen
+import app.gifty.presentation.giftideas.GiftIdeaEditorTarget
+import app.gifty.presentation.giftideas.GiftIdeaEditorViewModel
+import app.gifty.presentation.giftideas.MarkGiftIdeaGivenScreen
+import app.gifty.presentation.giftideas.MarkGiftIdeaGivenViewModel
 import app.gifty.presentation.gifts.GiftDetailScreen
 import app.gifty.presentation.gifts.GiftDetailViewModel
 import app.gifty.presentation.gifts.GiftEditorScreen
@@ -63,6 +70,19 @@ data class AddGiftRoute(val direction: String? = null, val personId: String? = n
 @Serializable
 data class EditGiftRoute(val giftId: String)
 
+@Serializable
+data class GiftIdeaDetailRoute(val giftIdeaId: String)
+
+/** [personId] only preselects the recipient. */
+@Serializable
+data class AddGiftIdeaRoute(val personId: String? = null)
+
+@Serializable
+data class EditGiftIdeaRoute(val giftIdeaId: String)
+
+@Serializable
+data class MarkGiftIdeaGivenRoute(val giftIdeaId: String)
+
 @Composable
 fun GiftyNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
@@ -96,6 +116,8 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
                     onEditOccasion = { id -> navController.navigate(EditOccasionRoute(id.toString())) },
                     onAddGift = { id -> navController.navigate(AddGiftRoute(personId = id.toString())) },
                     onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
+                    onAddGiftIdea = { id -> navController.navigate(AddGiftIdeaRoute(personId = id.toString())) },
+                    onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
                 )
             }
         }
@@ -142,6 +164,8 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
                 onBack = navController.popBackStackUnlessPaused(),
                 onAddGift = dropUnlessResumed { navController.navigate(AddGiftRoute()) },
                 onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
+                onAddGiftIdea = dropUnlessResumed { navController.navigate(AddGiftIdeaRoute()) },
+                onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
             )
         }
         composable<GiftDetailRoute> { entry ->
@@ -178,6 +202,56 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
                     },
                     onClose = navController.popBackStackUnlessPaused(),
                     onOpenPeople = { navController.navigate(PeopleRoute) },
+                )
+            }
+        }
+        composable<GiftIdeaDetailRoute> { entry ->
+            WithUuid(entry.toRoute<GiftIdeaDetailRoute>().giftIdeaId, navController) { giftIdeaId ->
+                GiftIdeaDetailScreen(
+                    viewModel = hiltViewModel<GiftIdeaDetailViewModel, GiftIdeaDetailViewModel.Factory> { factory ->
+                        factory.create(giftIdeaId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                    onEditGiftIdea = { id -> navController.navigate(EditGiftIdeaRoute(id.toString())) },
+                    onMarkAsGiven = { id -> navController.navigate(MarkGiftIdeaGivenRoute(id.toString())) },
+                )
+            }
+        }
+        composable<AddGiftIdeaRoute> { entry ->
+            // A malformed preselection is ignored; the editor works without it.
+            val personId = entry.toRoute<AddGiftIdeaRoute>().personId?.toUuidOrNull()
+            GiftIdeaEditorScreen(
+                viewModel = hiltViewModel<GiftIdeaEditorViewModel, GiftIdeaEditorViewModel.Factory> { factory ->
+                    factory.create(GiftIdeaEditorTarget.New(personId))
+                },
+                onClose = navController.popBackStackUnlessPaused(),
+                onOpenPeople = { navController.navigate(PeopleRoute) },
+            )
+        }
+        composable<EditGiftIdeaRoute> { entry ->
+            WithUuid(entry.toRoute<EditGiftIdeaRoute>().giftIdeaId, navController) { giftIdeaId ->
+                GiftIdeaEditorScreen(
+                    viewModel = hiltViewModel<GiftIdeaEditorViewModel, GiftIdeaEditorViewModel.Factory> { factory ->
+                        factory.create(GiftIdeaEditorTarget.Existing(giftIdeaId))
+                    },
+                    onClose = navController.popBackStackUnlessPaused(),
+                    onOpenPeople = { navController.navigate(PeopleRoute) },
+                )
+            }
+        }
+        composable<MarkGiftIdeaGivenRoute> { entry ->
+            WithUuid(entry.toRoute<MarkGiftIdeaGivenRoute>().giftIdeaId, navController) { giftIdeaId ->
+                MarkGiftIdeaGivenScreen(
+                    viewModel = hiltViewModel<MarkGiftIdeaGivenViewModel, MarkGiftIdeaGivenViewModel.Factory> { factory ->
+                        factory.create(giftIdeaId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                    onGiven = { giftId ->
+                        // The idea is archived now; show the gift it became instead of returning to it.
+                        navController.navigate(GiftDetailRoute(giftId.toString())) {
+                            popUpTo<GiftIdeaDetailRoute> { inclusive = true }
+                        }
+                    },
                 )
             }
         }
