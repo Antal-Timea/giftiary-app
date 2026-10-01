@@ -1,7 +1,19 @@
 -- Every new account gets exactly one private profile.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
+
+-- The profile trigger must keep working although nobody may call private functions directly.
+-- Supabase Auth signs users up as supabase_auth_admin, which has no EXECUTE on the function and
+-- no USAGE on the private schema. PostgreSQL checks neither when a trigger fires; to prove it
+-- here, the test also takes both away from the function owner (rolled back at the end) before
+-- signing up the users below.
+select ok(not has_function_privilege('supabase_auth_admin', 'private.create_profile_for_new_user()', 'execute'),
+    'the auth service cannot execute the profile function directly');
+revoke execute on all functions in schema private from postgres;
+revoke usage on schema private from postgres;
+select ok(not has_function_privilege('postgres', 'private.create_profile_for_new_user()', 'execute'),
+    'the signing-up role in this test cannot execute it either');
 
 insert into auth.users (id, email, raw_user_meta_data) values
     ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'alice@example.test', '{"display_name": "  Alice  "}'),

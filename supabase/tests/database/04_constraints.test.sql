@@ -1,7 +1,7 @@
 -- Value rules: money pairs, enum values and the domain rules mirrored from Android.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(35);
 
 insert into auth.users (id, email) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'alice@example.test');
 
@@ -54,7 +54,18 @@ select throws_ok(
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'EASTER', 1, 4, true)$$,
     '22P02', null, 'EASTER is not an occasion type');
 
--- Gifts say for whom or from whom.
+-- Gifts say for whom or from whom. The other side is optional: null is the signed-in user, and
+-- both set records a gift between two other people (Grandma to Martin), in either direction.
+insert into public.people (id, owner_user_id, name)
+values ('a0000000-0000-4000-8000-00000000000b', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Béla');
+select lives_ok(
+    $$insert into public.gifts (id, owner_user_id, direction, giver_person_id, recipient_person_id, name, given_at)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN', 'a0000000-0000-4000-8000-00000000000b', 'a0000000-0000-4000-8000-00000000000a', 'Gift', '2026-01-01')$$,
+    'a given gift between two other people is valid');
+select lives_ok(
+    $$insert into public.gifts (id, owner_user_id, direction, giver_person_id, recipient_person_id, name, given_at)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'RECEIVED', 'a0000000-0000-4000-8000-00000000000b', 'a0000000-0000-4000-8000-00000000000a', 'Gift', '2026-01-01')$$,
+    'a received gift between two other people is valid');
 select throws_ok(
     $$insert into public.gifts (id, owner_user_id, direction, giver_person_id, name, given_at)
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN', 'a0000000-0000-4000-8000-00000000000a', 'Gift', '2026-01-01')$$,
@@ -82,22 +93,60 @@ select throws_ok(
     $$insert into public.occasions (id, owner_user_id, type, day, month, repeats_yearly)
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CHRISTMAS', 32, 12, true)$$,
     '23514', null, 'day 32 is rejected');
-select throws_ok(
+-- The year range is the one the Android domain (java.time.Year) accepts, so nothing Android
+-- saves locally is refused when it syncs.
+select lives_ok(
     $$insert into public.occasions (id, owner_user_id, type, day, month, year, repeats_yearly)
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'ANNIVERSARY', 1, 1, 0, true)$$,
-    '23514', null, 'year 0 is rejected');
+    'year 0 is accepted, as on Android');
+select throws_ok(
+    $$insert into public.occasions (id, owner_user_id, type, day, month, year, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'ANNIVERSARY', 1, 1, 1000000000, true)$$,
+    '23514', null, 'a year outside the java.time.Year range is rejected');
 select throws_ok(
     $$insert into public.occasions (id, owner_user_id, type, day, month, repeats_yearly)
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CUSTOM', 1, 9, true)$$,
     '23514', null, 'a custom occasion needs a title');
 select throws_ok(
+    $$insert into public.occasions (id, owner_user_id, type, title, day, month, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CHRISTMAS', 'Family Christmas', 24, 12, true)$$,
+    '23514', null, 'only custom occasions have a title; Android stores none for the other types');
+
+-- Birthdays, name days and Christmas always repeat.
+select throws_ok(
     $$insert into public.occasions (id, owner_user_id, person_id, type, day, month, year, repeats_yearly)
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'a0000000-0000-4000-8000-00000000000a', 'BIRTHDAY', 12, 3, 1990, false)$$,
     '23514', null, 'a birthday always repeats yearly');
 select throws_ok(
+    $$insert into public.occasions (id, owner_user_id, person_id, type, day, month, year, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'a0000000-0000-4000-8000-00000000000a', 'NAME_DAY', 12, 3, 2026, false)$$,
+    '23514', null, 'a name day always repeats yearly');
+select throws_ok(
+    $$insert into public.occasions (id, owner_user_id, type, day, month, year, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CHRISTMAS', 24, 12, 2026, false)$$,
+    '23514', null, 'Christmas always repeats yearly');
+
+-- Anniversaries and custom occasions may be one-time, which only makes sense with a year.
+select lives_ok(
+    $$insert into public.occasions (id, owner_user_id, person_id, type, day, month, year, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'a0000000-0000-4000-8000-00000000000a', 'ANNIVERSARY', 18, 6, 2026, false)$$,
+    'a one-time anniversary with a year is valid');
+select throws_ok(
     $$insert into public.occasions (id, owner_user_id, person_id, type, day, month, repeats_yearly)
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'a0000000-0000-4000-8000-00000000000a', 'ANNIVERSARY', 18, 6, false)$$,
-    '23514', null, 'a one-time occasion needs a year');
+    '23514', null, 'a one-time anniversary needs a year');
+select lives_ok(
+    $$insert into public.occasions (id, owner_user_id, type, title, day, month, year, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CUSTOM', 'Graduation', 20, 6, 2026, false)$$,
+    'a one-time custom occasion with a year is valid');
+select throws_ok(
+    $$insert into public.occasions (id, owner_user_id, type, title, day, month, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CUSTOM', 'Graduation', 20, 6, false)$$,
+    '23514', null, 'a one-time custom occasion needs a year');
+select lives_ok(
+    $$insert into public.occasions (id, owner_user_id, type, title, day, month, repeats_yearly)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'CUSTOM', 'Team day', 1, 9, true)$$,
+    'a repeating custom occasion may omit the year');
 
 select * from finish();
 rollback;

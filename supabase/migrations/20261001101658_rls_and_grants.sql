@@ -20,7 +20,7 @@ revoke execute on all functions in schema private from public, anon, authenticat
 
 -- Start from nothing, whatever the project's default privileges are, then grant what is needed.
 revoke all on table public.profiles, public.people, public.occasions, public.gift_ideas, public.gifts
-    from public, anon, authenticated;
+    from public, anon, authenticated, service_role;
 
 -- A profile is created by the sign-up trigger; the user may only edit its descriptive fields.
 grant select on table public.profiles to authenticated;
@@ -29,8 +29,11 @@ grant update (display_name, avatar_path, preferred_locale) on table public.profi
 grant select, insert, update on table public.people, public.occasions, public.gift_ideas, public.gifts
     to authenticated;
 
--- Server-side administration (service_role bypasses RLS by design and is never shipped to clients).
-grant all on table public.profiles, public.people, public.occasions, public.gift_ideas, public.gifts
+-- Server-side administration such as support fixes and the future account deletion.
+-- service_role bypasses RLS but still needs table privileges, and with auto_expose_new_tables
+-- off it gets none by default. Its key is never shipped to clients.
+grant select, insert, update, delete
+    on table public.profiles, public.people, public.occasions, public.gift_ideas, public.gifts
     to service_role;
 
 -- ---------------------------------------------------------------------------------------------

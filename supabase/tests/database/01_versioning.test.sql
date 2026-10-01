@@ -1,7 +1,16 @@
 -- Version and timestamps are decided by the server, never by the client.
+--
+-- What this does NOT give yet: conflict detection. The server numbers versions, but an update
+-- based on a stale read still succeeds and simply becomes the next version:
+--   device A reads version 4, device B reads version 4,
+--   B updates -> 5, A updates with stale data -> 6, silently overwriting B.
+-- Rejecting that needs the update to carry the version the client last saw and to apply only if
+-- it still matches, atomically on the server. That belongs to the sync API phase. The last
+-- assertions below pin that this precondition does not exist yet, so adding it is a deliberate
+-- change rather than something these tests already claim.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(20);
 
 insert into auth.users (id, email) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'alice@example.test');
 
@@ -31,6 +40,16 @@ select is((select version from public.people where name = 'Anna'), 4::bigint, 'a
 select is((select updated_at from public.people where name = 'Anna'), now(), 'a forged updated_at is replaced by the server time');
 select isnt((select created_at from public.people where name = 'Anna'), '2000-01-01T00:00:00Z'::timestamptz, 'created_at cannot be rewritten');
 
+-- Identity and ownership are fixed at insert. Updating them is rejected outright rather than
+-- silently ignored, because a client that tries has a bug worth surfacing.
+select throws_ok(
+    $$update public.people set id = '99999999-9999-4999-8999-999999999999' where id = '11111111-1111-4111-8111-111111111111'$$,
+    '42501', null, 'the id cannot be changed');
+select throws_ok(
+    $$update public.people set owner_user_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' where id = '11111111-1111-4111-8111-111111111111'$$,
+    '42501', null, 'the owner cannot be changed');
+select is((select version from public.people where name = 'Anna'), 4::bigint, 'rejected changes leave the version alone');
+
 -- An update that changes nothing is not a new version.
 update public.people set relationship = 'Sister' where id = '11111111-1111-4111-8111-111111111111';
 select is((select version from public.people where name = 'Anna'), 4::bigint, 'an update without real changes keeps the version');
@@ -59,6 +78,12 @@ values ('55555555-5555-4555-8555-555555555555', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaa
         '22222222-2222-4222-8222-222222222222', 'Book', '2026-03-12', 42);
 select is((select version from public.occasions where id = '44444444-4444-4444-8444-444444444444'), 1::bigint, 'occasions start at version 1');
 select is((select version from public.gifts where id = '55555555-5555-4555-8555-555555555555'), 1::bigint, 'gifts start at version 1');
+
+-- The boundary described at the top: there is no expected-version precondition yet, neither as a
+-- column a client could send nor as a server function in the API schema.
+select hasnt_column('public', 'people', 'expected_version', 'updates carry no expected version yet');
+select is((select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace), 0,
+    'no server-side write API with a version precondition exists yet');
 
 select * from finish();
 rollback;

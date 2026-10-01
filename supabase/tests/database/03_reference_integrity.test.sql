@@ -1,7 +1,7 @@
 -- References stay within one owner and make sense, while history survives soft deletion.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(18);
 
 insert into auth.users (id, email) values
     ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'alice@example.test'),
@@ -103,6 +103,15 @@ select throws_ok(
       values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN', 'a0000000-0000-4000-8000-00000000000a',
               'a0000000-0000-4000-8000-0000000000d1', 'Scarf again', '2026-03-13')$$,
     '23505', null, 'an idea can be given only once');
+
+-- A soft-deleted gift is still the record that the idea was given, so the idea stays used.
+update public.gifts set deleted_at = now() where id = 'a0000000-0000-4000-8000-0000000000e1';
+select throws_ok(
+    $$insert into public.gifts (id, owner_user_id, direction, recipient_person_id, source_gift_idea_id, name, given_at)
+      values (gen_random_uuid(), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN', 'a0000000-0000-4000-8000-00000000000a',
+              'a0000000-0000-4000-8000-0000000000d1', 'Scarf again', '2026-03-13')$$,
+    '23505', null, 'deleting the gift does not free its idea for another gift');
+update public.gifts set deleted_at = null where id = 'a0000000-0000-4000-8000-0000000000e1';
 
 -- Soft-deleting Anna and her birthday leaves the history valid and editable.
 update public.occasions set deleted_at = now() where id = 'a0000000-0000-4000-8000-0000000000b1';

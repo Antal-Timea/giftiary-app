@@ -94,10 +94,12 @@ create table public.occasions (
     -- Ranges only; the exact calendar check (e.g. 29 February) is done by the Android domain.
     constraint occasions_month_range check (month between 1 and 12),
     constraint occasions_day_range check (day between 1 and 31),
-    constraint occasions_year_range check (year is null or year between 1 and 9999),
-    -- Mirrors the Android rules: custom occasions are named, the other types need no name.
+    -- The java.time.Year range the Android domain accepts, so every locally valid occasion syncs.
+    constraint occasions_year_range check (year is null or year between -999999999 and 999999999),
+    -- Mirrors the Android rules: custom occasions are named, and only custom occasions have a name.
     constraint occasions_custom_title_required
         check (type <> 'CUSTOM' or (title is not null and btrim(title) <> '')),
+    constraint occasions_title_only_for_custom check (type = 'CUSTOM' or title is null),
     constraint occasions_always_yearly_types_repeat
         check (repeats_yearly or type not in ('BIRTHDAY', 'NAME_DAY', 'CHRISTMAS')),
     constraint occasions_one_time_needs_year check (repeats_yearly or year is not null),

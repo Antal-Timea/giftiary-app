@@ -1,7 +1,7 @@
 -- The schema invariants Gifty relies on, rather than a restatement of every column.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(56);
+select plan(58);
 
 -- Tables in scope, and Android-local concepts that must not exist on the server.
 select tables_are('public', array['profiles', 'people', 'occasions', 'gift_ideas', 'gifts'],
@@ -87,6 +87,9 @@ select table_privs_are('public', 'occasions', 'anon', array[]::text[]);
 select table_privs_are('public', 'gift_ideas', 'anon', array[]::text[]);
 select table_privs_are('public', 'gifts', 'anon', array[]::text[]);
 select table_privs_are('public', 'profiles', 'anon', array[]::text[]);
+-- service_role is granted only the data operations server-side administration needs.
+select table_privs_are('public', 'people', 'service_role', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+select table_privs_are('public', 'profiles', 'service_role', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
 
 -- Profiles may only have their descriptive columns updated.
 select is(
