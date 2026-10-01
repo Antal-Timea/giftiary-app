@@ -10,6 +10,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import app.gifty.domain.model.GiftDirection
+import app.gifty.presentation.gifts.GiftDetailScreen
+import app.gifty.presentation.gifts.GiftDetailViewModel
+import app.gifty.presentation.gifts.GiftEditorScreen
+import app.gifty.presentation.gifts.GiftEditorTarget
+import app.gifty.presentation.gifts.GiftEditorViewModel
+import app.gifty.presentation.gifts.GiftHistoryScreen
 import app.gifty.presentation.home.HomeScreen
 import app.gifty.presentation.occasions.OccasionEditorScreen
 import app.gifty.presentation.occasions.OccasionEditorTarget
@@ -43,6 +50,19 @@ data class AddOccasionRoute(val personId: String)
 @Serializable
 data class EditOccasionRoute(val occasionId: String)
 
+@Serializable
+data object GiftHistoryRoute
+
+@Serializable
+data class GiftDetailRoute(val giftId: String)
+
+/** Both arguments only preselect the editor; [direction] is a [GiftDirection] name. */
+@Serializable
+data class AddGiftRoute(val direction: String? = null, val personId: String? = null)
+
+@Serializable
+data class EditGiftRoute(val giftId: String)
+
 @Composable
 fun GiftyNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
@@ -52,7 +72,10 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         composable<HomeRoute> {
-            HomeScreen(onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) })
+            HomeScreen(
+                onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
+                onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
+            )
         }
         composable<PeopleRoute> {
             PeopleScreen(
@@ -71,6 +94,8 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
                     onEditPerson = { id -> navController.navigate(EditPersonRoute(id.toString())) },
                     onAddOccasion = { id -> navController.navigate(AddOccasionRoute(id.toString())) },
                     onEditOccasion = { id -> navController.navigate(EditOccasionRoute(id.toString())) },
+                    onAddGift = { id -> navController.navigate(AddGiftRoute(personId = id.toString())) },
+                    onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
                 )
             }
         }
@@ -112,13 +137,59 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
                 )
             }
         }
+        composable<GiftHistoryRoute> {
+            GiftHistoryScreen(
+                onBack = navController.popBackStackUnlessPaused(),
+                onAddGift = dropUnlessResumed { navController.navigate(AddGiftRoute()) },
+                onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
+            )
+        }
+        composable<GiftDetailRoute> { entry ->
+            WithUuid(entry.toRoute<GiftDetailRoute>().giftId, navController) { giftId ->
+                GiftDetailScreen(
+                    viewModel = hiltViewModel<GiftDetailViewModel, GiftDetailViewModel.Factory> { factory ->
+                        factory.create(giftId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                    onEditGift = { id -> navController.navigate(EditGiftRoute(id.toString())) },
+                )
+            }
+        }
+        composable<AddGiftRoute> { entry ->
+            val route = entry.toRoute<AddGiftRoute>()
+            // Malformed preselections are ignored; the editor works without them.
+            val target = GiftEditorTarget.New(
+                direction = GiftDirection.entries.find { it.name == route.direction },
+                personId = route.personId?.toUuidOrNull(),
+            )
+            GiftEditorScreen(
+                viewModel = hiltViewModel<GiftEditorViewModel, GiftEditorViewModel.Factory> { factory ->
+                    factory.create(target)
+                },
+                onClose = navController.popBackStackUnlessPaused(),
+                onOpenPeople = { navController.navigate(PeopleRoute) },
+            )
+        }
+        composable<EditGiftRoute> { entry ->
+            WithUuid(entry.toRoute<EditGiftRoute>().giftId, navController) { giftId ->
+                GiftEditorScreen(
+                    viewModel = hiltViewModel<GiftEditorViewModel, GiftEditorViewModel.Factory> { factory ->
+                        factory.create(GiftEditorTarget.Existing(giftId))
+                    },
+                    onClose = navController.popBackStackUnlessPaused(),
+                    onOpenPeople = { navController.navigate(PeopleRoute) },
+                )
+            }
+        }
     }
 }
+
+private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()
 
 /** Route ids are strings; a malformed one closes the destination instead of crashing. */
 @Composable
 private fun WithUuid(raw: String, navController: NavHostController, content: @Composable (UUID) -> Unit) {
-    val id = runCatching { UUID.fromString(raw) }.getOrNull()
+    val id = raw.toUuidOrNull()
     if (id != null) {
         content(id)
     } else {

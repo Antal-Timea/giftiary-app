@@ -69,4 +69,61 @@
     <string name="occasion_error_not_a_leap_year">%1$d is not a leap year, so it has no 29 February</string>
     <string name="occasion_error_invalid_year">Enter a valid year</string>
     <string name="occasion_error_year_required">A one-time occasion needs a year</string>
+    <string name="home_open_gifts">Gifts</string>
+
+    <string name="gifts_title">Gifts</string>
+    <string name="gifts_add">Add gift</string>
+    <string name="gifts_filter_all">All</string>
+    <string name="gifts_empty_title">No gifts yet</string>
+    <string name="gifts_empty_message">Start by adding a gift you’ve given or received.</string>
+    <string name="gifts_no_given">No given gifts yet</string>
+    <string name="gifts_no_received">No received gifts yet</string>
+    <string name="gifts_load_failed">Gifts could not be loaded.</string>
+
+    <string name="gift_direction_given">Given</string>
+    <string name="gift_direction_received">Received</string>
+    <string name="gift_recipient">Recipient</string>
+    <string name="gift_giver">From</string>
+    <string name="gift_between_people">%1$s → %2$s</string>
+    <string name="gift_open">Open</string>
+    <string name="gift_edit">Edit</string>
+    <string name="gift_name">Gift</string>
+    <string name="gift_name_hint">e.g. A signed book</string>
+    <string name="gift_date">Date</string>
+    <string name="gift_choose_date">Choose date</string>
+    <string name="gift_date_confirm">OK</string>
+    <string name="gift_occasion">Occasion</string>
+    <string name="gift_no_occasion">No occasion</string>
+    <string name="gift_price">Price</string>
+    <string name="gift_price_optional">Price (optional)</string>
+    <string name="gift_product_url">Product link</string>
+    <string name="gift_product_url_optional">Product link (optional)</string>
+    <string name="gift_note">Note</string>
+    <string name="gift_note_optional">Note (optional)</string>
+    <string name="gift_delete">Delete gift</string>
+    <string name="gift_delete_dialog_title">Delete %1$s?</string>
+    <string name="gift_delete_dialog_message">This gift will be removed from your history.</string>
+    <string name="gift_delete_confirm">Delete</string>
+    <string name="gift_delete_failed">Could not delete. Please try again.</string>
+    <string name="gift_not_found">This gift no longer exists.</string>
+    <string name="gift_load_failed">This gift could not be loaded.</string>
+
+    <string name="gift_editor_add_title">Add gift</string>
+    <string name="gift_editor_edit_title">Edit gift</string>
+    <string name="gift_editor_save">Save</string>
+    <string name="gift_editor_needs_person">Gifts are given to or received from people. Add someone first.</string>
+    <string name="gift_editor_go_to_people">Go to People</string>
+    <string name="gift_error_name_required">Enter what the gift was</string>
+    <string name="gift_error_recipient_required">Choose who the gift was for</string>
+    <string name="gift_error_giver_required">Choose who gave you the gift</string>
+    <string name="gift_error_price_invalid">Enter a valid price</string>
+    <string name="gift_error_price_negative">The price can’t be negative</string>
+    <string name="gift_error_price_too_precise">Too many decimal places for %1$s</string>
+    <string name="gift_write_failed">Could not save the gift. Please try again.</string>
+    <string name="gift_person_unavailable">That person is no longer available. Choose someone else.</string>
+    <string name="gift_occasion_unavailable">That occasion is no longer available. Choose another one.</string>
+
+    <string name="person_detail_gifts">Gifts</string>
+    <string name="person_detail_add_gift">Add gift</string>
+    <string name="person_detail_no_gifts">No gifts recorded yet.</string>
 </resources>

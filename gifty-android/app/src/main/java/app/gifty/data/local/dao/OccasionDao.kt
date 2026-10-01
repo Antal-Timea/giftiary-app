@@ -36,6 +36,10 @@ interface OccasionDao {
     @Query("SELECT * FROM occasion WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
     suspend fun findActiveById(id: UUID, ownerUserId: UUID): OccasionEntity?
 
+    /** Includes soft-deleted rows; only for checking references gifts already have. */
+    @Query("SELECT * FROM occasion WHERE id = :id AND ownerUserId = :ownerUserId")
+    suspend fun findById(id: UUID, ownerUserId: UUID): OccasionEntity?
+
     /** Fails if the id already exists, which for a locally created occasion indicates a bug. */
     @Insert
     suspend fun insert(occasion: OccasionEntity)

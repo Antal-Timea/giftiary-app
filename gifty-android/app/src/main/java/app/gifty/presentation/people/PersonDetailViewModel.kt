@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.Person
+import app.gifty.domain.repository.GiftEntry
+import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonRepository
 import dagger.assisted.Assisted
@@ -18,7 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.util.UUID
 
 /**
- * Shows a person together with their occasions. Both come straight from Room, so edits made in
+ * Shows a person together with their occasions and the gifts they gave or received. Both come straight from Room, so edits made in
  * the person or occasion editors appear as soon as they are stored.
  */
 @HiltViewModel(assistedFactory = PersonDetailViewModel.Factory::class)
@@ -26,14 +28,16 @@ class PersonDetailViewModel @AssistedInject constructor(
     @Assisted personId: UUID,
     personRepository: PersonRepository,
     occasionRepository: OccasionRepository,
+    giftRepository: GiftRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<PersonDetailUiState> =
         combine(
             personRepository.observePerson(personId),
             occasionRepository.observeOccasionsForPerson(personId),
-        ) { person, occasions ->
-            if (person == null) PersonDetailUiState.NotFound else PersonDetailUiState.Loaded(person, occasions)
+            giftRepository.observeGiftsForPerson(personId),
+        ) { person, occasions, gifts ->
+            if (person == null) PersonDetailUiState.NotFound else PersonDetailUiState.Loaded(person, occasions, gifts)
         }
             .catch { emit(PersonDetailUiState.LoadFailed) }
             .stateIn(
@@ -57,5 +61,9 @@ sealed interface PersonDetailUiState {
     data object Loading : PersonDetailUiState
     data object NotFound : PersonDetailUiState
     data object LoadFailed : PersonDetailUiState
-    data class Loaded(val person: Person, val occasions: List<Occasion>) : PersonDetailUiState
+    data class Loaded(
+        val person: Person,
+        val occasions: List<Occasion>,
+        val gifts: List<GiftEntry>,
+    ) : PersonDetailUiState
 }

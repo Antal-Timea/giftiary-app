@@ -14,8 +14,8 @@ import app.gifty.presentation.theme.GiftyShapes
 import app.gifty.presentation.theme.GiftyTheme
 
 /**
- * Single-line Gifty input. An [errorMessage] puts the field in its error state and is shown
- * below it, so errors are never communicated by color alone.
+ * Gifty input, single-line unless [singleLine] is off. An [errorMessage] puts the field in its
+ * error state and is shown below it, so errors are never communicated by color alone.
  */
 @Composable
 fun GiftyTextField(
@@ -28,6 +28,9 @@ fun GiftyTextField(
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    suffix: String? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -37,11 +40,13 @@ fun GiftyTextField(
         textStyle = MaterialTheme.typography.bodyLarge,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
+        suffix = suffix?.let { { Text(it) } },
         supportingText = errorMessage?.let { { Text(it) } },
         isError = errorMessage != null,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        singleLine = true,
+        singleLine = singleLine,
+        minLines = minLines,
         shape = GiftyShapes.input,
         colors = giftyTextFieldColors(),
     )

@@ -17,11 +17,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import app.gifty.R
 import app.gifty.presentation.components.GiftyPrimaryButton
+import app.gifty.presentation.components.GiftySecondaryButton
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 
 @Composable
-fun HomeScreen(onOpenPeople: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(onOpenGifts: () -> Unit, onOpenPeople: () -> Unit, modifier: Modifier = Modifier) {
     val colors = GiftyTheme.colors
     Scaffold(modifier = modifier) { contentPadding ->
         Column(
@@ -45,6 +46,12 @@ fun HomeScreen(onOpenPeople: () -> Unit, modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.weight(1f))
             GiftyPrimaryButton(
+                text = stringResource(R.string.home_open_gifts),
+                onClick = onOpenGifts,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(GiftySpacing.m))
+            GiftySecondaryButton(
                 text = stringResource(R.string.home_open_people),
                 onClick = onOpenPeople,
                 modifier = Modifier.fillMaxWidth(),
@@ -57,6 +64,6 @@ fun HomeScreen(onOpenPeople: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 private fun HomeScreenPreview() {
     GiftyTheme {
-        HomeScreen(onOpenPeople = {})
+        HomeScreen(onOpenGifts = {}, onOpenPeople = {})
     }
 }

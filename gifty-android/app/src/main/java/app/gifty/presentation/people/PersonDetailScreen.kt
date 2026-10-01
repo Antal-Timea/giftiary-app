@@ -35,9 +35,11 @@ import app.gifty.R
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.model.Person
+import app.gifty.domain.repository.GiftEntry
 import app.gifty.presentation.components.GiftyTopBar
 import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
+import app.gifty.presentation.gifts.GiftRow
 import app.gifty.presentation.occasions.occasionDate
 import app.gifty.presentation.occasions.occasionTitle
 import app.gifty.presentation.theme.GiftySpacing
@@ -52,6 +54,8 @@ fun PersonDetailScreen(
     onEditPerson: (UUID) -> Unit,
     onAddOccasion: (UUID) -> Unit,
     onEditOccasion: (UUID) -> Unit,
+    onAddGift: (UUID) -> Unit,
+    onOpenGift: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     PersonDetailScreen(
@@ -60,6 +64,8 @@ fun PersonDetailScreen(
         onEditPerson = { onEditPerson(it.id) },
         onAddOccasion = { onAddOccasion(it.id) },
         onEditOccasion = { onEditOccasion(it.id) },
+        onAddGift = { onAddGift(it.id) },
+        onOpenGift = { onOpenGift(it.gift.id) },
     )
 }
 
@@ -70,6 +76,8 @@ fun PersonDetailScreen(
     onEditPerson: (Person) -> Unit,
     onAddOccasion: (Person) -> Unit,
     onEditOccasion: (Occasion) -> Unit,
+    onAddGift: (Person) -> Unit,
+    onOpenGift: (GiftEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val loaded = state as? PersonDetailUiState.Loaded
@@ -101,6 +109,8 @@ fun PersonDetailScreen(
                 state = state,
                 onAddOccasion = { onAddOccasion(state.person) },
                 onEditOccasion = onEditOccasion,
+                onAddGift = { onAddGift(state.person) },
+                onOpenGift = onOpenGift,
                 modifier = contentModifier,
             )
         }
@@ -112,6 +122,8 @@ private fun PersonDetailContent(
     state: PersonDetailUiState.Loaded,
     onAddOccasion: () -> Unit,
     onEditOccasion: (Occasion) -> Unit,
+    onAddGift: () -> Unit,
+    onOpenGift: (GiftEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftyTheme.colors
@@ -129,16 +141,7 @@ private fun PersonDetailContent(
                 )
             }
         }
-        item {
-            Text(
-                text = stringResource(R.string.person_detail_occasions),
-                modifier = Modifier
-                    .padding(start = GiftySpacing.l, end = GiftySpacing.l, top = GiftySpacing.xl, bottom = GiftySpacing.s)
-                    .semantics { heading() },
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-            )
-        }
+        item { SectionHeading(stringResource(R.string.person_detail_occasions)) }
         if (state.occasions.isEmpty()) {
             item { NoOccasions() }
         } else {
@@ -150,8 +153,43 @@ private fun PersonDetailContent(
                 )
             }
         }
-        item { AddOccasionButton(onClick = onAddOccasion) }
+        item { AddButton(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion) }
+
+        item { SectionHeading(stringResource(R.string.person_detail_gifts)) }
+        if (state.gifts.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.person_detail_no_gifts),
+                    modifier = Modifier.padding(horizontal = GiftySpacing.l, vertical = GiftySpacing.s),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        } else {
+            items(state.gifts, key = { it.gift.id }) { entry ->
+                // The person is obvious here; only a gift between two other people needs both names.
+                GiftRow(
+                    entry = entry,
+                    onClick = { onOpenGift(entry) },
+                    showPeople = entry.giver != null && entry.recipient != null,
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = GiftySpacing.l), color = colors.divider)
+            }
+        }
+        item { AddButton(label = stringResource(R.string.person_detail_add_gift), onClick = onAddGift) }
     }
+}
+
+@Composable
+private fun SectionHeading(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .padding(start = GiftySpacing.l, end = GiftySpacing.l, top = GiftySpacing.xl, bottom = GiftySpacing.s)
+            .semantics { heading() },
+        style = MaterialTheme.typography.titleMedium,
+        color = GiftyTheme.colors.textPrimary,
+    )
 }
 
 @Composable
@@ -200,7 +238,7 @@ private fun NoOccasions() {
 }
 
 @Composable
-private fun AddOccasionButton(onClick: () -> Unit) {
+private fun AddButton(label: String, onClick: () -> Unit) {
     TextButton(
         onClick = onClick,
         modifier = Modifier.padding(horizontal = GiftySpacing.s, vertical = GiftySpacing.s),
@@ -209,7 +247,7 @@ private fun AddOccasionButton(onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
             Spacer(Modifier.width(GiftySpacing.s))
-            Text(stringResource(R.string.person_detail_add_occasion), style = MaterialTheme.typography.labelLarge)
+            Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -232,11 +270,14 @@ private fun PersonDetailPreview() {
                     previewOccasion(OccasionType.NAME_DAY, 26, 7),
                     previewOccasion(OccasionType.CUSTOM, 1, 9, title = "First day at school"),
                 ),
+                gifts = emptyList(),
             ),
             onBack = {},
             onEditPerson = {},
             onAddOccasion = {},
             onEditOccasion = {},
+            onAddGift = {},
+            onOpenGift = {},
         )
     }
 }
@@ -246,11 +287,13 @@ private fun PersonDetailPreview() {
 private fun PersonDetailNoOccasionsPreview() {
     GiftyTheme {
         PersonDetailScreen(
-            state = PersonDetailUiState.Loaded(previewPerson, emptyList()),
+            state = PersonDetailUiState.Loaded(previewPerson, emptyList(), emptyList()),
             onBack = {},
             onEditPerson = {},
             onAddOccasion = {},
             onEditOccasion = {},
+            onAddGift = {},
+            onOpenGift = {},
         )
     }
 }

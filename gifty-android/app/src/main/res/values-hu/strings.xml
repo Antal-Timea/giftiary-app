@@ -68,4 +68,61 @@
     <string name="occasion_error_not_a_leap_year">%1$d nem szökőév, így nincs február 29.</string>
     <string name="occasion_error_invalid_year">Adj meg érvényes évet</string>
     <string name="occasion_error_year_required">Egyszeri alkalomhoz add meg az évet</string>
+    <string name="home_open_gifts">Ajándékok</string>
+
+    <string name="gifts_title">Ajándékok</string>
+    <string name="gifts_add">Ajándék hozzáadása</string>
+    <string name="gifts_filter_all">Összes</string>
+    <string name="gifts_empty_title">Még nincs ajándék</string>
+    <string name="gifts_empty_message">Kezdd egy ajándékkal, amit adtál vagy kaptál.</string>
+    <string name="gifts_no_given">Még nincs adott ajándék</string>
+    <string name="gifts_no_received">Még nincs kapott ajándék</string>
+    <string name="gifts_load_failed">Nem sikerült betölteni az ajándékokat.</string>
+
+    <string name="gift_direction_given">Adott</string>
+    <string name="gift_direction_received">Kapott</string>
+    <string name="gift_recipient">Címzett</string>
+    <string name="gift_giver">Kitől</string>
+    <string name="gift_between_people">%1$s → %2$s</string>
+    <string name="gift_open">Megnyitás</string>
+    <string name="gift_edit">Szerkesztés</string>
+    <string name="gift_name">Ajándék</string>
+    <string name="gift_name_hint">pl. Egy dedikált könyv</string>
+    <string name="gift_date">Dátum</string>
+    <string name="gift_choose_date">Dátum kiválasztása</string>
+    <string name="gift_date_confirm">OK</string>
+    <string name="gift_occasion">Alkalom</string>
+    <string name="gift_no_occasion">Nincs alkalom</string>
+    <string name="gift_price">Ár</string>
+    <string name="gift_price_optional">Ár (nem kötelező)</string>
+    <string name="gift_product_url">Termék linkje</string>
+    <string name="gift_product_url_optional">Termék linkje (nem kötelező)</string>
+    <string name="gift_note">Megjegyzés</string>
+    <string name="gift_note_optional">Megjegyzés (nem kötelező)</string>
+    <string name="gift_delete">Ajándék törlése</string>
+    <string name="gift_delete_dialog_title">Törlöd: %1$s?</string>
+    <string name="gift_delete_dialog_message">Az ajándék lekerül az előzményeid közül.</string>
+    <string name="gift_delete_confirm">Törlés</string>
+    <string name="gift_delete_failed">A törlés nem sikerült. Próbáld újra.</string>
+    <string name="gift_not_found">Ez az ajándék már nem létezik.</string>
+    <string name="gift_load_failed">Nem sikerült betölteni ezt az ajándékot.</string>
+
+    <string name="gift_editor_add_title">Ajándék hozzáadása</string>
+    <string name="gift_editor_edit_title">Ajándék szerkesztése</string>
+    <string name="gift_editor_save">Mentés</string>
+    <string name="gift_editor_needs_person">Az ajándékot valakinek adod vagy valakitől kapod. Előbb adj hozzá egy személyt.</string>
+    <string name="gift_editor_go_to_people">Tovább az Emberekhez</string>
+    <string name="gift_error_name_required">Add meg, mi volt az ajándék</string>
+    <string name="gift_error_recipient_required">Válaszd ki, kinek szólt az ajándék</string>
+    <string name="gift_error_giver_required">Válaszd ki, kitől kaptad az ajándékot</string>
+    <string name="gift_error_price_invalid">Adj meg érvényes árat</string>
+    <string name="gift_error_price_negative">Az ár nem lehet negatív</string>
+    <string name="gift_error_price_too_precise">Túl sok tizedesjegy ehhez a pénznemhez: %1$s</string>
+    <string name="gift_write_failed">Nem sikerült menteni az ajándékot. Próbáld újra.</string>
+    <string name="gift_person_unavailable">Ez a személy már nem elérhető. Válassz valaki mást.</string>
+    <string name="gift_occasion_unavailable">Ez az alkalom már nem elérhető. Válassz másikat.</string>
+
+    <string name="person_detail_gifts">Ajándékok</string>
+    <string name="person_detail_add_gift">Ajándék hozzáadása</string>
+    <string name="person_detail_no_gifts">Még nincs rögzített ajándék.</string>
 </resources>
