@@ -46,6 +46,9 @@ private fun GiftyColors.toMaterialColorScheme(darkTheme: Boolean): ColorScheme {
         primaryContainer = surfaceContext,
         onPrimaryContainer = textPrimary,
         secondary = support,
+        // Not text-safe in dark: onSupport on support is about 1.5:1. Do not use Material
+        // components that put onSecondary text on a secondary container (e.g. a filled
+        // button or chip colored secondary) for normal-size text.
         onSecondary = onSupport,
         secondaryContainer = surfaceContextQuiet,
         onSecondaryContainer = textPrimary,

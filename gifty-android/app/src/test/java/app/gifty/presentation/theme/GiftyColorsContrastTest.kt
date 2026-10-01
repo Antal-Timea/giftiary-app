@@ -9,8 +9,11 @@ import kotlin.math.min
 
 /**
  * Guards WCAG AA contrast for the color pairs the screens actually render, so palette tweaks
- * cannot silently make text unreadable. onSupport on support is deliberately not checked:
- * the agreed dark pair is low contrast and is not used for text yet.
+ * cannot silently make text unreadable.
+ *
+ * onSupport on support (Material onSecondary on secondary) is deliberately absent: the agreed
+ * dark pair is about 1.5:1 and fails WCAG AA for normal text. Its absence here does not mean it
+ * is safe; it must not be used for small or normal-size text until the palette is revised.
  */
 class GiftyColorsContrastTest {
 

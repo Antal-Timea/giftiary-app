@@ -29,6 +29,11 @@ data class GiftyColors(
     val primaryActionText: Color,
 
     val support: Color,
+
+    /**
+     * Do not use for small or normal-size text directly on [support]: the agreed dark pair
+     * (#F2EDE1 on #4FD6C2) is about 1.5:1, far below WCAG AA (4.5:1).
+     */
     val onSupport: Color,
 
     val selected: Color,
