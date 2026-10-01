@@ -30,14 +30,3 @@ fun Person.toNewEntity(ownerUserId: UUID): PersonEntity = PersonEntity(
     deletedAt = null,
 )
 
-/** Applies the user-editable fields of [person] while keeping this row's sync metadata. */
-fun PersonEntity.withChangesFrom(person: Person): PersonEntity {
-    require(person.id == id) { "Cannot apply person ${person.id} to entity $id" }
-    return copy(
-        name = person.name,
-        relationship = person.relationship,
-        photoPath = person.photoPath,
-        linkedUserId = person.linkedUserId,
-        updatedAt = person.updatedAt,
-    )
-}

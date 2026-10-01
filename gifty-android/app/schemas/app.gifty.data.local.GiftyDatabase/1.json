@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d0b020e15d53b7f44eab2f9e73aa0d2c",
+    "identityHash": "cffe6945bba77587ddafc4cbb46c99c7",
     "entities": [
       {
         "tableName": "person",
@@ -76,7 +76,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_person_ownerUserId",
+            "unique": false,
+            "columnNames": [
+              "ownerUserId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_person_ownerUserId` ON `${TABLE_NAME}` (`ownerUserId`)"
+          }
+        ]
       },
       {
         "tableName": "occasion",
@@ -170,6 +181,15 @@
           ]
         },
         "indices": [
+          {
+            "name": "index_occasion_ownerUserId",
+            "unique": false,
+            "columnNames": [
+              "ownerUserId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_occasion_ownerUserId` ON `${TABLE_NAME}` (`ownerUserId`)"
+          },
           {
             "name": "index_occasion_personId",
             "unique": false,
@@ -310,6 +330,15 @@
           ]
         },
         "indices": [
+          {
+            "name": "index_gift_idea_ownerUserId",
+            "unique": false,
+            "columnNames": [
+              "ownerUserId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_gift_idea_ownerUserId` ON `${TABLE_NAME}` (`ownerUserId`)"
+          },
           {
             "name": "index_gift_idea_recipientPersonId",
             "unique": false,
@@ -471,6 +500,15 @@
         },
         "indices": [
           {
+            "name": "index_gift_ownerUserId",
+            "unique": false,
+            "columnNames": [
+              "ownerUserId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_gift_ownerUserId` ON `${TABLE_NAME}` (`ownerUserId`)"
+          },
+          {
             "name": "index_gift_giverPersonId",
             "unique": false,
             "columnNames": [
@@ -619,6 +657,15 @@
         },
         "indices": [
           {
+            "name": "index_wishlist_ownerUserId",
+            "unique": false,
+            "columnNames": [
+              "ownerUserId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_wishlist_ownerUserId` ON `${TABLE_NAME}` (`ownerUserId`)"
+          },
+          {
             "name": "index_wishlist_personId",
             "unique": false,
             "columnNames": [
@@ -644,17 +691,11 @@
       },
       {
         "tableName": "wish",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `wishlistId` TEXT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `estimatedPriceAmountMinor` INTEGER, `estimatedPriceCurrencyCode` TEXT, `productUrl` TEXT, `photoPath` TEXT, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`wishlistId`) REFERENCES `wishlist`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `wishlistId` TEXT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, `estimatedPriceAmountMinor` INTEGER, `estimatedPriceCurrencyCode` TEXT, `productUrl` TEXT, `photoPath` TEXT, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), FOREIGN KEY(`wishlistId`) REFERENCES `wishlist`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION DEFERRABLE INITIALLY DEFERRED)",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ownerUserId",
-            "columnName": "ownerUserId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -823,13 +864,22 @@
             ],
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_sync_operation_entityType_entityId` ON `${TABLE_NAME}` (`entityType`, `entityId`)"
+          },
+          {
+            "name": "index_sync_operation_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sync_operation_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
           }
         ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd0b020e15d53b7f44eab2f9e73aa0d2c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cffe6945bba77587ddafc4cbb46c99c7')"
     ]
   }
 }

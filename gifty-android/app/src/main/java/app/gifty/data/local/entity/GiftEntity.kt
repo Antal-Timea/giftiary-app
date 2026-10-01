@@ -42,6 +42,7 @@ import java.util.UUID
         ),
     ],
     indices = [
+        Index("ownerUserId"),
         Index("giverPersonId"),
         Index("recipientPersonId"),
         Index("occasionId"),

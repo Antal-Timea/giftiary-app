@@ -4,7 +4,6 @@ import app.gifty.data.local.entity.RemoteState
 import app.gifty.domain.model.Person
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.Instant
 import java.util.UUID
@@ -36,32 +35,5 @@ class PersonMapperTest {
     @Test
     fun `entity maps back to the same person`() {
         assertEquals(person, person.toNewEntity(ownerUserId).toDomain())
-    }
-
-    @Test
-    fun `applying changes keeps sync metadata and creation time`() {
-        val synced = person.toNewEntity(ownerUserId).copy(version = 7, remoteState = RemoteState.SYNCED)
-        val edited = person.copy(
-            name = "Péter",
-            relationship = null,
-            updatedAt = Instant.parse("2026-03-01T10:00:00Z"),
-        )
-
-        val updated = synced.withChangesFrom(edited)
-
-        assertEquals(edited, updated.toDomain())
-        assertEquals(7L, updated.version)
-        assertEquals(RemoteState.SYNCED, updated.remoteState)
-        assertEquals(ownerUserId, updated.ownerUserId)
-        assertEquals(synced.createdAt, updated.createdAt)
-    }
-
-    @Test
-    fun `applying changes from a different person is rejected`() {
-        val entity = person.toNewEntity(ownerUserId)
-
-        assertThrows(IllegalArgumentException::class.java) {
-            entity.withChangesFrom(person.copy(id = UUID.randomUUID()))
-        }
     }
 }

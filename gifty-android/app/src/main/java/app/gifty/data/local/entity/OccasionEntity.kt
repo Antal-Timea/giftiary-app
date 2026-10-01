@@ -19,7 +19,7 @@ import java.util.UUID
             deferred = true,
         ),
     ],
-    indices = [Index("personId")],
+    indices = [Index("ownerUserId"), Index("personId")],
 )
 data class OccasionEntity(
     @PrimaryKey val id: UUID,

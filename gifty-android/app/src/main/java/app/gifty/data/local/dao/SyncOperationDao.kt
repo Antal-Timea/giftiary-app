@@ -1,26 +1,30 @@
 package app.gifty.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperationEntity
 import java.util.UUID
 
+/**
+ * Plain queue persistence. Deciding how a new change combines with a pending operation is
+ * [app.gifty.data.local.SyncOperationQueue]'s job.
+ */
 @Dao
 interface SyncOperationDao {
 
-    /**
-     * Stores [operation] as the only pending operation for its entity, replacing any existing one
-     * through the unique (entityType, entityId) index. Deciding how a new change combines with a
-     * pending one (e.g. an update after an unsynced create) is up to the caller.
-     *
-     * Room's `@Upsert` is not used on purpose: it resolves conflicts by primary key only and would
-     * silently drop an operation that collides on the unique index with a different id.
-     */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(operation: SyncOperationEntity)
+    /** Fails on a second pending operation for the same entity (unique entityType + entityId). */
+    @Insert
+    suspend fun insert(operation: SyncOperationEntity)
+
+    @Update
+    suspend fun update(operation: SyncOperationEntity)
+
+    @Delete
+    suspend fun delete(operation: SyncOperationEntity)
 
     @Query("SELECT * FROM sync_operation WHERE entityType = :entityType AND entityId = :entityId")
     suspend fun findForEntity(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity?

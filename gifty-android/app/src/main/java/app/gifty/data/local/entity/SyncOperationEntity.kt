@@ -12,7 +12,10 @@ import java.util.UUID
  */
 @Entity(
     tableName = "sync_operation",
-    indices = [Index(value = ["entityType", "entityId"], unique = true)],
+    indices = [
+        Index(value = ["entityType", "entityId"], unique = true),
+        Index("createdAt"),
+    ],
 )
 data class SyncOperationEntity(
     @PrimaryKey val id: UUID,

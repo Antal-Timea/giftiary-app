@@ -1,0 +1,30 @@
+<resources>
+    <string name="home_tagline">Emlékezz · Tervezz · Oszd meg</string>
+    <string name="home_open_people">Emberek</string>
+
+    <string name="navigate_back">Vissza</string>
+    <string name="action_cancel">Mégse</string>
+
+    <string name="people_title">Emberek</string>
+    <string name="people_add">Személy hozzáadása</string>
+    <string name="people_edit">Szerkesztés</string>
+    <string name="people_empty_title">Még nincs senki a listán</string>
+    <string name="people_empty_message">Add hozzá azokat, akiknek ajándékot adsz, hogy emlékezz, mit adtál, és megtervezhesd a következőt.</string>
+    <string name="people_load_failed">Nem sikerült betölteni az embereket.</string>
+    <string name="people_delete">%1$s törlése</string>
+    <string name="people_delete_dialog_title">Törlöd: %1$s?</string>
+    <string name="people_delete_dialog_message">A személy lekerül a listádról.</string>
+    <string name="people_delete_confirm">Törlés</string>
+    <string name="people_delete_failed">A törlés nem sikerült. Próbáld újra.</string>
+
+    <string name="person_editor_add_title">Személy hozzáadása</string>
+    <string name="person_editor_edit_title">Személy szerkesztése</string>
+    <string name="person_editor_name">Név</string>
+    <string name="person_editor_name_required">Adj meg egy nevet</string>
+    <string name="person_editor_relationship">Kapcsolat (nem kötelező)</string>
+    <string name="person_editor_relationship_hint">pl. testvér, barát, kolléga</string>
+    <string name="person_editor_save">Mentés</string>
+    <string name="person_editor_save_failed">A mentés nem sikerült. Próbáld újra.</string>
+    <string name="person_editor_not_found">Ez a személy már nem létezik.</string>
+    <string name="person_editor_load_failed">Nem sikerült betölteni ezt a személyt.</string>
+</resources>

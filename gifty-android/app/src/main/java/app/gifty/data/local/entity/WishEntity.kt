@@ -22,7 +22,6 @@ import java.util.UUID
 )
 data class WishEntity(
     @PrimaryKey val id: UUID,
-    val ownerUserId: UUID,
     val wishlistId: UUID,
     val name: String,
     val note: String?,

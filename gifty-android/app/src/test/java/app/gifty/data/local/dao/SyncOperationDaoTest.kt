@@ -1,5 +1,6 @@
 package app.gifty.data.local.dao
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gifty.data.local.GiftyDatabase
@@ -9,6 +10,7 @@ import app.gifty.data.local.entity.SyncOperationEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -37,16 +39,15 @@ class SyncOperationDaoTest {
     }
 
     @Test
-    fun `upsert keeps a single pending operation per entity`() = runTest {
+    fun `a second pending operation for the same entity is rejected`() = runTest {
         val personId = UUID.randomUUID()
         val create = operation(SyncEntityType.PERSON, personId, SyncOperation.CREATE)
-            .copy(attemptCount = 2, lastErrorCode = "network")
-        val delete = operation(SyncEntityType.PERSON, personId, SyncOperation.DELETE)
-        dao.upsert(create)
-        dao.upsert(delete)
+        dao.insert(create)
 
-        assertEquals(delete, dao.findForEntity(SyncEntityType.PERSON, personId))
-        assertEquals(listOf(delete), dao.getPending(limit = 10))
+        val duplicate = runCatching { dao.insert(operation(SyncEntityType.PERSON, personId, SyncOperation.DELETE)) }
+
+        assertTrue(duplicate.exceptionOrNull() is SQLiteConstraintException)
+        assertEquals(listOf(create), dao.getPending(limit = 10))
     }
 
     @Test
@@ -54,8 +55,8 @@ class SyncOperationDaoTest {
         val entityId = UUID.randomUUID()
         val person = operation(SyncEntityType.PERSON, entityId, SyncOperation.CREATE)
         val wish = operation(SyncEntityType.WISH, entityId, SyncOperation.UPDATE)
-        dao.upsert(person)
-        dao.upsert(wish)
+        dao.insert(person)
+        dao.insert(wish)
 
         assertEquals(person, dao.findForEntity(SyncEntityType.PERSON, entityId))
         assertEquals(wish, dao.findForEntity(SyncEntityType.WISH, entityId))
@@ -71,7 +72,7 @@ class SyncOperationDaoTest {
                 createdAt = Instant.parse("${day}T00:00:00Z"),
             )
         }
-        listOf(newer, newest, older).forEach { dao.upsert(it) }
+        listOf(newer, newest, older).forEach { dao.insert(it) }
 
         assertEquals(listOf(older, newer), dao.getPending(limit = 2))
     }

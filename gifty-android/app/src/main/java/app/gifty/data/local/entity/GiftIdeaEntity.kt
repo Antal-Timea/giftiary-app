@@ -30,7 +30,7 @@ import java.util.UUID
             deferred = true,
         ),
     ],
-    indices = [Index("recipientPersonId"), Index("occasionId")],
+    indices = [Index("ownerUserId"), Index("recipientPersonId"), Index("occasionId")],
 )
 data class GiftIdeaEntity(
     @PrimaryKey val id: UUID,

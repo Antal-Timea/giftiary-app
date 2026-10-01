@@ -1,6 +1,7 @@
 package app.gifty.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
 import java.util.UUID
@@ -10,7 +11,10 @@ import java.util.UUID
  * - [version] is the backend row version this copy is based on, 0 while [RemoteState.LOCAL_ONLY].
  * - [deletedAt] marks a soft-deleted row; normal reads must exclude it.
  */
-@Entity(tableName = "person")
+@Entity(
+    tableName = "person",
+    indices = [Index("ownerUserId")],
+)
 data class PersonEntity(
     @PrimaryKey val id: UUID,
     val ownerUserId: UUID,

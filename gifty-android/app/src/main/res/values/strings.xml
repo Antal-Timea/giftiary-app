@@ -1,4 +1,31 @@
 <resources>
-    <string name="app_name">Gifty</string>
+    <string name="app_name" translatable="false">Gifty</string>
     <string name="home_tagline">Remember · Plan · Share</string>
+    <string name="home_open_people">People</string>
+
+    <string name="navigate_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="people_title">People</string>
+    <string name="people_add">Add person</string>
+    <string name="people_edit">Edit</string>
+    <string name="people_empty_title">No people yet</string>
+    <string name="people_empty_message">Add the people you give gifts to, so you can remember what you gave and plan what comes next.</string>
+    <string name="people_load_failed">People could not be loaded.</string>
+    <string name="people_delete">Delete %1$s</string>
+    <string name="people_delete_dialog_title">Delete %1$s?</string>
+    <string name="people_delete_dialog_message">They will be removed from your people.</string>
+    <string name="people_delete_confirm">Delete</string>
+    <string name="people_delete_failed">Could not delete. Please try again.</string>
+
+    <string name="person_editor_add_title">Add person</string>
+    <string name="person_editor_edit_title">Edit person</string>
+    <string name="person_editor_name">Name</string>
+    <string name="person_editor_name_required">Enter a name</string>
+    <string name="person_editor_relationship">Relationship (optional)</string>
+    <string name="person_editor_relationship_hint">e.g. Sister, Friend, Colleague</string>
+    <string name="person_editor_save">Save</string>
+    <string name="person_editor_save_failed">Could not save. Please try again.</string>
+    <string name="person_editor_not_found">This person no longer exists.</string>
+    <string name="person_editor_load_failed">This person could not be loaded.</string>
 </resources>
