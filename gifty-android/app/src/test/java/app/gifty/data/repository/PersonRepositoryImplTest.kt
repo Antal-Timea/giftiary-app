@@ -8,6 +8,7 @@ import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
+import app.gifty.data.local.mapper.toNewEntity
 import app.gifty.data.user.CurrentUserIdProvider
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.testing.MutableClock
@@ -62,7 +63,7 @@ class PersonRepositoryImplTest {
     fun `adding a person stores a local-only row and queues its creation`() = runTest {
         val person = repository.addPerson("Anna", "Sister")
 
-        val entity = personDao.findActiveById(person.id)!!
+        val entity = personDao.findActiveById(person.id, ownerUserId)!!
         assertEquals(ownerUserId, entity.ownerUserId)
         assertEquals(RemoteState.LOCAL_ONLY, entity.remoteState)
         assertEquals(0L, entity.version)
@@ -93,7 +94,7 @@ class PersonRepositoryImplTest {
 
         repository.updatePerson(person.id, "Anna Kovács", null)
 
-        val entity = personDao.findActiveById(person.id)!!
+        val entity = personDao.findActiveById(person.id, ownerUserId)!!
         assertEquals(RemoteState.SYNCED, entity.remoteState)
         assertEquals(4L, entity.version)
         assertEquals(SyncOperation.UPDATE, pendingOperation(person.id))
@@ -179,12 +180,31 @@ class PersonRepositoryImplTest {
         assertEquals(listOf(bela), repository.observePeople().first())
     }
 
+    @Test
+    fun `people of another owner are never observed, returned, updated or deleted`() = runTest {
+        val mine = repository.addPerson("Anna", null)
+        val otherOwnerId = UUID.randomUUID()
+        val theirs = mine.copy(id = UUID.randomUUID(), name = "Béla").toNewEntity(otherOwnerId)
+        personDao.insert(theirs)
+
+        assertEquals(listOf(mine), repository.observePeople().first())
+        assertNull(repository.getPerson(theirs.id))
+
+        val update = runCatching { repository.updatePerson(theirs.id, "Changed", null) }
+        assertTrue(update.exceptionOrNull() is PersonNotFoundException)
+
+        repository.deletePerson(theirs.id)
+
+        assertEquals(theirs, personDao.findActiveById(theirs.id, otherOwnerId))
+        assertNull(pendingOperation(theirs.id))
+    }
+
     private suspend fun pendingOperation(personId: UUID): SyncOperation? =
         syncDao.findForEntity(SyncEntityType.PERSON, personId)?.operation
 
     /** Simulates a completed push: the backend has the row and nothing is pending. */
     private suspend fun markSynced(personId: UUID, version: Long) {
-        val entity = personDao.findActiveById(personId)!!
+        val entity = personDao.findActiveById(personId, ownerUserId)!!
         personDao.update(entity.copy(remoteState = RemoteState.SYNCED, version = version))
         syncDao.findForEntity(SyncEntityType.PERSON, personId)?.let { syncDao.delete(it) }
     }

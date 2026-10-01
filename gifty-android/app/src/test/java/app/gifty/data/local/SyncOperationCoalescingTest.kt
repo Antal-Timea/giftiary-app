@@ -39,7 +39,7 @@ class SyncOperationCoalescingTest {
     }
 
     @Test
-    fun `delete after create of an entity the backend already has becomes delete`() {
+    fun `delete after a stale create of an entity the backend already has recovers as delete`() {
         assertEquals(DELETE, coalesce(pending = CREATE, next = DELETE, existsRemotely = true))
     }
 

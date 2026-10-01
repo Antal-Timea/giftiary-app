@@ -13,6 +13,8 @@ import app.gifty.domain.model.Person
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.domain.repository.PersonRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
@@ -28,10 +30,13 @@ class PersonRepositoryImpl @Inject constructor(
     private val clock: Clock,
 ) : PersonRepository {
 
-    override fun observePeople(): Flow<List<Person>> =
-        personDao.observeActive().map { people -> people.map { it.toDomain() } }
+    override fun observePeople(): Flow<List<Person>> = flow {
+        val ownerUserId = currentUserIdProvider.currentUserId()
+        emitAll(personDao.observeActive(ownerUserId).map { people -> people.map { it.toDomain() } })
+    }
 
-    override suspend fun getPerson(id: UUID): Person? = personDao.findActiveById(id)?.toDomain()
+    override suspend fun getPerson(id: UUID): Person? =
+        personDao.findActiveById(id, currentUserIdProvider.currentUserId())?.toDomain()
 
     override suspend fun addPerson(name: String, relationship: String?): Person {
         val ownerUserId = currentUserIdProvider.currentUserId()
@@ -54,8 +59,10 @@ class PersonRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updatePerson(id: UUID, name: String, relationship: String?) {
+        val ownerUserId = currentUserIdProvider.currentUserId()
         database.withTransaction {
-            val existing = personDao.findActiveById(id) ?: throw PersonNotFoundException(id)
+            // Only rows found through the owner-scoped lookup are ever written back.
+            val existing = personDao.findActiveById(id, ownerUserId) ?: throw PersonNotFoundException(id)
             if (existing.name == name && existing.relationship == relationship) return@withTransaction
 
             personDao.update(existing.copy(name = name, relationship = relationship, updatedAt = now()))
@@ -64,10 +71,11 @@ class PersonRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deletePerson(id: UUID) {
+        val ownerUserId = currentUserIdProvider.currentUserId()
         database.withTransaction {
-            val existing = personDao.findActiveById(id) ?: return@withTransaction
+            val existing = personDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 
-            personDao.softDelete(id, deletedAt = now())
+            personDao.softDelete(id, ownerUserId, deletedAt = now())
             syncQueue.enqueue(SyncEntityType.PERSON, id, SyncOperation.DELETE, existing.remoteState)
         }
     }

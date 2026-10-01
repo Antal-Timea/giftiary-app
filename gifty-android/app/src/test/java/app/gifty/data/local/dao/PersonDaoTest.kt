@@ -45,11 +45,11 @@ class PersonDaoTest {
         dao.insert(bela)
 
         val deletedAt = Instant.parse("2026-06-01T12:00:00Z")
-        assertEquals(1, dao.softDelete(bela.id, deletedAt))
+        assertEquals(1, dao.softDelete(bela.id, OWNER_USER_ID, deletedAt))
 
-        assertEquals(listOf(anna), dao.observeActive().first())
-        assertEquals(anna, dao.findActiveById(anna.id))
-        assertNull(dao.findActiveById(bela.id))
+        assertEquals(listOf(anna), dao.observeActive(OWNER_USER_ID).first())
+        assertEquals(anna, dao.findActiveById(anna.id, OWNER_USER_ID))
+        assertNull(dao.findActiveById(bela.id, OWNER_USER_ID))
     }
 
     @Test
@@ -57,8 +57,8 @@ class PersonDaoTest {
         val anna = person("Anna")
         dao.insert(anna)
 
-        assertEquals(1, dao.softDelete(anna.id, Instant.parse("2026-06-01T12:00:00Z")))
-        assertEquals(0, dao.softDelete(anna.id, Instant.parse("2026-06-02T12:00:00Z")))
+        assertEquals(1, dao.softDelete(anna.id, OWNER_USER_ID, Instant.parse("2026-06-01T12:00:00Z")))
+        assertEquals(0, dao.softDelete(anna.id, OWNER_USER_ID, Instant.parse("2026-06-02T12:00:00Z")))
     }
 
     @Test
@@ -66,12 +66,25 @@ class PersonDaoTest {
         val names = listOf("carol", "Anna", "bob")
         names.forEach { dao.insert(person(it)) }
 
-        assertEquals(listOf("Anna", "bob", "carol"), dao.observeActive().first().map { it.name })
+        assertEquals(listOf("Anna", "bob", "carol"), dao.observeActive(OWNER_USER_ID).first().map { it.name })
     }
 
-    private fun person(name: String) = PersonEntity(
+    @Test
+    fun `people of another owner are never read or deleted`() = runTest {
+        val anna = person("Anna")
+        val strangersAnna = person("Anna", ownerUserId = OTHER_USER_ID)
+        dao.insert(anna)
+        dao.insert(strangersAnna)
+
+        assertEquals(listOf(anna), dao.observeActive(OWNER_USER_ID).first())
+        assertNull(dao.findActiveById(strangersAnna.id, OWNER_USER_ID))
+        assertEquals(0, dao.softDelete(strangersAnna.id, OWNER_USER_ID, Instant.parse("2026-06-01T12:00:00Z")))
+        assertEquals(strangersAnna, dao.findActiveById(strangersAnna.id, OTHER_USER_ID))
+    }
+
+    private fun person(name: String, ownerUserId: UUID = OWNER_USER_ID) = PersonEntity(
         id = UUID.randomUUID(),
-        ownerUserId = OWNER_USER_ID,
+        ownerUserId = ownerUserId,
         name = name,
         relationship = null,
         photoPath = null,
@@ -85,5 +98,6 @@ class PersonDaoTest {
 
     private companion object {
         val OWNER_USER_ID: UUID = UUID.randomUUID()
+        val OTHER_USER_ID: UUID = UUID.randomUUID()
     }
 }

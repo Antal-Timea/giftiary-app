@@ -82,6 +82,10 @@ class SyncOperationQueue @Inject constructor(
             null -> next
             SyncOperation.CREATE -> when (next) {
                 SyncOperation.UPDATE -> SyncOperation.CREATE
+                // Normally a pending CREATE means the entity is still LOCAL_ONLY, so nothing is left
+                // to sync. A SYNCED entity with a pending CREATE is a stale or inconsistent queue
+                // (e.g. an interrupted push); deleting remotely is the safe recovery, not a regular
+                // lifecycle transition.
                 SyncOperation.DELETE -> if (existsRemotely) SyncOperation.DELETE else null
                 SyncOperation.CREATE -> invalid(pending, next)
             }

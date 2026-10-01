@@ -10,14 +10,24 @@ import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * User-facing reads and deletes are scoped by owner so one user's people can never be read or
+ * changed on behalf of another.
+ */
 @Dao
 interface PersonDao {
 
-    @Query("SELECT * FROM person WHERE deletedAt IS NULL ORDER BY name COLLATE NOCASE, id")
-    fun observeActive(): Flow<List<PersonEntity>>
+    @Query(
+        """
+        SELECT * FROM person
+        WHERE ownerUserId = :ownerUserId AND deletedAt IS NULL
+        ORDER BY name COLLATE NOCASE, id
+        """,
+    )
+    fun observeActive(ownerUserId: UUID): Flow<List<PersonEntity>>
 
-    @Query("SELECT * FROM person WHERE id = :id AND deletedAt IS NULL")
-    suspend fun findActiveById(id: UUID): PersonEntity?
+    @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
+    suspend fun findActiveById(id: UUID, ownerUserId: UUID): PersonEntity?
 
     /** Fails if the id already exists, which for a locally created person indicates a bug. */
     @Insert
@@ -31,12 +41,12 @@ interface PersonDao {
     @Upsert
     suspend fun upsert(person: PersonEntity)
 
-    /** Returns the number of updated rows, 0 if the person is missing or already deleted. */
+    /** Returns the number of updated rows, 0 if the person is missing, already deleted or not owned. */
     @Query(
         """
         UPDATE person SET deletedAt = :deletedAt, updatedAt = :deletedAt
-        WHERE id = :id AND deletedAt IS NULL
+        WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL
         """,
     )
-    suspend fun softDelete(id: UUID, deletedAt: Instant): Int
+    suspend fun softDelete(id: UUID, ownerUserId: UUID, deletedAt: Instant): Int
 }
