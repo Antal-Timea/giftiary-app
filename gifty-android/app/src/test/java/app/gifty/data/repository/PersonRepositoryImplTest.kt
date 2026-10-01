@@ -10,7 +10,11 @@ import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.local.mapper.toNewEntity
 import app.gifty.data.user.CurrentUserIdProvider
+import app.gifty.domain.model.GiftDirection
+import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
+import app.gifty.domain.repository.GiftDetails
+import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.testing.MutableClock
@@ -26,6 +30,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -36,6 +41,8 @@ class PersonRepositoryImplTest {
     private lateinit var database: GiftyDatabase
     private lateinit var repository: PersonRepositoryImpl
     private lateinit var occasionRepository: OccasionRepositoryImpl
+    private lateinit var giftRepository: GiftRepositoryImpl
+    private lateinit var giftIdeaRepository: GiftIdeaRepositoryImpl
 
     private val personDao get() = database.personDao()
     private val occasionDao get() = database.occasionDao()
@@ -63,6 +70,25 @@ class PersonRepositoryImplTest {
             database = database,
             occasionDao = database.occasionDao(),
             personDao = database.personDao(),
+            syncQueue = syncQueue,
+            currentUserIdProvider = currentUserIdProvider,
+            clock = clock,
+        )
+        giftRepository = GiftRepositoryImpl(
+            database = database,
+            giftDao = database.giftDao(),
+            personDao = database.personDao(),
+            occasionDao = database.occasionDao(),
+            syncQueue = syncQueue,
+            currentUserIdProvider = currentUserIdProvider,
+            clock = clock,
+        )
+        giftIdeaRepository = GiftIdeaRepositoryImpl(
+            database = database,
+            giftIdeaDao = database.giftIdeaDao(),
+            giftDao = database.giftDao(),
+            personDao = database.personDao(),
+            occasionDao = database.occasionDao(),
             syncQueue = syncQueue,
             currentUserIdProvider = currentUserIdProvider,
             clock = clock,
@@ -272,6 +298,102 @@ class PersonRepositoryImplTest {
         assertEquals(anna, repository.getPerson(anna.id))
         assertEquals(listOf(first, second), occasionRepository.observeOccasionsForPerson(anna.id).first())
         assertEquals(SyncOperation.CREATE, pendingOperation(first.id, SyncEntityType.OCCASION))
+    }
+
+    /**
+     * The whole contract in one place: the person and their occasions go, their history and plans
+     * stay. Gifts and ideas are made "synced" so that any DELETE a cascade queued would show.
+     */
+    @Test
+    fun `deleting a person removes their occasions but keeps gifts and gift ideas involving them`() = runTest {
+        val anna = repository.addPerson("Anna", "Sister")
+        val birthday = occasionRepository.addOccasion(anna.id, birthdayOn(12, 3))
+        val givenToAnna = giftRepository.addGift(
+            GiftDetails(
+                direction = GiftDirection.GIVEN,
+                giverPersonId = null,
+                recipientPersonId = anna.id,
+                occasionId = birthday.id,
+                name = "Book",
+                givenAt = LocalDate.of(2026, 3, 12),
+                price = null,
+                productUrl = null,
+                note = null,
+            ),
+        )
+        val fromAnna = giftRepository.addGift(
+            GiftDetails(
+                direction = GiftDirection.RECEIVED,
+                giverPersonId = anna.id,
+                recipientPersonId = null,
+                occasionId = null,
+                name = "Headphones",
+                givenAt = LocalDate.of(2025, 11, 4),
+                price = null,
+                productUrl = null,
+                note = null,
+            ),
+        )
+        val scarfForAnna = giftIdeaRepository.addGiftIdea(
+            GiftIdeaDetails(
+                recipientPersonId = anna.id,
+                occasionId = null,
+                name = "Scarf",
+                status = GiftIdeaStatus.PLANNED,
+                estimatedPrice = null,
+                actualPrice = null,
+                productUrl = null,
+                note = null,
+            ),
+        )
+        markEntitySynced(SyncEntityType.GIFT, givenToAnna.id)
+        markEntitySynced(SyncEntityType.GIFT_IDEA, scarfForAnna.id)
+
+        repository.deletePerson(anna.id)
+
+        // The person and their occasions are soft-deleted, not removed.
+        assertNull(repository.getPerson(anna.id))
+        assertEquals(1, countRows("person", anna.id))
+        assertTrue(occasionRepository.observeOccasionsForPerson(anna.id).first().isEmpty())
+        assertEquals(1, countRows("occasion", birthday.id))
+
+        // Gifts stay readable and still show who they were for and from.
+        val history = giftRepository.observeGifts().first()
+        assertEquals(setOf(givenToAnna.id, fromAnna.id), history.map { it.gift.id }.toSet())
+        val given = giftRepository.getGift(givenToAnna.id)!!
+        assertEquals(anna.id, given.gift.recipientPersonId)
+        assertEquals(anna, given.recipient)
+        assertEquals(birthday.id, given.occasion?.id)
+        assertEquals(anna, giftRepository.getGift(fromAnna.id)?.giver)
+
+        // The idea stays an active plan for its (now deleted) recipient.
+        val idea = giftIdeaRepository.getGiftIdea(scarfForAnna.id)!!
+        assertEquals(anna.id, idea.idea.recipientPersonId)
+        assertEquals(anna, idea.recipient)
+        assertEquals(listOf(scarfForAnna.id), giftIdeaRepository.observeGiftIdeas().first().map { it.idea.id })
+
+        // Only the person and occasion deletions reach the queue; gifts and ideas are untouched.
+        assertNull(syncDao.findForEntity(SyncEntityType.GIFT, givenToAnna.id))
+        assertEquals(SyncOperation.CREATE, syncDao.findForEntity(SyncEntityType.GIFT, fromAnna.id)?.operation)
+        assertNull(syncDao.findForEntity(SyncEntityType.GIFT_IDEA, scarfForAnna.id))
+        val pending = syncDao.getPending(limit = 100)
+        assertTrue(
+            pending.none { it.operation == SyncOperation.DELETE && it.entityType in setOf(SyncEntityType.GIFT, SyncEntityType.GIFT_IDEA) },
+        )
+    }
+
+    /** Simulates a completed push for a gift or idea: nothing is pending for it any more. */
+    private suspend fun markEntitySynced(entityType: SyncEntityType, entityId: UUID) {
+        when (entityType) {
+            SyncEntityType.GIFT -> database.giftDao().run {
+                update(findActiveById(entityId, ownerUserId)!!.copy(remoteState = RemoteState.SYNCED, version = 1))
+            }
+            SyncEntityType.GIFT_IDEA -> database.giftIdeaDao().run {
+                update(findActiveById(entityId, ownerUserId)!!.copy(remoteState = RemoteState.SYNCED, version = 1))
+            }
+            else -> error("Not needed by these tests: $entityType")
+        }
+        syncDao.findForEntity(entityType, entityId)?.let { syncDao.delete(it) }
     }
 
     private fun birthdayOn(day: Int, month: Int) =

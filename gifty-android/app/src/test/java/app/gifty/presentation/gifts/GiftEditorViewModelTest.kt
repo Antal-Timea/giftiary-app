@@ -55,7 +55,7 @@ class GiftEditorViewModelTest {
 
     @Before
     fun pinLocale() {
-        // The editor parses prices with the default locale; keep it fixed for these tests.
+        // Parsing ignores the locale, but existing prices are pre-filled with the default one.
         defaultLocale = Locale.getDefault()
         Locale.setDefault(Locale.US)
         occasions.givenOccasions(annasBirthday, belasNameDay)
