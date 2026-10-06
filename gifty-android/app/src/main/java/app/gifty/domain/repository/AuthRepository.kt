@@ -9,7 +9,8 @@ interface AuthRepository {
     /** Starts with [AuthState.Restoring] until any saved session has been checked. */
     val authState: Flow<AuthState>
 
-    fun currentUser(): AuthUser?
+    /** Waits until any saved session has been checked. */
+    suspend fun currentUser(): AuthUser?
 
     /** @throws AuthException */
     suspend fun signIn(email: String, password: String)

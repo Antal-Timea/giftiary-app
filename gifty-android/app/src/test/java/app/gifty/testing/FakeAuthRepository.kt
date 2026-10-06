@@ -28,7 +28,7 @@ class FakeAuthRepository : AuthRepository {
     val signUpCalls = mutableListOf<Pair<String, String>>()
     var signOutCalls = 0
 
-    override fun currentUser(): AuthUser? = (state.value as? AuthState.SignedIn)?.user
+    override suspend fun currentUser(): AuthUser? = (state.value as? AuthState.SignedIn)?.user
 
     override suspend fun signIn(email: String, password: String) {
         signInCalls += email to password

@@ -3,29 +3,56 @@ package app.gifty.data.auth
 import app.gifty.domain.model.AuthState
 import app.gifty.domain.model.AuthUser
 import app.gifty.domain.repository.AuthError
+import app.gifty.domain.repository.AuthException
+import app.gifty.domain.repository.SignUpOutcome
 import io.github.jan.supabase.auth.exception.AuthErrorCode
 import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.exception.AuthWeakPasswordException
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.exceptions.RestException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.io.IOException
 import java.util.UUID
 
 /**
- * [currentUser] is the user of the session the SDK still holds. It matters for a failed refresh,
- * which usually means the device is offline: the user stays signed in, because Gifty works
- * offline and losing connectivity must not lock anyone out of their local data.
+ * supabase-kt reports [SessionStatus.Initializing] not only on a cold start but also whenever it
+ * reloads a session it already holds, e.g. each time Gifty returns from the background, and stays
+ * there while an expiring session cannot be refreshed offline. [SessionStatus.RefreshFailure]
+ * likewise only means the refresh failed for now. Neither signs anyone out: as long as the SDK
+ * still keeps the session in its storage, Gifty stays signed in and usable with its local data.
+ *
+ * Only [SessionStatus.NotAuthenticated] signs out. The SDK reaches it after a sign-out, or after
+ * the backend rejected the refresh token, and in both cases deletes the stored session first.
+ *
+ * [storedUser] reads the user of the session the SDK has persisted, or null if there is none.
  */
-internal fun SessionStatus.toAuthState(currentUser: UserInfo?): AuthState = when (this) {
-    SessionStatus.Initializing -> AuthState.Restoring
-    is SessionStatus.Authenticated -> signedInOrOut(session.user ?: currentUser)
-    is SessionStatus.RefreshFailure -> signedInOrOut(currentUser)
-    is SessionStatus.NotAuthenticated -> AuthState.SignedOut
-}
+internal fun Flow<SessionStatus>.toAuthStates(storedUser: suspend () -> UserInfo?): Flow<AuthState> =
+    map { status ->
+        when (status) {
+            is SessionStatus.Authenticated -> signedInOrOut(status.session.user ?: storedUser())
+            SessionStatus.Initializing -> storedUser()?.let { AuthState.SignedIn(it.toAuthUser()) } ?: AuthState.Restoring
+            is SessionStatus.RefreshFailure -> signedInOrOut(storedUser())
+            is SessionStatus.NotAuthenticated -> AuthState.SignedOut
+        }
+    }.distinctUntilChanged()
 
 private fun signedInOrOut(user: UserInfo?): AuthState =
     user?.let { AuthState.SignedIn(it.toAuthUser()) } ?: AuthState.SignedOut
+
+/**
+ * Interprets a completed email sign-up. supabase-kt returns the user in both cases and imports a
+ * session only when the backend confirmed the account immediately, so the session decides.
+ */
+internal fun signUpOutcome(sessionStarted: Boolean, returnedUser: UserInfo?): SignUpOutcome = when {
+    sessionStarted -> SignUpOutcome.SIGNED_IN
+    // With email confirmation on, Supabase answers an address that already has a confirmed
+    // account with a placeholder user without identities rather than an error.
+    returnedUser?.identities?.isEmpty() == true -> throw AuthException(AuthError.EMAIL_ALREADY_REGISTERED)
+    else -> SignUpOutcome.CONFIRMATION_REQUIRED
+}
 
 internal fun UserInfo.toAuthUser() = AuthUser(id = UUID.fromString(id), email = email)
 
