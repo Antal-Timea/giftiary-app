@@ -16,7 +16,7 @@ import javax.inject.Inject
  * per entity. Sync pushes the entity's current Room state, so earlier changes are folded into
  * the pending operation instead of being replayed.
  *
- * Must be called inside the Room transaction that changes the entity.
+ * Must be called inside the Room transaction that changes the entity, with that entity's owner.
  */
 class SyncOperationQueue @Inject constructor(
     private val dao: SyncOperationDao,
@@ -24,19 +24,26 @@ class SyncOperationQueue @Inject constructor(
 ) {
 
     suspend fun enqueue(
+        ownerUserId: UUID,
         entityType: SyncEntityType,
         entityId: UUID,
         operation: SyncOperation,
         remoteState: RemoteState,
     ) {
         val pending = dao.findForEntity(entityType, entityId)
+        // An entity never changes owner, so neither does its pending operation. A pre-v2 operation
+        // without an owner keeps it that way: assigning one is the legacy claim's job, not a write's.
+        check(pending?.ownerUserId == null || pending.ownerUserId == ownerUserId) {
+            "Pending $entityType operation for $entityId belongs to another owner"
+        }
         val coalesced = coalesce(
             pending = pending?.operation,
             next = operation,
             existsRemotely = remoteState == RemoteState.SYNCED,
         )
         when {
-            pending == null && coalesced != null -> dao.insert(newOperation(entityType, entityId, coalesced))
+            pending == null && coalesced != null ->
+                dao.insert(newOperation(ownerUserId, entityType, entityId, coalesced))
             pending == null -> Unit
             coalesced == null -> dao.delete(pending)
             // Keeping the original row preserves its queue position, e.g. a person's CREATE
@@ -53,9 +60,10 @@ class SyncOperationQueue @Inject constructor(
         }
     }
 
-    private fun newOperation(entityType: SyncEntityType, entityId: UUID, operation: SyncOperation) =
+    private fun newOperation(ownerUserId: UUID, entityType: SyncEntityType, entityId: UUID, operation: SyncOperation) =
         SyncOperationEntity(
             id = UUID.randomUUID(),
+            ownerUserId = ownerUserId,
             entityType = entityType,
             entityId = entityId,
             operation = operation,

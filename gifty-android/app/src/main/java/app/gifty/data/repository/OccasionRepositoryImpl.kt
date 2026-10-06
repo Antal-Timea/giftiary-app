@@ -64,7 +64,13 @@ class OccasionRepositoryImpl @Inject constructor(
         database.withTransaction {
             if (personId != null) requireActivePerson(personId, ownerUserId)
             occasionDao.insert(entity)
-            syncQueue.enqueue(SyncEntityType.OCCASION, entity.id, SyncOperation.CREATE, entity.remoteState)
+            syncQueue.enqueue(
+                entity.ownerUserId,
+                SyncEntityType.OCCASION,
+                entity.id,
+                SyncOperation.CREATE,
+                entity.remoteState,
+            )
         }
         return occasion
     }
@@ -87,7 +93,13 @@ class OccasionRepositoryImpl @Inject constructor(
             if (updated == existing) return@withTransaction
 
             occasionDao.update(updated.copy(updatedAt = now()))
-            syncQueue.enqueue(SyncEntityType.OCCASION, id, SyncOperation.UPDATE, existing.remoteState)
+            syncQueue.enqueue(
+                existing.ownerUserId,
+                SyncEntityType.OCCASION,
+                id,
+                SyncOperation.UPDATE,
+                existing.remoteState,
+            )
         }
     }
 
@@ -97,7 +109,13 @@ class OccasionRepositoryImpl @Inject constructor(
             val existing = occasionDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 
             occasionDao.softDelete(id, ownerUserId, deletedAt = now())
-            syncQueue.enqueue(SyncEntityType.OCCASION, id, SyncOperation.DELETE, existing.remoteState)
+            syncQueue.enqueue(
+                existing.ownerUserId,
+                SyncEntityType.OCCASION,
+                id,
+                SyncOperation.DELETE,
+                existing.remoteState,
+            )
         }
     }
 

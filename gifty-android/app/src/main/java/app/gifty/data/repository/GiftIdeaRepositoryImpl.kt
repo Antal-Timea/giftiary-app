@@ -91,7 +91,13 @@ class GiftIdeaRepositoryImpl @Inject constructor(
             requireActivePerson(details.recipientPersonId, ownerUserId)
             details.occasionId?.let { requireAssignableOccasion(it, ownerUserId, details.recipientPersonId) }
             giftIdeaDao.insert(entity)
-            syncQueue.enqueue(SyncEntityType.GIFT_IDEA, entity.id, SyncOperation.CREATE, entity.remoteState)
+            syncQueue.enqueue(
+                entity.ownerUserId,
+                SyncEntityType.GIFT_IDEA,
+                entity.id,
+                SyncOperation.CREATE,
+                entity.remoteState,
+            )
         }
         return idea
     }
@@ -133,7 +139,13 @@ class GiftIdeaRepositoryImpl @Inject constructor(
             val existing = giftIdeaDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 
             giftIdeaDao.softDelete(id, ownerUserId, deletedAt = now())
-            syncQueue.enqueue(SyncEntityType.GIFT_IDEA, id, SyncOperation.DELETE, existing.remoteState)
+            syncQueue.enqueue(
+                existing.ownerUserId,
+                SyncEntityType.GIFT_IDEA,
+                id,
+                SyncOperation.DELETE,
+                existing.remoteState,
+            )
         }
     }
 
@@ -173,9 +185,21 @@ class GiftIdeaRepositoryImpl @Inject constructor(
             // Archived, not deleted: the idea stays as the gift's source and must still reach the
             // backend, so a pending CREATE of a never-synced idea is kept (CREATE + UPDATE = CREATE).
             giftIdeaDao.update(idea.copy(archivedAt = now, updatedAt = now))
-            syncQueue.enqueue(SyncEntityType.GIFT_IDEA, idea.id, SyncOperation.UPDATE, idea.remoteState)
+            syncQueue.enqueue(
+                idea.ownerUserId,
+                SyncEntityType.GIFT_IDEA,
+                idea.id,
+                SyncOperation.UPDATE,
+                idea.remoteState,
+            )
             giftDao.insert(giftEntity)
-            syncQueue.enqueue(SyncEntityType.GIFT, gift.id, SyncOperation.CREATE, giftEntity.remoteState)
+            syncQueue.enqueue(
+                giftEntity.ownerUserId,
+                SyncEntityType.GIFT,
+                gift.id,
+                SyncOperation.CREATE,
+                giftEntity.remoteState,
+            )
             gift
         }
     }
@@ -183,7 +207,13 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     private suspend fun writeChange(existing: GiftIdeaEntity, updated: GiftIdeaEntity) {
         if (updated == existing) return
         giftIdeaDao.update(updated.copy(updatedAt = now()))
-        syncQueue.enqueue(SyncEntityType.GIFT_IDEA, existing.id, SyncOperation.UPDATE, existing.remoteState)
+        syncQueue.enqueue(
+            existing.ownerUserId,
+            SyncEntityType.GIFT_IDEA,
+            existing.id,
+            SyncOperation.UPDATE,
+            existing.remoteState,
+        )
     }
 
     /**

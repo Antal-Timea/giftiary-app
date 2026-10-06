@@ -29,6 +29,7 @@ interface SyncOperationDao {
     @Query("SELECT * FROM sync_operation WHERE entityType = :entityType AND entityId = :entityId")
     suspend fun findForEntity(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity?
 
-    @Query("SELECT * FROM sync_operation ORDER BY createdAt, id LIMIT :limit")
-    suspend fun getPending(limit: Int): List<SyncOperationEntity>
+    /** One owner's pending operations, oldest first. Operations without an owner never match. */
+    @Query("SELECT * FROM sync_operation WHERE ownerUserId = :ownerUserId ORDER BY createdAt, id LIMIT :limit")
+    suspend fun getPending(ownerUserId: UUID, limit: Int): List<SyncOperationEntity>
 }

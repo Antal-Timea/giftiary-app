@@ -21,6 +21,8 @@ import java.util.UUID
 @RunWith(RobolectricTestRunner::class)
 class SyncOperationDaoTest {
 
+    private val alice = UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    private val bob = UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
     private lateinit var database: GiftyDatabase
     private lateinit var dao: SyncOperationDao
 
@@ -47,7 +49,7 @@ class SyncOperationDaoTest {
         val duplicate = runCatching { dao.insert(operation(SyncEntityType.PERSON, personId, SyncOperation.DELETE)) }
 
         assertTrue(duplicate.exceptionOrNull() is SQLiteConstraintException)
-        assertEquals(listOf(create), dao.getPending(limit = 10))
+        assertEquals(listOf(create), dao.getPending(alice, limit = 10))
     }
 
     @Test
@@ -74,7 +76,24 @@ class SyncOperationDaoTest {
         }
         listOf(newer, newest, older).forEach { dao.insert(it) }
 
-        assertEquals(listOf(older, newer), dao.getPending(limit = 2))
+        assertEquals(listOf(older, newer), dao.getPending(alice, limit = 2))
+    }
+
+    @Test
+    fun `pending operations are read per owner and unclaimed ones by nobody`() = runTest {
+        val alicesOlder = operation(
+            SyncEntityType.PERSON, UUID.randomUUID(), SyncOperation.CREATE, Instant.parse("2026-05-01T00:00:00Z"),
+        )
+        val alicesNewer = operation(
+            SyncEntityType.GIFT, UUID.randomUUID(), SyncOperation.CREATE, Instant.parse("2026-05-03T00:00:00Z"),
+        )
+        val bobs = operation(SyncEntityType.PERSON, UUID.randomUUID(), SyncOperation.UPDATE, owner = bob)
+        val unclaimed = operation(SyncEntityType.OCCASION, UUID.randomUUID(), SyncOperation.CREATE, owner = null)
+        listOf(alicesNewer, unclaimed, bobs, alicesOlder).forEach { dao.insert(it) }
+
+        assertEquals(listOf(alicesOlder, alicesNewer), dao.getPending(alice, limit = 10))
+        assertEquals(listOf(bobs), dao.getPending(bob, limit = 10))
+        assertEquals(unclaimed, dao.findForEntity(SyncEntityType.OCCASION, unclaimed.entityId))
     }
 
     private fun operation(
@@ -82,8 +101,10 @@ class SyncOperationDaoTest {
         entityId: UUID,
         operation: SyncOperation,
         createdAt: Instant = Instant.parse("2026-05-01T12:00:00Z"),
+        owner: UUID? = alice,
     ) = SyncOperationEntity(
         id = UUID.randomUUID(),
+        ownerUserId = owner,
         entityType = entityType,
         entityId = entityId,
         operation = operation,

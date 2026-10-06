@@ -86,7 +86,13 @@ class GiftRepositoryImpl @Inject constructor(
             details.recipientPersonId?.let { requireActivePerson(it, ownerUserId) }
             details.occasionId?.let { requireAssignableOccasion(it, ownerUserId, details) }
             giftDao.insert(entity)
-            syncQueue.enqueue(SyncEntityType.GIFT, entity.id, SyncOperation.CREATE, entity.remoteState)
+            syncQueue.enqueue(
+                entity.ownerUserId,
+                SyncEntityType.GIFT,
+                entity.id,
+                SyncOperation.CREATE,
+                entity.remoteState,
+            )
         }
         return gift
     }
@@ -113,7 +119,7 @@ class GiftRepositoryImpl @Inject constructor(
             if (updated == existing) return@withTransaction
 
             giftDao.update(updated.copy(updatedAt = now()))
-            syncQueue.enqueue(SyncEntityType.GIFT, id, SyncOperation.UPDATE, existing.remoteState)
+            syncQueue.enqueue(existing.ownerUserId, SyncEntityType.GIFT, id, SyncOperation.UPDATE, existing.remoteState)
         }
     }
 
@@ -123,7 +129,7 @@ class GiftRepositoryImpl @Inject constructor(
             val existing = giftDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 
             giftDao.softDelete(id, ownerUserId, deletedAt = now())
-            syncQueue.enqueue(SyncEntityType.GIFT, id, SyncOperation.DELETE, existing.remoteState)
+            syncQueue.enqueue(existing.ownerUserId, SyncEntityType.GIFT, id, SyncOperation.DELETE, existing.remoteState)
         }
     }
 

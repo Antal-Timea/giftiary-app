@@ -314,10 +314,14 @@ class GiftIdeaRepositoryImplTest {
         val gift = ideas.markAsGiven(idea.id, today, null)
 
         assertEquals(SyncOperation.CREATE, pendingIdeaOperation(idea.id))
-        assertEquals(SyncOperation.CREATE, syncDao.findForEntity(SyncEntityType.GIFT, gift.id)?.operation)
+        val giftOperation = syncDao.findForEntity(SyncEntityType.GIFT, gift.id)!!
+        assertEquals(SyncOperation.CREATE, giftOperation.operation)
         val giftEntity = database.giftDao().findActiveById(gift.id, ownerUserId)!!
         assertEquals(RemoteState.LOCAL_ONLY, giftEntity.remoteState)
         assertEquals(0L, giftEntity.version)
+        // The gift's operation belongs to the gift's owner, the same owner as the idea it came from.
+        assertEquals(giftEntity.ownerUserId, giftOperation.ownerUserId)
+        assertEquals(ownerUserId, giftOperation.ownerUserId)
     }
 
     @Test
@@ -396,7 +400,9 @@ class GiftIdeaRepositoryImplTest {
     )
 
     private suspend fun pendingIdeaOperation(ideaId: UUID): SyncOperation? =
-        syncDao.findForEntity(SyncEntityType.GIFT_IDEA, ideaId)?.operation
+        syncDao.findForEntity(SyncEntityType.GIFT_IDEA, ideaId)
+            ?.also { assertEquals("an operation has its entity's owner", ownerUserId, it.ownerUserId) }
+            ?.operation
 
     private suspend fun markSynced(ideaId: UUID) {
         val entity = ideaDao.findActiveById(ideaId, ownerUserId)!!
@@ -409,7 +415,7 @@ class GiftIdeaRepositoryImplTest {
         syncDao.insert(
             SyncOperationEntity(
                 id = UUID.randomUUID(),
-                entityType = SyncEntityType.GIFT_IDEA,
+                ownerUserId = ownerUserId,                entityType = SyncEntityType.GIFT_IDEA,
                 entityId = ideaId,
                 operation = SyncOperation.DELETE,
                 createdAt = clock.instant,
