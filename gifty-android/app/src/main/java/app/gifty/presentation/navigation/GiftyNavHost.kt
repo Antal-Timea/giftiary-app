@@ -84,7 +84,7 @@ data class EditGiftIdeaRoute(val giftIdeaId: String)
 data class MarkGiftIdeaGivenRoute(val giftIdeaId: String)
 
 @Composable
-fun GiftyNavHost(modifier: Modifier = Modifier) {
+fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -95,6 +95,7 @@ fun GiftyNavHost(modifier: Modifier = Modifier) {
             HomeScreen(
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
+                onSignOut = onSignOut,
             )
         }
         composable<PeopleRoute> {

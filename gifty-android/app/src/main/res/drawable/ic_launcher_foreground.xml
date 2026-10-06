@@ -3,10 +3,17 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!--
+        Lid and box, split by the ribbon. The ribbon and the bow's openings are gaps rather than
+        painted coral, so the icon still reads as a present when tinted as a themed (monochrome) icon.
+        Everything stays inside the 66dp safe zone (radius 33 around 54,54).
+    -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M36,50h36v24h-36z M33,42h42v8h-42z" />
+        android:pathData="M32,47h19v8h-19z M57,47h19v8h-19z M35,57h16v19h-16z M57,57h16v19h-16z" />
+    <!-- Bow: two loops meeting at the ribbon. -->
     <path
-        android:fillColor="#FFD6455D"
-        android:pathData="M51,42h6v32h-6z" />
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M54,46 C47,46 39.5,43.5 39.5,38 C39.5,33.5 45,32.5 49,35.5 C51.5,37.5 53,41.5 54,46 Z M52,42.6 C48.6,42 44.2,40.7 44.2,38.4 C44.2,36.9 46,36.7 47.8,38 C49.6,39.3 51.2,40.9 52,42.6 Z M54,46 C61,46 68.5,43.5 68.5,38 C68.5,33.5 63,32.5 59,35.5 C56.5,37.5 55,41.5 54,46 Z M56,42.6 C59.4,42 63.8,40.7 63.8,38.4 C63.8,36.9 62,36.7 60.2,38 C58.4,39.3 56.8,40.9 56,42.6 Z" />
 </vector>

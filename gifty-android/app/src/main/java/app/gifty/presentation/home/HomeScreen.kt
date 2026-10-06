@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -22,7 +25,12 @@ import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 
 @Composable
-fun HomeScreen(onOpenGifts: () -> Unit, onOpenPeople: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(
+    onOpenGifts: () -> Unit,
+    onOpenPeople: () -> Unit,
+    onSignOut: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = GiftyTheme.colors
     Scaffold(modifier = modifier) { contentPadding ->
         Column(
@@ -56,6 +64,14 @@ fun HomeScreen(onOpenGifts: () -> Unit, onOpenPeople: () -> Unit, modifier: Modi
                 onClick = onOpenPeople,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.height(GiftySpacing.s))
+            TextButton(
+                onClick = onSignOut,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
+            ) {
+                Text(text = stringResource(R.string.auth_sign_out), style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }
@@ -64,6 +80,6 @@ fun HomeScreen(onOpenGifts: () -> Unit, onOpenPeople: () -> Unit, modifier: Modi
 @Composable
 private fun HomeScreenPreview() {
     GiftyTheme {
-        HomeScreen(onOpenGifts = {}, onOpenPeople = {})
+        HomeScreen(onOpenGifts = {}, onOpenPeople = {}, onSignOut = {})
     }
 }

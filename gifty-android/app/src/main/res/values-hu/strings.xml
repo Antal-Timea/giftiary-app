@@ -161,4 +161,40 @@
     <string name="person_detail_gift_ideas">Ajándékötletek</string>
     <string name="person_detail_add_gift_idea">Ajándékötlet hozzáadása</string>
     <string name="person_detail_no_gift_ideas">Még nincs ajándékötlet.</string>
+    <string name="auth_email">E-mail-cím</string>
+    <string name="auth_password">Jelszó</string>
+    <plurals name="auth_password_hint">
+        <item quantity="one">Legalább %1$d karakter</item>
+        <item quantity="other">Legalább %1$d karakter</item>
+    </plurals>
+    <string name="auth_sign_in_title">Üdv újra</string>
+    <string name="auth_sign_in_message">Jelentkezz be a Gifty-fiókodba.</string>
+    <string name="auth_sign_in">Bejelentkezés</string>
+    <string name="auth_go_to_create_account">Fiók létrehozása</string>
+    <string name="auth_create_account_title">Fiók létrehozása</string>
+    <string name="auth_create_account_message">Egy fiók a szeretteidnek, a közös ajándékoknak és az elmentett ötleteknek.</string>
+    <string name="auth_create_account">Fiók létrehozása</string>
+    <string name="auth_check_email_title">Nézd meg a leveleidet</string>
+    <string name="auth_check_email_message">Megerősítő linket küldtünk ide: %1$s. Nyisd meg ezen a telefonon, hogy befejezd a fiók létrehozását.</string>
+    <string name="auth_check_email_other_device">Máshol nyitottad meg? A fiókod így is megerősítést kapott, csak jelentkezz be itt.</string>
+    <string name="auth_back_to_sign_in">Vissza a bejelentkezéshez</string>
+    <string name="auth_sign_out">Kijelentkezés</string>
+    <string name="auth_error_email_required">Add meg az e-mail-címed.</string>
+    <string name="auth_error_email_invalid">Adj meg egy érvényes e-mail-címet.</string>
+    <string name="auth_error_password_required">Add meg a jelszavad.</string>
+    <plurals name="auth_error_password_too_short">
+        <item quantity="one">Legalább %1$d karaktert használj.</item>
+        <item quantity="other">Legalább %1$d karaktert használj.</item>
+    </plurals>
+    <string name="auth_error_invalid_credentials">Hibás e-mail-cím vagy jelszó.</string>
+    <string name="auth_error_email_already_registered">Ezzel az e-mail-címmel már van fiók. Jelentkezz be.</string>
+    <string name="auth_error_email_not_confirmed">Előbb erősítsd meg az e-mail-címed az elküldött linkkel.</string>
+    <string name="auth_error_weak_password">Válassz erősebb jelszót.</string>
+    <string name="auth_error_invalid_email">Ez az e-mail-cím nem használható.</string>
+    <string name="auth_error_network">Nincs kapcsolat. Ellenőrizd az internetet, és próbáld újra.</string>
+    <string name="auth_error_rate_limited">Túl sok próbálkozás. Várj egy kicsit, és próbáld újra.</string>
+    <string name="auth_error_unknown">Valami hiba történt. Próbáld újra.</string>
+    <string name="auth_password_confirmation">Jelszó megerősítése</string>
+    <string name="auth_error_confirmation_required">Add meg újra a jelszavad.</string>
+    <string name="auth_error_passwords_do_not_match">A két jelszó nem egyezik.</string>
 </resources>
