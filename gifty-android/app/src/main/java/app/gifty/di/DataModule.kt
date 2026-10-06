@@ -6,6 +6,7 @@ import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.OwnerSession
+import app.gifty.domain.repository.AccountSession
 import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
@@ -39,6 +40,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindActiveOwner(impl: OwnerSession): ActiveOwner
+
+    @Binds
+    abstract fun bindAccountSession(impl: OwnerSession): AccountSession
 
     companion object {
 
