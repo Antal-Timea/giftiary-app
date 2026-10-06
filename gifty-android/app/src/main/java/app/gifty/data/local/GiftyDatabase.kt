@@ -8,6 +8,7 @@ import app.gifty.data.local.converter.TimeConverters
 import app.gifty.data.local.converter.UuidConverter
 import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
+import app.gifty.data.local.dao.LegacyOwnershipDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
@@ -44,6 +45,8 @@ abstract class GiftyDatabase : RoomDatabase() {
     abstract fun giftIdeaDao(): GiftIdeaDao
 
     abstract fun syncOperationDao(): SyncOperationDao
+
+    abstract fun legacyOwnershipDao(): LegacyOwnershipDao
 
     companion object {
         const val NAME = "gifty.db"

@@ -6,6 +6,7 @@ import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.MIGRATION_1_2
 import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
+import app.gifty.data.local.dao.LegacyOwnershipDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
@@ -41,4 +42,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncOperationDao(database: GiftyDatabase): SyncOperationDao = database.syncOperationDao()
+
+    @Provides
+    fun provideLegacyOwnershipDao(database: GiftyDatabase): LegacyOwnershipDao = database.legacyOwnershipDao()
 }
