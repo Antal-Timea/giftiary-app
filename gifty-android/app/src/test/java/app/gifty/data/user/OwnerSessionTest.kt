@@ -5,14 +5,17 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.LegacyOwnershipClaim
+import app.gifty.data.local.SyncOperationQueue
 import app.gifty.data.local.dao.LegacyOwnershipDao
 import app.gifty.data.local.entity.PersonEntity
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
+import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.domain.model.AuthState
 import app.gifty.domain.model.AuthUser
+import app.gifty.domain.repository.NoActiveOwnerException
 import app.gifty.domain.repository.OwnerSessionState
 import app.gifty.testing.FakeAuthRepository
 import kotlinx.coroutines.CompletableDeferred
@@ -30,10 +33,12 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
 import java.time.Instant
 import java.util.UUID
 
@@ -247,6 +252,52 @@ class OwnerSessionTest {
         assertEquals(listOf(null, alice.id, null, alice.id), recorded.owners)
     }
 
+    @Test
+    fun `restored data without the legacy id is left alone, not guessed`() = runTest {
+        // A restored database whose legacy preference is missing: rows and an unowned operation.
+        val anna = seedLegacyData()
+        context.getSharedPreferences("local_user", Context.MODE_PRIVATE).edit().clear().commit()
+        auth.state.value = AuthState.SignedIn(alice)
+
+        val recorded = startSession()
+        recorded.session.awaitState(OwnerSessionState.Ready(alice))
+
+        assertEquals(0, claimDao.calls)
+        assertEquals(legacy, ownerOfPerson(anna))
+        assertEquals(1, count("SELECT COUNT(*) FROM sync_operation WHERE ownerUserId IS NULL"))
+        assertFalse(context.getSharedPreferences("local_user", Context.MODE_PRIVATE).contains("user_id"))
+    }
+
+    @Test
+    fun `the session and the repositories keep accounts apart end to end`() = runTest {
+        val anna = seedLegacyData()
+        auth.state.value = AuthState.SignedIn(alice)
+        val recorded = startSession()
+        val session = recorded.session
+        val people = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(),
+            SyncOperationQueue(database.syncOperationDao(), Clock.systemUTC()), session, Clock.systemUTC(),
+        )
+        session.awaitState(OwnerSessionState.Ready(alice))
+
+        val alicesPerson = people.addPerson("Béla", null)
+        assertEquals(setOf(anna, alicesPerson.id), people.observePeople().first().map { it.id }.toSet())
+
+        auth.state.value = AuthState.SignedIn(bob)
+        session.awaitState(OwnerSessionState.Ready(bob))
+        assertEquals(emptyList<UUID>(), people.observePeople().first().map { it.id })
+        val bobsPerson = people.addPerson("Csilla", null)
+
+        val queue = database.syncOperationDao()
+        assertEquals(setOf(anna, alicesPerson.id), queue.getPending(alice.id, 10).map { it.entityId }.toSet())
+        assertEquals(listOf(bobsPerson.id), queue.getPending(bob.id, 10).map { it.entityId })
+        assertEquals(0, count("SELECT COUNT(*) FROM sync_operation WHERE ownerUserId IS NULL"))
+
+        session.signOut()
+        assertEquals(emptyList<UUID>(), people.observePeople().first().map { it.id })
+        assertTrue(runCatching { people.addPerson("Dóra", null) }.exceptionOrNull() is NoActiveOwnerException)
+    }
+
     // ---- data ----
 
     /** Data from before accounts existed: a person and its pending create, migrated without an owner. */
@@ -269,6 +320,9 @@ class OwnerSessionTest {
         )
         return anna.id
     }
+
+    private fun count(sql: String): Int =
+        database.openHelper.readableDatabase.query(sql).use { cursor -> cursor.moveToFirst(); cursor.getInt(0) }
 
     private fun ownerOfPerson(id: UUID): UUID? =
         database.openHelper.readableDatabase.query("SELECT ownerUserId FROM person WHERE id = ?", arrayOf(id.toString()))
