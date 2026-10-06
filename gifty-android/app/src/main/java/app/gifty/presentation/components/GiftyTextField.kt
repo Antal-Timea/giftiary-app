@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.VisualTransformation
 import app.gifty.presentation.theme.GiftyShapes
 import app.gifty.presentation.theme.GiftyTheme
 
@@ -31,6 +32,7 @@ fun GiftyTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     suffix: String? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     OutlinedTextField(
         value = value,
@@ -45,6 +47,7 @@ fun GiftyTextField(
         isError = errorMessage != null,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
+        visualTransformation = visualTransformation,
         singleLine = singleLine,
         minLines = minLines,
         shape = GiftyShapes.input,
