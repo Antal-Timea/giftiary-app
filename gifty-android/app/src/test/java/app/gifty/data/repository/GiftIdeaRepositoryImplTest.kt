@@ -396,7 +396,9 @@ class GiftIdeaRepositoryImplTest {
     )
 
     private suspend fun pendingIdeaOperation(ideaId: UUID): SyncOperation? =
-        syncDao.findForEntity(SyncEntityType.GIFT_IDEA, ideaId)?.operation
+        syncDao.findForEntity(SyncEntityType.GIFT_IDEA, ideaId)
+            ?.also { assertEquals("an operation has its entity's owner", ownerUserId, it.ownerUserId) }
+            ?.operation
 
     private suspend fun markSynced(ideaId: UUID) {
         val entity = ideaDao.findActiveById(ideaId, ownerUserId)!!
@@ -409,7 +411,7 @@ class GiftIdeaRepositoryImplTest {
         syncDao.insert(
             SyncOperationEntity(
                 id = UUID.randomUUID(),
-                entityType = SyncEntityType.GIFT_IDEA,
+                ownerUserId = ownerUserId,                entityType = SyncEntityType.GIFT_IDEA,
                 entityId = ideaId,
                 operation = SyncOperation.DELETE,
                 createdAt = clock.instant,

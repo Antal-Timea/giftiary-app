@@ -55,6 +55,9 @@ android {
 
     sourceSets {
         getByName("androidTest").assets.directories.add("$projectDir/schemas")
+        // Robolectric reads the debug variant's merged assets, so the migration tests find the
+        // exported schema history there. Release builds do not include it.
+        getByName("debug").assets.directories.add("$projectDir/schemas")
     }
 
     testOptions {
@@ -103,6 +106,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.room.testing)
 }
 
 /**

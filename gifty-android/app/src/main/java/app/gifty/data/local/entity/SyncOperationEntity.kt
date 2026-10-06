@@ -14,11 +14,21 @@ import java.util.UUID
     tableName = "sync_operation",
     indices = [
         Index(value = ["entityType", "entityId"], unique = true),
-        Index("createdAt"),
+        // Pending work is read per owner, oldest first.
+        Index(value = ["ownerUserId", "createdAt"]),
     ],
 )
 data class SyncOperationEntity(
     @PrimaryKey val id: UUID,
+    /**
+     * The owner of the entity, always set for operations created since schema v2.
+     *
+     * Null means exactly one thing: the operation was created under the pre-v2 schema, when a
+     * database had a single legacy device owner and operations had no owner column, and it has
+     * not been through the legacy ownership claim yet. It is not a general "unknown owner"
+     * state; owner-scoped reads never return such operations.
+     */
+    val ownerUserId: UUID?,
     val entityType: SyncEntityType,
     val entityId: UUID,
     val operation: SyncOperation,

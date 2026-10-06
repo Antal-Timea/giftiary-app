@@ -199,7 +199,9 @@ class OccasionRepositoryImplTest {
     }
 
     private suspend fun pendingOperation(occasionId: UUID): SyncOperation? =
-        syncDao.findForEntity(SyncEntityType.OCCASION, occasionId)?.operation
+        syncDao.findForEntity(SyncEntityType.OCCASION, occasionId)
+            ?.also { assertEquals("an operation has its entity's owner", ownerUserId, it.ownerUserId) }
+            ?.operation
 
     private suspend fun markSynced(occasionId: UUID) {
         val entity = occasionDao.findActiveById(occasionId, ownerUserId)!!

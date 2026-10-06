@@ -60,7 +60,13 @@ class PersonRepositoryImpl @Inject constructor(
         val entity = person.toNewEntity(ownerUserId)
         database.withTransaction {
             personDao.insert(entity)
-            syncQueue.enqueue(SyncEntityType.PERSON, entity.id, SyncOperation.CREATE, entity.remoteState)
+            syncQueue.enqueue(
+                entity.ownerUserId,
+                SyncEntityType.PERSON,
+                entity.id,
+                SyncOperation.CREATE,
+                entity.remoteState,
+            )
         }
         return person
     }
@@ -73,7 +79,13 @@ class PersonRepositoryImpl @Inject constructor(
             if (existing.name == name && existing.relationship == relationship) return@withTransaction
 
             personDao.update(existing.copy(name = name, relationship = relationship, updatedAt = now()))
-            syncQueue.enqueue(SyncEntityType.PERSON, id, SyncOperation.UPDATE, existing.remoteState)
+            syncQueue.enqueue(
+                existing.ownerUserId,
+                SyncEntityType.PERSON,
+                id,
+                SyncOperation.UPDATE,
+                existing.remoteState,
+            )
         }
     }
 
@@ -88,10 +100,22 @@ class PersonRepositoryImpl @Inject constructor(
             // Children are queued first so a push can delete them before their person.
             occasionDao.findActiveForPerson(ownerUserId, id).forEach { occasion ->
                 occasionDao.softDelete(occasion.id, ownerUserId, deletedAt)
-                syncQueue.enqueue(SyncEntityType.OCCASION, occasion.id, SyncOperation.DELETE, occasion.remoteState)
+                syncQueue.enqueue(
+                    occasion.ownerUserId,
+                    SyncEntityType.OCCASION,
+                    occasion.id,
+                    SyncOperation.DELETE,
+                    occasion.remoteState,
+                )
             }
             personDao.softDelete(id, ownerUserId, deletedAt)
-            syncQueue.enqueue(SyncEntityType.PERSON, id, SyncOperation.DELETE, existing.remoteState)
+            syncQueue.enqueue(
+                existing.ownerUserId,
+                SyncEntityType.PERSON,
+                id,
+                SyncOperation.DELETE,
+                existing.remoteState,
+            )
         }
     }
 

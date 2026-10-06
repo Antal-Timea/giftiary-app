@@ -161,7 +161,7 @@ class PersonRepositoryImplTest {
         syncDao.insert(
             SyncOperationEntity(
                 id = UUID.randomUUID(),
-                entityType = SyncEntityType.PERSON,
+                ownerUserId = ownerUserId,                entityType = SyncEntityType.PERSON,
                 entityId = person.id,
                 operation = SyncOperation.DELETE,
                 createdAt = clock.instant,
@@ -376,7 +376,7 @@ class PersonRepositoryImplTest {
         assertNull(syncDao.findForEntity(SyncEntityType.GIFT, givenToAnna.id))
         assertEquals(SyncOperation.CREATE, syncDao.findForEntity(SyncEntityType.GIFT, fromAnna.id)?.operation)
         assertNull(syncDao.findForEntity(SyncEntityType.GIFT_IDEA, scarfForAnna.id))
-        val pending = syncDao.getPending(limit = 100)
+        val pending = syncDao.getPending(ownerUserId, limit = 100)
         assertTrue(
             pending.none { it.operation == SyncOperation.DELETE && it.entityType in setOf(SyncEntityType.GIFT, SyncEntityType.GIFT_IDEA) },
         )
@@ -407,6 +407,7 @@ class PersonRepositoryImplTest {
 
     private fun pendingDelete(entityId: UUID, entityType: SyncEntityType) = SyncOperationEntity(
         id = UUID.randomUUID(),
+        ownerUserId = ownerUserId,
         entityType = entityType,
         entityId = entityId,
         operation = SyncOperation.DELETE,
@@ -419,7 +420,9 @@ class PersonRepositoryImplTest {
     private suspend fun pendingOperation(
         entityId: UUID,
         entityType: SyncEntityType = SyncEntityType.PERSON,
-    ): SyncOperation? = syncDao.findForEntity(entityType, entityId)?.operation
+    ): SyncOperation? = syncDao.findForEntity(entityType, entityId)
+        ?.also { assertEquals("an operation has its entity's owner", ownerUserId, it.ownerUserId) }
+        ?.operation
 
     /** Simulates a completed push: the backend has the row and nothing is pending. */
     private suspend fun markSynced(personId: UUID, version: Long) {
