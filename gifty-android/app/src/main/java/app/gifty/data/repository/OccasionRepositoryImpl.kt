@@ -9,15 +9,14 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
-import app.gifty.data.user.CurrentUserIdProvider
+import app.gifty.data.user.ActiveOwner
+import app.gifty.data.user.scoped
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonNotFoundException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
@@ -30,23 +29,20 @@ class OccasionRepositoryImpl @Inject constructor(
     private val occasionDao: OccasionDao,
     private val personDao: PersonDao,
     private val syncQueue: SyncOperationQueue,
-    private val currentUserIdProvider: CurrentUserIdProvider,
+    private val activeOwner: ActiveOwner,
     private val clock: Clock,
 ) : OccasionRepository {
 
-    override fun observeOccasionsForPerson(personId: UUID): Flow<List<Occasion>> = flow {
-        val ownerUserId = currentUserIdProvider.currentUserId()
-        emitAll(
-            occasionDao.observeActiveForPerson(ownerUserId, personId)
-                .map { occasions -> occasions.map { it.toDomain() } },
-        )
-    }
+    override fun observeOccasionsForPerson(personId: UUID): Flow<List<Occasion>> =
+        activeOwner.scoped(emptyList()) { ownerUserId ->
+            occasionDao.observeActiveForPerson(ownerUserId, personId).map { occasions -> occasions.map { it.toDomain() } }
+        }
 
     override suspend fun getOccasion(id: UUID): Occasion? =
-        occasionDao.findActiveById(id, currentUserIdProvider.currentUserId())?.toDomain()
+        activeOwner.ownerId.value?.let { ownerUserId -> occasionDao.findActiveById(id, ownerUserId)?.toDomain() }
 
     override suspend fun addOccasion(personId: UUID?, details: OccasionDetails): Occasion {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         val now = now()
         val occasion = Occasion(
             id = UUID.randomUUID(),
@@ -76,7 +72,7 @@ class OccasionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateOccasion(id: UUID, details: OccasionDetails) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             // Only rows found through the owner-scoped lookup are ever written back.
             val existing = occasionDao.findActiveById(id, ownerUserId) ?: throw OccasionNotFoundException(id)
@@ -104,7 +100,7 @@ class OccasionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteOccasion(id: UUID) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             val existing = occasionDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 

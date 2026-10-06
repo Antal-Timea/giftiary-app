@@ -30,7 +30,7 @@ class LegacyOwnerStore @Inject constructor(
         runCatching { UUID.fromString(value) }.getOrNull()?.takeIf { it.toString() == value.lowercase() }
 
     private companion object {
-        // Written by the pre-account LocalUserIdProvider; read-only from now on.
+        // Where the app kept its device-local owner id before accounts existed; read-only now.
         const val PREFERENCES_NAME = "local_user"
         const val KEY_USER_ID = "user_id"
     }

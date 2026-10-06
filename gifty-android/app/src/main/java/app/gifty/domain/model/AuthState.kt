@@ -12,10 +12,7 @@ sealed interface AuthState {
     data class SignedIn(val user: AuthUser) : AuthState
 }
 
-/**
- * The signed-in account. Its [id] is the backend account id, which is deliberately not (yet) the
- * owner id of the rows stored on this device.
- */
+/** The signed-in account. Its [id] is the backend account id, which also owns its rows on this device. */
 data class AuthUser(
     val id: UUID,
     val email: String?,

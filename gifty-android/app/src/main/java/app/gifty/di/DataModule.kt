@@ -4,8 +4,8 @@ import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
-import app.gifty.data.user.CurrentUserIdProvider
-import app.gifty.data.user.LocalUserIdProvider
+import app.gifty.data.user.ActiveOwner
+import app.gifty.data.user.OwnerSession
 import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
@@ -38,7 +38,7 @@ abstract class DataModule {
     abstract fun bindPersonRepository(impl: PersonRepositoryImpl): PersonRepository
 
     @Binds
-    abstract fun bindCurrentUserIdProvider(impl: LocalUserIdProvider): CurrentUserIdProvider
+    abstract fun bindActiveOwner(impl: OwnerSession): ActiveOwner
 
     companion object {
 

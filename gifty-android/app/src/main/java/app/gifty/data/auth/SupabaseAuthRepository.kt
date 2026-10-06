@@ -19,9 +19,8 @@ import javax.inject.Singleton
  * Supabase Auth behind [AuthRepository]. The SDK persists and refreshes the session itself; this
  * class never stores, logs or exposes tokens.
  *
- * The signed-in account is not the owner of local Room rows: those still belong to the
- * device-local id from [app.gifty.data.user.CurrentUserIdProvider] until local ownership is
- * migrated in a later phase.
+ * Signing in does not open the account's local data by itself; [app.gifty.data.user.OwnerSession]
+ * decides when it does.
  */
 @Singleton
 class SupabaseAuthRepository @Inject constructor(

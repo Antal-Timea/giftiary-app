@@ -9,7 +9,6 @@ import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
-import app.gifty.data.user.CurrentUserIdProvider
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.Money
@@ -21,6 +20,7 @@ import app.gifty.domain.repository.GiftIdeaNotFoundException
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.PersonNotFoundException
+import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -63,18 +63,16 @@ class GiftIdeaRepositoryImplTest {
             GiftyDatabase::class.java,
         ).build()
         val syncQueue = SyncOperationQueue(database.syncOperationDao(), clock)
-        val currentUser = object : CurrentUserIdProvider {
-            override suspend fun currentUserId() = ownerUserId
-        }
+        val activeOwner = FakeActiveOwner(ownerUserId)
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(),
-            syncQueue, currentUser, clock,
+            syncQueue, activeOwner, clock,
         )
         gifts = GiftRepositoryImpl(
-            database, database.giftDao(), database.personDao(), database.occasionDao(), syncQueue, currentUser, clock,
+            database, database.giftDao(), database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock,
         )
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), syncQueue, currentUser, clock)
-        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), syncQueue, currentUser, clock)
+        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock)
+        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), syncQueue, activeOwner, clock)
         anna = people.addPerson("Anna", "Sister")
         bela = people.addPerson("Béla", null)
     }

@@ -13,7 +13,8 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
-import app.gifty.data.user.CurrentUserIdProvider
+import app.gifty.data.user.ActiveOwner
+import app.gifty.data.user.scoped
 import app.gifty.domain.model.Gift
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdea
@@ -27,9 +28,7 @@ import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.PersonNotFoundException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
@@ -45,32 +44,27 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     private val personDao: PersonDao,
     private val occasionDao: OccasionDao,
     private val syncQueue: SyncOperationQueue,
-    private val currentUserIdProvider: CurrentUserIdProvider,
+    private val activeOwner: ActiveOwner,
     private val clock: Clock,
 ) : GiftIdeaRepository {
 
-    override fun observeGiftIdeas(): Flow<List<GiftIdeaEntry>> = flow {
-        val ownerUserId = currentUserIdProvider.currentUserId()
-        emitAll(giftIdeaDao.observeActive(ownerUserId).map { ideas -> ideas.map { it.toDomain(ownerUserId) } })
+    override fun observeGiftIdeas(): Flow<List<GiftIdeaEntry>> = activeOwner.scoped(emptyList()) { ownerUserId ->
+        giftIdeaDao.observeActive(ownerUserId).map { ideas -> ideas.map { it.toDomain(ownerUserId) } }
     }
 
-    override fun observeGiftIdeasForPerson(personId: UUID): Flow<List<GiftIdeaEntry>> = flow {
-        val ownerUserId = currentUserIdProvider.currentUserId()
-        emitAll(
-            giftIdeaDao.observeActiveForPerson(ownerUserId, personId)
-                .map { ideas -> ideas.map { it.toDomain(ownerUserId) } },
-        )
-    }
+    override fun observeGiftIdeasForPerson(personId: UUID): Flow<List<GiftIdeaEntry>> =
+        activeOwner.scoped(emptyList()) { ownerUserId ->
+            giftIdeaDao.observeActiveForPerson(ownerUserId, personId).map { ideas -> ideas.map { it.toDomain(ownerUserId) } }
+        }
 
-    override fun observeGiftIdea(id: UUID): Flow<GiftIdeaEntry?> = flow {
-        val ownerUserId = currentUserIdProvider.currentUserId()
-        emitAll(giftIdeaDao.observeActiveById(id, ownerUserId).map { it?.toDomain(ownerUserId) })
+    override fun observeGiftIdea(id: UUID): Flow<GiftIdeaEntry?> = activeOwner.scoped(null) { ownerUserId ->
+        giftIdeaDao.observeActiveById(id, ownerUserId).map { it?.toDomain(ownerUserId) }
     }
 
     override suspend fun getGiftIdea(id: UUID): GiftIdeaEntry? = observeGiftIdea(id).first()
 
     override suspend fun addGiftIdea(details: GiftIdeaDetails): GiftIdea {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         val now = now()
         val idea = GiftIdea(
             id = UUID.randomUUID(),
@@ -103,7 +97,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateGiftIdea(id: UUID, details: GiftIdeaDetails) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             // Only rows found through the owner-scoped lookup are ever written back.
             val existing = giftIdeaDao.findActiveById(id, ownerUserId) ?: throw GiftIdeaNotFoundException(id)
@@ -126,7 +120,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateStatus(id: UUID, status: GiftIdeaStatus) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             val existing = giftIdeaDao.findActiveById(id, ownerUserId) ?: throw GiftIdeaNotFoundException(id)
             writeChange(existing, existing.copy(status = status))
@@ -134,7 +128,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteGiftIdea(id: UUID) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             val existing = giftIdeaDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 
@@ -150,7 +144,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     }
 
     override suspend fun markAsGiven(id: UUID, givenAt: LocalDate, price: Money?): Gift {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         return database.withTransaction {
             // Re-read inside the transaction: a second conversion must find the idea archived.
             val idea = giftIdeaDao.findNotDeletedById(id, ownerUserId) ?: throw GiftIdeaNotFoundException(id)
