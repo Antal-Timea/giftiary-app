@@ -1,7 +1,9 @@
 # Gifty backend (Supabase)
 
-Phase 1: the PostgreSQL schema, integrity rules and row level security for the data the Android
-app already stores offline. The Android app does not talk to it yet.
+The PostgreSQL schema, integrity rules and row level security for the data the Android app
+stores offline, plus the server side of the planned sync protocol. The Android app signs in with
+Supabase Auth, but **no data sync is live yet**: nothing on the device reads or writes these
+tables so far.
 
 ## How it maps to Android
 
@@ -38,21 +40,25 @@ anything. An idea can be the source of at most one gift, and stays used even if 
 later soft-deleted: the deleted gift still records that the idea was given.
 
 **Version and timestamps are the server's.** On insert `version = 1` and `created_at` /
-`updated_at` are `now()`. Every update that changes something sets `version = old + 1` and
+`updated_at` are `now()`; every accepted update sets `version = old + 1` and
 `updated_at = now()`. Whatever a client sends for these columns is ignored. Android keeps
 `version = 0` for rows the server has never seen and adopts the server's version after a push.
 
-**Stale writes are not detected yet.** Server-controlled numbering is implemented; conflict
-enforcement is not. A client that updates from an outdated read still succeeds:
+**Every write is an identified mutation.** Each insert and update of `people`, `occasions`,
+`gift_ideas` and `gifts` must set `last_mutation_id` to a client-generated UUID, and an update
+must bring a new one (keeping the row's current id is rejected). That id is the mutation's
+**idempotency identity**; `version` is the **optimistic-concurrency state**. Clients update with
+a compare-and-set, `update ... where id = X and version = expected`, so a write based on a stale
+read matches no row instead of overwriting a newer one.
 
-1. devices A and B both read a row at version 4,
-2. B updates it: version 5,
-3. A updates it from its stale copy: version 6, and B's change is silently overwritten.
-
-The sync API phase must make every update carry the version the client last saw and apply it
-only if the row is still at that version, checked atomically on the server, most likely through
-a focused RPC per write. Until then the plain table `UPDATE` is last-writer-wins, and
-`tests/database/01_versioning.test.sql` pins that no such precondition exists yet.
+**The mutation ledger proves commits.** In the same transaction as every accepted write, a
+trigger records the mutation in `public.sync_mutations` (mutation id, owner, table, row id,
+resulting version, `recorded_at`). If a client's response is lost, it retries the same mutation;
+a committed original makes the retry match no row (update) or hit a duplicate key (insert), and
+finding the id in the ledger proves the original committed. Equal row content is never used as
+proof. Mutation ids are single-use across all rows and tables (the ledger's primary key), and the
+ledger is kept indefinitely. `tests/database/07_sync_concurrency.test.sql` shows that two copies
+of the same mutation running at once commit at most once.
 
 **Soft delete, never hard delete.** Deleting is `update ... set deleted_at = now()`, which bumps
 the version, so the tombstone reaches other devices. Clients have no DELETE privilege. References
@@ -83,8 +89,12 @@ other side is optional (both set is a gift between two other people). Exact cale
 | `authenticated` | read own; update display name, avatar path, locale | read, insert, update own rows; no delete |
 | `service_role` | select, insert, update, delete (server-side only, never in the app) | same |
 
-Helper functions live in the `private` schema and are not executable by client roles. The only
-`security definer` function creates the profile on sign-up, with an empty `search_path`.
+`sync_mutations` is readable by `authenticated` for their own entries only, and writable by no
+client role; `anon` has no access.
+
+Helper functions live in the `private` schema and are not executable by client roles. Two are
+`security definer`, both with an empty `search_path` and a single insert: the profile creation on
+sign-up, and the ledger recording, which must not be possible for clients to imitate.
 `config.toml` sets `auto_expose_new_tables = false`, and the migrations revoke and grant every
 table explicitly anyway, because hosted projects expose new tables by default. `service_role`
 bypasses RLS but still needs table privileges, and with auto-expose off it gets none by default;
@@ -115,8 +125,9 @@ seed data.
 
 - Wishlists, wishes, sharing, invitations and reservations (reservations will be
   server-authoritative and hidden from the wishlist owner).
-- The Android side: auth, remote data source, push/pull sync.
-- Expected-version conflict detection (see above).
+- The Android side of sync: remote data source, push and pull. The first release will pull each
+  table in full for the signed-in owner (`where owner_user_id = A and id > last order by id`,
+  served by the `(owner_user_id, id)` indexes).
 - Incremental pull (cursors, change logs) and Realtime.
 - Storage. Photo columns hold storage paths, not signed URLs, following
   `users/{userId}/people/{personId}/...`, `users/{userId}/gifts/{giftId}/...` and

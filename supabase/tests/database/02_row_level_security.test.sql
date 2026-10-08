@@ -12,31 +12,31 @@ select set_config('request.jwt.claims', '{"sub": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaa
 set local role authenticated;
 
 select lives_ok(
-    $$insert into public.people (id, owner_user_id, name)
-      values ('11111111-1111-4111-8111-111111111111', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Anna')$$,
+    $$insert into public.people (last_mutation_id, id, owner_user_id, name)
+      values (gen_random_uuid(), '11111111-1111-4111-8111-111111111111', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Anna')$$,
     'Alice can create her own person');
-insert into public.occasions (id, owner_user_id, person_id, type, day, month, repeats_yearly)
-values ('44444444-4444-4444-8444-444444444444', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+insert into public.occasions (last_mutation_id, id, owner_user_id, person_id, type, day, month, repeats_yearly)
+values (gen_random_uuid(), '44444444-4444-4444-8444-444444444444', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         '11111111-1111-4111-8111-111111111111', 'BIRTHDAY', 12, 3, true);
-insert into public.gift_ideas (id, owner_user_id, recipient_person_id, name, status)
-values ('33333333-3333-4333-8333-333333333333', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+insert into public.gift_ideas (last_mutation_id, id, owner_user_id, recipient_person_id, name, status)
+values (gen_random_uuid(), '33333333-3333-4333-8333-333333333333', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         '11111111-1111-4111-8111-111111111111', 'Scarf', 'IDEA');
-insert into public.gifts (id, owner_user_id, direction, recipient_person_id, name, given_at)
-values ('55555555-5555-4555-8555-555555555555', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN',
+insert into public.gifts (last_mutation_id, id, owner_user_id, direction, recipient_person_id, name, given_at)
+values (gen_random_uuid(), '55555555-5555-4555-8555-555555555555', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN',
         '11111111-1111-4111-8111-111111111111', 'Book', '2026-03-12');
 
 select is((select count(*)::int from public.people), 1, 'Alice can read her person');
 
 select throws_ok(
-    $$insert into public.people (id, owner_user_id, name)
-      values ('99999999-9999-4999-8999-999999999999', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Planted')$$,
+    $$insert into public.people (last_mutation_id, id, owner_user_id, name)
+      values (gen_random_uuid(), '99999999-9999-4999-8999-999999999999', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Planted')$$,
     '42501', null, 'Alice cannot create a row owned by Bob');
 select throws_ok(
-    $$update public.people set owner_user_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    $$update public.people set last_mutation_id = gen_random_uuid(), owner_user_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
       where id = '11111111-1111-4111-8111-111111111111'$$,
     '42501', null, 'Alice cannot hand her person over to Bob');
 select throws_ok(
-    $$update public.gifts set owner_user_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    $$update public.gifts set last_mutation_id = gen_random_uuid(), owner_user_id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
       where id = '55555555-5555-4555-8555-555555555555'$$,
     '42501', null, 'Alice cannot hand her gift over to Bob');
 
@@ -56,11 +56,11 @@ select is(
     0,
     'Bob cannot read any of Alice''s rows');
 
-update public.people set name = 'Hacked' where id = '11111111-1111-4111-8111-111111111111';
-update public.occasions set title = 'Hacked' where id = '44444444-4444-4444-8444-444444444444';
-update public.gift_ideas set name = 'Hacked' where id = '33333333-3333-4333-8333-333333333333';
-update public.gifts set name = 'Hacked' where id = '55555555-5555-4555-8555-555555555555';
-update public.people set deleted_at = now() where id = '11111111-1111-4111-8111-111111111111';
+update public.people set last_mutation_id = gen_random_uuid(), name = 'Hacked' where id = '11111111-1111-4111-8111-111111111111';
+update public.occasions set last_mutation_id = gen_random_uuid(), title = 'Hacked' where id = '44444444-4444-4444-8444-444444444444';
+update public.gift_ideas set last_mutation_id = gen_random_uuid(), name = 'Hacked' where id = '33333333-3333-4333-8333-333333333333';
+update public.gifts set last_mutation_id = gen_random_uuid(), name = 'Hacked' where id = '55555555-5555-4555-8555-555555555555';
+update public.people set last_mutation_id = gen_random_uuid(), deleted_at = now() where id = '11111111-1111-4111-8111-111111111111';
 
 -- Unauthenticated callers cannot reach the tables at all.
 reset role;

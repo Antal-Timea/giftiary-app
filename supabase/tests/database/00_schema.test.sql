@@ -1,11 +1,11 @@
 -- The schema invariants Gifty relies on, rather than a restatement of every column.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(58);
+select plan(69);
 
 -- Tables in scope, and Android-local concepts that must not exist on the server.
-select tables_are('public', array['profiles', 'people', 'occasions', 'gift_ideas', 'gifts'],
-    'public holds exactly the phase 1 tables');
+select tables_are('public', array['profiles', 'people', 'occasions', 'gift_ideas', 'gifts', 'sync_mutations'],
+    'public holds exactly the synced tables, profiles and the mutation ledger');
 select hasnt_table('public', 'sync_operations', 'the sync queue is Android-local');
 select hasnt_column('public', 'people', 'remote_state', 'remote state is Android-local');
 
@@ -56,14 +56,14 @@ select is(
     0,
     'references between people, occasions, ideas and gifts never cascade');
 
--- Indexes for ownership filters (RLS) and reference lookups.
-select has_index('public', 'people', 'people_owner_user_id_idx', array['owner_user_id']);
-select has_index('public', 'occasions', 'occasions_owner_user_id_idx', array['owner_user_id']);
+-- Indexes for the owner-scoped full pull (also serving RLS filters) and reference lookups.
+select has_index('public', 'people', 'people_owner_user_id_id_idx', array['owner_user_id', 'id']);
+select has_index('public', 'occasions', 'occasions_owner_user_id_id_idx', array['owner_user_id', 'id']);
 select has_index('public', 'occasions', 'occasions_person_id_idx', array['person_id']);
-select has_index('public', 'gift_ideas', 'gift_ideas_owner_user_id_idx', array['owner_user_id']);
+select has_index('public', 'gift_ideas', 'gift_ideas_owner_user_id_id_idx', array['owner_user_id', 'id']);
 select has_index('public', 'gift_ideas', 'gift_ideas_recipient_person_id_idx', array['recipient_person_id']);
 select has_index('public', 'gift_ideas', 'gift_ideas_occasion_id_idx', array['occasion_id']);
-select has_index('public', 'gifts', 'gifts_owner_user_id_idx', array['owner_user_id']);
+select has_index('public', 'gifts', 'gifts_owner_user_id_id_idx', array['owner_user_id', 'id']);
 select has_index('public', 'gifts', 'gifts_giver_person_id_idx', array['giver_person_id']);
 select has_index('public', 'gifts', 'gifts_recipient_person_id_idx', array['recipient_person_id']);
 select has_index('public', 'gifts', 'gifts_occasion_id_idx', array['occasion_id']);
@@ -90,6 +90,27 @@ select table_privs_are('public', 'profiles', 'anon', array[]::text[]);
 -- service_role is granted only the data operations server-side administration needs.
 select table_privs_are('public', 'people', 'service_role', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
 select table_privs_are('public', 'profiles', 'service_role', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+
+-- Every synced row carries the id of the mutation that last wrote it, never defaulted by the server.
+select has_column('public', 'people', 'last_mutation_id', 'people have last_mutation_id');
+select has_column('public', 'occasions', 'last_mutation_id', 'occasions have last_mutation_id');
+select has_column('public', 'gift_ideas', 'last_mutation_id', 'gift ideas have last_mutation_id');
+select has_column('public', 'gifts', 'last_mutation_id', 'gifts have last_mutation_id');
+select col_hasnt_default('public', 'people', 'last_mutation_id', 'mutation ids come from the client, never a server default');
+
+-- The ledger: readable by its owner, writable by nobody but the recording trigger.
+select col_is_pk('public', 'sync_mutations', 'mutation_id', 'a mutation id is recorded at most once');
+select table_privs_are('public', 'sync_mutations', 'authenticated', array['SELECT']);
+select table_privs_are('public', 'sync_mutations', 'anon', array[]::text[]);
+select table_privs_are('public', 'sync_mutations', 'service_role', array['SELECT', 'INSERT', 'UPDATE', 'DELETE']);
+select is(
+    (select prosecdef from pg_proc where oid = 'private.record_sync_mutation()'::regprocedure),
+    true,
+    'the ledger is written only by its security definer trigger function');
+select is(
+    (select proconfig from pg_proc where oid = 'private.record_sync_mutation()'::regprocedure),
+    array['search_path=""'],
+    'the recording function runs with an empty search_path');
 
 -- Profiles may only have their descriptive columns updated.
 select is(
