@@ -9,13 +9,12 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
-import app.gifty.data.user.CurrentUserIdProvider
+import app.gifty.data.user.ActiveOwner
+import app.gifty.data.user.scoped
 import app.gifty.domain.model.Person
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.domain.repository.PersonRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.Clock
 import java.time.Instant
@@ -28,25 +27,23 @@ class PersonRepositoryImpl @Inject constructor(
     private val personDao: PersonDao,
     private val occasionDao: OccasionDao,
     private val syncQueue: SyncOperationQueue,
-    private val currentUserIdProvider: CurrentUserIdProvider,
+    private val activeOwner: ActiveOwner,
     private val clock: Clock,
 ) : PersonRepository {
 
-    override fun observePeople(): Flow<List<Person>> = flow {
-        val ownerUserId = currentUserIdProvider.currentUserId()
-        emitAll(personDao.observeActive(ownerUserId).map { people -> people.map { it.toDomain() } })
+    override fun observePeople(): Flow<List<Person>> = activeOwner.scoped(emptyList()) { ownerUserId ->
+        personDao.observeActive(ownerUserId).map { people -> people.map { it.toDomain() } }
     }
 
-    override fun observePerson(id: UUID): Flow<Person?> = flow {
-        val ownerUserId = currentUserIdProvider.currentUserId()
-        emitAll(personDao.observeActiveById(id, ownerUserId).map { it?.toDomain() })
+    override fun observePerson(id: UUID): Flow<Person?> = activeOwner.scoped(null) { ownerUserId ->
+        personDao.observeActiveById(id, ownerUserId).map { it?.toDomain() }
     }
 
     override suspend fun getPerson(id: UUID): Person? =
-        personDao.findActiveById(id, currentUserIdProvider.currentUserId())?.toDomain()
+        activeOwner.ownerId.value?.let { ownerUserId -> personDao.findActiveById(id, ownerUserId)?.toDomain() }
 
     override suspend fun addPerson(name: String, relationship: String?): Person {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         val now = now()
         val person = Person(
             id = UUID.randomUUID(),
@@ -72,7 +69,7 @@ class PersonRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updatePerson(id: UUID, name: String, relationship: String?) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             // Only rows found through the owner-scoped lookup are ever written back.
             val existing = personDao.findActiveById(id, ownerUserId) ?: throw PersonNotFoundException(id)
@@ -90,7 +87,7 @@ class PersonRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deletePerson(id: UUID) {
-        val ownerUserId = currentUserIdProvider.currentUserId()
+        val ownerUserId = activeOwner.requireOwnerId()
         database.withTransaction {
             val existing = personDao.findActiveById(id, ownerUserId) ?: return@withTransaction
             val deletedAt = now()

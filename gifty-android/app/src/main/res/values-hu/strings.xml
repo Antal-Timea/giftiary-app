@@ -197,4 +197,7 @@
     <string name="auth_password_confirmation">Jelszó megerősítése</string>
     <string name="auth_error_confirmation_required">Add meg újra a jelszavad.</string>
     <string name="auth_error_passwords_do_not_match">A két jelszó nem egyezik.</string>
+    <string name="account_preparation_failed_title">Valami hiba történt</string>
+    <string name="account_preparation_failed_message">Nem sikerült előkészíteni az adataidat ezen az eszközön.</string>
+    <string name="account_preparation_retry">Próbáld újra</string>
 </resources>

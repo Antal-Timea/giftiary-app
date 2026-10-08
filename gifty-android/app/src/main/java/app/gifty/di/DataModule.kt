@@ -4,8 +4,9 @@ import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
-import app.gifty.data.user.CurrentUserIdProvider
-import app.gifty.data.user.LocalUserIdProvider
+import app.gifty.data.user.ActiveOwner
+import app.gifty.data.user.OwnerSession
+import app.gifty.domain.repository.AccountSession
 import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
@@ -15,7 +16,11 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.time.Clock
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -34,11 +39,19 @@ abstract class DataModule {
     abstract fun bindPersonRepository(impl: PersonRepositoryImpl): PersonRepository
 
     @Binds
-    abstract fun bindCurrentUserIdProvider(impl: LocalUserIdProvider): CurrentUserIdProvider
+    abstract fun bindActiveOwner(impl: OwnerSession): ActiveOwner
+
+    @Binds
+    abstract fun bindAccountSession(impl: OwnerSession): AccountSession
 
     companion object {
 
         @Provides
         fun provideClock(): Clock = Clock.systemUTC()
+
+        @Provides
+        @Singleton
+        @ApplicationScope
+        fun provideApplicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 }

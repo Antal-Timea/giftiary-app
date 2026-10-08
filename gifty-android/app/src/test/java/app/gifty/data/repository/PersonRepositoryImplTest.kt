@@ -9,7 +9,6 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.local.mapper.toNewEntity
-import app.gifty.data.user.CurrentUserIdProvider
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
@@ -17,6 +16,7 @@ import app.gifty.domain.repository.GiftDetails
 import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.PersonNotFoundException
+import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -55,15 +55,13 @@ class PersonRepositoryImplTest {
             GiftyDatabase::class.java,
         ).build()
         val syncQueue = SyncOperationQueue(database.syncOperationDao(), clock)
-        val currentUserIdProvider = object : CurrentUserIdProvider {
-            override suspend fun currentUserId() = ownerUserId
-        }
+        val activeOwner = FakeActiveOwner(ownerUserId)
         repository = PersonRepositoryImpl(
             database = database,
             personDao = database.personDao(),
             occasionDao = database.occasionDao(),
             syncQueue = syncQueue,
-            currentUserIdProvider = currentUserIdProvider,
+            activeOwner = activeOwner,
             clock = clock,
         )
         occasionRepository = OccasionRepositoryImpl(
@@ -71,7 +69,7 @@ class PersonRepositoryImplTest {
             occasionDao = database.occasionDao(),
             personDao = database.personDao(),
             syncQueue = syncQueue,
-            currentUserIdProvider = currentUserIdProvider,
+            activeOwner = activeOwner,
             clock = clock,
         )
         giftRepository = GiftRepositoryImpl(
@@ -80,7 +78,7 @@ class PersonRepositoryImplTest {
             personDao = database.personDao(),
             occasionDao = database.occasionDao(),
             syncQueue = syncQueue,
-            currentUserIdProvider = currentUserIdProvider,
+            activeOwner = activeOwner,
             clock = clock,
         )
         giftIdeaRepository = GiftIdeaRepositoryImpl(
@@ -90,7 +88,7 @@ class PersonRepositoryImplTest {
             personDao = database.personDao(),
             occasionDao = database.occasionDao(),
             syncQueue = syncQueue,
-            currentUserIdProvider = currentUserIdProvider,
+            activeOwner = activeOwner,
             clock = clock,
         )
     }

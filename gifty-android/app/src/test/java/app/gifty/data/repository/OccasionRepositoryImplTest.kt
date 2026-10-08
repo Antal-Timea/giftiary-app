@@ -9,11 +9,11 @@ import app.gifty.data.local.entity.PersonEntity
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
-import app.gifty.data.user.CurrentUserIdProvider
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.PersonNotFoundException
+import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -56,9 +56,7 @@ class OccasionRepositoryImplTest {
             occasionDao = database.occasionDao(),
             personDao = database.personDao(),
             syncQueue = SyncOperationQueue(database.syncOperationDao(), clock),
-            currentUserIdProvider = object : CurrentUserIdProvider {
-                override suspend fun currentUserId() = ownerUserId
-            },
+            activeOwner = FakeActiveOwner(ownerUserId),
             clock = clock,
         )
         personDao.insert(anna)

@@ -47,8 +47,16 @@ class FakeAuthRepository : AuthRepository {
         return signUpOutcome
     }
 
+    /** When set, sign-out waits for it, to observe what happens while the network call runs. */
+    var signOutGate: CompletableDeferred<Unit>? = null
+
+    /** Thrown by sign-out instead of signing out, leaving the session in place. */
+    var signOutFailure: Exception? = null
+
     override suspend fun signOut() {
         signOutCalls++
+        signOutGate?.await()
+        signOutFailure?.let { throw it }
         state.value = AuthState.SignedOut
     }
 }
