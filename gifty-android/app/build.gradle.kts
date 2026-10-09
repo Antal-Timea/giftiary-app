@@ -100,6 +100,7 @@ dependencies {
 
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)
+    implementation(libs.supabase.postgrest)
     implementation(libs.ktor.client.okhttp)
 
     testImplementation(libs.junit)
@@ -107,6 +108,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.ktor.client.mock)
 }
 
 /**
