@@ -272,7 +272,8 @@ class LegacyOwnershipClaimTest {
 
     private fun operation(owner: UUID?, entityType: SyncEntityType, entityId: UUID) = SyncOperationEntity(
         id = UUID.randomUUID(), ownerUserId = owner, entityType = entityType, entityId = entityId,
-        operation = SyncOperation.CREATE, createdAt = created, attemptCount = 2, lastAttemptAt = changed,
+        operation = SyncOperation.CREATE, mutationId = UUID.randomUUID(), inFlightMutationId = null, blockedReason = null,
+        createdAt = created, attemptCount = 2, lastAttemptAt = changed,
         lastErrorCode = "timeout",
     )
 

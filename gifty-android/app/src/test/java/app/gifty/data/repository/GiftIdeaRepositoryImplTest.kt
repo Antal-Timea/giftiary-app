@@ -135,7 +135,7 @@ class GiftIdeaRepositoryImplTest {
     }
 
     @Test
-    fun `deleting a local-only idea drops the pending create, deleting a synced one queues a delete`() = runTest {
+    fun `deleting a local-only idea keeps its create as a tombstone, a synced one queues a delete`() = runTest {
         val localOnly = ideas.addGiftIdea(ideaFor(anna.id))
         val synced = ideas.addGiftIdea(ideaFor(bela.id))
         markSynced(synced.id)
@@ -144,7 +144,7 @@ class GiftIdeaRepositoryImplTest {
         ideas.deleteGiftIdea(synced.id)
 
         assertTrue(ideas.observeGiftIdeas().first().isEmpty())
-        assertNull(pendingIdeaOperation(localOnly.id))
+        assertEquals(SyncOperation.CREATE, pendingIdeaOperation(localOnly.id))
         assertEquals(SyncOperation.DELETE, pendingIdeaOperation(synced.id))
     }
 
@@ -323,6 +323,24 @@ class GiftIdeaRepositoryImplTest {
     }
 
     @Test
+    fun `marking as given is two mutations, each with its own new id`() = runTest {
+        val idea = ideas.addGiftIdea(ideaFor(anna.id))
+        markSynced(idea.id)
+        ideas.updateStatus(idea.id, GiftIdeaStatus.PURCHASED)
+        val ideaUpdate = syncDao.findForEntity(SyncEntityType.GIFT_IDEA, idea.id)!!
+
+        val gift = ideas.markAsGiven(idea.id, today, null)
+
+        val archive = syncDao.findForEntity(SyncEntityType.GIFT_IDEA, idea.id)!!
+        val giftCreate = syncDao.findForEntity(SyncEntityType.GIFT, gift.id)!!
+        assertEquals(SyncOperation.UPDATE, archive.operation)
+        assertEquals(SyncOperation.CREATE, giftCreate.operation)
+        assertEquals(3, setOf(ideaUpdate.mutationId, archive.mutationId, giftCreate.mutationId).size)
+        assertNull(archive.inFlightMutationId)
+        assertNull(giftCreate.inFlightMutationId)
+    }
+
+    @Test
     fun `a synced idea gets an update when given`() = runTest {
         val idea = ideas.addGiftIdea(ideaFor(anna.id))
         markSynced(idea.id)
@@ -416,6 +434,9 @@ class GiftIdeaRepositoryImplTest {
                 ownerUserId = ownerUserId,                entityType = SyncEntityType.GIFT_IDEA,
                 entityId = ideaId,
                 operation = SyncOperation.DELETE,
+                mutationId = UUID.randomUUID(),
+                inFlightMutationId = null,
+                blockedReason = null,
                 createdAt = clock.instant,
                 attemptCount = 0,
                 lastAttemptAt = null,

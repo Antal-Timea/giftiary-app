@@ -113,14 +113,15 @@ class OccasionRepositoryImplTest {
     }
 
     @Test
-    fun `deleting a local-only occasion soft-deletes it and drops the pending create`() = runTest {
+    fun `deleting a local-only occasion soft-deletes it and keeps its create for the tombstone`() = runTest {
         val occasion = repository.addOccasion(anna.id, birthday)
 
         repository.deleteOccasion(occasion.id)
 
         assertNull(repository.getOccasion(occasion.id))
         assertTrue(repository.observeOccasionsForPerson(anna.id).first().isEmpty())
-        assertNull(pendingOperation(occasion.id))
+        // Gifts and ideas may still reference it, so the backend must get it, deleted.
+        assertEquals(SyncOperation.CREATE, pendingOperation(occasion.id))
     }
 
     @Test
