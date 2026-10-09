@@ -27,9 +27,9 @@ data class RemoteGift(
     @SerialName("photo_path") val photoPath: String?,
     @SerialName("product_url") val productUrl: String?,
     val note: String?,
-    val version: Long,
+    override val version: Long,
     @SerialName("created_at") val createdAt: Instant,
     @SerialName("updated_at") val updatedAt: Instant,
     @SerialName("deleted_at") val deletedAt: Instant?,
-    @SerialName("last_mutation_id") val lastMutationId: UUID?,
+    @SerialName("last_mutation_id") override val lastMutationId: UUID?,
 ) : RemoteRow

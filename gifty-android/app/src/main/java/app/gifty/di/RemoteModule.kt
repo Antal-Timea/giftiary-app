@@ -3,7 +3,9 @@ package app.gifty.di
 import app.gifty.BuildConfig
 import app.gifty.data.remote.AccountBoundClients
 import app.gifty.data.remote.RemoteReader
+import app.gifty.data.remote.RemoteWriter
 import app.gifty.data.remote.SupabaseRemoteReader
+import app.gifty.data.remote.SupabaseRemoteWriter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,4 +24,7 @@ object RemoteModule {
 
     @Provides
     fun provideRemoteReader(clients: AccountBoundClients): RemoteReader = SupabaseRemoteReader(clients)
+
+    @Provides
+    fun provideRemoteWriter(clients: AccountBoundClients): RemoteWriter = SupabaseRemoteWriter(clients)
 }

@@ -6,4 +6,6 @@ import java.util.UUID
 interface RemoteRow {
     val id: UUID
     val ownerUserId: UUID
+    val version: Long
+    val lastMutationId: UUID?
 }

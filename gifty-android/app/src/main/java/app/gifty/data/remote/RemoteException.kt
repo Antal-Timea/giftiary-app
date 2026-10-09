@@ -11,8 +11,20 @@ enum class RemoteFailure {
     /** The account may not do this. */
     FORBIDDEN,
 
-    /** No usable response; the request may or may not have reached the server. */
+    /**
+     * No usable response; the request may or may not have reached the server. For a write this
+     * proves nothing either way: it may still commit, and only the mutation ledger can tell.
+     */
     NETWORK,
+
+    /**
+     * A unique key already exists (PostgreSQL 23505): the row id, or the mutation id, was used
+     * before. Whether that earlier use was this very mutation is for the ledger to tell.
+     */
+    DUPLICATE,
+
+    /** The server refused the values (a PostgreSQL integrity or data error); sending them again fails again. */
+    CONSTRAINT_VIOLATION,
 
     /** The server failed, or answered something this client cannot accept. */
     SERVER,

@@ -1,0 +1,73 @@
+package app.gifty.data.remote
+
+import app.gifty.data.remote.dto.RemoteGiftFields
+import app.gifty.data.remote.dto.RemoteGiftIdeaFields
+import app.gifty.data.remote.dto.RemoteOccasionFields
+import app.gifty.data.remote.dto.RemotePersonFields
+import java.util.UUID
+
+/**
+ * Writes rows of one captured account, each write identified by a mutation id the caller
+ * supplies. The writer never creates mutation ids and never retries: a retry must reuse the same
+ * mutation id, and only sync can decide whether one is due.
+ *
+ * Inserts create a row with the caller's id and the captured account as owner. Updates are
+ * compare-and-set: they replace the row's whole client-decided state only if it is still at
+ * [expectedVersion]. Deleting is an update that sets the tombstone; there is no hard delete.
+ *
+ * Failures are [RemoteException]s. [RemoteFailure.NETWORK] after a write proves nothing: the
+ * mutation may have committed or may still commit, which only the mutation ledger can tell.
+ */
+interface RemoteWriter {
+
+    suspend fun insertPerson(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemotePersonFields): Committed
+
+    suspend fun insertOccasion(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteOccasionFields): Committed
+
+    suspend fun insertGiftIdea(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftIdeaFields): Committed
+
+    suspend fun insertGift(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftFields): Committed
+
+    suspend fun updatePerson(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemotePersonFields,
+    ): UpdateOutcome
+
+    suspend fun updateOccasion(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteOccasionFields,
+    ): UpdateOutcome
+
+    suspend fun updateGiftIdea(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteGiftIdeaFields,
+    ): UpdateOutcome
+
+    suspend fun updateGift(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteGiftFields,
+    ): UpdateOutcome
+}
+
+sealed interface UpdateOutcome
+
+/** The server returned the written row carrying this write's mutation id, at [version]. */
+data class Committed(val version: Long) : UpdateOutcome
+
+/**
+ * The update matched no row: the row is not at the expected version any more, does not exist, or
+ * is not visible to the account. Which of these it was is not known from this response alone.
+ */
+data object NoMatch : UpdateOutcome
