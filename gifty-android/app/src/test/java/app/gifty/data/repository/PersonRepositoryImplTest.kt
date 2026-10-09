@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -162,6 +163,9 @@ class PersonRepositoryImplTest {
                 ownerUserId = ownerUserId,                entityType = SyncEntityType.PERSON,
                 entityId = person.id,
                 operation = SyncOperation.DELETE,
+                mutationId = UUID.randomUUID(),
+                inFlightMutationId = null,
+                blockedReason = null,
                 createdAt = clock.instant,
                 attemptCount = 0,
                 lastAttemptAt = null,
@@ -186,14 +190,18 @@ class PersonRepositoryImplTest {
     }
 
     @Test
-    fun `deleting a local-only person soft-deletes it and drops the pending create`() = runTest {
+    fun `deleting a local-only person soft-deletes it and keeps its create for the tombstone`() = runTest {
         val person = repository.addPerson("Anna", null)
+        val create = syncDao.findForEntity(SyncEntityType.PERSON, person.id)!!
 
         repository.deletePerson(person.id)
 
         assertNull(repository.getPerson(person.id))
         assertTrue(repository.observePeople().first().isEmpty())
-        assertNull(pendingOperation(person.id))
+        // Gifts and ideas for Anna may still sync, so the backend must get her row, deleted.
+        val tombstone = syncDao.findForEntity(SyncEntityType.PERSON, person.id)!!
+        assertEquals(create.copy(mutationId = tombstone.mutationId), tombstone)
+        assertNotEquals(create.mutationId, tombstone.mutationId)
         assertEquals(1, countRows(person.id))
     }
 
@@ -253,7 +261,7 @@ class PersonRepositoryImplTest {
     }
 
     @Test
-    fun `deleting a person drops pending creates of local-only occasions and queues deletes for synced ones`() =
+    fun `deleting a person keeps pending creates of local-only occasions and queues deletes for synced ones`() =
         runTest {
             val anna = repository.addPerson("Anna", null)
             markSynced(anna.id, version = 1)
@@ -263,10 +271,47 @@ class PersonRepositoryImplTest {
 
             repository.deletePerson(anna.id)
 
-            assertNull(pendingOperation(localOnly.id, SyncEntityType.OCCASION))
+            assertEquals(SyncOperation.CREATE, pendingOperation(localOnly.id, SyncEntityType.OCCASION))
             assertEquals(SyncOperation.DELETE, pendingOperation(synced.id, SyncEntityType.OCCASION))
             assertEquals(SyncOperation.DELETE, pendingOperation(anna.id))
         }
+
+    @Test
+    fun `deleting a person makes each affected operation its own new mutation`() = runTest {
+        val anna = repository.addPerson("Anna", null)
+        markSynced(anna.id, version = 1)
+        val birthday = occasionRepository.addOccasion(anna.id, birthdayOn(12, 3))
+        val nameDay = occasionRepository.addOccasion(anna.id, birthdayOn(26, 7))
+        markOccasionSynced(nameDay.id)
+        val before = pendingMutationIds()
+
+        repository.deletePerson(anna.id)
+
+        val after = pendingMutationIds()
+        assertEquals(setOf(anna.id, birthday.id, nameDay.id), after.keys)
+        assertEquals(3, after.values.toSet().size)
+        assertTrue(after.values.none { it in before.values })
+    }
+
+    @Test
+    fun `editing a person whose update is in flight keeps the version sync last reconciled`() = runTest {
+        val person = repository.addPerson("Anna", null)
+        markSynced(person.id, version = 4)
+        repository.updatePerson(person.id, "Anna Kovács", null)
+        val sent = syncDao.findForEntity(SyncEntityType.PERSON, person.id)!!
+        assertEquals(1, syncDao.markInFlight(sent.id, sent.mutationId))
+
+        repository.updatePerson(person.id, "Anna K.", "Sister")
+        repository.deletePerson(person.id)
+
+        val entity = personDao.findById(person.id, ownerUserId)!!
+        assertEquals(4L, entity.version)
+        assertEquals(RemoteState.SYNCED, entity.remoteState)
+        val pending = syncDao.findForEntity(SyncEntityType.PERSON, person.id)!!
+        assertEquals(SyncOperation.DELETE, pending.operation)
+        assertEquals(sent.mutationId, pending.inFlightMutationId)
+        assertNotEquals(sent.mutationId, pending.mutationId)
+    }
 
     @Test
     fun `deleting a person leaves other people's occasions untouched`() = runTest {
@@ -403,12 +448,18 @@ class PersonRepositoryImplTest {
         syncDao.findForEntity(SyncEntityType.OCCASION, occasionId)?.let { syncDao.delete(it) }
     }
 
+    private suspend fun pendingMutationIds(): Map<UUID, UUID> =
+        syncDao.getPending(ownerUserId, limit = 100).associate { it.entityId to it.mutationId }
+
     private fun pendingDelete(entityId: UUID, entityType: SyncEntityType) = SyncOperationEntity(
         id = UUID.randomUUID(),
         ownerUserId = ownerUserId,
         entityType = entityType,
         entityId = entityId,
         operation = SyncOperation.DELETE,
+        mutationId = UUID.randomUUID(),
+        inFlightMutationId = null,
+        blockedReason = null,
         createdAt = clock.instant,
         attemptCount = 0,
         lastAttemptAt = null,

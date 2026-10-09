@@ -423,7 +423,16 @@ For:
 
     CREATE + DELETE
 
-if the entity has never existed remotely, remove the pending operation entirely.
+of an entity that has never existed remotely:
+
+- if another synced entity can reference it (Person, Occasion, GiftIdea), keep the pending
+  CREATE; it creates the tombstone remotely
+- if nothing can reference it (Gift) and none of its mutations is in flight, remove the pending
+  operation entirely
+
+Reason: a local child (e.g. a Gift of a deleted local-only Person) may still sync later, and the
+remote parent must exist for its foreign key. A mutation already in flight may have committed, so
+the deletion must still follow it.
 
 Do not simply replace every existing queue entry with the latest operation.
 

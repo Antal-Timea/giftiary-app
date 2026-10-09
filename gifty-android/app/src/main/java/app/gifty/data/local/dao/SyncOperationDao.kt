@@ -32,4 +32,25 @@ interface SyncOperationDao {
     /** One owner's pending operations, oldest first. Operations without an owner never match. */
     @Query("SELECT * FROM sync_operation WHERE ownerUserId = :ownerUserId ORDER BY createdAt, id LIMIT :limit")
     suspend fun getPending(ownerUserId: UUID, limit: Int): List<SyncOperationEntity>
+
+    /**
+     * Records that the operation's current payload, [mutationId], is about to be sent. Returns 0,
+     * changing nothing, if the payload has changed meanwhile or an earlier mutation is still
+     * unresolved: there is only ever one mutation in flight per entity.
+     */
+    @Query(
+        """
+        UPDATE sync_operation SET inFlightMutationId = :mutationId
+        WHERE id = :id AND mutationId = :mutationId AND inFlightMutationId IS NULL
+        """,
+    )
+    suspend fun markInFlight(id: UUID, mutationId: UUID): Int
+
+    /** Forgets the in-flight mutation once its outcome is known; 0 if [mutationId] is not the one in flight. */
+    @Query("UPDATE sync_operation SET inFlightMutationId = NULL WHERE id = :id AND inFlightMutationId = :mutationId")
+    suspend fun clearInFlight(id: UUID, mutationId: UUID): Int
+
+    /** Stops or resumes automatic sync of the operation; null resumes it. */
+    @Query("UPDATE sync_operation SET blockedReason = :reason WHERE id = :id")
+    suspend fun setBlockedReason(id: UUID, reason: String?): Int
 }

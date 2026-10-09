@@ -96,6 +96,18 @@ class SyncOperationDaoTest {
         assertEquals(unclaimed, dao.findForEntity(SyncEntityType.OCCASION, unclaimed.entityId))
     }
 
+    @Test
+    fun `mutation state is stored exactly as written`() = runTest {
+        val sent = UUID.randomUUID()
+        val blocked = operation(SyncEntityType.GIFT_IDEA, UUID.randomUUID(), SyncOperation.UPDATE)
+            .copy(inFlightMutationId = sent, blockedReason = "rejected")
+        dao.insert(blocked)
+
+        assertEquals(blocked, dao.findForEntity(SyncEntityType.GIFT_IDEA, blocked.entityId))
+        assertEquals(1, dao.setBlockedReason(blocked.id, null))
+        assertEquals(blocked.copy(blockedReason = null), dao.findForEntity(SyncEntityType.GIFT_IDEA, blocked.entityId))
+    }
+
     private fun operation(
         entityType: SyncEntityType,
         entityId: UUID,
@@ -108,6 +120,9 @@ class SyncOperationDaoTest {
         entityType = entityType,
         entityId = entityId,
         operation = operation,
+        mutationId = UUID.randomUUID(),
+        inFlightMutationId = null,
+        blockedReason = null,
         createdAt = createdAt,
         attemptCount = 0,
         lastAttemptAt = null,

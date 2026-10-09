@@ -16,6 +16,10 @@ import javax.inject.Inject
  * per entity. Sync pushes the entity's current Room state, so earlier changes are folded into
  * the pending operation instead of being replayed.
  *
+ * Every call is a new logical change and gets a new random mutation id, also when it folds into a
+ * pending operation. The mutation already in flight, if any, is never touched here: only sync
+ * knows when its outcome is settled.
+ *
  * Must be called inside the Room transaction that changes the entity, with that entity's owner.
  */
 class SyncOperationQueue @Inject constructor(
@@ -31,33 +35,38 @@ class SyncOperationQueue @Inject constructor(
         remoteState: RemoteState,
     ) {
         val pending = dao.findForEntity(entityType, entityId)
+        if (pending == null) {
+            dao.insert(newOperation(ownerUserId, entityType, entityId, operation))
+            return
+        }
         // An entity never changes owner, so neither does its pending operation. A pre-v2 operation
         // without an owner keeps it that way: assigning one is the legacy claim's job, not a write's.
-        check(pending?.ownerUserId == null || pending.ownerUserId == ownerUserId) {
+        check(pending.ownerUserId == null || pending.ownerUserId == ownerUserId) {
             "Pending $entityType operation for $entityId belongs to another owner"
         }
         val coalesced = coalesce(
-            pending = pending?.operation,
+            pending = pending.operation,
             next = operation,
             existsRemotely = remoteState == RemoteState.SYNCED,
+            canBeForgotten = !entityType.canBeReferenced() && pending.inFlightMutationId == null,
         )
-        when {
-            pending == null && coalesced != null ->
-                dao.insert(newOperation(ownerUserId, entityType, entityId, coalesced))
-            pending == null -> Unit
-            coalesced == null -> dao.delete(pending)
-            // Keeping the original row preserves its queue position, e.g. a person's CREATE
-            // stays ahead of gifts created for that person later.
-            coalesced == pending.operation -> Unit
-            else -> dao.update(
-                pending.copy(
-                    operation = coalesced,
-                    attemptCount = 0,
-                    lastAttemptAt = null,
-                    lastErrorCode = null,
-                ),
-            )
+        if (coalesced == null) {
+            dao.delete(pending)
+            return
         }
+        // Updating the original row preserves its queue position, e.g. a person's CREATE stays
+        // ahead of gifts created for that person later. Earlier failures and a block were about an
+        // older payload, so the new change starts afresh.
+        dao.update(
+            pending.copy(
+                operation = coalesced,
+                mutationId = UUID.randomUUID(),
+                blockedReason = null,
+                attemptCount = 0,
+                lastAttemptAt = null,
+                lastErrorCode = null,
+            ),
+        )
     }
 
     private fun newOperation(ownerUserId: UUID, entityType: SyncEntityType, entityId: UUID, operation: SyncOperation) =
@@ -67,6 +76,9 @@ class SyncOperationQueue @Inject constructor(
             entityType = entityType,
             entityId = entityId,
             operation = operation,
+            mutationId = UUID.randomUUID(),
+            inFlightMutationId = null,
+            blockedReason = null,
             createdAt = Instant.now(clock).truncatedTo(ChronoUnit.MILLIS),
             attemptCount = 0,
             lastAttemptAt = null,
@@ -79,6 +91,12 @@ class SyncOperationQueue @Inject constructor(
          * Returns the operation that should be pending after [next] is applied on top of [pending],
          * or null when nothing needs to reach the backend.
          *
+         * [canBeForgotten] says whether an entity the backend has never seen may simply be dropped
+         * when it is deleted: only if no other synced row can reference it and none of its
+         * mutations is in flight. Otherwise its tombstone is created remotely, so a child pushed
+         * later never points at a parent that does not exist there, and an in-flight create that
+         * did commit is still followed by the deletion.
+         *
          * Combinations that can only come from a bug (creating an entity twice, changing a deleted
          * one) throw instead of guessing, because a wrong queue state would silently lose data.
          */
@@ -86,15 +104,19 @@ class SyncOperationQueue @Inject constructor(
             pending: SyncOperation?,
             next: SyncOperation,
             existsRemotely: Boolean,
+            canBeForgotten: Boolean,
         ): SyncOperation? = when (pending) {
             null -> next
             SyncOperation.CREATE -> when (next) {
                 SyncOperation.UPDATE -> SyncOperation.CREATE
-                // Normally a pending CREATE means the entity is still LOCAL_ONLY, so nothing is left
-                // to sync. A SYNCED entity with a pending CREATE is a stale or inconsistent queue
-                // (e.g. an interrupted push); deleting remotely is the safe recovery, not a regular
+                // A SYNCED entity with a pending CREATE is a stale or inconsistent queue (e.g. an
+                // interrupted push); deleting remotely is the safe recovery, not a regular
                 // lifecycle transition.
-                SyncOperation.DELETE -> if (existsRemotely) SyncOperation.DELETE else null
+                SyncOperation.DELETE -> when {
+                    existsRemotely -> SyncOperation.DELETE
+                    canBeForgotten -> null
+                    else -> SyncOperation.CREATE
+                }
                 SyncOperation.CREATE -> invalid(pending, next)
             }
             SyncOperation.UPDATE -> when (next) {
@@ -108,4 +130,19 @@ class SyncOperationQueue @Inject constructor(
         private fun invalid(pending: SyncOperation, next: SyncOperation): Nothing =
             throw IllegalStateException("Cannot enqueue $next while $pending is pending")
     }
+}
+
+/**
+ * Whether another synced row may point at this entity: occasions and gift ideas at people, ideas
+ * and gifts at occasions, gifts at their source idea, wishes at their wishlist. Nothing points at
+ * a gift. Wishes are treated as referenced until their sync, with reservations, is designed.
+ */
+private fun SyncEntityType.canBeReferenced(): Boolean = when (this) {
+    SyncEntityType.PERSON,
+    SyncEntityType.OCCASION,
+    SyncEntityType.GIFT_IDEA,
+    SyncEntityType.WISHLIST,
+    SyncEntityType.WISH,
+    -> true
+    SyncEntityType.GIFT -> false
 }

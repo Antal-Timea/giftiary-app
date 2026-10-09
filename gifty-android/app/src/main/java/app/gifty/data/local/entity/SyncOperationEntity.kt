@@ -32,6 +32,20 @@ data class SyncOperationEntity(
     val entityType: SyncEntityType,
     val entityId: UUID,
     val operation: SyncOperation,
+    /**
+     * Identity of the payload this operation currently stands for: the entity's current Room state.
+     * Every new local change gets a new random id, so the backend can tell one change from another
+     * and a retry of the same change from a new one.
+     */
+    val mutationId: UUID,
+    /**
+     * The mutation already sent to the backend whose outcome is not known yet, or null. Local edits
+     * never change it: until sync has found out whether it committed, it is the only way to prove
+     * that, even when [mutationId] has moved on.
+     */
+    val inFlightMutationId: UUID?,
+    /** Why automatic sync gave up on this operation; a new local change clears it. */
+    val blockedReason: String?,
     val createdAt: Instant,
     val attemptCount: Int,
     val lastAttemptAt: Instant?,

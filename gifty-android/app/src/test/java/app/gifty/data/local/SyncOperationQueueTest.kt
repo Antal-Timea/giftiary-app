@@ -11,6 +11,7 @@ import app.gifty.testing.MutableClock
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -46,42 +47,189 @@ class SyncOperationQueueTest {
         database.close()
     }
 
+    // ---- mutation ids ----
+
+    @Test
+    fun `a new operation gets its own mutation id and nothing in flight or blocked`() = runTest {
+        val anna = UUID.randomUUID()
+        val bela = UUID.randomUUID()
+
+        queue.enqueue(alice, SyncEntityType.PERSON, anna, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+        queue.enqueue(alice, SyncEntityType.PERSON, bela, SyncOperation.UPDATE, RemoteState.SYNCED)
+
+        val first = pending(SyncEntityType.PERSON, anna)
+        val second = pending(SyncEntityType.PERSON, bela)
+        assertNotEquals(first.mutationId, second.mutationId)
+        listOf(first, second).forEach {
+            assertNull(it.inFlightMutationId)
+            assertNull(it.blockedReason)
+        }
+    }
+
+    @Test
+    fun `every change folded into a pending operation is a new mutation`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+        val created = pending(SyncEntityType.PERSON, personId)
+
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.LOCAL_ONLY)
+        val firstEdit = pending(SyncEntityType.PERSON, personId)
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.LOCAL_ONLY)
+        val secondEdit = pending(SyncEntityType.PERSON, personId)
+
+        assertEquals(3, setOf(created.mutationId, firstEdit.mutationId, secondEdit.mutationId).size)
+        assertEquals(created.copy(mutationId = secondEdit.mutationId), secondEdit)
+    }
+
     @Test
     fun `update after create keeps the original create in its queue position`() = runTest {
         val personId = UUID.randomUUID()
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
-        val create = dao.findForEntity(SyncEntityType.PERSON, personId)
+        val create = pending(SyncEntityType.PERSON, personId)
 
         clock.advanceBy(Duration.ofMinutes(5))
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.LOCAL_ONLY)
 
-        assertEquals(create, dao.findForEntity(SyncEntityType.PERSON, personId))
+        val coalesced = pending(SyncEntityType.PERSON, personId)
+        assertEquals(create.copy(mutationId = coalesced.mutationId), coalesced)
     }
 
     @Test
     fun `delete after update replaces the operation and resets failed attempts`() = runTest {
         val personId = UUID.randomUUID()
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
-        val update = dao.findForEntity(SyncEntityType.PERSON, personId)!!
+        val update = pending(SyncEntityType.PERSON, personId)
         dao.update(update.copy(attemptCount = 3, lastAttemptAt = clock.instant, lastErrorCode = "timeout"))
 
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.DELETE, RemoteState.SYNCED)
 
-        assertEquals(
-            update.copy(operation = SyncOperation.DELETE),
-            dao.findForEntity(SyncEntityType.PERSON, personId),
-        )
+        val delete = pending(SyncEntityType.PERSON, personId)
+        assertNotEquals(update.mutationId, delete.mutationId)
+        assertEquals(update.copy(operation = SyncOperation.DELETE, mutationId = delete.mutationId), delete)
+    }
+
+    // ---- a mutation in flight ----
+
+    @Test
+    fun `an edit while an update is in flight is a new mutation and keeps the one in flight`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
+
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+
+        val edited = pending(SyncEntityType.PERSON, personId)
+        assertEquals(SyncOperation.UPDATE, edited.operation)
+        assertNotEquals(sent.mutationId, edited.mutationId)
+        assertEquals(sent.mutationId, edited.inFlightMutationId)
+        assertEquals(sent.copy(mutationId = edited.mutationId), edited)
     }
 
     @Test
-    fun `delete after create of a local-only entity removes the pending create`() = runTest {
+    fun `a delete while an update is in flight keeps the one in flight`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
+
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.DELETE, RemoteState.SYNCED)
+
+        val deleted = pending(SyncEntityType.PERSON, personId)
+        assertEquals(SyncOperation.DELETE, deleted.operation)
+        assertNotEquals(sent.mutationId, deleted.mutationId)
+        assertEquals(sent.mutationId, deleted.inFlightMutationId)
+    }
+
+    @Test
+    fun `an edit while a create is in flight stays a create and keeps the one in flight`() = runTest {
         val personId = UUID.randomUUID()
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
 
-        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.LOCAL_ONLY)
 
-        assertNull(dao.findForEntity(SyncEntityType.PERSON, personId))
+        val edited = pending(SyncEntityType.PERSON, personId)
+        assertEquals(SyncOperation.CREATE, edited.operation)
+        assertNotEquals(sent.mutationId, edited.mutationId)
+        assertEquals(sent.mutationId, edited.inFlightMutationId)
     }
+
+    @Test
+    fun `deleting a gift whose create is in flight keeps the create, because it may have committed`() = runTest {
+        val giftId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.GIFT, giftId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+        val sent = sendCurrentMutation(SyncEntityType.GIFT, giftId)
+
+        queue.enqueue(alice, SyncEntityType.GIFT, giftId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
+
+        val tombstone = pending(SyncEntityType.GIFT, giftId)
+        assertEquals(SyncOperation.CREATE, tombstone.operation)
+        assertNotEquals(sent.mutationId, tombstone.mutationId)
+        assertEquals(sent.mutationId, tombstone.inFlightMutationId)
+    }
+
+    @Test
+    fun `only the current payload can be marked in flight, and only one at a time`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val first = pending(SyncEntityType.PERSON, personId)
+
+        assertEquals(0, dao.markInFlight(first.id, UUID.randomUUID()))
+        assertEquals(1, dao.markInFlight(first.id, first.mutationId))
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val second = pending(SyncEntityType.PERSON, personId)
+
+        assertEquals(0, dao.markInFlight(second.id, second.mutationId))
+        assertEquals(0, dao.clearInFlight(second.id, second.mutationId))
+        assertEquals(first.mutationId, pending(SyncEntityType.PERSON, personId).inFlightMutationId)
+        assertEquals(1, dao.clearInFlight(second.id, first.mutationId))
+        assertEquals(1, dao.markInFlight(second.id, second.mutationId))
+    }
+
+    // ---- blocked operations ----
+
+    @Test
+    fun `a new edit unblocks the operation, as a new mutation, keeping the one in flight`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
+        dao.setBlockedReason(sent.id, "rejected")
+
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+
+        val edited = pending(SyncEntityType.PERSON, personId)
+        assertNull(edited.blockedReason)
+        assertNotEquals(sent.mutationId, edited.mutationId)
+        assertEquals(sent.mutationId, edited.inFlightMutationId)
+    }
+
+    // ---- deleting what the backend has never seen ----
+
+    @Test
+    fun `deleting a local-only entity that others may reference keeps its create as a tombstone`() = runTest {
+        listOf(SyncEntityType.PERSON, SyncEntityType.OCCASION, SyncEntityType.GIFT_IDEA).forEach { entityType ->
+            val entityId = UUID.randomUUID()
+            queue.enqueue(alice, entityType, entityId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+            val create = pending(entityType, entityId)
+
+            queue.enqueue(alice, entityType, entityId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
+
+            val tombstone = pending(entityType, entityId)
+            assertEquals("$entityType", create.copy(mutationId = tombstone.mutationId), tombstone)
+            assertNotEquals("$entityType", create.mutationId, tombstone.mutationId)
+        }
+    }
+
+    @Test
+    fun `deleting a local-only gift removes its pending create, since nothing references a gift`() = runTest {
+        val giftId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.GIFT, giftId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+
+        queue.enqueue(alice, SyncEntityType.GIFT, giftId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
+
+        assertNull(dao.findForEntity(SyncEntityType.GIFT, giftId))
+    }
+
+    // ---- owners ----
 
     @Test
     fun `a new operation belongs to the owner it was enqueued for`() = runTest {
@@ -114,7 +262,7 @@ class SyncOperationQueueTest {
             deleted to SyncOperation.DELETE,
             synced to SyncOperation.DELETE,
         ).forEach { (id, operation) ->
-            val pending = dao.findForEntity(SyncEntityType.PERSON, id)!!
+            val pending = pending(SyncEntityType.PERSON, id)
             assertEquals(operation, pending.operation)
             assertEquals(bob, pending.ownerUserId)
         }
@@ -139,24 +287,18 @@ class SyncOperationQueueTest {
         // Pre-v2 operations get their owner from the legacy claim, never from a later write.
         val created = unclaimed(SyncOperation.CREATE)
         val updated = unclaimed(SyncOperation.UPDATE)
+        val deleted = unclaimed(SyncOperation.CREATE)
 
         queue.enqueue(alice, SyncEntityType.PERSON, created.entityId, SyncOperation.UPDATE, RemoteState.LOCAL_ONLY)
         queue.enqueue(alice, SyncEntityType.PERSON, updated.entityId, SyncOperation.DELETE, RemoteState.SYNCED)
+        queue.enqueue(alice, SyncEntityType.PERSON, deleted.entityId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
 
-        assertEquals(created, dao.findForEntity(SyncEntityType.PERSON, created.entityId))
-        assertEquals(
-            updated.copy(operation = SyncOperation.DELETE),
-            dao.findForEntity(SyncEntityType.PERSON, updated.entityId),
-        )
-    }
-
-    @Test
-    fun `a local-only create migrated without an owner is still removed by a delete`() = runTest {
-        val created = unclaimed(SyncOperation.CREATE)
-
-        queue.enqueue(alice, SyncEntityType.PERSON, created.entityId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
-
-        assertNull(dao.findForEntity(SyncEntityType.PERSON, created.entityId))
+        val createdNow = pending(SyncEntityType.PERSON, created.entityId)
+        assertEquals(created.copy(mutationId = createdNow.mutationId), createdNow)
+        val updatedNow = pending(SyncEntityType.PERSON, updated.entityId)
+        assertEquals(updated.copy(operation = SyncOperation.DELETE, mutationId = updatedNow.mutationId), updatedNow)
+        val deletedNow = pending(SyncEntityType.PERSON, deleted.entityId)
+        assertEquals(deleted.copy(mutationId = deletedNow.mutationId), deletedNow)
     }
 
     private suspend fun unclaimed(operation: SyncOperation) = SyncOperationEntity(
@@ -165,6 +307,9 @@ class SyncOperationQueueTest {
         entityType = SyncEntityType.PERSON,
         entityId = UUID.randomUUID(),
         operation = operation,
+        mutationId = UUID.randomUUID(),
+        inFlightMutationId = null,
+        blockedReason = null,
         createdAt = clock.instant,
         attemptCount = 0,
         lastAttemptAt = null,
@@ -175,14 +320,26 @@ class SyncOperationQueueTest {
     fun `operations for different entities do not interfere`() = runTest {
         val anna = UUID.randomUUID()
         val bela = UUID.randomUUID()
-        queue.enqueue(alice, SyncEntityType.PERSON, anna, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+        queue.enqueue(alice, SyncEntityType.GIFT, anna, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
         queue.enqueue(alice, SyncEntityType.PERSON, bela, SyncOperation.UPDATE, RemoteState.SYNCED)
         queue.enqueue(alice, SyncEntityType.WISH, anna, SyncOperation.DELETE, RemoteState.SYNCED)
+        val belasUpdate = pending(SyncEntityType.PERSON, bela)
+        val wishDelete = pending(SyncEntityType.WISH, anna)
 
-        queue.enqueue(alice, SyncEntityType.PERSON, anna, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
+        queue.enqueue(alice, SyncEntityType.GIFT, anna, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
 
-        assertNull(dao.findForEntity(SyncEntityType.PERSON, anna))
-        assertEquals(SyncOperation.UPDATE, dao.findForEntity(SyncEntityType.PERSON, bela)?.operation)
-        assertEquals(SyncOperation.DELETE, dao.findForEntity(SyncEntityType.WISH, anna)?.operation)
+        assertNull(dao.findForEntity(SyncEntityType.GIFT, anna))
+        assertEquals(belasUpdate, pending(SyncEntityType.PERSON, bela))
+        assertEquals(wishDelete, pending(SyncEntityType.WISH, anna))
+    }
+
+    private suspend fun pending(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity =
+        checkNotNull(dao.findForEntity(entityType, entityId)) { "No pending $entityType operation for $entityId" }
+
+    /** What sync will do before sending: the current payload becomes the mutation in flight. */
+    private suspend fun sendCurrentMutation(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity {
+        val operation = pending(entityType, entityId)
+        assertEquals(1, dao.markInFlight(operation.id, operation.mutationId))
+        return pending(entityType, entityId).also { assertEquals(operation.mutationId, it.inFlightMutationId) }
     }
 }

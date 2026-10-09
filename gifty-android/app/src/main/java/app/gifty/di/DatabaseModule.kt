@@ -4,11 +4,13 @@ import android.content.Context
 import androidx.room.Room
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.MIGRATION_1_2
+import app.gifty.data.local.MIGRATION_2_3
 import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.LegacyOwnershipDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
+import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
 import dagger.Module
 import dagger.Provides
@@ -25,7 +27,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GiftyDatabase =
         Room.databaseBuilder(context, GiftyDatabase::class.java, GiftyDatabase.NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides
@@ -42,6 +44,9 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncOperationDao(database: GiftyDatabase): SyncOperationDao = database.syncOperationDao()
+
+    @Provides
+    fun provideSyncConflictDao(database: GiftyDatabase): SyncConflictDao = database.syncConflictDao()
 
     @Provides
     fun provideLegacyOwnershipDao(database: GiftyDatabase): LegacyOwnershipDao = database.legacyOwnershipDao()

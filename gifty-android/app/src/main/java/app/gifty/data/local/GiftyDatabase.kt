@@ -11,11 +11,13 @@ import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.LegacyOwnershipDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
+import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
 import app.gifty.data.local.entity.GiftEntity
 import app.gifty.data.local.entity.GiftIdeaEntity
 import app.gifty.data.local.entity.OccasionEntity
 import app.gifty.data.local.entity.PersonEntity
+import app.gifty.data.local.entity.SyncConflictEntity
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.local.entity.WishEntity
 import app.gifty.data.local.entity.WishlistEntity
@@ -29,8 +31,9 @@ import app.gifty.data.local.entity.WishlistEntity
         WishlistEntity::class,
         WishEntity::class,
         SyncOperationEntity::class,
+        SyncConflictEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(UuidConverter::class, TimeConverters::class, EnumConverters::class)
@@ -45,6 +48,8 @@ abstract class GiftyDatabase : RoomDatabase() {
     abstract fun giftIdeaDao(): GiftIdeaDao
 
     abstract fun syncOperationDao(): SyncOperationDao
+
+    abstract fun syncConflictDao(): SyncConflictDao
 
     abstract fun legacyOwnershipDao(): LegacyOwnershipDao
 

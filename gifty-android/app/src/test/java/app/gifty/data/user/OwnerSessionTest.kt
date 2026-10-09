@@ -314,7 +314,8 @@ class OwnerSessionTest {
         database.syncOperationDao().insert(
             SyncOperationEntity(
                 id = UUID.randomUUID(), ownerUserId = null, entityType = SyncEntityType.PERSON, entityId = anna.id,
-                operation = SyncOperation.CREATE, createdAt = now, attemptCount = 0, lastAttemptAt = null,
+                operation = SyncOperation.CREATE, mutationId = UUID.randomUUID(), inFlightMutationId = null, blockedReason = null,
+                createdAt = now, attemptCount = 0, lastAttemptAt = null,
                 lastErrorCode = null,
             ),
         )

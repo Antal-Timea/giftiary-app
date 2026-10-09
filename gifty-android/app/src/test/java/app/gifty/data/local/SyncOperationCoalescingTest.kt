@@ -13,34 +13,40 @@ class SyncOperationCoalescingTest {
 
     @Test
     fun `without a pending operation the new operation is queued as is`() {
-        assertEquals(CREATE, coalesce(pending = null, next = CREATE, existsRemotely = false))
-        assertEquals(UPDATE, coalesce(pending = null, next = UPDATE, existsRemotely = true))
-        assertEquals(DELETE, coalesce(pending = null, next = DELETE, existsRemotely = true))
+        assertEquals(CREATE, coalesce(pending = null, next = CREATE, existsRemotely = false, canBeForgotten = true))
+        assertEquals(UPDATE, coalesce(pending = null, next = UPDATE, existsRemotely = true, canBeForgotten = true))
+        assertEquals(DELETE, coalesce(pending = null, next = DELETE, existsRemotely = true, canBeForgotten = true))
     }
 
     @Test
     fun `update after create stays create`() {
-        assertEquals(CREATE, coalesce(pending = CREATE, next = UPDATE, existsRemotely = false))
+        assertEquals(CREATE, coalesce(pending = CREATE, next = UPDATE, existsRemotely = false, canBeForgotten = true))
     }
 
     @Test
     fun `update after update stays update`() {
-        assertEquals(UPDATE, coalesce(pending = UPDATE, next = UPDATE, existsRemotely = true))
+        assertEquals(UPDATE, coalesce(pending = UPDATE, next = UPDATE, existsRemotely = true, canBeForgotten = true))
     }
 
     @Test
     fun `delete after update becomes delete`() {
-        assertEquals(DELETE, coalesce(pending = UPDATE, next = DELETE, existsRemotely = true))
+        assertEquals(DELETE, coalesce(pending = UPDATE, next = DELETE, existsRemotely = true, canBeForgotten = false))
     }
 
     @Test
-    fun `delete after create of a local-only entity leaves nothing to sync`() {
-        assertNull(coalesce(pending = CREATE, next = DELETE, existsRemotely = false))
+    fun `delete after create of a local-only entity that nothing can depend on leaves nothing to sync`() {
+        assertNull(coalesce(pending = CREATE, next = DELETE, existsRemotely = false, canBeForgotten = true))
+    }
+
+    @Test
+    fun `delete after create of a local-only entity that may be depended on creates its tombstone`() {
+        assertEquals(CREATE, coalesce(pending = CREATE, next = DELETE, existsRemotely = false, canBeForgotten = false))
     }
 
     @Test
     fun `delete after a stale create of an entity the backend already has recovers as delete`() {
-        assertEquals(DELETE, coalesce(pending = CREATE, next = DELETE, existsRemotely = true))
+        assertEquals(DELETE, coalesce(pending = CREATE, next = DELETE, existsRemotely = true, canBeForgotten = true))
+        assertEquals(DELETE, coalesce(pending = CREATE, next = DELETE, existsRemotely = true, canBeForgotten = false))
     }
 
     @Test
@@ -53,7 +59,7 @@ class SyncOperationCoalescingTest {
             DELETE to DELETE,
         ).forEach { (pending, next) ->
             assertThrows("$next after $pending", IllegalStateException::class.java) {
-                coalesce(pending = pending, next = next, existsRemotely = true)
+                coalesce(pending = pending, next = next, existsRemotely = true, canBeForgotten = false)
             }
         }
     }
