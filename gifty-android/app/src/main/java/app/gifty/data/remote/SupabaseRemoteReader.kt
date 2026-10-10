@@ -6,13 +6,8 @@ import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemoteRow
 import app.gifty.data.remote.dto.RemoteSyncMutation
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
-import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.SerializationException
-import java.io.IOException
 import java.util.UUID
 
 /**
@@ -43,20 +38,28 @@ class SupabaseRemoteReader(
 
     override suspend fun fetchGifts(account: RemoteAccount): List<RemoteGift> = fetchAll(account, "gifts")
 
-    override suspend fun findMutation(account: RemoteAccount, mutationId: UUID): RemoteSyncMutation? =
-        read(account) { client ->
+    override suspend fun findMutation(account: RemoteAccount, mutationId: UUID): RemoteSyncMutation? {
+        val rows = clients.call(account) { client ->
             client.from("sync_mutations").select {
                 filter {
                     eq("mutation_id", mutationId)
                     eq("owner_user_id", account.ownerUserId)
                 }
-                limit(1)
+                // Two, not one: a second row must be seen to be refused, not hidden by the limit.
+                limit(2)
             }.decodeList<RemoteSyncMutation>()
-        }.onEach { requireOwner(account, it.ownerUserId) }
-            .singleOrNull()
+        }
+        // This is proof of a commit, so anything but no row or exactly the requested one is an
+        // error; a response that cannot be trusted must never pass as "not found" either.
+        if (rows.isEmpty()) return null
+        val row = rows.singleOrNull() ?: throw RemoteException(RemoteFailure.SERVER)
+        if (row.mutationId != mutationId) throw RemoteException(RemoteFailure.SERVER)
+        requireOwner(account, row.ownerUserId)
+        return row
+    }
 
     private suspend inline fun <reified T : RemoteRow> fetchAll(account: RemoteAccount, table: String): List<T> =
-        read(account) { client ->
+        clients.call(account) { client ->
             val rows = mutableListOf<T>()
             val seen = HashSet<UUID>()
             var after: UUID? = null
@@ -83,26 +86,6 @@ class SupabaseRemoteReader(
 
     private fun requireOwner(account: RemoteAccount, ownerUserId: UUID) {
         if (ownerUserId != account.ownerUserId) throw RemoteException(RemoteFailure.SERVER)
-    }
-
-    private suspend fun <T> read(account: RemoteAccount, block: suspend (SupabaseClient) -> T): T = try {
-        clients.withClient(account, block)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: RemoteException) {
-        throw e
-    } catch (e: RestException) {
-        throw RemoteException(failureFor(e.statusCode), e)
-    } catch (e: IOException) {
-        throw RemoteException(RemoteFailure.NETWORK, e)
-    } catch (e: SerializationException) {
-        throw RemoteException(RemoteFailure.SERVER, e)
-    }
-
-    private fun failureFor(statusCode: Int) = when (statusCode) {
-        401 -> RemoteFailure.UNAUTHENTICATED
-        403 -> RemoteFailure.FORBIDDEN
-        else -> RemoteFailure.SERVER
     }
 
     companion object {

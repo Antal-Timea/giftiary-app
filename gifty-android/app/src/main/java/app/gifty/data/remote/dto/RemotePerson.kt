@@ -20,10 +20,10 @@ data class RemotePerson(
     val relationship: String?,
     @SerialName("photo_path") val photoPath: String?,
     @SerialName("linked_user_id") val linkedUserId: UUID?,
-    val version: Long,
+    override val version: Long,
     @SerialName("created_at") val createdAt: Instant,
     @SerialName("updated_at") val updatedAt: Instant,
     @SerialName("deleted_at") val deletedAt: Instant?,
     // Null only for rows last written before mutation ids existed.
-    @SerialName("last_mutation_id") val lastMutationId: UUID?,
+    @SerialName("last_mutation_id") override val lastMutationId: UUID?,
 ) : RemoteRow

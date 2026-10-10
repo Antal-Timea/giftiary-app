@@ -128,7 +128,8 @@ class SupabaseRemoteReaderTest {
         assertEquals("sync_mutations", request.url.encodedPath.substringAfterLast('/'))
         assertEquals("eq.$mutationId", request.url.parameters["mutation_id"])
         assertEquals("eq.$alice", request.url.parameters["owner_user_id"])
-        assertEquals("1", request.url.parameters["limit"])
+        // Two, so that a second row would be seen and refused rather than cut off.
+        assertEquals("2", request.url.parameters["limit"])
     }
 
     @Test
@@ -136,6 +137,23 @@ class SupabaseRemoteReaderTest {
         answer = { respondRows(emptyList()) }
 
         assertNull(reader.findMutation(alice(), UUID.randomUUID()))
+    }
+
+    @Test
+    fun `a ledger row for another mutation is refused rather than taken as proof`() = runTest {
+        answer = { respondRows(listOf(RemoteTestData.mutation(UUID.randomUUID(), alice))) }
+
+        assertFailure(RemoteFailure.SERVER) { reader.findMutation(alice(), UUID.randomUUID()) }
+    }
+
+    @Test
+    fun `more than one ledger row is refused rather than passed off as not found`() = runTest {
+        val mutationId = UUID.randomUUID()
+        answer = {
+            respondRows(listOf(RemoteTestData.mutation(mutationId, alice), RemoteTestData.mutation(mutationId, alice)))
+        }
+
+        assertFailure(RemoteFailure.SERVER) { reader.findMutation(alice(), mutationId) }
     }
 
     @Test
