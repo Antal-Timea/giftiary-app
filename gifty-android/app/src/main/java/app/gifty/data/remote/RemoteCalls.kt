@@ -35,6 +35,7 @@ private fun failureFor(e: RestException): RemoteFailure {
     return when {
         e.statusCode == 401 -> RemoteFailure.UNAUTHENTICATED
         code == "23505" -> RemoteFailure.DUPLICATE
+        code == "23503" -> RemoteFailure.MISSING_REFERENCE
         // Row level security and missing privileges.
         code == "42501" -> RemoteFailure.FORBIDDEN
         // Class 23: integrity constraints (check, not null, foreign key); class 22: invalid data.

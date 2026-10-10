@@ -13,6 +13,7 @@ import app.gifty.data.remote.RemoteAccount
 import app.gifty.data.remote.RemoteFailure
 import app.gifty.data.remote.RemoteTestData.token
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteSyncMutation
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
@@ -526,6 +527,154 @@ class SyncPusherTest {
         assertTrue(backend.writes.all { it.mutationId == create.mutationId })
     }
 
+    // ---- refused values and missing parents ----
+
+    @Test
+    fun `a child pushed before its parent waits, unblocked, and goes through once the parent is there`() = runTest {
+        val anna = syncedPerson(version = 1)
+        val idea = ideas.addGiftIdea(
+            GiftIdeaDetails(anna, occasionId = null, name = "Scarf", status = GiftIdeaStatus.PURCHASED, estimatedPrice = null,
+                actualPrice = null, productUrl = null, note = null),
+        )
+        val gift = ideas.markAsGiven(idea.id, LocalDate.of(2026, 3, 12), null)
+        val giftCreate = pending(SyncEntityType.GIFT, gift.id)
+
+        // The gift's source idea has not reached the backend yet.
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.MISSING_REFERENCE), pusher.push(alicesAccount, giftCreate.id))
+
+        val waiting = pending(SyncEntityType.GIFT, gift.id)
+        assertEquals(giftCreate.mutationId, waiting.mutationId)
+        assertEquals(giftCreate.mutationId, waiting.inFlightMutationId)
+        assertNull(waiting.blockedReason)
+        assertEquals(0L to RemoteState.LOCAL_ONLY, versionOf(SyncEntityType.GIFT, gift.id))
+
+        // Once the parent is pushed, the same mutation goes through, with no local change needed.
+        assertEquals(PushOutcome.Completed, pusher.push(alicesAccount, pending(SyncEntityType.GIFT_IDEA, idea.id).id))
+        assertEquals(PushOutcome.Completed, pusher.push(alicesAccount, giftCreate.id))
+        assertEquals(1L to RemoteState.SYNCED, versionOf(SyncEntityType.GIFT, gift.id))
+        assertTrue(backend.writes.filter { it.entityId == gift.id }.all { it.mutationId == giftCreate.mutationId })
+    }
+
+    @Test
+    fun `refused values after an earlier send of the same mutation leave it in flight, unblocked`() = runTest {
+        // Resumed: the earlier run's sends may still be on their way.
+        val anna = people.addPerson("Anna", null)
+        val create = pending(SyncEntityType.PERSON, anna.id)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.LoseRequest)
+        pusher.push(alicesAccount, create.id)
+        backend.script += Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION)
+
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.CONSTRAINT_VIOLATION), pusher.push(alicesAccount, create.id))
+        assertStillInFlight(SyncEntityType.PERSON, anna.id, create.mutationId)
+
+        // The second send of a fresh mutation: the first one may still be on its way.
+        val bela = people.addPerson("Béla", null)
+        val belasCreate = pending(SyncEntityType.PERSON, bela.id)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION))
+
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.CONSTRAINT_VIOLATION), pusher.push(alicesAccount, belasCreate.id))
+        assertStillInFlight(SyncEntityType.PERSON, bela.id, belasCreate.mutationId)
+    }
+
+    @Test
+    fun `a create still alive on the server after its resend was refused is recognised later, keeping the edit`() = runTest {
+        val anna = people.addPerson("Anna", null)
+        val create = pending(SyncEntityType.PERSON, anna.id)
+        val firstSend = Behavior.Hold(then = Behavior.Linger)
+        backend.script += listOf(firstSend, Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION))
+
+        val push = async { pusher.push(alicesAccount, create.id) }
+        firstSend.arrived.await()
+        // The first copy carries "Anna"; the user edits before the resend reads the entity.
+        people.updatePerson(anna.id, "Anna K.", null)
+        val edit = pending(SyncEntityType.PERSON, anna.id)
+        firstSend.release.complete(Unit)
+
+        // No answer, no trace remotely, then the resend with the edit is refused: nothing is proven.
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.CONSTRAINT_VIOLATION), push.await())
+        assertEquals("Anna K.", (backend.writes.last().fields as RemotePersonFields).name)
+        assertEquals(create.mutationId, backend.writes.last().mutationId)
+        val waiting = pending(SyncEntityType.PERSON, anna.id)
+        assertEquals(create.mutationId, waiting.inFlightMutationId)
+        assertEquals(edit.mutationId, waiting.mutationId)
+        assertNull(waiting.blockedReason)
+        assertEquals(0L to RemoteState.LOCAL_ONLY, versionOf(SyncEntityType.PERSON, anna.id))
+
+        // The first copy now reaches the database and commits.
+        backend.commitLingering()
+        val writesBefore = backend.writes.size
+
+        assertEquals(PushOutcome.NewerChangePending, pusher.push(alicesAccount, create.id))
+
+        assertEquals("found by evidence, not sent again", writesBefore, backend.writes.size)
+        assertEquals("Anna", (backend.rows.getValue(anna.id).fields as RemotePersonFields).name)
+        assertEquals(1L to RemoteState.SYNCED, versionOf(SyncEntityType.PERSON, anna.id))
+        assertEquals(edit.copy(operation = SyncOperation.UPDATE, inFlightMutationId = null), pending(SyncEntityType.PERSON, anna.id))
+        assertEquals("Anna K.", people.getPerson(anna.id)?.name)
+    }
+
+    @Test
+    fun `an update still alive on the server after its resend was refused is recognised later, keeping the edit`() = runTest {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val update = pending(SyncEntityType.PERSON, anna)
+        val firstSend = Behavior.Hold(then = Behavior.Linger)
+        backend.script += listOf(firstSend, Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION))
+
+        val push = async { pusher.push(alicesAccount, update.id) }
+        firstSend.arrived.await()
+        people.updatePerson(anna, "Anna K.", "Big sister")
+        val edit = pending(SyncEntityType.PERSON, anna)
+        firstSend.release.complete(Unit)
+
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.CONSTRAINT_VIOLATION), push.await())
+        assertStillInFlight(SyncEntityType.PERSON, anna, update.mutationId)
+        assertEquals(edit.mutationId, pending(SyncEntityType.PERSON, anna).mutationId)
+        assertEquals(3L to RemoteState.SYNCED, versionOf(SyncEntityType.PERSON, anna))
+
+        backend.commitLingering()
+
+        assertEquals(PushOutcome.NewerChangePending, pusher.push(alicesAccount, update.id))
+        assertEquals(4L to RemoteState.SYNCED, versionOf(SyncEntityType.PERSON, anna))
+        assertEquals(edit.copy(inFlightMutationId = null), pending(SyncEntityType.PERSON, anna))
+        assertEquals("Anna K.", people.getPerson(anna)?.name)
+    }
+
+    // ---- ledger evidence ----
+
+    @Test
+    fun `a commit that shows up only after the row was read is caught by the second ledger lookup`() = runTest {
+        val anna = people.addPerson("Anna", null)
+        val create = pending(SyncEntityType.PERSON, anna.id)
+        backend.script += Behavior.Linger
+        // The first ledger lookup and the row read miss it; it commits just before the second lookup.
+        backend.afterRowRead = { backend.commitLingering() }
+
+        assertEquals(PushOutcome.Completed, pusher.push(alicesAccount, create.id))
+
+        assertEquals("no resend", 1, backend.writes.size)
+        assertEquals(1L to RemoteState.SYNCED, versionOf(SyncEntityType.PERSON, anna.id))
+    }
+
+    @Test
+    fun `a ledger entry of the mutation for another entity is not taken as proof`() = runTest {
+        val anna = people.addPerson("Anna", null)
+        val create = pending(SyncEntityType.PERSON, anna.id)
+        listOf(
+            // Another row of the same table, and the same row id in another table.
+            RemoteSyncMutation(create.mutationId, alice, "people", UUID.randomUUID(), 1, Instant.EPOCH),
+            RemoteSyncMutation(create.mutationId, alice, "gifts", anna.id, 1, Instant.EPOCH),
+        ).forEach { inconsistent ->
+            backend.ledger[create.mutationId] = inconsistent
+            backend.script += Behavior.LoseRequest
+
+            assertEquals("$inconsistent", PushOutcome.Unresolved(RemoteFailure.SERVER), pusher.push(alicesAccount, create.id))
+
+            assertStillInFlight(SyncEntityType.PERSON, anna.id, create.mutationId)
+            assertEquals(0L to RemoteState.LOCAL_ONLY, versionOf(SyncEntityType.PERSON, anna.id))
+        }
+    }
+
     // ---- races ----
 
     @Test
@@ -589,6 +738,12 @@ class SyncPusherTest {
     }
 
     // ---- fixtures ----
+
+    private suspend fun assertStillInFlight(type: SyncEntityType, id: UUID, mutationId: UUID) {
+        val operation = pending(type, id)
+        assertEquals(mutationId, operation.inFlightMutationId)
+        assertNull(operation.blockedReason)
+    }
 
     private suspend fun pending(type: SyncEntityType, id: UUID): SyncOperationEntity =
         checkNotNull(operations.findForEntity(type, id)) { "No pending $type operation" }

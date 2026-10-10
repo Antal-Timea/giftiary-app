@@ -23,6 +23,12 @@ enum class RemoteFailure {
      */
     DUPLICATE,
 
+    /**
+     * A referenced row does not exist (PostgreSQL 23503), e.g. a gift's person not synced yet.
+     * Not a problem of the values themselves: the same write can succeed once the parent exists.
+     */
+    MISSING_REFERENCE,
+
     /** The server refused the values (a PostgreSQL integrity or data error); sending them again fails again. */
     CONSTRAINT_VIOLATION,
 

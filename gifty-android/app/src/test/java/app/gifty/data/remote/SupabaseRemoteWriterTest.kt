@@ -305,7 +305,8 @@ class SupabaseRemoteWriterTest {
             Triple(HttpStatusCode.Forbidden, "42501", RemoteFailure.FORBIDDEN),
             Triple(HttpStatusCode.Conflict, "23505", RemoteFailure.DUPLICATE),
             Triple(HttpStatusCode.BadRequest, "23514", RemoteFailure.CONSTRAINT_VIOLATION),
-            Triple(HttpStatusCode.Conflict, "23503", RemoteFailure.CONSTRAINT_VIOLATION),
+            // A missing referenced row is its own case: the parent may still arrive.
+            Triple(HttpStatusCode.Conflict, "23503", RemoteFailure.MISSING_REFERENCE),
             Triple(HttpStatusCode.BadRequest, "23502", RemoteFailure.CONSTRAINT_VIOLATION),
             Triple(HttpStatusCode.BadRequest, "22P02", RemoteFailure.CONSTRAINT_VIOLATION),
             Triple(HttpStatusCode.InternalServerError, "XX000", RemoteFailure.SERVER),

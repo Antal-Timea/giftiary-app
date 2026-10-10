@@ -20,6 +20,7 @@ import app.gifty.data.remote.RemoteReader
 import app.gifty.data.remote.RemoteWriter
 import app.gifty.data.remote.UpdateOutcome
 import app.gifty.data.remote.dto.RemoteRow
+import app.gifty.data.remote.dto.RemoteSyncMutation
 import app.gifty.data.remote.toRemoteFields
 import java.time.Clock
 import java.time.Instant
@@ -46,6 +47,10 @@ import javax.inject.Inject
  * Retries are bounded: at most two sends per call (one after a run that ended in flight), and only
  * when the backend's evidence shows the mutation has not committed and still can. The same
  * mutation id is always reused; none is ever created here.
+ *
+ * A mutation is only ever settled as unable to commit on proof. Refused values count as proof only
+ * for the one copy of a mutation that was ever sent; a missing referenced row never does, since
+ * the parent may still arrive. Otherwise the mutation stays in flight, unresolved.
  *
  * Network requests are never made inside a Room transaction. Cancellation is not a failure: it
  * leaves the mutation in flight, to be settled by the next push.
@@ -80,10 +85,13 @@ class SyncPusher @Inject constructor(
     private suspend fun settle(account: RemoteAccount, mutation: InFlight): PushOutcome {
         // A mutation left in flight may have committed already: find out before sending it again.
         var verdict = if (mutation.resumed) inspect(account, mutation, Uncertainty.NO_ANSWER) else Verdict.MaySend
-        var sendsLeft = if (mutation.resumed) 1 else 2
-        while (verdict == Verdict.MaySend && sendsLeft > 0) {
-            sendsLeft--
-            verdict = send(account, mutation) ?: return PushOutcome.Stale
+        val maxSends = if (mutation.resumed) 1 else 2
+        var sends = 0
+        while (verdict == Verdict.MaySend && sends < maxSends) {
+            // Only a fresh mutation's first send can be the only copy of it the backend may ever see.
+            val onlyCopy = !mutation.resumed && sends == 0
+            sends++
+            verdict = send(account, mutation, onlyCopy) ?: return PushOutcome.Stale
         }
         return when (verdict) {
             is Verdict.Committed -> committed(mutation, verdict.version)
@@ -93,8 +101,15 @@ class SyncPusher @Inject constructor(
         }
     }
 
-    /** Sends the in-flight mutation once and judges the answer; null if it is no longer in flight. */
-    private suspend fun send(account: RemoteAccount, mutation: InFlight): Verdict? {
+    /**
+     * Sends the in-flight mutation once and judges the answer; null if it is no longer in flight.
+     *
+     * [onlyCopy] says no other copy of the mutation can be outstanding: the mutation was claimed
+     * fresh by this call (a mutation is claimed fresh only if it was never in flight before, since
+     * an in-flight slot is only freed once its mutation committed, was blocked, or was superseded)
+     * and nothing of it was sent yet.
+     */
+    private suspend fun send(account: RemoteAccount, mutation: InFlight, onlyCopy: Boolean): Verdict? {
         val write = beginAttempt(mutation) ?: return null
         val uncertainty = try {
             when (val result = write(account)) {
@@ -105,8 +120,12 @@ class SyncPusher @Inject constructor(
             when (e.failure) {
                 RemoteFailure.NETWORK -> Uncertainty.NO_ANSWER
                 RemoteFailure.DUPLICATE -> Uncertainty.DUPLICATE
-                // This request was rolled back: the values themselves are refused.
-                RemoteFailure.CONSTRAINT_VIOLATION -> return Verdict.CannotCommit(BlockReason.REJECTED)
+                // This copy was rolled back because its values are refused. That settles the mutation
+                // only if it was the only copy: an earlier one may carry older, valid content and
+                // still commit, so otherwise it stays in flight for a later push to look for.
+                RemoteFailure.CONSTRAINT_VIOLATION ->
+                    if (onlyCopy) return Verdict.CannotCommit(BlockReason.REJECTED) else throw e
+                // MISSING_REFERENCE among them: the parent may still arrive, with nothing to change here.
                 // Settled by a later push, which first looks for evidence of a commit.
                 else -> throw e
             }
@@ -116,16 +135,27 @@ class SyncPusher @Inject constructor(
 
     /** Gathers the backend's evidence on the mutation, in the order [judge] requires. */
     private suspend fun inspect(account: RemoteAccount, mutation: InFlight, uncertainty: Uncertainty): Verdict {
-        reader.findMutation(account, mutation.mutationId)?.let {
+        ledgerEntry(account, mutation)?.let {
             return judge(uncertainty, mutation.mutationId, mutation.expectedVersion, it, row = null)
         }
         val row = remoteRow(account, mutation)
         if (row?.lastMutationId == mutation.mutationId) {
             return judge(uncertainty, mutation.mutationId, mutation.expectedVersion, ledger = null, row)
         }
-        val ledgerAfterRow = reader.findMutation(account, mutation.mutationId)
+        val ledgerAfterRow = ledgerEntry(account, mutation)
         return judge(uncertainty, mutation.mutationId, mutation.expectedVersion, ledgerAfterRow, row)
     }
+
+    /**
+     * The mutation's ledger entry, which must be for this very entity. A mutation id is used once,
+     * so an entry for anything else is a backend inconsistency, never proof: SERVER, unresolved.
+     */
+    private suspend fun ledgerEntry(account: RemoteAccount, mutation: InFlight): RemoteSyncMutation? =
+        reader.findMutation(account, mutation.mutationId)?.also { entry ->
+            if (entry.entityId != mutation.entityId || entry.entityType != mutation.entityType.remoteTable()) {
+                throw RemoteException(RemoteFailure.SERVER)
+            }
+        }
 
     private suspend fun committed(mutation: InFlight, version: Long): PushOutcome =
         when (reconciler.applyCommitted(mutation.ownerUserId, mutation.entityType, mutation.entityId, mutation.mutationId, version)) {
@@ -282,6 +312,15 @@ class SyncPusher @Inject constructor(
             }
         }
         SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$type is not synced")
+    }
+
+    /** The backend table, as the ledger names it. */
+    private fun SyncEntityType.remoteTable(): String = when (this) {
+        SyncEntityType.PERSON -> "people"
+        SyncEntityType.OCCASION -> "occasions"
+        SyncEntityType.GIFT_IDEA -> "gift_ideas"
+        SyncEntityType.GIFT -> "gifts"
+        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$this is not synced")
     }
 
     private suspend fun remoteRow(account: RemoteAccount, mutation: InFlight): RemoteRow? = when (mutation.entityType) {

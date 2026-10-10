@@ -26,7 +26,8 @@ import java.util.UUID
 /**
  * The backend as the writer and reader see it, with its real rules: inserts start at version 1,
  * updates are compare-and-set on owner and version and add one, every mutation id is single-use
- * across all rows (23505 otherwise), and a write and its ledger entry appear together.
+ * across all rows (23505 otherwise), referenced rows must exist (23503 otherwise), and a write and
+ * its ledger entry appear together.
  *
  * Each write follows the next scripted [Behavior], so tests can lose a request or a response,
  * commit late, refuse, or hold a request open.
@@ -58,6 +59,12 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         /** Gives no answer, then commits just before the next write is handled. */
         data object CommitLater : Behavior
 
+        /**
+         * Gives no answer while the request stays alive on the server: it commits (or fails) only
+         * when the test calls [commitLingering], at any later point.
+         */
+        data object Linger : Behavior
+
         /** Refused without applying anything. */
         data class Fail(val failure: RemoteFailure) : Behavior
 
@@ -83,7 +90,17 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     /** Makes every read fail, e.g. to lose evidence lookups too. */
     var readFailure: RemoteFailure? = null
 
+    /** Runs right after a row lookup, e.g. to let a lingering write commit at exactly that point. */
+    var afterRowRead: (() -> Unit)? = null
+
     private val lateCommits = mutableListOf<() -> Unit>()
+    private val lingering = mutableListOf<() -> Unit>()
+
+    /** Lets every lingering request reach the database now, in the order they were sent. */
+    fun commitLingering() {
+        val requests = synchronized(lingering) { lingering.toList().also { lingering.clear() } }
+        requests.forEach { it() }
+    }
 
     fun seed(id: UUID, owner: UUID, version: Long, lastMutationId: UUID?, fields: Any) {
         rows[id] = Row(owner, version, lastMutationId, fields)
@@ -92,7 +109,7 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     /** A write committed outside the tests' view, e.g. one whose answer was lost: row and ledger together. */
     fun recordCommit(id: UUID, owner: UUID, version: Long, mutationId: UUID, fields: Any) {
         rows[id] = Row(owner, version, mutationId, fields)
-        record(mutationId, owner, id, version)
+        record(mutationId, owner, tableOf(fields), id, version)
     }
 
     // ---- writer ----
@@ -145,6 +162,12 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
                 throw RemoteException(RemoteFailure.NETWORK)
             }
             Behavior.LoseRequest -> throw RemoteException(RemoteFailure.NETWORK)
+            Behavior.Linger -> {
+                synchronized(lingering) {
+                    lingering += { runCatching { apply(account.ownerUserId, id, expected, mutationId, fields) } }
+                }
+                throw RemoteException(RemoteFailure.NETWORK)
+            }
             Behavior.CommitLater -> {
                 synchronized(lateCommits) {
                     lateCommits += { runCatching { apply(account.ownerUserId, id, expected, mutationId, fields) } }
@@ -159,21 +182,42 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     private fun apply(owner: UUID, id: UUID, expected: Long?, mutationId: UUID, fields: Any): UpdateOutcome = synchronized(rows) {
         if (expected == null) {
             if (id in rows || mutationId in ledger) throw RemoteException(RemoteFailure.DUPLICATE)
+            requireReferences(owner, fields)
             rows[id] = Row(owner, 1, mutationId, fields)
-            record(mutationId, owner, id, 1)
+            record(mutationId, owner, tableOf(fields), id, 1)
             return Committed(1)
         }
         val row = rows[id]?.takeIf { it.owner == owner && it.version == expected } ?: return NoMatch
         if (mutationId in ledger || row.lastMutationId == mutationId) throw RemoteException(RemoteFailure.DUPLICATE)
+        requireReferences(owner, fields)
         row.version += 1
         row.lastMutationId = mutationId
         row.fields = fields
-        record(mutationId, owner, id, row.version)
+        record(mutationId, owner, tableOf(fields), id, row.version)
         Committed(row.version)
     }
 
-    private fun record(mutationId: UUID, owner: UUID, id: UUID, version: Long) {
-        ledger[mutationId] = RemoteSyncMutation(mutationId, owner, "table", id, version, NOW)
+    /** The same-owner foreign keys of the real schema. */
+    private fun requireReferences(owner: UUID, fields: Any) {
+        val references = when (fields) {
+            is RemoteOccasionFields -> listOf(fields.personId)
+            is RemoteGiftIdeaFields -> listOf(fields.recipientPersonId, fields.occasionId)
+            is RemoteGiftFields -> listOf(fields.giverPersonId, fields.recipientPersonId, fields.occasionId, fields.sourceGiftIdeaId)
+            else -> emptyList()
+        }
+        if (references.filterNotNull().any { rows[it]?.owner != owner }) throw RemoteException(RemoteFailure.MISSING_REFERENCE)
+    }
+
+    private fun tableOf(fields: Any) = when (fields) {
+        is RemotePersonFields -> "people"
+        is RemoteOccasionFields -> "occasions"
+        is RemoteGiftIdeaFields -> "gift_ideas"
+        is RemoteGiftFields -> "gifts"
+        else -> error("Unknown fields $fields")
+    }
+
+    private fun record(mutationId: UUID, owner: UUID, table: String, id: UUID, version: Long) {
+        ledger[mutationId] = RemoteSyncMutation(mutationId, owner, table, id, version, NOW)
     }
 
     // ---- reader ----
@@ -216,7 +260,7 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
 
     private fun visible(account: RemoteAccount, id: UUID): Row? {
         read()
-        return rows[id]?.takeIf { it.owner == account.ownerUserId }
+        return rows[id]?.takeIf { it.owner == account.ownerUserId }.also { afterRowRead?.invoke() }
     }
 
     private fun read() {
