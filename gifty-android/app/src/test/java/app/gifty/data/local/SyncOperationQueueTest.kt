@@ -192,7 +192,7 @@ class SyncOperationQueueTest {
         val personId = UUID.randomUUID()
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
         val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
-        dao.setBlockedReason(sent.id, "rejected")
+        assertEquals(1, dao.blockCurrentMutation(sent.id, sent.mutationId, "rejected"))
 
         queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
 
@@ -200,6 +200,34 @@ class SyncOperationQueueTest {
         assertNull(edited.blockedReason)
         assertNotEquals(sent.mutationId, edited.mutationId)
         assertEquals(sent.mutationId, edited.inFlightMutationId)
+    }
+
+    @Test
+    fun `a failure of the current mutation blocks it`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val current = pending(SyncEntityType.PERSON, personId)
+
+        assertEquals(1, dao.blockCurrentMutation(current.id, current.mutationId, "rejected"))
+
+        assertEquals(current.copy(blockedReason = "rejected"), pending(SyncEntityType.PERSON, personId))
+    }
+
+    @Test
+    fun `a late failure of an older mutation never blocks the newer one`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
+        // The user edits again while the first mutation's result is still on its way.
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val edited = pending(SyncEntityType.PERSON, personId)
+
+        assertEquals(0, dao.blockCurrentMutation(sent.id, sent.mutationId, "rejected"))
+        assertEquals(edited, pending(SyncEntityType.PERSON, personId))
+
+        // The newer mutation itself can still be blocked by its own failure.
+        assertEquals(1, dao.blockCurrentMutation(edited.id, edited.mutationId, "rejected"))
+        assertEquals("rejected", pending(SyncEntityType.PERSON, personId).blockedReason)
     }
 
     // ---- deleting what the backend has never seen ----

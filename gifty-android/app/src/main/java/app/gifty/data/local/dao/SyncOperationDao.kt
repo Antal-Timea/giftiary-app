@@ -50,7 +50,15 @@ interface SyncOperationDao {
     @Query("UPDATE sync_operation SET inFlightMutationId = NULL WHERE id = :id AND inFlightMutationId = :mutationId")
     suspend fun clearInFlight(id: UUID, mutationId: UUID): Int
 
-    /** Stops or resumes automatic sync of the operation; null resumes it. */
-    @Query("UPDATE sync_operation SET blockedReason = :reason WHERE id = :id")
-    suspend fun setBlockedReason(id: UUID, reason: String?): Int
+    /**
+     * Stops automatic sync of the operation's current payload, [mutationId], after a failure that
+     * sending it again cannot fix. Returns 0, changing nothing, if the payload has changed
+     * meanwhile: a late result for an older mutation never blocks a newer one, which may well be
+     * the user's fix. A new local change unblocks the operation.
+     *
+     * Only the current mutation can be blocked. A mutation in flight is never blocked; once its
+     * outcome is known it is reconciled or cleared.
+     */
+    @Query("UPDATE sync_operation SET blockedReason = :reason WHERE id = :id AND mutationId = :mutationId")
+    suspend fun blockCurrentMutation(id: UUID, mutationId: UUID, reason: String): Int
 }

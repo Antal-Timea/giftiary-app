@@ -75,4 +75,21 @@ interface GiftIdeaDao {
         """,
     )
     suspend fun softDelete(id: UUID, ownerUserId: UUID, deletedAt: Instant): Int
+
+    /** Deleted and archived rows included, for sync bookkeeping. */
+    @Query("SELECT * FROM gift_idea WHERE id = :id AND ownerUserId = :ownerUserId")
+    suspend fun findById(id: UUID, ownerUserId: UUID): GiftIdeaEntity?
+
+    /**
+     * Records that the backend committed this row at [version], the version after the local one.
+     * Returns 0, changing nothing, if the row is missing, not owned or not at the version before.
+     * Only sync metadata changes: content, tombstone and local timestamps stay as they are.
+     */
+    @Query(
+        """
+        UPDATE gift_idea SET version = :version, remoteState = 'SYNCED'
+        WHERE id = :id AND ownerUserId = :ownerUserId AND version = :version - 1
+        """,
+    )
+    suspend fun adoptRemoteVersion(id: UUID, ownerUserId: UUID, version: Long): Int
 }

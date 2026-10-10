@@ -24,7 +24,8 @@ import java.util.UUID
  *
  * Every write asks for the written row back (`Prefer: return=representation`), and only that row
  * counts as proof: a write is [Committed] when the server returns exactly the row with the
- * expected id, owner and this write's mutation id. A success status alone proves nothing.
+ * expected id, owner and this write's mutation id, at the version the server's trigger must have
+ * given it. A success status alone proves nothing.
  *
  * An update filters on id, owner and version; the server's trigger then sets the new version and
  * records the mutation in the ledger, in the same transaction as the row change.
@@ -109,7 +110,9 @@ class SupabaseRemoteWriter(
         val written = clients.call(account) { client ->
             client.from(table).insert(JsonArray(listOf(row))) { select() }.decodeList<T>()
         }
-        return confirm(written.singleOrNull() ?: throw RemoteException(RemoteFailure.SERVER), account, id, mutationId)
+        val inserted = written.singleOrNull() ?: throw RemoteException(RemoteFailure.SERVER)
+        // The server starts every row at version 1.
+        return confirm(inserted, account, id, mutationId, resultingVersion = 1)
     }
 
     private suspend inline fun <reified T : RemoteRow> update(
@@ -120,6 +123,9 @@ class SupabaseRemoteWriter(
         mutationId: UUID,
         fields: JsonElement,
     ): UpdateOutcome {
+        // Backend versions start at 1, and the next version must exist. Anything else is a bug in
+        // the caller, never something to send and report back as a missing match.
+        require(expectedVersion in 1 until Long.MAX_VALUE) { "Impossible expected version $expectedVersion" }
         val changes = JsonObject(fields.jsonObject + ("last_mutation_id" to JsonPrimitive(mutationId.toString())))
         val written = clients.call(account) { client ->
             client.from(table).update(changes) {
@@ -133,14 +139,15 @@ class SupabaseRemoteWriter(
         }
         return when (written.size) {
             0 -> NoMatch
-            1 -> confirm(written.single(), account, id, mutationId)
+            // Every accepted update moves the row exactly one version forward.
+            1 -> confirm(written.single(), account, id, mutationId, resultingVersion = expectedVersion + 1)
             else -> throw RemoteException(RemoteFailure.SERVER)
         }
     }
 
-    private fun confirm(row: RemoteRow, account: RemoteAccount, id: UUID, mutationId: UUID): Committed {
+    private fun confirm(row: RemoteRow, account: RemoteAccount, id: UUID, mutationId: UUID, resultingVersion: Long): Committed {
         val isThisWrite = row.id == id && row.ownerUserId == account.ownerUserId && row.lastMutationId == mutationId
-        if (!isThisWrite) throw RemoteException(RemoteFailure.SERVER)
+        if (!isThisWrite || row.version != resultingVersion) throw RemoteException(RemoteFailure.SERVER)
         return Committed(row.version)
     }
 

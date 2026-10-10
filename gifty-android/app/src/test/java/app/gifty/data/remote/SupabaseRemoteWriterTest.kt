@@ -269,6 +269,36 @@ class SupabaseRemoteWriterTest {
     // ---- failures ----
 
     @Test
+    fun `an impossible expected version is refused before any request is made`() = runTest {
+        listOf(0L, -1L, Long.MIN_VALUE, Long.MAX_VALUE).forEach { version ->
+            val refused = runCatching { writer.updatePerson(alice(), personId, version, m1, person()) }
+            assertTrue("$version: ${refused.exceptionOrNull()}", refused.exceptionOrNull() is IllegalArgumentException)
+        }
+
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `a written row at an unexpected version is not taken as proof`() = runTest {
+        // A new row always starts at version 1.
+        answer = { request -> respondRows(listOf(request.json.jsonArray.single().jsonObject.complete(version = 2))) }
+        assertFailure(RemoteFailure.SERVER) { writer.insertPerson(alice(), personId, m1, person()) }
+
+        // An update of version 3 can only produce version 4.
+        val updatedAt = { version: Long ->
+            answer = { request ->
+                respondRows(listOf(request.json.jsonObject.with("id", personId).with("owner_user_id", alice).complete(version)))
+            }
+        }
+        listOf(3L, 5L).forEach { returned ->
+            updatedAt(returned)
+            assertFailure(RemoteFailure.SERVER) { writer.updatePerson(alice(), personId, 3, m1, person()) }
+        }
+        updatedAt(4)
+        assertEquals(Committed(4), writer.updatePerson(alice(), personId, 3, m1, person()))
+    }
+
+    @Test
     fun `server errors are classified by their PostgreSQL code`() = runTest {
         listOf(
             Triple(HttpStatusCode.Unauthorized, "PGRST301", RemoteFailure.UNAUTHENTICATED),

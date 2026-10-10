@@ -44,7 +44,7 @@ data class SyncOperationEntity(
      * that, even when [mutationId] has moved on.
      */
     val inFlightMutationId: UUID?,
-    /** Why automatic sync gave up on this operation; a new local change clears it. */
+    /** Why automatic sync gave up on the current mutation, [mutationId]; a new local change clears it. */
     val blockedReason: String?,
     val createdAt: Instant,
     val attemptCount: Int,
