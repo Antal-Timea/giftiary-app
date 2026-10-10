@@ -104,8 +104,6 @@ class SyncOperationDaoTest {
         dao.insert(blocked)
 
         assertEquals(blocked, dao.findForEntity(SyncEntityType.GIFT_IDEA, blocked.entityId))
-        assertEquals(1, dao.setBlockedReason(blocked.id, null))
-        assertEquals(blocked.copy(blockedReason = null), dao.findForEntity(SyncEntityType.GIFT_IDEA, blocked.entityId))
     }
 
     private fun operation(

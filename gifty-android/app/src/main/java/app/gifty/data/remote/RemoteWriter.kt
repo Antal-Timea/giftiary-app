@@ -15,6 +15,9 @@ import java.util.UUID
  * compare-and-set: they replace the row's whole client-decided state only if it is still at
  * [expectedVersion]. Deleting is an update that sets the tombstone; there is no hard delete.
  *
+ * An update's expectedVersion must be a real backend version (1 or more); anything else throws
+ * IllegalArgumentException before any request is made.
+ *
  * Failures are [RemoteException]s. [RemoteFailure.NETWORK] after a write proves nothing: the
  * mutation may have committed or may still commit, which only the mutation ledger can tell.
  */
@@ -63,7 +66,7 @@ interface RemoteWriter {
 
 sealed interface UpdateOutcome
 
-/** The server returned the written row carrying this write's mutation id, at [version]. */
+/** The server returned the written row carrying this write's mutation id, at the [version] its trigger set. */
 data class Committed(val version: Long) : UpdateOutcome
 
 /**

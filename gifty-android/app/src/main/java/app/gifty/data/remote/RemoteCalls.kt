@@ -9,7 +9,7 @@ import java.io.IOException
 
 /**
  * Runs [block] as [account] and reports every failure as a [RemoteException]; cancellation passes
- * through unchanged. Nothing is retried.
+ * through unchanged and is never reported as a failure. Nothing is retried.
  */
 internal suspend fun <T> AccountBoundClients.call(account: RemoteAccount, block: suspend (SupabaseClient) -> T): T =
     try {
@@ -23,6 +23,9 @@ internal suspend fun <T> AccountBoundClients.call(account: RemoteAccount, block:
     } catch (e: IOException) {
         throw RemoteException(RemoteFailure.NETWORK, e)
     } catch (e: SerializationException) {
+        throw RemoteException(RemoteFailure.SERVER, e)
+    } catch (e: Exception) {
+        // Anything else the SDK throws; never a cancellation, which is rethrown above.
         throw RemoteException(RemoteFailure.SERVER, e)
     }
 
