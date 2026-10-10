@@ -38,6 +38,14 @@ class SupabaseRemoteReader(
 
     override suspend fun fetchGifts(account: RemoteAccount): List<RemoteGift> = fetchAll(account, "gifts")
 
+    override suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson? = findRow(account, "people", id)
+
+    override suspend fun findOccasion(account: RemoteAccount, id: UUID): RemoteOccasion? = findRow(account, "occasions", id)
+
+    override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = findRow(account, "gift_ideas", id)
+
+    override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = findRow(account, "gifts", id)
+
     override suspend fun findMutation(account: RemoteAccount, mutationId: UUID): RemoteSyncMutation? {
         val rows = clients.call(account) { client ->
             client.from("sync_mutations").select {
@@ -54,6 +62,24 @@ class SupabaseRemoteReader(
         if (rows.isEmpty()) return null
         val row = rows.singleOrNull() ?: throw RemoteException(RemoteFailure.SERVER)
         if (row.mutationId != mutationId) throw RemoteException(RemoteFailure.SERVER)
+        requireOwner(account, row.ownerUserId)
+        return row
+    }
+
+    private suspend inline fun <reified T : RemoteRow> findRow(account: RemoteAccount, table: String, id: UUID): T? {
+        val rows = clients.call(account) { client ->
+            client.from(table).select {
+                filter {
+                    eq("id", id)
+                    eq("owner_user_id", account.ownerUserId)
+                }
+                // Two, so that a second row is seen and refused rather than cut off.
+                limit(2)
+            }.decodeList<T>()
+        }
+        if (rows.isEmpty()) return null
+        val row = rows.singleOrNull() ?: throw RemoteException(RemoteFailure.SERVER)
+        if (row.id != id) throw RemoteException(RemoteFailure.SERVER)
         requireOwner(account, row.ownerUserId)
         return row
     }

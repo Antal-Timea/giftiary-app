@@ -185,6 +185,37 @@ class SyncOperationQueueTest {
         assertEquals(1, dao.markInFlight(second.id, second.mutationId))
     }
 
+    @Test
+    fun `a blocked mutation cannot start sending`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val current = pending(SyncEntityType.PERSON, personId)
+        assertEquals(1, dao.blockCurrentMutation(current.id, current.mutationId, "rejected"))
+
+        assertEquals(0, dao.markInFlight(current.id, current.mutationId))
+
+        assertNull(pending(SyncEntityType.PERSON, personId).inFlightMutationId)
+    }
+
+    @Test
+    fun `attempts and errors are recorded only for the mutation still in flight`() = runTest {
+        val personId = UUID.randomUUID()
+        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
+        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
+
+        assertEquals(1, dao.recordAttempt(sent.id, sent.mutationId, clock.instant))
+        assertEquals(1, dao.recordError(sent.id, sent.mutationId, "NETWORK"))
+        assertEquals(0, dao.recordAttempt(sent.id, UUID.randomUUID(), clock.instant))
+        val recorded = pending(SyncEntityType.PERSON, personId)
+        assertEquals(sent.copy(attemptCount = 1, lastAttemptAt = clock.instant, lastErrorCode = "NETWORK"), recorded)
+
+        // Once it is no longer in flight, a late attempt or error of it changes nothing.
+        assertEquals(1, dao.clearInFlight(sent.id, sent.mutationId))
+        assertEquals(0, dao.recordAttempt(sent.id, sent.mutationId, clock.instant))
+        assertEquals(0, dao.recordError(sent.id, sent.mutationId, "SERVER"))
+        assertEquals(recorded.copy(inFlightMutationId = null), pending(SyncEntityType.PERSON, personId))
+    }
+
     // ---- blocked operations ----
 
     @Test
