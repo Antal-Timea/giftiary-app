@@ -33,6 +33,13 @@ interface SyncOperationDao {
     @Query("SELECT * FROM sync_operation WHERE entityType = :entityType AND entityId = :entityId")
     suspend fun findForEntity(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity?
 
+    /**
+     * The owner's whole queue, blocked operations included, oldest first. Unbounded on purpose:
+     * the runner orders by dependencies, which a window of the queue could cut apart.
+     */
+    @Query("SELECT * FROM sync_operation WHERE ownerUserId = :ownerUserId ORDER BY createdAt, id")
+    suspend fun getAllForOwner(ownerUserId: UUID): List<SyncOperationEntity>
+
     /** One owner's pending operations, oldest first. Operations without an owner never match. */
     @Query("SELECT * FROM sync_operation WHERE ownerUserId = :ownerUserId ORDER BY createdAt, id LIMIT :limit")
     suspend fun getPending(ownerUserId: UUID, limit: Int): List<SyncOperationEntity>
