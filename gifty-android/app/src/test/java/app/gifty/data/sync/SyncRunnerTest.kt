@@ -234,6 +234,66 @@ class SyncRunnerTest {
         assertEquals(RemoteState.LOCAL_ONLY, remoteStateOf(SyncEntityType.GIFT_IDEA, idea.id))
     }
 
+    @Test
+    fun `a parent queued after its child still goes first, so the child syncs in the same run`() = runTest {
+        val anna = syncedPerson("Anna")
+        val idea = ideas.addGiftIdea(ideaFor(anna))
+        val ideaQueuedAt = pending(SyncEntityType.GIFT_IDEA, idea.id).createdAt
+        clock.advanceBy(Duration.ofSeconds(1))
+        val bela = addPerson("Béla", null)
+        // The idea now belongs to Béla, whose create was queued after the idea's.
+        ideas.updateGiftIdea(idea.id, ideaFor(bela.id))
+        assertTrue(ideaQueuedAt < pending(SyncEntityType.PERSON, bela.id).createdAt)
+        assertEquals(ideaQueuedAt, pending(SyncEntityType.GIFT_IDEA, idea.id).createdAt)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(listOf(bela.id, idea.id), backend.writes.map { it.entityId })
+        assertEquals(2, result.pushed)
+        assertEquals(2, result.settled)
+        assertFalse(result.workRemains)
+        assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.GIFT_IDEA, idea.id))
+    }
+
+    @Test
+    fun `with only blocked work left, nothing remains to run but the user is needed`() = runTest {
+        val anna = addPerson("Anna", null)
+        val create = pending(SyncEntityType.PERSON, anna.id)
+        operations.blockCurrentMutation(create.id, create.mutationId, BlockReason.REJECTED.name)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(0, result.pushed)
+        assertTrue(backend.writes.isEmpty())
+        assertFalse(result.workRemains)
+        assertTrue(result.needsAttention)
+        assertEquals(BlockReason.REJECTED.name, pending(SyncEntityType.PERSON, anna.id).blockedReason)
+    }
+
+    @Test
+    fun `wishlist and wish operations are outside sync and left alone`() = runTest {
+        // Nothing in the app queues them yet; inserted directly to pin that the runner ignores them.
+        listOf(SyncEntityType.WISHLIST, SyncEntityType.WISH).forEach { type ->
+            operations.insert(
+                SyncOperationEntity(
+                    id = UUID.randomUUID(), ownerUserId = alice, entityType = type, entityId = UUID.randomUUID(),
+                    operation = SyncOperation.CREATE, mutationId = UUID.randomUUID(), inFlightMutationId = null,
+                    blockedReason = null, createdAt = clock.instant, attemptCount = 0, lastAttemptAt = null,
+                    lastErrorCode = null,
+                ),
+            )
+        }
+        val anna = addPerson("Anna", null)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals("only the person", 1, result.pushed)
+        assertEquals(listOf(anna.id), backend.writes.map { it.entityId })
+        assertFalse(result.workRemains)
+        assertFalse(result.needsAttention)
+        assertEquals(2, operations.getAllForOwner(alice).count { it.entityType in setOf(SyncEntityType.WISHLIST, SyncEntityType.WISH) })
+    }
+
     // ---- mark as given ----
 
     @Test
