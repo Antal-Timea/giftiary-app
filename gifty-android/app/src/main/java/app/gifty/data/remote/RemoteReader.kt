@@ -28,6 +28,18 @@ interface RemoteReader {
     /** All of the account's gifts, deleted ones included, ordered by id. */
     suspend fun fetchGifts(account: RemoteAccount): List<RemoteGift>
 
+    /** The account's person [id] as the backend has it now, tombstoned or not; null if it has none visible. */
+    suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson?
+
+    /** The account's occasion [id] as the backend has it now; null if it has none visible. */
+    suspend fun findOccasion(account: RemoteAccount, id: UUID): RemoteOccasion?
+
+    /** The account's gift idea [id] as the backend has it now; null if it has none visible. */
+    suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea?
+
+    /** The account's gift [id] as the backend has it now; null if it has none visible. */
+    suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift?
+
     /**
      * The ledger entry proving that [mutationId] committed, or null if there is none yet.
      *

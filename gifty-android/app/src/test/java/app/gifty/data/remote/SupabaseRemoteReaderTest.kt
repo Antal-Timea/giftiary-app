@@ -164,6 +164,48 @@ class SupabaseRemoteReaderTest {
         assertFailure(RemoteFailure.SERVER) { reader.findMutation(alice(), mutationId) }
     }
 
+    // ---- single rows ----
+
+    @Test
+    fun `a row is looked up by id for the account, tombstones included`() = runTest {
+        val id = UUID.randomUUID()
+        answer = { respondRows(listOf(RemoteTestData.gift(id, alice))) }
+
+        val gift = reader.findGift(alice(), id)
+
+        assertEquals(id, gift?.id)
+        assertEquals(alice, gift?.ownerUserId)
+        val request = requests.single()
+        assertEquals("gifts", request.url.encodedPath.substringAfterLast('/'))
+        assertEquals("eq.$id", request.url.parameters["id"])
+        assertEquals("eq.$alice", request.url.parameters["owner_user_id"])
+        assertEquals("2", request.url.parameters["limit"])
+        assertTrue(request.url.parameters.names().none { it == "deleted_at" })
+    }
+
+    @Test
+    fun `a row the account cannot see is reported as missing`() = runTest {
+        answer = { respondRows(emptyList()) }
+
+        assertNull(reader.findPerson(alice(), UUID.randomUUID()))
+        assertNull(reader.findOccasion(alice(), UUID.randomUUID()))
+        assertNull(reader.findGiftIdea(alice(), UUID.randomUUID()))
+        assertNull(reader.findGift(alice(), UUID.randomUUID()))
+    }
+
+    @Test
+    fun `a row lookup answered with another row, another owner or several rows is refused`() = runTest {
+        val id = UUID.randomUUID()
+        listOf(
+            listOf(RemoteTestData.person(UUID.randomUUID(), alice)),
+            listOf(RemoteTestData.person(id, bob)),
+            listOf(RemoteTestData.person(id, alice), RemoteTestData.person(id, alice)),
+        ).forEach { rows ->
+            answer = { respondRows(rows) }
+            assertFailure(RemoteFailure.SERVER) { reader.findPerson(alice(), id) }
+        }
+    }
+
     // ---- accounts ----
 
     @Test

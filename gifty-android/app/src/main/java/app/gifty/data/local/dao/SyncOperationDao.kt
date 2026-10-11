@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperationEntity
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -26,6 +27,9 @@ interface SyncOperationDao {
     @Delete
     suspend fun delete(operation: SyncOperationEntity)
 
+    @Query("SELECT * FROM sync_operation WHERE id = :id")
+    suspend fun findById(id: UUID): SyncOperationEntity?
+
     @Query("SELECT * FROM sync_operation WHERE entityType = :entityType AND entityId = :entityId")
     suspend fun findForEntity(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity?
 
@@ -35,16 +39,34 @@ interface SyncOperationDao {
 
     /**
      * Records that the operation's current payload, [mutationId], is about to be sent. Returns 0,
-     * changing nothing, if the payload has changed meanwhile or an earlier mutation is still
-     * unresolved: there is only ever one mutation in flight per entity.
+     * changing nothing, if the payload has changed meanwhile, an earlier mutation is still
+     * unresolved (there is only ever one mutation in flight per entity), or the mutation is
+     * blocked: a blocked mutation is never sent.
      */
     @Query(
         """
         UPDATE sync_operation SET inFlightMutationId = :mutationId
-        WHERE id = :id AND mutationId = :mutationId AND inFlightMutationId IS NULL
+        WHERE id = :id AND mutationId = :mutationId AND inFlightMutationId IS NULL AND blockedReason IS NULL
         """,
     )
     suspend fun markInFlight(id: UUID, mutationId: UUID): Int
+
+    /**
+     * Counts a write request for the in-flight mutation [mutationId]. While a mutation is in flight,
+     * the attempt fields describe its sends since the last local change; 0, changing nothing, if
+     * [mutationId] is no longer the one in flight.
+     */
+    @Query(
+        """
+        UPDATE sync_operation SET attemptCount = attemptCount + 1, lastAttemptAt = :attemptedAt
+        WHERE id = :id AND inFlightMutationId = :mutationId
+        """,
+    )
+    suspend fun recordAttempt(id: UUID, mutationId: UUID, attemptedAt: Instant): Int
+
+    /** Notes why the in-flight mutation [mutationId] is still unresolved; 0 if it is no longer in flight. */
+    @Query("UPDATE sync_operation SET lastErrorCode = :errorCode WHERE id = :id AND inFlightMutationId = :mutationId")
+    suspend fun recordError(id: UUID, mutationId: UUID, errorCode: String): Int
 
     /** Forgets the in-flight mutation once its outcome is known; 0 if [mutationId] is not the one in flight. */
     @Query("UPDATE sync_operation SET inFlightMutationId = NULL WHERE id = :id AND inFlightMutationId = :mutationId")
