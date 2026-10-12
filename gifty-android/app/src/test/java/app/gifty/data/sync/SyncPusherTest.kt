@@ -74,13 +74,18 @@ class SyncPusherTest {
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftyDatabase::class.java).build()
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock)
-        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), queue, activeOwner, clock)
+        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {})
+        occasions = OccasionRepositoryImpl(
+            database, database.occasionDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+        )
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue,
             activeOwner, clock,
+            SyncRequester {},
         )
-        gifts = GiftRepositoryImpl(database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock)
+        gifts = GiftRepositoryImpl(
+            database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
+        )
         backend = FakeBackend(database)
         val reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),

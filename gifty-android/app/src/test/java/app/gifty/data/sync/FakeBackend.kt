@@ -68,6 +68,9 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         /** Refused without applying anything. */
         data class Fail(val failure: RemoteFailure) : Behavior
 
+        /** Fails the way no remote call should, e.g. through a bug, without applying anything. */
+        data class Crash(val exception: Exception) : Behavior
+
         /** Signals [arrived], waits for [release], then behaves like [then]. */
         data class Hold(
             val arrived: CompletableDeferred<Unit> = CompletableDeferred(),
@@ -175,6 +178,7 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
                 throw RemoteException(RemoteFailure.NETWORK)
             }
             is Behavior.Fail -> throw RemoteException(behavior.failure)
+            is Behavior.Crash -> throw behavior.exception
             is Behavior.Hold -> error("Nested hold")
         }
     }

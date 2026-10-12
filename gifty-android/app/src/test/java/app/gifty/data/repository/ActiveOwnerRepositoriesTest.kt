@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
 import app.gifty.data.local.entity.SyncEntityType
+import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
@@ -59,14 +60,18 @@ class ActiveOwnerRepositoriesTest {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftyDatabase::class.java)
             .build()
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock)
-        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), queue, activeOwner, clock)
+        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {})
+        occasions = OccasionRepositoryImpl(
+            database, database.occasionDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+        )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock,
+            SyncRequester {},
         )
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(),
             queue, activeOwner, clock,
+            SyncRequester {},
         )
     }
 

@@ -10,6 +10,7 @@ import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.Money
@@ -61,12 +62,15 @@ class SyncReconcilerTest {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftyDatabase::class.java).build()
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
         val owner = FakeActiveOwner(alice)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, owner, clock)
-        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), queue, owner, clock)
+        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, owner, clock, SyncRequester {})
+        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), queue, owner, clock, SyncRequester {})
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue, owner, clock,
+            SyncRequester {},
         )
-        gifts = GiftRepositoryImpl(database, database.giftDao(), database.personDao(), database.occasionDao(), queue, owner, clock)
+        gifts = GiftRepositoryImpl(
+            database, database.giftDao(), database.personDao(), database.occasionDao(), queue, owner, clock, SyncRequester {},
+        )
         reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
             database.giftDao(),

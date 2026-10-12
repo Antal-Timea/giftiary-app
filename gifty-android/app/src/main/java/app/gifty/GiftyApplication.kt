@@ -1,6 +1,7 @@
 package app.gifty
 
 import android.app.Application
+import app.gifty.data.sync.ForegroundSyncCoordinator
 import app.gifty.data.user.OwnerSession
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -11,9 +12,13 @@ class GiftyApplication : Application() {
     @Inject
     lateinit var ownerSession: OwnerSession
 
+    @Inject
+    lateinit var syncCoordinator: ForegroundSyncCoordinator
+
     override fun onCreate() {
         super.onCreate()
         // Follows the signed-in account for the whole process, independent of any screen.
         ownerSession.start()
+        syncCoordinator.start()
     }
 }
