@@ -16,7 +16,6 @@ import java.util.UUID
             parentColumns = ["id"],
             childColumns = ["personId"],
             onDelete = ForeignKey.NO_ACTION,
-            deferred = true,
         ),
     ],
     indices = [Index("ownerUserId"), Index("personId")],

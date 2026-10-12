@@ -33,7 +33,7 @@ import app.gifty.data.local.entity.WishlistEntity
         SyncOperationEntity::class,
         SyncConflictEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(UuidConverter::class, TimeConverters::class, EnumConverters::class)

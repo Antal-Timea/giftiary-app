@@ -15,7 +15,6 @@ import java.util.UUID
             parentColumns = ["id"],
             childColumns = ["wishlistId"],
             onDelete = ForeignKey.NO_ACTION,
-            deferred = true,
         ),
     ],
     indices = [Index("wishlistId")],
