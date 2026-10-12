@@ -96,6 +96,13 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     /** Runs right after a row lookup, e.g. to let a lingering write commit at exactly that point. */
     var afterRowRead: (() -> Unit)? = null
 
+    /** Tables read in full, in order. */
+    val fetches: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
+    /** Run as a table's full read starts and as it returns; they may suspend or throw, e.g. to hold or fail it. */
+    var beforeFetch: suspend (table: String) -> Unit = {}
+    var afterFetch: suspend (table: String) -> Unit = {}
+
     private val lateCommits = mutableListOf<() -> Unit>()
     private val lingering = mutableListOf<() -> Unit>()
 
@@ -231,31 +238,39 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         return ledger[mutationId]?.takeIf { it.ownerUserId == account.ownerUserId }
     }
 
-    override suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson? = visible(account, id)?.let { row ->
+    override suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson? = visible(account, id)?.let { person(id, it) }
+
+    override suspend fun findOccasion(account: RemoteAccount, id: UUID): RemoteOccasion? = visible(account, id)?.let { occasion(id, it) }
+
+    override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = visible(account, id)?.let { giftIdea(id, it) }
+
+    override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = visible(account, id)?.let { gift(id, it) }
+
+    private fun person(id: UUID, row: Row): RemotePerson {
         val f = row.fields as RemotePersonFields
-        RemotePerson(id, row.owner, f.name, f.relationship, f.photoPath, f.linkedUserId, row.version, NOW, NOW, f.deletedAt, row.lastMutationId)
+        return RemotePerson(id, row.owner, f.name, f.relationship, f.photoPath, f.linkedUserId, row.version, NOW, NOW, f.deletedAt, row.lastMutationId)
     }
 
-    override suspend fun findOccasion(account: RemoteAccount, id: UUID): RemoteOccasion? = visible(account, id)?.let { row ->
+    private fun occasion(id: UUID, row: Row): RemoteOccasion {
         val f = row.fields as RemoteOccasionFields
-        RemoteOccasion(
+        return RemoteOccasion(
             id, row.owner, f.personId, f.type, f.title, f.day, f.month, f.year, f.repeatsYearly, row.version, NOW, NOW,
             f.deletedAt, row.lastMutationId,
         )
     }
 
-    override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = visible(account, id)?.let { row ->
+    private fun giftIdea(id: UUID, row: Row): RemoteGiftIdea {
         val f = row.fields as RemoteGiftIdeaFields
-        RemoteGiftIdea(
+        return RemoteGiftIdea(
             id, row.owner, f.recipientPersonId, f.occasionId, f.name, f.status, f.estimatedPriceAmountMinor,
             f.estimatedPriceCurrencyCode, f.actualPriceAmountMinor, f.actualPriceCurrencyCode, f.photoPath, f.productUrl,
             f.note, row.version, NOW, NOW, f.archivedAt, f.deletedAt, row.lastMutationId,
         )
     }
 
-    override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = visible(account, id)?.let { row ->
+    private fun gift(id: UUID, row: Row): RemoteGift {
         val f = row.fields as RemoteGiftFields
-        RemoteGift(
+        return RemoteGift(
             id, row.owner, f.direction, f.giverPersonId, f.recipientPersonId, f.occasionId, f.sourceGiftIdeaId, f.name,
             f.givenAt, f.priceAmountMinor, f.priceCurrencyCode, f.photoPath, f.productUrl, f.note, row.version, NOW, NOW,
             f.deletedAt, row.lastMutationId,
@@ -273,10 +288,22 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         readFailure?.let { throw RemoteException(it) }
     }
 
-    override suspend fun fetchPeople(account: RemoteAccount) = error("Not used by a single push")
-    override suspend fun fetchOccasions(account: RemoteAccount) = error("Not used by a single push")
-    override suspend fun fetchGiftIdeas(account: RemoteAccount) = error("Not used by a single push")
-    override suspend fun fetchGifts(account: RemoteAccount) = error("Not used by a single push")
+    override suspend fun fetchPeople(account: RemoteAccount) = fetch(account, "people", ::person)
+
+    override suspend fun fetchOccasions(account: RemoteAccount) = fetch(account, "occasions", ::occasion)
+
+    override suspend fun fetchGiftIdeas(account: RemoteAccount) = fetch(account, "gift_ideas", ::giftIdea)
+
+    override suspend fun fetchGifts(account: RemoteAccount) = fetch(account, "gifts", ::gift)
+
+    /** The account's rows of [table], tombstones included, ordered by id like the real reader's. */
+    private suspend fun <T> fetch(account: RemoteAccount, table: String, toRemote: (UUID, Row) -> T): List<T> {
+        beforeFetch(table)
+        read()
+        fetches += table
+        val found = synchronized(rows) { rows.filter { (_, row) -> row.owner == account.ownerUserId && tableOf(row.fields) == table }.toList() }
+        return found.sortedBy { it.first }.map { (id, row) -> toRemote(id, row) }.also { afterFetch(table) }
+    }
 
     private companion object {
         val NOW: Instant = Instant.parse("2026-10-10T12:00:00Z")
