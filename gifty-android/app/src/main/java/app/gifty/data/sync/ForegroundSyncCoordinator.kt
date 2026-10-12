@@ -23,7 +23,8 @@ import javax.inject.Singleton
  * something and left work, so failures that may pass later wait for the next request instead of
  * being retried here. Nothing asks for a drain from inside one, so drains never feed themselves.
  *
- * Every run is for the account active when it starts, with a token captured for it just then.
+ * A drain belongs to the account active when it starts and ends if another becomes active; each
+ * run uses a token captured for that account just before it.
  * Nothing here is needed for correctness: the queue holds all pending work, and is pushed again
  * on the next request, e.g. when the account is ready after a restart.
  */
@@ -66,8 +67,12 @@ class ForegroundSyncCoordinator @Inject constructor(
     }
 
     private suspend fun drain() {
+        // A drain is one account's: one run's result never decides a run for another. An account
+        // opened meanwhile gets its own drain, from the request its opening made.
+        val owner = activeOwner.ownerId.value ?: return
         for (run in 1..MAX_RUNS_PER_DRAIN) {
-            val owner = activeOwner.ownerId.value ?: return
+            if (activeOwner.ownerId.value != owner) return
+            // The token, unlike the account, may change between runs, so it is captured for each.
             val account = try {
                 accounts.capture(owner)
             } catch (e: RemoteException) {

@@ -15,6 +15,7 @@ import app.gifty.data.remote.RemoteTestData.token
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.sync.FakeBackend.Behavior
+import app.gifty.data.user.ActiveOwner
 import app.gifty.domain.model.Person
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
@@ -28,6 +29,10 @@ import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -51,6 +56,8 @@ import org.robolectric.shadows.ShadowLog
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CyclicBarrier
+import kotlin.concurrent.thread
 
 /**
  * Foreground orchestration with real Room, [SyncRunner], [SyncPusher] and supabase-kt [Auth], and
@@ -201,6 +208,49 @@ class ForegroundSyncCoordinatorTest {
         advanceUntilIdle()
         assertEquals(listOf("Run 1: pushed 1", "Run 1: pushed 0"), runs().map { it.substringBefore(",") })
         assertTrue(logs().none { "ALREADY_RUNNING" in it })
+    }
+
+    @Test
+    fun `concurrent starts still leave a single consumer`() = test {
+        addPerson("Anna", alice)
+        importSession(alice)
+        activeOwner.ownerId.value = alice
+        val hold = hold()
+        val coordinator = newCoordinator(appScope)
+        val together = CyclicBarrier(8)
+
+        List(8) { thread { together.await(); coordinator.start() } }.forEach { it.join() }
+        advanceUntilIdle()
+        assertTrue(hold.arrived.isCompleted)
+        coordinator.requestSync()
+        advanceUntilIdle()
+
+        // A second consumer would take this request now, find the runner busy and log that run.
+        assertTrue(runs().isEmpty())
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(listOf("Run 1: pushed 1", "Run 1: pushed 0"), runs().map { it.substringBefore(",") })
+        assertTrue(logs().none { "ALREADY_RUNNING" in it })
+    }
+
+    @Test
+    fun `a request made before start waits for the consumer`() = test {
+        // An open account whose opening was never reported, and no session: neither the owner nor
+        // the token collector can ask for sync, and a drain shows only as a failed capture.
+        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, appScope)
+        quiet.start()
+        advanceUntilIdle()
+        assertTrue("starting alone asks for nothing", logs().isEmpty())
+
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, appScope)
+        coordinator.requestSync()
+        advanceUntilIdle()
+        assertTrue("nothing drains before start", logs().isEmpty())
+
+        coordinator.start()
+        advanceUntilIdle()
+
+        assertEquals("one drain, for the earlier request", listOf("No account to sync: UNAUTHENTICATED"), logs())
     }
 
     // ---- how many runs a drain makes ----
@@ -472,6 +522,32 @@ class ForegroundSyncCoordinatorTest {
     }
 
     @Test
+    fun `an account switch during a drain's last push ends that drain, and the new account gets its own`() = test {
+        val anna = addPerson("Anna", alice)
+        val cecil = addPerson("Cecil", bob)
+        val hold = hold()
+        start(owner = alice)
+        assertTrue("run 1 waits in Anna's push, its only candidate", hold.arrived.isCompleted)
+
+        // Alice leaves M2 behind, then Bob's data opens, all while that last push is in flight.
+        people.updatePerson(anna.id, "Anna K.", null)
+        activeOwner.ownerId.value = null
+        importSession(bob)
+        activeOwner.ownerId.value = bob
+        advanceUntilIdle()
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        // Alice's run did not see the switch, and its result would allow a second run.
+        assertEquals("Run 1: pushed 1, settled 1, stopped null, needs attention false", runs().first())
+        assertTrue("Bob's work is never a second run of Alice's drain", runs().none { it.startsWith("Run 2") })
+        assertEquals("Run 1: pushed 1, settled 1, stopped null, needs attention false", runs()[1])
+        assertEquals(2, runs().size)
+        assertEquals(listOf(anna.id to token(alice), cecil.id to token(bob)), backend.writes.map { it.entityId to it.token })
+        assertNotNull("Alice's M2 waits for her next drain", pending(anna).mutationId)
+    }
+
+    @Test
     fun `an active account whose session belongs to another account is not synced`() = test {
         addPerson("Anna", alice)
         importSession(bob)
@@ -589,6 +665,16 @@ class ForegroundSyncCoordinatorTest {
     }
 
     // ---- fixtures ----
+
+    /** An account that is open, while collectors of [ownerId] never hear of it. */
+    @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
+    private class UnreportedOwner(owner: UUID) : ActiveOwner {
+        override val ownerId: StateFlow<UUID?> = object : StateFlow<UUID?> {
+            override val value: UUID? = owner
+            override val replayCache: List<UUID?> = listOf(owner)
+            override suspend fun collect(collector: FlowCollector<UUID?>): Nothing = awaitCancellation()
+        }
+    }
 
     private fun test(body: suspend TestScope.() -> Unit) = runTest(dispatcher) {
         try {
