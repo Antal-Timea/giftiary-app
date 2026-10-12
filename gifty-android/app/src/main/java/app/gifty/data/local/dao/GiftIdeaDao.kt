@@ -80,6 +80,10 @@ interface GiftIdeaDao {
     @Query("SELECT * FROM gift_idea WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): GiftIdeaEntity?
 
+    /** Whichever account's row has [id]; for sync, which must tell another account's row from none. */
+    @Query("SELECT * FROM gift_idea WHERE id = :id")
+    suspend fun findByIdForAnyOwner(id: UUID): GiftIdeaEntity?
+
     /**
      * Records that the backend committed this row at [version], the version after the local one.
      * Returns 0, changing nothing, if the row is missing, not owned or not at the version before.

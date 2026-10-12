@@ -36,6 +36,10 @@ interface PersonDao {
     @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): PersonEntity?
 
+    /** Whichever account's row has [id]; for sync, which must tell another account's row from none. */
+    @Query("SELECT * FROM person WHERE id = :id")
+    suspend fun findByIdForAnyOwner(id: UUID): PersonEntity?
+
     /** Fails if the id already exists, which for a locally created person indicates a bug. */
     @Insert
     suspend fun insert(person: PersonEntity)

@@ -40,6 +40,10 @@ interface OccasionDao {
     @Query("SELECT * FROM occasion WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): OccasionEntity?
 
+    /** Whichever account's row has [id]; for sync, which must tell another account's row from none. */
+    @Query("SELECT * FROM occasion WHERE id = :id")
+    suspend fun findByIdForAnyOwner(id: UUID): OccasionEntity?
+
     /** Fails if the id already exists, which for a locally created occasion indicates a bug. */
     @Insert
     suspend fun insert(occasion: OccasionEntity)
