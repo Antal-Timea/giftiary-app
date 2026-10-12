@@ -452,12 +452,15 @@ class SyncPullerTest {
 
     @Test
     fun `the backend is read with children first, so rows added between reads still arrive with their parents`() = runTest {
-        // After the gifts are read, another device creates a person and then an idea for them,
-        // the only order the backend accepts. The idea is read next and its person after it.
+        // Right after the first table is read, whichever it is, another device creates a person
+        // and then an idea for them, the only order the backend accepts. Read children first, the
+        // idea's table comes later and its person's table later still, so both arrive. Read
+        // parents first, the people would already have been read without Cecil, and the idea
+        // would arrive pointing at nobody.
         var cecil: UUID? = null
         var idea: UUID? = null
-        backend.afterFetch = { table ->
-            if (table == "gifts") {
+        backend.afterFetch = {
+            if (backend.fetches.size == 1) {
                 cecil = remotePerson("Cecil")
                 idea = remoteIdea(cecil!!)
             }
