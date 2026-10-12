@@ -9,6 +9,7 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
+import app.gifty.data.sync.SyncRequester
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.scoped
 import app.gifty.domain.model.Occasion
@@ -31,6 +32,7 @@ class OccasionRepositoryImpl @Inject constructor(
     private val syncQueue: SyncOperationQueue,
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
+    private val syncRequester: SyncRequester,
 ) : OccasionRepository {
 
     override fun observeOccasionsForPerson(personId: UUID): Flow<List<Occasion>> =
@@ -68,6 +70,7 @@ class OccasionRepositoryImpl @Inject constructor(
                 entity.remoteState,
             )
         }
+        syncRequester.requestSync()
         return occasion
     }
 
@@ -97,6 +100,7 @@ class OccasionRepositoryImpl @Inject constructor(
                 existing.remoteState,
             )
         }
+        syncRequester.requestSync()
     }
 
     override suspend fun deleteOccasion(id: UUID) {
@@ -113,6 +117,7 @@ class OccasionRepositoryImpl @Inject constructor(
                 existing.remoteState,
             )
         }
+        syncRequester.requestSync()
     }
 
     // The foreign key only proves the row exists; ownership and soft deletion are checked here.

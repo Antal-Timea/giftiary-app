@@ -9,6 +9,7 @@ import app.gifty.data.local.entity.PersonEntity
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
+import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OccasionNotFoundException
@@ -58,6 +59,7 @@ class OccasionRepositoryImplTest {
             syncQueue = SyncOperationQueue(database.syncOperationDao(), clock),
             activeOwner = FakeActiveOwner(ownerUserId),
             clock = clock,
+            SyncRequester {},
         )
         personDao.insert(anna)
     }

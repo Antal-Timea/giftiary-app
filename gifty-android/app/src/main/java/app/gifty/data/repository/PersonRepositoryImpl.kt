@@ -9,6 +9,7 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
+import app.gifty.data.sync.SyncRequester
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.scoped
 import app.gifty.domain.model.Person
@@ -29,6 +30,7 @@ class PersonRepositoryImpl @Inject constructor(
     private val syncQueue: SyncOperationQueue,
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
+    private val syncRequester: SyncRequester,
 ) : PersonRepository {
 
     override fun observePeople(): Flow<List<Person>> = activeOwner.scoped(emptyList()) { ownerUserId ->
@@ -65,6 +67,7 @@ class PersonRepositoryImpl @Inject constructor(
                 entity.remoteState,
             )
         }
+        syncRequester.requestSync()
         return person
     }
 
@@ -84,6 +87,7 @@ class PersonRepositoryImpl @Inject constructor(
                 existing.remoteState,
             )
         }
+        syncRequester.requestSync()
     }
 
     override suspend fun deletePerson(id: UUID) {
@@ -114,6 +118,7 @@ class PersonRepositoryImpl @Inject constructor(
                 existing.remoteState,
             )
         }
+        syncRequester.requestSync()
     }
 
     // Room stores instants with millisecond precision; truncating keeps returned models equal

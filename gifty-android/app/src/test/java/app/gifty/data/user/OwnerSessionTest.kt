@@ -13,6 +13,7 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.AuthState
 import app.gifty.domain.model.AuthUser
 import app.gifty.domain.repository.NoActiveOwnerException
@@ -277,6 +278,7 @@ class OwnerSessionTest {
         val people = PersonRepositoryImpl(
             database, database.personDao(), database.occasionDao(),
             SyncOperationQueue(database.syncOperationDao(), Clock.systemUTC()), session, Clock.systemUTC(),
+            SyncRequester {},
         )
         session.awaitState(OwnerSessionState.Ready(alice))
 

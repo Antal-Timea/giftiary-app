@@ -4,6 +4,8 @@ import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.sync.ForegroundSyncCoordinator
+import app.gifty.data.sync.SyncRequester
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.OwnerSession
 import app.gifty.domain.repository.AccountSession
@@ -43,6 +45,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindAccountSession(impl: OwnerSession): AccountSession
+
+    @Binds
+    abstract fun bindSyncRequester(impl: ForegroundSyncCoordinator): SyncRequester
 
     companion object {
 

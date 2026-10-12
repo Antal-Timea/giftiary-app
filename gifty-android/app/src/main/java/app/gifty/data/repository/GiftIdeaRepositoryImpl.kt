@@ -13,6 +13,7 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
+import app.gifty.data.sync.SyncRequester
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.scoped
 import app.gifty.domain.model.Gift
@@ -46,6 +47,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     private val syncQueue: SyncOperationQueue,
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
+    private val syncRequester: SyncRequester,
 ) : GiftIdeaRepository {
 
     override fun observeGiftIdeas(): Flow<List<GiftIdeaEntry>> = activeOwner.scoped(emptyList()) { ownerUserId ->
@@ -93,6 +95,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
                 entity.remoteState,
             )
         }
+        syncRequester.requestSync()
         return idea
     }
 
@@ -117,6 +120,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
             )
             writeChange(existing, updated)
         }
+        syncRequester.requestSync()
     }
 
     override suspend fun updateStatus(id: UUID, status: GiftIdeaStatus) {
@@ -125,6 +129,7 @@ class GiftIdeaRepositoryImpl @Inject constructor(
             val existing = giftIdeaDao.findActiveById(id, ownerUserId) ?: throw GiftIdeaNotFoundException(id)
             writeChange(existing, existing.copy(status = status))
         }
+        syncRequester.requestSync()
     }
 
     override suspend fun deleteGiftIdea(id: UUID) {
@@ -141,11 +146,12 @@ class GiftIdeaRepositoryImpl @Inject constructor(
                 existing.remoteState,
             )
         }
+        syncRequester.requestSync()
     }
 
     override suspend fun markAsGiven(id: UUID, givenAt: LocalDate, price: Money?): Gift {
         val ownerUserId = activeOwner.requireOwnerId()
-        return database.withTransaction {
+        val created = database.withTransaction {
             // Re-read inside the transaction: a second conversion must find the idea archived.
             val idea = giftIdeaDao.findNotDeletedById(id, ownerUserId) ?: throw GiftIdeaNotFoundException(id)
             if (idea.archivedAt != null) throw GiftIdeaAlreadyGivenException(id)
@@ -196,6 +202,8 @@ class GiftIdeaRepositoryImpl @Inject constructor(
             )
             gift
         }
+        syncRequester.requestSync()
+        return created
     }
 
     private suspend fun writeChange(existing: GiftIdeaEntity, updated: GiftIdeaEntity) {

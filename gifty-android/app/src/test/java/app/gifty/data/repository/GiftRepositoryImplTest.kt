@@ -9,6 +9,7 @@ import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
+import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.Money
 import app.gifty.domain.model.OccasionType
@@ -62,9 +63,14 @@ class GiftRepositoryImplTest {
         val activeOwner = FakeActiveOwner(ownerUserId)
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock,
+            SyncRequester {},
         )
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock)
-        occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), syncQueue, activeOwner, clock)
+        people = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock, SyncRequester {},
+        )
+        occasions = OccasionRepositoryImpl(
+            database, database.occasionDao(), database.personDao(), syncQueue, activeOwner, clock, SyncRequester {},
+        )
         anna = people.addPerson("Anna", "Sister")
         bela = people.addPerson("Béla", null)
     }

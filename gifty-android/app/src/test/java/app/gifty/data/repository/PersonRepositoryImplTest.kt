@@ -9,6 +9,7 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.local.mapper.toNewEntity
+import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
@@ -64,6 +65,7 @@ class PersonRepositoryImplTest {
             syncQueue = syncQueue,
             activeOwner = activeOwner,
             clock = clock,
+            SyncRequester {},
         )
         occasionRepository = OccasionRepositoryImpl(
             database = database,
@@ -72,6 +74,7 @@ class PersonRepositoryImplTest {
             syncQueue = syncQueue,
             activeOwner = activeOwner,
             clock = clock,
+            SyncRequester {},
         )
         giftRepository = GiftRepositoryImpl(
             database = database,
@@ -81,6 +84,7 @@ class PersonRepositoryImplTest {
             syncQueue = syncQueue,
             activeOwner = activeOwner,
             clock = clock,
+            SyncRequester {},
         )
         giftIdeaRepository = GiftIdeaRepositoryImpl(
             database = database,
@@ -91,6 +95,7 @@ class PersonRepositoryImplTest {
             syncQueue = syncQueue,
             activeOwner = activeOwner,
             clock = clock,
+            SyncRequester {},
         )
     }
 

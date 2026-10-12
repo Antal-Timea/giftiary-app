@@ -12,6 +12,7 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
 import app.gifty.data.local.mapper.toNewEntity
+import app.gifty.data.sync.SyncRequester
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.scoped
 import app.gifty.domain.model.Gift
@@ -38,6 +39,7 @@ class GiftRepositoryImpl @Inject constructor(
     private val syncQueue: SyncOperationQueue,
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
+    private val syncRequester: SyncRequester,
 ) : GiftRepository {
 
     override fun observeGifts(): Flow<List<GiftEntry>> = activeOwner.scoped(emptyList()) { ownerUserId ->
@@ -88,6 +90,7 @@ class GiftRepositoryImpl @Inject constructor(
                 entity.remoteState,
             )
         }
+        syncRequester.requestSync()
         return gift
     }
 
@@ -115,6 +118,7 @@ class GiftRepositoryImpl @Inject constructor(
             giftDao.update(updated.copy(updatedAt = now()))
             syncQueue.enqueue(existing.ownerUserId, SyncEntityType.GIFT, id, SyncOperation.UPDATE, existing.remoteState)
         }
+        syncRequester.requestSync()
     }
 
     override suspend fun deleteGift(id: UUID) {
@@ -125,6 +129,7 @@ class GiftRepositoryImpl @Inject constructor(
             giftDao.softDelete(id, ownerUserId, deletedAt = now())
             syncQueue.enqueue(existing.ownerUserId, SyncEntityType.GIFT, id, SyncOperation.DELETE, existing.remoteState)
         }
+        syncRequester.requestSync()
     }
 
     /**
