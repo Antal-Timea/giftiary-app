@@ -10,8 +10,10 @@ import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.remote.RemoteAccount
 import app.gifty.data.remote.RemoteAccounts
+import app.gifty.data.remote.RemoteException
 import app.gifty.data.remote.RemoteFailure
 import app.gifty.data.remote.RemoteTestData.token
+import app.gifty.data.remote.dto.RemotePersonFields
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.sync.FakeBackend.Behavior
@@ -90,6 +92,7 @@ class ForegroundSyncCoordinatorTest {
     private lateinit var database: GiftyDatabase
     private lateinit var backend: FakeBackend
     private lateinit var runner: SyncRunner
+    private lateinit var puller: SyncPuller
     private lateinit var people: PersonRepositoryImpl
 
     private val operations get() = database.syncOperationDao()
@@ -113,6 +116,10 @@ class ForegroundSyncCoordinatorTest {
             SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao()),
             newPusher(),
             activeOwner,
+        )
+        puller = SyncPuller(
+            database, backend, database.syncOperationDao(), database.personDao(), database.occasionDao(),
+            database.giftIdeaDao(), database.giftDao(), activeOwner,
         )
     }
 
@@ -237,12 +244,12 @@ class ForegroundSyncCoordinatorTest {
     fun `a request made before start waits for the consumer`() = test {
         // An open account whose opening was never reported, and no session: neither the owner nor
         // the token collector can ask for sync, and a drain shows only as a failed capture.
-        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, appScope)
+        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, appScope)
         quiet.start()
         advanceUntilIdle()
         assertTrue("starting alone asks for nothing", logs().isEmpty())
 
-        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, appScope)
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, appScope)
         coordinator.requestSync()
         advanceUntilIdle()
         assertTrue("nothing drains before start", logs().isEmpty())
@@ -664,6 +671,348 @@ class ForegroundSyncCoordinatorTest {
         logs.forEach { line -> secrets.forEach { secret -> assertFalse("'$line' leaks '$secret'", secret in line) } }
     }
 
+    // ---- full sync: push, then pull ----
+
+    @Test
+    fun `a local change asks only for a push`() = test {
+        val coordinator = startIdle(owner = alice)
+        addPerson("Anna", alice)
+
+        coordinator.requestSync()
+        advanceUntilIdle()
+
+        assertEquals(1, runs().size)
+        assertEquals(0, pulls())
+    }
+
+    @Test
+    fun `the account becoming ready pushes, then pulls`() = test {
+        val anna = addPerson("Anna", alice)
+        val bela = remotePerson("Béla")
+
+        start(owner = alice)
+
+        assertEquals(listOf("Run 1", "Pull"), drainSteps())
+        assertEquals(1, pulls())
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `a full sync, as on coming to the foreground, pushes the local change and then pulls the backend's`() = test {
+        val coordinator = startIdle(owner = alice)
+        val anna = addPerson("Anna", alice)
+        val bela = remotePerson("Béla")
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Run 1", "Pull"), drainSteps())
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `a full sync with nothing to push still pulls`() = test {
+        val coordinator = startIdle(owner = alice)
+        val bela = remotePerson("Béla")
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        assertEquals("Run 1: pushed 0", runs().single().substringBefore(","))
+        assertEquals(1, pulls())
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `blocked work does not stop the pull, which leaves it and its queue row exactly as they are`() = test {
+        val anna = addPerson("Anna", alice)
+        val create = pending(anna)
+        operations.blockCurrentMutation(create.id, create.mutationId, BlockReason.REJECTED.name)
+        backend.seed(anna.id, alice, 1, UUID.randomUUID(), RemotePersonFields("Not Anna", null, null, null, null))
+        val bela = remotePerson("Béla")
+        val before = database.personDao().findById(anna.id, alice)
+        val queue = operations.getAllForOwner(alice)
+
+        start(owner = alice)
+
+        assertEquals(1, pulls())
+        assertTrue(logs().any { it.startsWith("Pull: inserted 1,") && "skipped queued 1" in it })
+        assertEquals(before, database.personDao().findById(anna.id, alice))
+        assertEquals(queue, operations.getAllForOwner(alice))
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `a push whose request was lost is followed by one pull`() = test {
+        assertUnfinishedPushStillPulls(listOf(Behavior.LoseRequest, Behavior.LoseRequest))
+    }
+
+    @Test
+    fun `a push the server failed is followed by one pull`() = test {
+        assertUnfinishedPushStillPulls(listOf(Behavior.Fail(RemoteFailure.SERVER)))
+    }
+
+    @Test
+    fun `a refused session stops before the pull, and the pull follows once a new token is there`() = test {
+        val anna = addPerson("Anna", alice)
+        backend.script += Behavior.Fail(RemoteFailure.UNAUTHENTICATED)
+        val bela = remotePerson("Béla")
+
+        start(owner = alice, secret = "expired")
+
+        assertEquals(0, pulls())
+        assertNull(database.personDao().findById(bela, alice))
+
+        // A new token asks only for a push, but the full sync it could not finish is still wanted.
+        importSession(alice, "refreshed")
+        advanceUntilIdle()
+
+        assertEquals(1, pulls())
+        assertEquals(listOf(token(alice, "refreshed")), backend.fetchTokens.distinct())
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `refused permission stops before the pull`() = test {
+        addPerson("Anna", alice)
+        backend.script += Behavior.Fail(RemoteFailure.FORBIDDEN)
+
+        start(owner = alice)
+
+        assertTrue(runs().single(), "stopped PERMISSION" in runs().single())
+        assertEquals(0, pulls())
+    }
+
+    @Test
+    fun `an account switch during the push leaves the old account unpulled, and the new one gets its own full sync`() = test {
+        addPerson("Anna", alice)
+        val cecil = addPerson("Cecil", bob)
+        val hold = hold()
+        start(owner = alice)
+        assertTrue(hold.arrived.isCompleted)
+
+        activeOwner.ownerId.value = null
+        importSession(bob)
+        activeOwner.ownerId.value = bob
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("Bob's drain only", 1, pulls())
+        assertEquals(listOf(token(bob)), backend.fetchTokens.distinct())
+        assertEquals(listOf("Run 1", "Run 1", "Pull"), drainSteps())
+        assertEquals(cecil.id, backend.writes.last().entityId)
+    }
+
+    @Test
+    fun `a new token alone asks only for a push`() = test {
+        startIdle(owner = alice, secret = "t1")
+        addPerson("Anna", alice)
+
+        importSession(alice, "t2")
+        advanceUntilIdle()
+
+        assertEquals(1, runs().size)
+        assertEquals(0, pulls())
+    }
+
+    @Test
+    fun `signing out during the push leaves the old account unpulled, even with its token still there`() = test {
+        val anna = addPerson("Anna", alice)
+        val hold = hold()
+        start(owner = alice)
+        assertTrue(hold.arrived.isCompleted)
+
+        // The account's data closes first; its session is ended only afterwards.
+        activeOwner.ownerId.value = null
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertEquals("not even read", 0, pulls())
+    }
+
+    @Test
+    fun `a token refreshed during the push is the one the pull uses`() = test {
+        val coordinator = startIdle(owner = alice, secret = "t1")
+        addPerson("Anna", alice)
+        val hold = hold()
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        importSession(alice, "t2")
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(token(alice, "t1"), backend.writes.single().token)
+        assertEquals(listOf(token(alice, "t2")), backend.fetchTokens.distinct())
+        assertEquals(1, pulls())
+    }
+
+    @Test
+    fun `an account switch during the pull applies nothing and ends the drain`() = test {
+        val coordinator = startIdle(owner = alice)
+        val bela = remotePerson("Béla")
+        backend.beforeFetch = { table -> if (table == "people") activeOwner.ownerId.value = null }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        assertTrue(logs().contains("Pull: owner changed"))
+        assertNull(database.personDao().findById(bela, alice))
+        assertEquals(1, pulls())
+    }
+
+    @Test
+    fun `a local change made during the pull is left alone by it and pushed afterwards`() = test {
+        val anna = addPerson("Anna", alice)
+        val coordinator = startIdle(owner = alice)
+        var edited = false
+        backend.afterFetch = { table ->
+            if (table == "people" && !edited) {
+                edited = true
+                people.updatePerson(anna.id, "Anna K.", null)
+                coordinator.requestSync()
+            }
+        }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        assertTrue(logs().any { it.startsWith("Pull:") && "skipped queued 1" in it })
+        assertEquals(listOf("Run 1", "Pull", "Run 1"), drainSteps())
+        assertEquals("Anna K.", database.personDao().findById(anna.id, alice)!!.name)
+        assertEquals(anna.id, backend.writes.last().entityId)
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+    }
+
+    @Test
+    fun `a full sync asked for during a push-only drain is done by that drain`() = test {
+        val coordinator = startIdle(owner = alice)
+        addPerson("Anna", alice)
+        val hold = hold()
+        coordinator.requestSync()
+        advanceUntilIdle()
+        assertTrue(hold.arrived.isCompleted)
+
+        coordinator.requestFullSync()
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        // The full sync's own wake-up then finds nothing left to do.
+        assertEquals(listOf("Run 1", "Pull", "Run 1"), drainSteps())
+        assertEquals(1, pulls())
+    }
+
+    @Test
+    fun `a push request after a full sync request, both before start, still pulls`() = test {
+        // Only these requests can start a drain: the owner's opening is never reported.
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, appScope)
+        importSession(alice)
+        activeOwner.ownerId.value = alice
+        val bela = remotePerson("Béla")
+        coordinator.requestFullSync()
+        coordinator.requestSync()
+
+        coordinator.start()
+        advanceUntilIdle()
+
+        assertEquals(1, pulls())
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `repeated full sync requests pull once`() = test {
+        val coordinator = startIdle(owner = alice)
+
+        repeat(5) { coordinator.requestFullSync() }
+        advanceUntilIdle()
+
+        assertEquals(1, pulls())
+    }
+
+    @Test
+    fun `a full sync asked for during a pull gets its own drain, and no drain pulls twice`() = test {
+        val coordinator = startIdle(owner = alice)
+        var asked = false
+        backend.beforeFetch = { table ->
+            if (table == "gifts" && !asked) {
+                asked = true
+                coordinator.requestFullSync()
+            }
+        }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Run 1", "Pull", "Run 1", "Pull"), drainSteps())
+        assertEquals(2, pulls())
+    }
+
+    @Test
+    fun `an unexpected failure of the pull is not retried by itself and leaves the consumer working`() = test {
+        val coordinator = startIdle(owner = alice)
+        var attempts = 0
+        backend.beforeFetch = { table ->
+            if (table == "gifts" && attempts++ == 0) throw IllegalStateException("broken invariant")
+        }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+        assertTrue(logs().contains("Sync drain failed: IllegalStateException"))
+
+        coordinator.requestSync()
+        advanceUntilIdle()
+        assertEquals("a push request does not pull again", 1, attempts)
+
+        val bela = remotePerson("Béla")
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+        assertEquals(2, attempts)
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
+    @Test
+    fun `a pull refused for its session stays wanted until a new token is there`() = test {
+        val coordinator = startIdle(owner = alice, secret = "t1")
+        val bela = remotePerson("Béla")
+        var refused = false
+        backend.beforeFetch = { table ->
+            if (table == "gifts" && !refused) {
+                refused = true
+                throw RemoteException(RemoteFailure.UNAUTHENTICATED)
+            }
+        }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+        assertTrue(logs().contains("Pull failed: UNAUTHENTICATED"))
+        assertNull("not retried by itself", database.personDao().findById(bela, alice))
+
+        importSession(alice, "t2")
+        advanceUntilIdle()
+
+        assertNotNull(database.personDao().findById(bela, alice))
+        assertEquals(token(alice, "t2"), backend.fetchTokens.last())
+    }
+
+    @Test
+    fun `work committed before the process died is pushed, and the backend pulled, once the account is ready again`() = test {
+        val anna = addPerson("Anna", alice)
+        val bela = remotePerson("Béla")
+
+        start(owner = null)
+        assertEquals(0, pulls())
+        activeOwner.ownerId.value = alice
+        advanceUntilIdle()
+
+        assertEquals(listOf("Run 1", "Pull"), drainSteps())
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertNotNull(database.personDao().findById(bela, alice))
+    }
+
     // ---- fixtures ----
 
     /** An account that is open, while collectors of [ownerId] never hear of it. */
@@ -685,7 +1034,7 @@ class ForegroundSyncCoordinatorTest {
     }
 
     private fun newCoordinator(scope: CoroutineScope) =
-        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(auth), runner, scope)
+        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(auth), runner, puller, scope)
 
     /** Starts a coordinator for [owner], signed in with a token made with [secret], and lets its first drain finish. */
     private suspend fun TestScope.start(owner: UUID?, secret: String? = "signature-${owner ?: alice}"): ForegroundSyncCoordinator {
@@ -700,7 +1049,38 @@ class ForegroundSyncCoordinatorTest {
 
     /** Like [start], then forgets the runs so far, for tests about what later requests do. */
     private suspend fun TestScope.startIdle(owner: UUID, secret: String = "signature-$owner"): ForegroundSyncCoordinator =
-        start(owner, secret).also { ShadowLog.reset() }
+        start(owner, secret).also {
+            ShadowLog.reset()
+            backend.fetches.clear()
+            backend.fetchTokens.clear()
+        }
+
+    /** The push did not get through, yet the pull still runs, once, around the queued change. */
+    private suspend fun TestScope.assertUnfinishedPushStillPulls(failure: List<Behavior>) {
+        val anna = addPerson("Anna", alice)
+        backend.script += failure
+        val bela = remotePerson("Béla")
+
+        start(owner = alice)
+
+        assertEquals("Run 1: pushed 1, settled 0", runs().single().substringBefore(", stopped"))
+        assertEquals(1, pulls())
+        assertNotNull("unrelated rows still arrive", database.personDao().findById(bela, alice))
+        assertNotNull("the change is still queued", operations.findForEntity(SyncEntityType.PERSON, anna.id))
+        assertEquals(RemoteState.LOCAL_ONLY, remoteStateOf(anna))
+    }
+
+    /** Full reads of the backend so far: each pull reads the gifts first. */
+    private fun pulls(): Int = backend.fetches.count { it == "gifts" }
+
+    /** What each drain did, in order: "Run n" for a push run, "Pull" for a pull. */
+    private fun drainSteps(): List<String> =
+        logs().filter { it.startsWith("Run ") || it.startsWith("Pull") }.map { if (it.startsWith("Pull")) "Pull" else it.substringBefore(":") }
+
+    /** A person only the backend has, as if another device created it. */
+    private fun remotePerson(name: String): UUID = UUID.randomUUID().also {
+        backend.seed(it, alice, 1, UUID.randomUUID(), RemotePersonFields(name, null, null, null, null))
+    }
 
     private suspend fun importSession(owner: UUID, secret: String = "signature-$owner") {
         val session = UserSession(
