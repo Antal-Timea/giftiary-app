@@ -41,6 +41,14 @@ android {
                 "proguard-rules.pro",
             )
         }
+        // Release, minified the same way but debug-signed, to run the decoding smoke on a device
+        // against R8's output. It adds only src/minifiedSmoke, an instrumentation of the app itself,
+        // and no keep rule. Never shipped.
+        create("minifiedSmoke") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".minifiedsmoke"
+        }
     }
 
     compileOptions {
@@ -109,6 +117,9 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.ktor.client.mock)
+
+    // The minified decoding smoke: its entry point serves PostgREST rows from a mock engine.
+    add("minifiedSmokeImplementation", libs.ktor.client.mock)
 }
 
 /**
