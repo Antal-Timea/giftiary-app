@@ -5,6 +5,7 @@ import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.sync.ForegroundSyncCoordinator
+import app.gifty.data.sync.FullSyncRequester
 import app.gifty.data.sync.SyncRequester
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.OwnerSession
@@ -48,6 +49,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindSyncRequester(impl: ForegroundSyncCoordinator): SyncRequester
+
+    @Binds
+    abstract fun bindFullSyncRequester(impl: ForegroundSyncCoordinator): FullSyncRequester
 
     companion object {
 

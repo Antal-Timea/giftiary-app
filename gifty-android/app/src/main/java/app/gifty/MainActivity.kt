@@ -6,7 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.gifty.data.auth.AuthCallbackHandler
-import app.gifty.data.sync.SyncRequester
+import app.gifty.data.sync.FullSyncRequester
 import app.gifty.presentation.navigation.GiftyApp
 import app.gifty.presentation.theme.GiftyTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
     lateinit var authCallbackHandler: AuthCallbackHandler
 
     @Inject
-    lateinit var syncRequester: SyncRequester
+    lateinit var fullSyncRequester: FullSyncRequester
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,10 +32,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Coming back is the chance to push what earlier attempts left, e.g. while offline.
+    // Coming back is the chance to push what earlier attempts left, e.g. while offline, and to
+    // fetch what other devices changed meanwhile.
     override fun onStart() {
         super.onStart()
-        syncRequester.requestSync()
+        fullSyncRequester.requestFullSync()
     }
 
     // singleTask: a confirmation link opened while Gifty runs arrives here, not in a second copy.

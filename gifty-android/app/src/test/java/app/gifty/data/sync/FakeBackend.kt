@@ -96,8 +96,9 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     /** Runs right after a row lookup, e.g. to let a lingering write commit at exactly that point. */
     var afterRowRead: (() -> Unit)? = null
 
-    /** Tables read in full, in order. */
+    /** Tables read in full, in order, and the token each read carried. */
     val fetches: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    val fetchTokens: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
     /** Run as a table's full read starts and as it returns; they may suspend or throw, e.g. to hold or fail it. */
     var beforeFetch: suspend (table: String) -> Unit = {}
@@ -301,6 +302,7 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         beforeFetch(table)
         read()
         fetches += table
+        fetchTokens += account.accessToken
         val found = synchronized(rows) { rows.filter { (_, row) -> row.owner == account.ownerUserId && tableOf(row.fields) == table }.toList() }
         return found.sortedBy { it.first }.map { (id, row) -> toRemote(id, row) }.also { afterFetch(table) }
     }
