@@ -75,3 +75,130 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+/**
+ * v4 makes every foreign key immediate, so a write referring to a row that does not exist fails at
+ * once and rolls back, instead of failing only at commit, which on Android leaves the transaction
+ * open. Nothing else changes: each table that has foreign keys is rebuilt with its v4 definition,
+ * every row is copied as it is, and its indexes are created again.
+ *
+ * Fails, leaving v3 untouched, if the existing rows already refer to rows that do not exist.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Room migrates before it turns foreign keys on. They must be off: dropping a referenced
+        // table with them on would leave violations that renaming its replacement does not clear.
+        // The result is checked as a whole below instead.
+        val enforced = db.query("PRAGMA foreign_keys").use { it.moveToFirst() && it.getInt(0) != 0 }
+        check(!enforced) { "Foreign keys must not be enforced while tables are rebuilt" }
+
+        IMMEDIATE_FOREIGN_KEY_TABLES.forEach { it.rebuild(db) }
+
+        db.query("PRAGMA foreign_key_check").use { cursor ->
+            if (cursor.moveToFirst()) error("A row of `${cursor.getString(0)}` refers to a row that does not exist")
+        }
+    }
+}
+
+/** A table [MIGRATION_3_4] rebuilds, as Room defines it in v4. */
+private class RebuiltTable(
+    val name: String,
+    val definition: String,
+    val columns: List<String>,
+    val indexedColumns: List<String>,
+) {
+    fun rebuild(db: SupportSQLiteDatabase) {
+        val columnList = columns.joinToString { "`$it`" }
+        db.execSQL("CREATE TABLE `${name}_new` ($definition)")
+        db.execSQL("INSERT INTO `${name}_new` ($columnList) SELECT $columnList FROM `$name`")
+        db.execSQL("DROP TABLE `$name`")
+        db.execSQL("ALTER TABLE `${name}_new` RENAME TO `$name`")
+        indexedColumns.forEach { column ->
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${name}_$column` ON `$name` (`$column`)")
+        }
+    }
+}
+
+// Parents before children. The definitions are Room's v4 schema, copied verbatim.
+private val IMMEDIATE_FOREIGN_KEY_TABLES = listOf(
+    RebuiltTable(
+        name = "occasion",
+        definition =
+            "`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `personId` TEXT, `type` TEXT NOT NULL, " +
+            "`title` TEXT, `day` INTEGER NOT NULL, `month` INTEGER NOT NULL, `year` INTEGER, " +
+            "`repeatsYearly` INTEGER NOT NULL, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, " +
+            "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`personId`) REFERENCES `person`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ",
+        columns = listOf(
+            "id", "ownerUserId", "personId", "type", "title", "day", "month", "year", "repeatsYearly",
+            "version", "remoteState", "createdAt", "updatedAt", "deletedAt",
+        ),
+        indexedColumns = listOf("ownerUserId", "personId"),
+    ),
+    RebuiltTable(
+        name = "gift_idea",
+        definition =
+            "`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `recipientPersonId` TEXT NOT NULL, " +
+            "`occasionId` TEXT, `name` TEXT NOT NULL, `status` TEXT NOT NULL, " +
+            "`estimatedPriceAmountMinor` INTEGER, `estimatedPriceCurrencyCode` TEXT, " +
+            "`actualPriceAmountMinor` INTEGER, `actualPriceCurrencyCode` TEXT, `photoPath` TEXT, " +
+            "`productUrl` TEXT, `note` TEXT, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, " +
+            "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `archivedAt` INTEGER, " +
+            "`deletedAt` INTEGER, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`recipientPersonId`) REFERENCES `person`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+            "FOREIGN KEY(`occasionId`) REFERENCES `occasion`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ",
+        columns = listOf(
+            "id", "ownerUserId", "recipientPersonId", "occasionId", "name", "status",
+            "estimatedPriceAmountMinor", "estimatedPriceCurrencyCode", "actualPriceAmountMinor",
+            "actualPriceCurrencyCode", "photoPath", "productUrl", "note", "version", "remoteState",
+            "createdAt", "updatedAt", "archivedAt", "deletedAt",
+        ),
+        indexedColumns = listOf("ownerUserId", "recipientPersonId", "occasionId"),
+    ),
+    RebuiltTable(
+        name = "gift",
+        definition =
+            "`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `direction` TEXT NOT NULL, `giverPersonId` TEXT, " +
+            "`recipientPersonId` TEXT, `occasionId` TEXT, `sourceGiftIdeaId` TEXT, `name` TEXT NOT NULL, " +
+            "`givenAt` TEXT NOT NULL, `priceAmountMinor` INTEGER, `priceCurrencyCode` TEXT, `photoPath` TEXT, " +
+            "`productUrl` TEXT, `note` TEXT, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, " +
+            "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`giverPersonId`) REFERENCES `person`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+            "FOREIGN KEY(`recipientPersonId`) REFERENCES `person`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+            "FOREIGN KEY(`occasionId`) REFERENCES `occasion`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , " +
+            "FOREIGN KEY(`sourceGiftIdeaId`) REFERENCES `gift_idea`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ",
+        columns = listOf(
+            "id", "ownerUserId", "direction", "giverPersonId", "recipientPersonId", "occasionId",
+            "sourceGiftIdeaId", "name", "givenAt", "priceAmountMinor", "priceCurrencyCode", "photoPath",
+            "productUrl", "note", "version", "remoteState", "createdAt", "updatedAt", "deletedAt",
+        ),
+        indexedColumns = listOf("ownerUserId", "giverPersonId", "recipientPersonId", "occasionId", "sourceGiftIdeaId"),
+    ),
+    RebuiltTable(
+        name = "wishlist",
+        definition =
+            "`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `personId` TEXT, `name` TEXT NOT NULL, " +
+            "`version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+            "`updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`personId`) REFERENCES `person`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ",
+        columns = listOf(
+            "id", "ownerUserId", "personId", "name", "version", "remoteState", "createdAt", "updatedAt",
+            "deletedAt",
+        ),
+        indexedColumns = listOf("ownerUserId", "personId"),
+    ),
+    RebuiltTable(
+        name = "wish",
+        definition =
+            "`id` TEXT NOT NULL, `wishlistId` TEXT NOT NULL, `name` TEXT NOT NULL, `note` TEXT, " +
+            "`estimatedPriceAmountMinor` INTEGER, `estimatedPriceCurrencyCode` TEXT, `productUrl` TEXT, " +
+            "`photoPath` TEXT, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, " +
+            "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), " +
+            "FOREIGN KEY(`wishlistId`) REFERENCES `wishlist`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION ",
+        columns = listOf(
+            "id", "wishlistId", "name", "note", "estimatedPriceAmountMinor", "estimatedPriceCurrencyCode",
+            "productUrl", "photoPath", "version", "remoteState", "createdAt", "updatedAt", "deletedAt",
+        ),
+        indexedColumns = listOf("wishlistId"),
+    ),
+)

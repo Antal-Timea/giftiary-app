@@ -5,6 +5,7 @@ import androidx.room.Room
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.MIGRATION_1_2
 import app.gifty.data.local.MIGRATION_2_3
+import app.gifty.data.local.MIGRATION_3_4
 import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.LegacyOwnershipDao
@@ -27,7 +28,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GiftyDatabase =
         Room.databaseBuilder(context, GiftyDatabase::class.java, GiftyDatabase.NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides

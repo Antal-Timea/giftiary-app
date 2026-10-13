@@ -17,28 +17,24 @@ import java.util.UUID
             parentColumns = ["id"],
             childColumns = ["giverPersonId"],
             onDelete = ForeignKey.NO_ACTION,
-            deferred = true,
         ),
         ForeignKey(
             entity = PersonEntity::class,
             parentColumns = ["id"],
             childColumns = ["recipientPersonId"],
             onDelete = ForeignKey.NO_ACTION,
-            deferred = true,
         ),
         ForeignKey(
             entity = OccasionEntity::class,
             parentColumns = ["id"],
             childColumns = ["occasionId"],
             onDelete = ForeignKey.NO_ACTION,
-            deferred = true,
         ),
         ForeignKey(
             entity = GiftIdeaEntity::class,
             parentColumns = ["id"],
             childColumns = ["sourceGiftIdeaId"],
             onDelete = ForeignKey.NO_ACTION,
-            deferred = true,
         ),
     ],
     indices = [
