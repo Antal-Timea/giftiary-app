@@ -1133,3 +1133,16 @@ After an implementation task, provide a concise report containing:
 - any important issue discovered but intentionally left outside the task
 
 Do not produce a long tutorial explaining code that is already clear from the implementation.
+
+---
+
+# 45. Agent Handoff Workflow
+
+When `docs/agent/CURRENT_TASK.md` exists, also read `docs/agent/WORKFLOW.md` before starting work.
+
+Use:
+- `docs/agent/CURRENT_TASK.md` for the current assignment;
+- `docs/agent/STATUS.md` for your completion/audit report;
+- `docs/agent/REVIEW.md` for reviewer follow-up.
+
+This GitHub handoff replaces long manual copy/paste reports between agents. Follow the task's merge/implementation permissions exactly.
