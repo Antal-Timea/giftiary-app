@@ -1013,6 +1013,108 @@ class ForegroundSyncCoordinatorTest {
         assertNotNull(database.personDao().findById(bela, alice))
     }
 
+    // ---- the full sync request belongs to the drain that takes it ----
+
+    @Test
+    fun `an account opening right after the old account's token was read for its pull gets its own pull`() = test {
+        // Owner changes are not reported, so the only request for Bob's full sync is the one below.
+        val coordinator = ForegroundSyncCoordinator(WatchedOwner(activeOwner.ownerId), RemoteAccounts(tokenAuth), runner, puller, appScope)
+        importSession(alice)
+        activeOwner.ownerId.value = alice
+        coordinator.start()
+        advanceUntilIdle()
+        val cecil = remotePersonOf(bob, "Cecil")
+        var reads = 0
+        tokenRead = { session ->
+            reads++
+            if (reads == 2) {
+                // Alice's pull has just read her token. Bob's account opens and asks for its full sync.
+                sessionOverride = session(bob)
+                activeOwner.ownerId.value = bob
+                coordinator.requestFullSync()
+            }
+            session
+        }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+
+        assertTrue("Alice's pull saw the switch", logs().contains("Pull: owner changed"))
+        assertNotNull("Bob's full sync was not taken by Alice's drain", database.personDao().findById(cecil, bob))
+        assertEquals(token(bob), backend.fetchTokens.last())
+    }
+
+    @Test
+    fun `a full sync taken by a drain that then finds no usable token is kept for the next request`() = test {
+        val coordinator = startIdle(owner = alice, secret = "t1")
+        val bela = remotePerson("Béla")
+        var reads = 0
+        // The push run's token read succeeds; the pull's finds no session.
+        tokenRead = { session -> if (++reads == 2) null else session }
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+        assertTrue(logs().contains("No account to sync: UNAUTHENTICATED"))
+        assertEquals(0, pulls())
+
+        tokenRead = { it }
+        importSession(alice, "t2")
+        advanceUntilIdle()
+
+        assertEquals(1, pulls())
+        assertNotNull(database.personDao().findById(bela, alice))
+        assertEquals(token(alice, "t2"), backend.fetchTokens.last())
+    }
+
+    @Test
+    fun `an account opening between the owner check and taking the full sync request gets it back`() = test {
+        val owner = WatchedOwner(activeOwner.ownerId)
+        val coordinator = ForegroundSyncCoordinator(owner, RemoteAccounts(tokenAuth), runner, puller, appScope)
+        importSession(alice)
+        activeOwner.ownerId.value = alice
+        coordinator.start()
+        advanceUntilIdle()
+        val cecil = remotePersonOf(bob, "Cecil")
+        // Reads in the drain: at its start, before the push run, then before the pull.
+        owner.onRead = { read ->
+            if (read == 3) {
+                // Bob's account opens, its token not yet in use, and asks for its full sync.
+                activeOwner.ownerId.value = bob
+                coordinator.requestFullSync()
+            }
+        }
+        owner.reads = 0
+        backend.fetchTokens.clear()
+
+        coordinator.requestFullSync()
+        advanceUntilIdle()
+        owner.onRead = {}
+        assertEquals("Alice's drain did not pull", 0, backend.fetchTokens.count { it == token(alice) })
+
+        // Once Bob's token is in use, any request finds his full sync still wanted.
+        sessionOverride = session(bob)
+        coordinator.requestSync()
+        advanceUntilIdle()
+
+        assertNotNull(database.personDao().findById(cecil, bob))
+    }
+
+    /**
+     * An active owner whose every read of the current value can be watched. Changes are never
+     * reported to collectors, so a test makes every request itself.
+     */
+    @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
+    private class WatchedOwner(private val owner: StateFlow<UUID?>) : ActiveOwner {
+        var reads = 0
+        var onRead: (Int) -> Unit = {}
+        override val ownerId: StateFlow<UUID?> = object : StateFlow<UUID?> by owner {
+            override val value: UUID?
+                get() = owner.value.also { onRead(++reads) }
+
+            override suspend fun collect(collector: FlowCollector<UUID?>): Nothing = awaitCancellation()
+        }
+    }
+
     // ---- fixtures ----
 
     /** An account that is open, while collectors of [ownerId] never hear of it. */
@@ -1034,7 +1136,20 @@ class ForegroundSyncCoordinatorTest {
     }
 
     private fun newCoordinator(scope: CoroutineScope) =
-        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(auth), runner, puller, scope)
+        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(tokenAuth), runner, puller, scope)
+
+    // Every token the coordinator captures is read through here: a test may replace the session,
+    // or act at the exact moment a token is read.
+    private var sessionOverride: UserSession? = null
+    private var tokenRead: (UserSession?) -> UserSession? = { it }
+    private val tokenAuth: Auth = object : Auth by auth {
+        override fun currentSessionOrNull(): UserSession? = tokenRead(sessionOverride ?: auth.currentSessionOrNull())
+    }
+
+    /** A person only the backend has, of [owner]. */
+    private fun remotePersonOf(owner: UUID, name: String): UUID = UUID.randomUUID().also {
+        backend.seed(it, owner, 1, UUID.randomUUID(), RemotePersonFields(name, null, null, null, null))
+    }
 
     /** Starts a coordinator for [owner], signed in with a token made with [secret], and lets its first drain finish. */
     private suspend fun TestScope.start(owner: UUID?, secret: String? = "signature-${owner ?: alice}"): ForegroundSyncCoordinator {
@@ -1083,15 +1198,16 @@ class ForegroundSyncCoordinatorTest {
     }
 
     private suspend fun importSession(owner: UUID, secret: String = "signature-$owner") {
-        val session = UserSession(
-            accessToken = token(owner, secret),
-            refreshToken = "refresh-$secret",
-            expiresIn = 3600,
-            tokenType = "bearer",
-            user = UserInfo(aud = "authenticated", id = owner.toString()),
-        )
-        auth.importSession(session, autoRefresh = false, source = SessionSource.Storage)
+        auth.importSession(session(owner, secret), autoRefresh = false, source = SessionSource.Storage)
     }
+
+    private fun session(owner: UUID, secret: String = "signature-$owner") = UserSession(
+        accessToken = token(owner, secret),
+        refreshToken = "refresh-$secret",
+        expiresIn = 3600,
+        tokenType = "bearer",
+        user = UserInfo(aud = "authenticated", id = owner.toString()),
+    )
 
     /** The next write waits until the test releases it. */
     private fun hold() = Behavior.Hold().also { backend.script += it }

@@ -118,8 +118,20 @@ class ForegroundSyncCoordinator @Inject constructor(
      */
     private suspend fun pull(owner: UUID) {
         if (!fullSyncWanted.get() || activeOwner.ownerId.value != owner) return
-        val account = capture(owner) ?: return
+        // Taken before anything else can happen, so a full sync asked for from here on, e.g. by
+        // another account becoming ready, is left for the drain its request starts.
         if (!fullSyncWanted.getAndSet(false)) return
+        // An account opens before asking for its full sync, so if the request just taken was
+        // another account's, the owner has changed by now: it is given back.
+        if (activeOwner.ownerId.value != owner) {
+            fullSyncWanted.set(true)
+            return
+        }
+        val account = capture(owner)
+        if (account == null) {
+            fullSyncWanted.set(true)
+            return
+        }
         when (val result = puller.pull(account)) {
             is PullResult.Applied -> Log.d(
                 TAG,
