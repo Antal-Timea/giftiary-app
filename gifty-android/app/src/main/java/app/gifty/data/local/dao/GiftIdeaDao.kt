@@ -12,8 +12,10 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * User-facing reads and deletes are scoped by owner. "Active" ideas are neither deleted nor
- * archived; archived ideas have been given and only remain as the source of their gift.
+ * User-facing reads and deletes are scoped by owner. "Active" ideas are neither deleted nor given.
+ * An idea is given once it is archived, or once a gift of its owner, even a deleted one, was made
+ * from it: a sync can reopen the idea while its gift stays, and the backend reserves the idea for
+ * that gift either way. Given ideas only remain as the source of their gift.
  */
 @Dao
 interface GiftIdeaDao {
@@ -23,6 +25,7 @@ interface GiftIdeaDao {
         """
         SELECT * FROM gift_idea
         WHERE ownerUserId = :ownerUserId AND deletedAt IS NULL AND archivedAt IS NULL
+            AND NOT EXISTS (SELECT 1 FROM gift WHERE gift.sourceGiftIdeaId = gift_idea.id AND gift.ownerUserId = gift_idea.ownerUserId)
         ORDER BY updatedAt DESC, createdAt DESC, id
         """,
     )
@@ -34,6 +37,7 @@ interface GiftIdeaDao {
         SELECT * FROM gift_idea
         WHERE ownerUserId = :ownerUserId AND recipientPersonId = :personId
             AND deletedAt IS NULL AND archivedAt IS NULL
+            AND NOT EXISTS (SELECT 1 FROM gift WHERE gift.sourceGiftIdeaId = gift_idea.id AND gift.ownerUserId = gift_idea.ownerUserId)
         ORDER BY updatedAt DESC, createdAt DESC, id
         """,
     )
@@ -44,6 +48,7 @@ interface GiftIdeaDao {
         """
         SELECT * FROM gift_idea
         WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL AND archivedAt IS NULL
+            AND NOT EXISTS (SELECT 1 FROM gift WHERE gift.sourceGiftIdeaId = gift_idea.id AND gift.ownerUserId = gift_idea.ownerUserId)
         """,
     )
     fun observeActiveById(id: UUID, ownerUserId: UUID): Flow<GiftIdeaWithReferences?>
@@ -52,6 +57,7 @@ interface GiftIdeaDao {
         """
         SELECT * FROM gift_idea
         WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL AND archivedAt IS NULL
+            AND NOT EXISTS (SELECT 1 FROM gift WHERE gift.sourceGiftIdeaId = gift_idea.id AND gift.ownerUserId = gift_idea.ownerUserId)
         """,
     )
     suspend fun findActiveById(id: UUID, ownerUserId: UUID): GiftIdeaEntity?

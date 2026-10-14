@@ -22,8 +22,10 @@ import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.sync.FakeBackend.Behavior
+import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
+import app.gifty.domain.repository.GiftIdeaAlreadyGivenException
 import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.testing.FakeActiveOwner
@@ -673,7 +675,7 @@ class SyncRunnerTest {
 
     @Test
     fun `marking an idea given while another device edited it records the gift, and the idea reopens from the backend`() = runTest {
-        // Documents the per-entity outcome of a compound change; a guard against giving the idea twice is a later phase's.
+        // The idea row converges per entity; the gift made from it keeps it given here (see below).
         val anna = syncedPerson("Anna", version = 1)
         val idea = syncedIdea(anna)
         movedOnRemotely(idea, version = 2) { (it as RemoteGiftIdeaFields).copy(note = "From the other device") }
@@ -689,6 +691,38 @@ class SyncRunnerTest {
         assertNull(reopened.archivedAt)
         assertEquals("From the other device", reopened.note)
         assertFalse(conflicts().single().localSnapshotJson.contains("\"archived_at\":null"))
+
+        // Still given: not offered again, and a second conversion writes nothing anywhere.
+        val writes = backend.writes.size
+        assertTrue(ideas.observeGiftIdeas().first().none { it.idea.id == idea })
+        assertTrue(runCatching { ideas.markAsGiven(idea, LocalDate.of(2026, 10, 12), null) }.exceptionOrNull() is GiftIdeaAlreadyGivenException)
+        assertEquals(listOf(gift.id), database.giftDao().observeActive(alice).first().map { it.gift.id })
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+        runner.run(alicesAccount)
+        assertEquals(writes, backend.writes.size)
+    }
+
+    @Test
+    fun `an edit queued before a gift made from the idea arrives is still pushed, and the idea stays given`() = runTest {
+        val anna = syncedPerson("Anna", version = 1)
+        val idea = syncedIdea(anna)
+        ideas.updateGiftIdea(idea, ideaFor(anna).copy(note = "Blue, not green"))
+        // Another device gave the idea, but its archive lost a conflict there: the backend has the gift and an open idea.
+        val gift = UUID.randomUUID()
+        backend.seed(gift, alice, 1, UUID.randomUUID(), RemoteGiftFields(
+            GiftDirection.GIVEN, null, anna, null, idea, "Scarf", LocalDate.of(2026, 10, 10), null, null, null, null, null, null,
+        ))
+
+        newPuller().pull(alicesAccount)
+        assertTrue("given locally", ideas.observeGiftIdeas().first().none { it.idea.id == idea })
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(1, result.settled)
+        assertEquals("Blue, not green", (backend.rows.getValue(idea).fields as RemoteGiftIdeaFields).note)
+        assertNull(operations.findForEntity(SyncEntityType.GIFT_IDEA, idea))
+        assertEquals(2L, database.giftIdeaDao().findById(idea, alice)!!.version)
+        assertTrue(ideas.observeGiftIdeas().first().none { it.idea.id == idea })
     }
 
     @Test

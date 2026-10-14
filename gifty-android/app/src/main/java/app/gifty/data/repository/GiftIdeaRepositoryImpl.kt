@@ -152,9 +152,10 @@ class GiftIdeaRepositoryImpl @Inject constructor(
     override suspend fun markAsGiven(id: UUID, givenAt: LocalDate, price: Money?): Gift {
         val ownerUserId = activeOwner.requireOwnerId()
         val created = database.withTransaction {
-            // Re-read inside the transaction: a second conversion must find the idea archived.
+            // Re-read inside the transaction: a second conversion must find the idea given. A sync
+            // can reopen an idea while its gift stays, so the gift counts as much as the archive.
             val idea = giftIdeaDao.findNotDeletedById(id, ownerUserId) ?: throw GiftIdeaNotFoundException(id)
-            if (idea.archivedAt != null) throw GiftIdeaAlreadyGivenException(id)
+            if (idea.archivedAt != null || giftDao.hasGiftFromIdea(id, ownerUserId)) throw GiftIdeaAlreadyGivenException(id)
             // The references were valid when assigned; they may have been deleted since, which must
             // not stop the user from recording the gift, but they must still be theirs.
             personDao.findById(idea.recipientPersonId, ownerUserId) ?: throw PersonNotFoundException(idea.recipientPersonId)

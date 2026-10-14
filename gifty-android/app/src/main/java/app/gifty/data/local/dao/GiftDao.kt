@@ -63,6 +63,13 @@ interface GiftDao {
     suspend fun softDelete(id: UUID, ownerUserId: UUID, deletedAt: Instant): Int
 
     /** Deleted rows included, for sync bookkeeping. */
+    /**
+     * Whether a gift of the owner was made from idea [giftIdeaId]. Deleted gifts count: the idea
+     * stays given, and the backend still reserves it for that gift.
+     */
+    @Query("SELECT EXISTS (SELECT 1 FROM gift WHERE sourceGiftIdeaId = :giftIdeaId AND ownerUserId = :ownerUserId)")
+    suspend fun hasGiftFromIdea(giftIdeaId: UUID, ownerUserId: UUID): Boolean
+
     @Query("SELECT * FROM gift WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): GiftEntity?
 

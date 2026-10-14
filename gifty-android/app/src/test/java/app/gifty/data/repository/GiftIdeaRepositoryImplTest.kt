@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
+import app.gifty.data.local.entity.GiftEntity
 import app.gifty.data.local.entity.PersonEntity
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
@@ -23,10 +24,13 @@ import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -408,6 +412,73 @@ class GiftIdeaRepositoryImplTest {
         assertTrue(people.observePeople().first().none { it.id == anna.id })
     }
 
+    // --- Given through its gift ---
+
+    @Test
+    fun `an idea its gift was made from stays given when a sync reopens it`() = runTest {
+        val (idea, _) = givenThenReopened()
+
+        assertGiven(idea)
+    }
+
+    @Test
+    fun `an idea whose gift was deleted stays given, even reopened`() = runTest {
+        val (idea, gift) = givenThenReopened()
+        gifts.deleteGift(gift)
+
+        assertGiven(idea)
+    }
+
+    @Test
+    fun `another owner's gift naming the idea does not make it given`() = runTest {
+        val idea = ideas.addGiftIdea(ideaFor(anna.id))
+        val stranger = insertStranger()
+        database.giftDao().insert(
+            GiftEntity(
+                id = UUID.randomUUID(), ownerUserId = otherOwnerId, direction = GiftDirection.GIVEN, giverPersonId = null,
+                recipientPersonId = stranger.id, occasionId = null, sourceGiftIdeaId = idea.id, name = "Theirs",
+                givenAt = today, priceAmountMinor = null, priceCurrencyCode = null, photoPath = null, productUrl = null,
+                note = null, version = 0, remoteState = RemoteState.LOCAL_ONLY, createdAt = clock.instant,
+                updatedAt = clock.instant, deletedAt = null,
+            ),
+        )
+
+        assertEquals(listOf(idea.id), ideas.observeGiftIdeas().first().map { it.idea.id })
+        assertEquals(listOf(idea.id), ideas.observeGiftIdeasForPerson(anna.id).first().map { it.idea.id })
+        assertNotNull(ideas.getGiftIdea(idea.id))
+        ideas.updateStatus(idea.id, GiftIdeaStatus.PLANNED)
+        assertEquals(idea.id, ideas.markAsGiven(idea.id, today, null).sourceGiftIdeaId)
+    }
+
+    @Test
+    fun `an observed idea leaves the active lists as soon as a gift made from it arrives`() = runTest {
+        val idea = ideas.addGiftIdea(ideaFor(anna.id))
+        val sizes = Channel<Int>(Channel.UNLIMITED)
+        val collector = launch { ideas.observeGiftIdeas().collect { sizes.send(it.size) } }
+        assertEquals(1, sizes.receive())
+
+        // As a pull would: the gift arrives on its own, the idea row is not touched.
+        database.giftDao().insert(giftFrom(idea.id))
+
+        assertEquals(0, sizes.receive())
+        collector.cancel()
+        assertNull(ideaDao.findNotDeletedById(idea.id, ownerUserId)?.archivedAt)
+    }
+
+    @Test
+    fun `an idea given through its gift cannot be edited, restatused or deleted`() = runTest {
+        val (idea, _) = givenThenReopened()
+        val entity = ideaDao.findNotDeletedById(idea, ownerUserId)
+        val queue = syncDao.getAllForOwner(ownerUserId)
+
+        assertTrue(runCatching { ideas.updateGiftIdea(idea, ideaFor(anna.id).copy(name = "Changed")) }.exceptionOrNull() is GiftIdeaNotFoundException)
+        assertTrue(runCatching { ideas.updateStatus(idea, GiftIdeaStatus.PURCHASED) }.exceptionOrNull() is GiftIdeaNotFoundException)
+        ideas.deleteGiftIdea(idea)
+
+        assertEquals(entity, ideaDao.findNotDeletedById(idea, ownerUserId))
+        assertEquals(queue, syncDao.getAllForOwner(ownerUserId))
+    }
+
     private val today = LocalDate.of(2026, 5, 1)
     private val birthday = OccasionDetails(OccasionType.BIRTHDAY, null, 12, 3, null, true)
 
@@ -420,6 +491,39 @@ class GiftIdeaRepositoryImplTest {
         actualPrice = null,
         productUrl = null,
         note = null,
+    )
+
+    /** Hidden, not convertible, and nothing written when trying. */
+    private suspend fun assertGiven(idea: UUID) {
+        val gifts = database.giftDao().observeActive(ownerUserId).first()
+        val queue = syncDao.getAllForOwner(ownerUserId)
+
+        assertTrue(ideas.observeGiftIdeas().first().none { it.idea.id == idea })
+        assertTrue(ideas.observeGiftIdeasForPerson(anna.id).first().none { it.idea.id == idea })
+        assertNull(ideas.getGiftIdea(idea))
+        assertTrue(runCatching { ideas.markAsGiven(idea, today, null) }.exceptionOrNull() is GiftIdeaAlreadyGivenException)
+
+        assertEquals(gifts, database.giftDao().observeActive(ownerUserId).first())
+        assertEquals(queue, syncDao.getAllForOwner(ownerUserId))
+        assertFalse("not repaired", ideaDao.findNotDeletedById(idea, ownerUserId)?.archivedAt != null)
+    }
+
+    /**
+     * An idea given here, then reopened the way a pull does after a conflict: the idea row is
+     * open again while its gift stays. Returns the idea and the gift.
+     */
+    private suspend fun givenThenReopened(): Pair<UUID, UUID> {
+        val idea = ideas.addGiftIdea(ideaFor(anna.id))
+        val gift = ideas.markAsGiven(idea.id, today, null)
+        ideaDao.update(ideaDao.findNotDeletedById(idea.id, ownerUserId)!!.copy(archivedAt = null))
+        return idea.id to gift.id
+    }
+
+    private fun giftFrom(ideaId: UUID) = GiftEntity(
+        id = UUID.randomUUID(), ownerUserId = ownerUserId, direction = GiftDirection.GIVEN, giverPersonId = null,
+        recipientPersonId = anna.id, occasionId = null, sourceGiftIdeaId = ideaId, name = "Scarf", givenAt = today,
+        priceAmountMinor = null, priceCurrencyCode = null, photoPath = null, productUrl = null, note = null, version = 1,
+        remoteState = RemoteState.SYNCED, createdAt = clock.instant, updatedAt = clock.instant, deletedAt = null,
     )
 
     private suspend fun pendingIdeaOperation(ideaId: UUID): SyncOperation? =

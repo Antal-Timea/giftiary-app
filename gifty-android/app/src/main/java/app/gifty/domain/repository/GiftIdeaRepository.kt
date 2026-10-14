@@ -12,7 +12,9 @@ import java.util.UUID
 
 /**
  * Gift ideas are plans, stored on the device first. An idea that has been given is archived and
- * leaves the active lists; the resulting [Gift] keeps a reference to it.
+ * leaves the active lists; the resulting [Gift] keeps a reference to it. An idea that a gift, even
+ * a deleted one, was made from counts as given too, also if syncing with another device reopened
+ * it.
  *
  * Deleting a person or occasion never deletes the ideas that refer to them.
  */
