@@ -52,6 +52,12 @@ import javax.inject.Inject
  * for the one copy of a mutation that was ever sent; a missing referenced row never does, since
  * the parent may still arrive. Otherwise the mutation stays in flight, unresolved.
  *
+ * A remote row that moved past the version the entity's changes are based on is a conflict: none
+ * of them can commit, so the operation is settled as a whole, keeping the local state as a
+ * conflict, and the backend's row reaches Room through the next pull. An operation that an earlier
+ * version of the app blocked for this is settled the same way, on a fresh read of the row; it is
+ * never sent.
+ *
  * Network requests are never made inside a Room transaction. Cancellation is not a failure: it
  * leaves the mutation in flight, to be settled by the next push.
  */
@@ -72,6 +78,11 @@ class SyncPusher @Inject constructor(
     suspend fun push(account: RemoteAccount, operationId: UUID): PushOutcome {
         val mutation = when (val start = start(account.ownerUserId, operationId)) {
             is Start.Claimed -> start.mutation
+            is Start.BlockedConflict -> return try {
+                settleBlockedConflict(account, start.mutation)
+            } catch (e: RemoteException) {
+                unresolved(start.mutation, e.failure)
+            }
             is Start.Blocked -> return PushOutcome.Blocked(start.reason)
             Start.Gone -> return PushOutcome.Stale
         }
@@ -96,6 +107,7 @@ class SyncPusher @Inject constructor(
         return when (verdict) {
             is Verdict.Committed -> committed(mutation, verdict.version)
             is Verdict.CannotCommit -> cannotCommit(mutation, verdict.reason)
+            is Verdict.RemoteNewer -> conflict(mutation, verdict.remoteVersion, wasBlocked = false)
             Verdict.MaySend -> unresolved(mutation, RemoteFailure.NETWORK)
             Verdict.Unknown -> unresolved(mutation, null)
         }
@@ -185,6 +197,30 @@ class SyncPusher @Inject constructor(
         }
     }
 
+    /**
+     * Settles an operation blocked as REMOTE_NEWER by an earlier version of the app. The block was
+     * recorded on proof, while the mutation was in flight, so the mutation never committed; only
+     * the version the backend is at now is read. Anything short of a newer row of this very
+     * entity leaves the operation blocked.
+     */
+    private suspend fun settleBlockedConflict(account: RemoteAccount, mutation: InFlight): PushOutcome {
+        val row = remoteRow(account, mutation)
+        val expectedVersion = mutation.expectedVersion
+        val isNewer = row != null && expectedVersion != null &&
+            row.id == mutation.entityId && row.ownerUserId == mutation.ownerUserId && row.version > expectedVersion
+        if (!isNewer) return PushOutcome.Blocked(BlockReason.REMOTE_NEWER)
+        return conflict(mutation, row.version, wasBlocked = true)
+    }
+
+    private suspend fun conflict(mutation: InFlight, remoteVersion: Long, wasBlocked: Boolean): PushOutcome {
+        val settled = reconciler.settleConflict(
+            mutation.ownerUserId, mutation.entityType, mutation.entityId, mutation.mutationId, wasBlocked,
+            baseVersion = checkNotNull(mutation.expectedVersion) { "Only an update can conflict" },
+            remoteVersion = remoteVersion,
+        )
+        return if (settled) PushOutcome.ConflictSettled else PushOutcome.Stale
+    }
+
     /** Leaves the mutation in flight, noting why; the next push settles it. */
     private suspend fun unresolved(mutation: InFlight, failure: RemoteFailure?): PushOutcome {
         failure?.let { operations.recordError(mutation.operationId, mutation.mutationId, it.name) }
@@ -198,6 +234,8 @@ class SyncPusher @Inject constructor(
 
     private sealed interface Start {
         data class Claimed(val mutation: InFlight) : Start
+        /** Blocked as REMOTE_NEWER by an earlier version of the app; [mutation] is not in flight. */
+        data class BlockedConflict(val mutation: InFlight) : Start
         data class Blocked(val reason: BlockReason) : Start
         data object Gone : Start
     }
@@ -227,6 +265,15 @@ class SyncPusher @Inject constructor(
             )
         }
         operation.blockedReason?.let { reason ->
+            if (reason == BlockReason.REMOTE_NEWER.name) {
+                val local = local(operation.entityType, operation.entityId, ownerUserId)
+                return@withTransaction Start.BlockedConflict(
+                    InFlight(
+                        operationId, ownerUserId, operation.entityType, operation.entityId, operation.mutationId,
+                        local.expectedVersion, resumed = false,
+                    ),
+                )
+            }
             return@withTransaction Start.Blocked(BlockReason.entries.firstOrNull { it.name == reason } ?: BlockReason.REJECTED)
         }
         // Read and checked before the queue changes, so an impossible local state sends nothing.

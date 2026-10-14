@@ -6,6 +6,7 @@ import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
 import app.gifty.data.local.SyncReconciler
 import app.gifty.data.local.entity.RemoteState
+import app.gifty.data.local.entity.SyncConflictEntity
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
@@ -31,6 +32,8 @@ import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -89,7 +92,7 @@ class SyncPusherTest {
         backend = FakeBackend(database)
         val reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(),
+            database.giftDao(), database.syncConflictDao(), clock,
         )
         pusher = SyncPusher(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
@@ -448,23 +451,229 @@ class SyncPusherTest {
     // ---- no match ----
 
     @Test
-    fun `an update that matched nothing because the row moved on is a conflict, and nothing local is overwritten`() = runTest {
+    fun `an update that matched nothing because the row moved on is a settled conflict, and nothing local is overwritten`() = runTest {
         val anna = syncedPerson(version = 3)
         people.updatePerson(anna, "Anna Kovács", "Sister")
         val update = pending(SyncEntityType.PERSON, anna)
-        // Another device updated Anna meanwhile.
-        backend.rows.getValue(anna).apply {
-            version = 5
-            lastMutationId = UUID.randomUUID()
-        }
+        movedOnRemotely(anna, version = 5)
 
-        assertEquals(PushOutcome.Blocked(BlockReason.REMOTE_NEWER), pusher.push(alicesAccount, update.id))
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, update.id))
 
         assertEquals(3L to RemoteState.SYNCED, versionOf(SyncEntityType.PERSON, anna))
         assertEquals("Anna Kovács", people.getPerson(anna)?.name)
+        assertNull(operations.findForEntity(SyncEntityType.PERSON, anna))
+        val conflict = conflicts().single()
+        assertEquals(update.mutationId, conflict.id)
+        assertEquals(update.mutationId, conflict.mutationId)
+        assertEquals(SyncEntityType.PERSON to anna, conflict.entityType to conflict.entityId)
+        assertEquals(3L to 5L, conflict.baseVersion to conflict.remoteVersion)
+        assertTrue(conflict.localSnapshotJson, "\"name\":\"Anna Kovács\"" in conflict.localSnapshotJson)
+        assertEquals(1, backend.writes.size)
+        assertEquals("the backend keeps its row", 5L, backend.rows.getValue(anna).version)
+    }
+
+    @Test
+    fun `a conflict found after an earlier run left the mutation in flight is settled without sending again`() = runTest {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val update = pending(SyncEntityType.PERSON, anna)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.LoseRequest)
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.NETWORK), pusher.push(alicesAccount, update.id))
+        movedOnRemotely(anna, version = 4)
+
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, update.id))
+
+        assertEquals(2, backend.writes.size)
+        assertEquals(update.mutationId, conflicts().single().mutationId)
+        assertNull(operations.findForEntity(SyncEntityType.PERSON, anna))
+    }
+
+    @Test
+    fun `a mutation the ledger shows committed is never taken for a conflict, however far the row moved on`() = runTest {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val update = pending(SyncEntityType.PERSON, anna)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.LoseRequest)
+        pusher.push(alicesAccount, update.id)
+        // One send did commit, as version 4; another device then moved the row to 6.
+        backend.recordCommit(anna, alice, version = 4, mutationId = update.mutationId, fields = personFields("Anna Kovács"))
+        movedOnRemotely(anna, version = 6)
+
+        assertEquals(PushOutcome.Completed, pusher.push(alicesAccount, update.id))
+
+        assertEquals(4L to RemoteState.SYNCED, versionOf(SyncEntityType.PERSON, anna))
+        assertTrue(conflicts().isEmpty())
+    }
+
+    @Test
+    fun `a conflict keeps the newest local state, and the newer change is settled with it, unsent`() = runTest {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val update = pending(SyncEntityType.PERSON, anna)
+        movedOnRemotely(anna, version = 4)
+        val hold = Behavior.Hold()
+        backend.script += hold
+
+        val push = async { pusher.push(alicesAccount, update.id) }
+        hold.arrived.await()
+        people.updatePerson(anna, "Anna K.", "Big sister")
+        val edit = pending(SyncEntityType.PERSON, anna)
+        hold.release.complete(Unit)
+
+        assertEquals(PushOutcome.ConflictSettled, push.await())
+        assertEquals(listOf(update.mutationId), backend.writes.map { it.mutationId })
+        assertTrue(backend.writes.none { it.mutationId == edit.mutationId })
+        val conflict = conflicts().single()
+        assertEquals("proved by the mutation in flight", update.mutationId, conflict.mutationId)
+        assertTrue(conflict.localSnapshotJson, "\"name\":\"Anna K.\",\"relationship\":\"Big sister\"" in conflict.localSnapshotJson)
+        assertNull(operations.findForEntity(SyncEntityType.PERSON, anna))
+        assertEquals("Anna K.", people.getPerson(anna)?.name)
+    }
+
+    @Test
+    fun `a change after the conflict was settled is a new operation, and its own conflict`() = runTest {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val first = pending(SyncEntityType.PERSON, anna)
+        movedOnRemotely(anna, version = 4)
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, first.id))
+
+        people.updatePerson(anna, "Anna K.", "Sister")
+        val second = pending(SyncEntityType.PERSON, anna)
+
+        assertNotEquals(first.id, second.id)
+        assertEquals(SyncOperation.UPDATE, second.operation)
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, second.id))
+        assertEquals(setOf(first.mutationId, second.mutationId), conflicts().map { it.mutationId }.toSet())
+        assertEquals(listOf(3L, 3L), backend.writes.map { it.expectedVersion })
+    }
+
+    @Test
+    fun `a settled conflict is not settled again`() = runTest {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val update = pending(SyncEntityType.PERSON, anna)
+        movedOnRemotely(anna, version = 4)
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, update.id))
+
+        assertEquals(PushOutcome.Stale, pusher.push(alicesAccount, update.id))
+
+        assertEquals(1, conflicts().size)
+        assertEquals(1, backend.writes.size)
+    }
+
+    // ---- conflicts blocked by an earlier version of the app ----
+
+    @Test
+    fun `a conflict blocked by an earlier version is settled on a read of the row, never sent`() = runTest {
+        val (anna, blocked) = blockedConflict()
+        movedOnRemotely(anna, version = 5)
+        val readsBefore = backend.reads
+
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, blocked.id))
+
+        assertTrue(backend.writes.isEmpty())
+        assertTrue(backend.reads > readsBefore)
+        assertNull(operations.findForEntity(SyncEntityType.PERSON, anna))
+        val conflict = conflicts().single()
+        assertEquals(blocked.mutationId, conflict.id)
+        assertEquals(3L to 5L, conflict.baseVersion to conflict.remoteVersion)
+        assertEquals("Anna Kovács", people.getPerson(anna)?.name)
+    }
+
+    @Test
+    fun `a blocked conflict stays blocked unless the read shows a newer row of the entity`() = runTest {
+        val (anna, blocked) = blockedConflict()
+        val outcomes = listOf(
+            "equal" to { backend.rows.getValue(anna).version = 3 },
+            "older" to { backend.rows.getValue(anna).version = 2 },
+            "another account's" to { backend.rows.getValue(anna).let { backend.seed(anna, bob, 9, null, it.fields) } },
+            "missing" to { backend.rows.remove(anna) },
+        ).map { (case, setUp) ->
+            setUp()
+            case to pusher.push(alicesAccount, blocked.id)
+        }
+
+        assertEquals(outcomes.map { it.first to PushOutcome.Blocked(BlockReason.REMOTE_NEWER) }, outcomes)
+        assertEquals(blocked, pending(SyncEntityType.PERSON, anna))
+        assertTrue(conflicts().isEmpty())
+        assertTrue(backend.writes.isEmpty())
+    }
+
+    @Test
+    fun `a blocked conflict whose row cannot be read stays blocked`() = runTest {
+        val (anna, blocked) = blockedConflict()
+        movedOnRemotely(anna, version = 5)
+
+        backend.readFailure = RemoteFailure.NETWORK
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.NETWORK), pusher.push(alicesAccount, blocked.id))
+        backend.readFailure = RemoteFailure.UNAUTHENTICATED
+        assertEquals(PushOutcome.SessionRequired(RemoteFailure.UNAUTHENTICATED), pusher.push(alicesAccount, blocked.id))
+
+        assertEquals(blocked, pending(SyncEntityType.PERSON, anna))
+        assertTrue(conflicts().isEmpty())
+    }
+
+    @Test
+    fun `an edit made while a blocked conflict's row is read is left queued, and the old evidence settles nothing`() = runTest {
+        val (anna, blocked) = blockedConflict()
+        movedOnRemotely(anna, version = 5)
+        backend.afterRowRead = {
+            backend.afterRowRead = null
+            runBlocking { people.updatePerson(anna, "Anna K.", "Sister") }
+        }
+
+        assertEquals(PushOutcome.Stale, pusher.push(alicesAccount, blocked.id))
+
         val after = pending(SyncEntityType.PERSON, anna)
-        assertEquals(BlockReason.REMOTE_NEWER.name, after.blockedReason)
-        assertNull(after.inFlightMutationId)
+        assertNotEquals(blocked.mutationId, after.mutationId)
+        assertNull(after.blockedReason)
+        assertTrue(conflicts().isEmpty())
+        assertTrue(backend.writes.isEmpty())
+    }
+
+    @Test
+    fun `operations blocked for any other reason are neither read nor settled`() = runTest {
+        listOf(BlockReason.REJECTED, BlockReason.REMOTE_MISSING, BlockReason.REMOTE_ID_TAKEN).forEach { reason ->
+            val person = syncedPerson(version = 3)
+            people.updatePerson(person, "Changed", null)
+            val update = pending(SyncEntityType.PERSON, person)
+            operations.blockCurrentMutation(update.id, update.mutationId, reason.name)
+            movedOnRemotely(person, version = 5)
+            val readsBefore = backend.reads
+
+            assertEquals(PushOutcome.Blocked(reason), pusher.push(alicesAccount, update.id))
+
+            assertEquals(readsBefore, backend.reads)
+            assertEquals(reason.name, pending(SyncEntityType.PERSON, person).blockedReason)
+        }
+        assertTrue(conflicts().isEmpty())
+    }
+
+    @Test
+    fun `only a newer row settles a conflict`() = runTest {
+        // A missing row, a taken id, refused values and no answer at all each leave the entity's work queued.
+        val missing = syncedPerson(version = 3)
+        people.updatePerson(missing, "Changed", null)
+        backend.rows.remove(missing)
+        assertEquals(PushOutcome.Blocked(BlockReason.REMOTE_MISSING), pusher.push(alicesAccount, pending(SyncEntityType.PERSON, missing).id))
+
+        val taken = people.addPerson("Taken", null).id
+        backend.seed(taken, alice, version = 1, lastMutationId = UUID.randomUUID(), fields = personFields("Someone"))
+        assertEquals(PushOutcome.Blocked(BlockReason.REMOTE_ID_TAKEN), pusher.push(alicesAccount, pending(SyncEntityType.PERSON, taken).id))
+
+        val refused = syncedPerson(version = 3)
+        people.updatePerson(refused, "Changed", null)
+        backend.script += Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION)
+        assertEquals(PushOutcome.Blocked(BlockReason.REJECTED), pusher.push(alicesAccount, pending(SyncEntityType.PERSON, refused).id))
+
+        val unanswered = syncedPerson(version = 3)
+        people.updatePerson(unanswered, "Changed", null)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.LoseRequest)
+        assertEquals(PushOutcome.Unresolved(RemoteFailure.NETWORK), pusher.push(alicesAccount, pending(SyncEntityType.PERSON, unanswered).id))
+
+        assertTrue(conflicts().isEmpty())
+        listOf(missing, taken, refused, unanswered).forEach { assertNotNull(operations.findForEntity(SyncEntityType.PERSON, it)) }
     }
 
     @Test
@@ -743,6 +952,29 @@ class SyncPusherTest {
     }
 
     // ---- fixtures ----
+
+    private suspend fun conflicts(): List<SyncConflictEntity> = database.syncConflictDao().observeUnseen(alice).first()
+
+    /** Another device's update of the row, to [version]. */
+    private fun movedOnRemotely(id: UUID, version: Long) {
+        backend.rows.getValue(id).apply {
+            this.version = version
+            lastMutationId = UUID.randomUUID()
+            fields = (fields as RemotePersonFields).copy(name = "Anna (other device)")
+        }
+    }
+
+    /**
+     * An update of a person at version 3, blocked as REMOTE_NEWER the way earlier versions of the
+     * app left it: not in flight, its current mutation blocked.
+     */
+    private suspend fun blockedConflict(): Pair<UUID, SyncOperationEntity> {
+        val anna = syncedPerson(version = 3)
+        people.updatePerson(anna, "Anna Kovács", "Sister")
+        val update = pending(SyncEntityType.PERSON, anna)
+        assertEquals(1, operations.blockCurrentMutation(update.id, update.mutationId, BlockReason.REMOTE_NEWER.name))
+        return anna to pending(SyncEntityType.PERSON, anna)
+    }
 
     private suspend fun assertStillInFlight(type: SyncEntityType, id: UUID, mutationId: UUID) {
         val operation = pending(type, id)

@@ -64,9 +64,10 @@ class CommitEvidenceTest {
     }
 
     @Test
-    fun `an update of a row that moved past the expected version can never commit`() {
+    fun `an update of a row that moved past the expected version is a conflict at the row's version`() {
         Uncertainty.entries.forEach { uncertainty ->
-            assertEquals(Verdict.CannotCommit(BlockReason.REMOTE_NEWER), judge(uncertainty, mutation, 3, null, row(4, other)))
+            assertEquals(Verdict.RemoteNewer(4), judge(uncertainty, mutation, 3, null, row(4, other)))
+            assertEquals(Verdict.RemoteNewer(9), judge(uncertainty, mutation, 3, null, row(9, other)))
         }
     }
 

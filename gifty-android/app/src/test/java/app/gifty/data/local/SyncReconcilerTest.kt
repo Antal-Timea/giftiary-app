@@ -2,7 +2,12 @@ package app.gifty.data.local
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.gifty.data.local.entity.GiftEntity
+import app.gifty.data.local.entity.GiftIdeaEntity
+import app.gifty.data.local.entity.OccasionEntity
+import app.gifty.data.local.entity.PersonEntity
 import app.gifty.data.local.entity.RemoteState
+import app.gifty.data.local.entity.SyncConflictEntity
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
@@ -10,6 +15,7 @@ import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.sync.BlockReason
 import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
@@ -21,9 +27,11 @@ import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -37,7 +45,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Applying a committed in-flight mutation to Room. States are built through the real repositories
+ * Applying a committed in-flight mutation, or a proven conflict, to Room. States are built through the real repositories
  * and queue; the test only plays sync's part: marking the current mutation in flight, and
  * marking rows as known to the backend.
  */
@@ -73,7 +81,7 @@ class SyncReconcilerTest {
         )
         reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(),
+            database.giftDao(), database.syncConflictDao(), clock,
         )
         anna = people.addPerson("Anna", "Sister")
         markKnownToBackend(SyncEntityType.PERSON, anna.id, version = 1)
@@ -291,7 +299,192 @@ class SyncReconcilerTest {
         }
     }
 
+    // ---- a conflict ----
+
+    @Test
+    fun `a conflict keeps the entity's current state, exactly, and removes the operation in one step`() = runTest {
+        val rows = syncedOneOfEach()
+
+        rows.forEach { (type, id, json) ->
+            val before = entity(type, id)
+            val sent = send(type, id)
+
+            assertTrue("$type", reconciler.settleConflict(alice, type, id, sent, wasBlocked = false, baseVersion = 3, remoteVersion = 5))
+
+            assertNull("$type operation", operations.findForEntity(type, id))
+            assertEquals("$type untouched", before, entity(type, id))
+            assertEquals(
+                SyncConflictEntity(
+                    id = sent, ownerUserId = alice, entityType = type, entityId = id, mutationId = sent, baseVersion = 3,
+                    remoteVersion = 5, localSnapshotJson = json, createdAt = clock.instant, seenAt = null,
+                ),
+                conflicts().single { it.entityId == id },
+            )
+        }
+    }
+
+    @Test
+    fun `a conflict keeps the latest local state, including an edit made after the proving mutation was sent`() = runTest {
+        markKnownToBackend(SyncEntityType.PERSON, anna.id, version = 3)
+        people.updatePerson(anna.id, "Anna Kovács", "Sister")
+        val sent = send(SyncEntityType.PERSON, anna.id)
+        people.deletePerson(anna.id)
+        val deletedAt = entity(SyncEntityType.PERSON, anna.id).deletedAt
+
+        assertTrue(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, sent, wasBlocked = false, baseVersion = 3, remoteVersion = 4))
+
+        val conflict = conflicts().single()
+        assertEquals(sent, conflict.mutationId)
+        assertEquals(
+            """{"name":"Anna Kovács","relationship":"Sister","photo_path":null,"linked_user_id":null,"deleted_at":"$deletedAt"}""",
+            conflict.localSnapshotJson,
+        )
+        assertNull(operations.findForEntity(SyncEntityType.PERSON, anna.id))
+    }
+
+    @Test
+    fun `a blocked conflict is settled only while its operation is still blocked for it, with the same mutation`() = runTest {
+        markKnownToBackend(SyncEntityType.PERSON, anna.id, version = 3)
+        people.updatePerson(anna.id, "Anna Kovács", "Sister")
+        val blocked = pending(SyncEntityType.PERSON, anna.id)
+        operations.blockCurrentMutation(blocked.id, blocked.mutationId, BlockReason.REMOTE_NEWER.name)
+
+        assertUnchanged(SyncEntityType.PERSON, anna.id) {
+            // Taken as an in-flight result, or blocked for another reason, it is not this conflict.
+            assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, blocked.mutationId, wasBlocked = false, 3, 4))
+            operations.update(pending(SyncEntityType.PERSON, anna.id).copy(blockedReason = BlockReason.REJECTED.name))
+            assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, blocked.mutationId, wasBlocked = true, 3, 4))
+            // An operation in flight is never in the state an earlier version left a blocked conflict in.
+            operations.update(pending(SyncEntityType.PERSON, anna.id).copy(inFlightMutationId = blocked.mutationId, blockedReason = BlockReason.REMOTE_NEWER.name))
+            assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, blocked.mutationId, wasBlocked = true, 3, 4))
+            operations.update(pending(SyncEntityType.PERSON, anna.id).copy(inFlightMutationId = null))
+        }
+        // A new edit unblocks the operation under a new mutation: the old evidence is about nothing current.
+        people.updatePerson(anna.id, "Anna K.", "Sister")
+        assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, blocked.mutationId, wasBlocked = true, 3, 4))
+        assertNotNull(operations.findForEntity(SyncEntityType.PERSON, anna.id))
+        assertTrue(conflicts().isEmpty())
+
+        val current = pending(SyncEntityType.PERSON, anna.id)
+        operations.blockCurrentMutation(current.id, current.mutationId, BlockReason.REMOTE_NEWER.name)
+        // Blocked again for the newer mutation: the older one's evidence still settles nothing.
+        assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, blocked.mutationId, wasBlocked = true, 3, 4))
+        assertTrue(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, current.mutationId, wasBlocked = true, 3, 4))
+        assertEquals(current.mutationId, conflicts().single().id)
+    }
+
+    @Test
+    fun `a conflict for another mutation, a repeated one or another account's changes nothing`() = runTest {
+        markKnownToBackend(SyncEntityType.PERSON, anna.id, version = 3)
+        people.updatePerson(anna.id, "Anna Kovács", "Sister")
+        val current = pending(SyncEntityType.PERSON, anna.id).mutationId
+
+        assertUnchanged(SyncEntityType.PERSON, anna.id) {
+            // Not in flight yet.
+            assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, current, wasBlocked = false, 3, 4))
+            val sent = send(SyncEntityType.PERSON, anna.id)
+            assertFalse(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, UUID.randomUUID(), wasBlocked = false, 3, 4))
+            assertFalse(reconciler.settleConflict(bob, SyncEntityType.PERSON, anna.id, sent, wasBlocked = false, 3, 4))
+            operations.update(pending(SyncEntityType.PERSON, anna.id).copy(inFlightMutationId = null))
+        }
+        val sent = send(SyncEntityType.PERSON, anna.id)
+        assertTrue(reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, sent, wasBlocked = false, 3, 4))
+        assertFalse("repeated", reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, sent, wasBlocked = false, 3, 4))
+        assertEquals(1, conflicts().size)
+    }
+
+    @Test
+    fun `an impossible conflict is refused and nothing is applied`() = runTest {
+        markKnownToBackend(SyncEntityType.PERSON, anna.id, version = 3)
+        people.updatePerson(anna.id, "Anna Kovács", "Sister")
+        val sent = send(SyncEntityType.PERSON, anna.id)
+
+        assertUnchanged(SyncEntityType.PERSON, anna.id) {
+            listOf(
+                2L to 4L, // based on a version the entity is not at
+                3L to 3L, // the backend not ahead
+                3L to 2L,
+            ).forEach { (base, remote) ->
+                val refused = runCatching { reconciler.settleConflict(alice, SyncEntityType.PERSON, anna.id, sent, false, base, remote) }
+                assertTrue("$base/$remote", refused.exceptionOrNull() is IllegalStateException)
+            }
+        }
+        assertTrue(conflicts().isEmpty())
+    }
+
     // ---- fixtures ----
+
+    private suspend fun conflicts(): List<SyncConflictEntity> = database.syncConflictDao().observeUnseen(alice).first()
+
+    /**
+     * One synced row of each type at version 3, with an update pending, and the snapshot each must
+     * produce: every client-decided column, nulls and markers included.
+     */
+    private suspend fun syncedOneOfEach(): List<Triple<SyncEntityType, UUID, String>> {
+        val created = Instant.parse("2026-01-02T03:04:05.006Z")
+        val deleted = Instant.parse("2026-02-03T04:05:06.789Z")
+        val archived = Instant.parse("2026-03-04T05:06:07Z")
+        val person = PersonEntity(
+            id = UUID.fromString("a0000000-0000-4000-8000-00000000000a"), ownerUserId = alice, name = "Anna \"Panni\"",
+            relationship = null, photoPath = "users/a/people/p/avatar.jpg",
+            linkedUserId = UUID.fromString("c0000000-0000-4000-8000-00000000000c"), version = 3,
+            remoteState = RemoteState.SYNCED, createdAt = created, updatedAt = created, deletedAt = deleted,
+        )
+        val occasion = OccasionEntity(
+            id = UUID.fromString("e0000000-0000-4000-8000-00000000000e"), ownerUserId = alice, personId = anna.id,
+            type = OccasionType.BIRTHDAY, title = null, day = 29, month = 2, year = null, repeatsYearly = true, version = 3,
+            remoteState = RemoteState.SYNCED, createdAt = created, updatedAt = created, deletedAt = null,
+        )
+        val idea = GiftIdeaEntity(
+            id = UUID.fromString("d0000000-0000-4000-8000-00000000000d"), ownerUserId = alice, recipientPersonId = anna.id,
+            occasionId = occasion.id, name = "Scarf", status = GiftIdeaStatus.PURCHASED, estimatedPriceAmountMinor = 1299000,
+            estimatedPriceCurrencyCode = "HUF", actualPriceAmountMinor = null, actualPriceCurrencyCode = null, photoPath = null,
+            productUrl = "https://example.com/scarf", note = "Green", version = 3, remoteState = RemoteState.SYNCED,
+            createdAt = created, updatedAt = created, archivedAt = archived, deletedAt = null,
+        )
+        val gift = GiftEntity(
+            id = UUID.fromString("f0000000-0000-4000-8000-00000000000f"), ownerUserId = alice, direction = GiftDirection.RECEIVED,
+            giverPersonId = anna.id, recipientPersonId = null, occasionId = null, sourceGiftIdeaId = idea.id, name = "Book",
+            givenAt = LocalDate.of(2024, 2, 29), priceAmountMinor = 1999, priceCurrencyCode = "EUR", photoPath = null,
+            productUrl = null, note = null, version = 3, remoteState = RemoteState.SYNCED, createdAt = created,
+            updatedAt = created, deletedAt = null,
+        )
+        database.personDao().insert(person)
+        database.occasionDao().insert(occasion)
+        database.giftIdeaDao().insert(idea)
+        database.giftDao().insert(gift)
+        val queue = SyncOperationQueue(operations, clock)
+        listOf(
+            SyncEntityType.PERSON to person.id, SyncEntityType.OCCASION to occasion.id,
+            SyncEntityType.GIFT_IDEA to idea.id, SyncEntityType.GIFT to gift.id,
+        ).forEach { (type, id) -> queue.enqueue(alice, type, id, SyncOperation.UPDATE, RemoteState.SYNCED) }
+        return listOf(
+            Triple(
+                SyncEntityType.PERSON, person.id,
+                """{"name":"Anna \"Panni\"","relationship":null,"photo_path":"users/a/people/p/avatar.jpg",""" +
+                    """"linked_user_id":"c0000000-0000-4000-8000-00000000000c","deleted_at":"2026-02-03T04:05:06.789Z"}""",
+            ),
+            Triple(
+                SyncEntityType.OCCASION, occasion.id,
+                """{"person_id":"${anna.id}","type":"BIRTHDAY","title":null,"day":29,"month":2,"year":null,""" +
+                    """"repeats_yearly":true,"deleted_at":null}""",
+            ),
+            Triple(
+                SyncEntityType.GIFT_IDEA, idea.id,
+                """{"recipient_person_id":"${anna.id}","occasion_id":"${occasion.id}","name":"Scarf","status":"PURCHASED",""" +
+                    """"estimated_price_amount_minor":1299000,"estimated_price_currency_code":"HUF",""" +
+                    """"actual_price_amount_minor":null,"actual_price_currency_code":null,"photo_path":null,""" +
+                    """"product_url":"https://example.com/scarf","note":"Green","archived_at":"2026-03-04T05:06:07Z",""" +
+                    """"deleted_at":null}""",
+            ),
+            Triple(
+                SyncEntityType.GIFT, gift.id,
+                """{"direction":"RECEIVED","giver_person_id":"${anna.id}","recipient_person_id":null,"occasion_id":null,""" +
+                    """"source_gift_idea_id":"${idea.id}","name":"Book","given_at":"2024-02-29","price_amount_minor":1999,""" +
+                    """"price_currency_code":"EUR","photo_path":null,"product_url":null,"note":null,"deleted_at":null}""",
+            ),
+        )
+    }
 
     private val birthday = OccasionDetails(OccasionType.BIRTHDAY, title = null, day = 12, month = 3, year = null, repeatsYearly = true)
 

@@ -666,7 +666,7 @@ class SyncPullerTest {
         database.giftDao(),
         SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(),
+            database.giftDao(), database.syncConflictDao(), clock,
         ),
         backend, backend, clock,
     )

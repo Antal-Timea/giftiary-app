@@ -17,6 +17,13 @@ sealed interface PushOutcome {
     /** Nothing was done: the operation is gone, is not this account's, or was settled meanwhile. */
     data object Stale : PushOutcome
 
+    /**
+     * The backend's row moved on past the version the entity's changes were based on, so none of
+     * them can commit. The operation is gone and the local state is kept as a conflict; Room
+     * still shows that state until a pull brings in the backend's row.
+     */
+    data object ConflictSettled : PushOutcome
+
     /** The mutation can never commit as it is, and stays blocked until the user changes the entity. */
     data class Blocked(val reason: BlockReason) : PushOutcome
 

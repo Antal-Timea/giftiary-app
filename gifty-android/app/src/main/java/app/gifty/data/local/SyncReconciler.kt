@@ -5,10 +5,22 @@ import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
+import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.entity.RemoteState
+import app.gifty.data.local.entity.SyncConflictEntity
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
+import app.gifty.data.remote.dto.RemoteGiftFields
+import app.gifty.data.remote.dto.RemoteGiftIdeaFields
+import app.gifty.data.remote.dto.RemoteOccasionFields
+import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.toRemoteFields
+import app.gifty.data.sync.BlockReason
+import kotlinx.serialization.json.Json
+import java.time.Clock
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import javax.inject.Inject
 
@@ -22,6 +34,8 @@ class SyncReconciler @Inject constructor(
     private val occasions: OccasionDao,
     private val giftIdeas: GiftIdeaDao,
     private val gifts: GiftDao,
+    private val conflicts: SyncConflictDao,
+    private val clock: Clock,
 ) {
 
     /**
@@ -82,6 +96,86 @@ class SyncReconciler @Inject constructor(
         }
     }
 
+    /**
+     * Settles the entity's operation as a conflict, now that the backend's row is proven to be at
+     * [remoteVersion], past [baseVersion], the version every change in the operation is based on:
+     * none of them can commit any more.
+     *
+     * In one transaction the entity's current state, including any change made after
+     * [provingMutationId] was sent, is kept in `sync_conflict`, and the operation is removed. The
+     * entity itself is not touched: with its operation gone, the next pull brings in the backend's
+     * row, with all of the pull's checks.
+     *
+     * [provingMutationId] is the mutation the evidence was gathered for: the one in flight or, if
+     * [wasBlocked], the current one, blocked for this conflict by an earlier version of the app.
+     * Unless the operation is still exactly in that state for this owner (a late, repeated or
+     * foreign result, or a newer change that unblocked it) nothing changes and false is returned.
+     */
+    suspend fun settleConflict(
+        ownerUserId: UUID,
+        entityType: SyncEntityType,
+        entityId: UUID,
+        provingMutationId: UUID,
+        wasBlocked: Boolean,
+        baseVersion: Long,
+        remoteVersion: Long,
+    ): Boolean = database.withTransaction {
+        val operation = operations.findForEntity(entityType, entityId)
+        if (operation == null || operation.ownerUserId != ownerUserId) return@withTransaction false
+        val unchanged = if (wasBlocked) {
+            operation.inFlightMutationId == null &&
+                operation.mutationId == provingMutationId &&
+                operation.blockedReason == BlockReason.REMOTE_NEWER.name
+        } else {
+            operation.inFlightMutationId == provingMutationId
+        }
+        if (!unchanged) return@withTransaction false
+
+        val local = snapshot(entityType, entityId, ownerUserId)
+        // The version only changes when a mutation is settled, so these mean the local state or
+        // the evidence is wrong; nothing is applied.
+        check(local.remoteState == RemoteState.SYNCED && local.version == baseVersion) {
+            "$entityType $entityId is not synced at version $baseVersion"
+        }
+        check(remoteVersion > baseVersion) { "Version $remoteVersion is no conflict with $baseVersion" }
+        // Keyed by the proving mutation, which is settled only once: a second record for it is a bug.
+        conflicts.insert(
+            SyncConflictEntity(
+                id = provingMutationId,
+                ownerUserId = ownerUserId,
+                entityType = entityType,
+                entityId = entityId,
+                mutationId = provingMutationId,
+                baseVersion = baseVersion,
+                remoteVersion = remoteVersion,
+                localSnapshotJson = local.json,
+                createdAt = Instant.now(clock).truncatedTo(ChronoUnit.MILLIS),
+                seenAt = null,
+            ),
+        )
+        operations.delete(operation)
+        true
+    }
+
+    private class Snapshot(val remoteState: RemoteState, val version: Long, val json: String)
+
+    /** The entity's current state as the backend would store it. */
+    private suspend fun snapshot(entityType: SyncEntityType, id: UUID, ownerUserId: UUID): Snapshot = when (entityType) {
+        SyncEntityType.PERSON -> checkNotNull(people.findById(id, ownerUserId)) { "No person $id" }.let {
+            Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemotePersonFields.serializer(), it.toRemoteFields()))
+        }
+        SyncEntityType.OCCASION -> checkNotNull(occasions.findById(id, ownerUserId)) { "No occasion $id" }.let {
+            Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemoteOccasionFields.serializer(), it.toRemoteFields()))
+        }
+        SyncEntityType.GIFT_IDEA -> checkNotNull(giftIdeas.findById(id, ownerUserId)) { "No gift idea $id" }.let {
+            Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemoteGiftIdeaFields.serializer(), it.toRemoteFields()))
+        }
+        SyncEntityType.GIFT -> checkNotNull(gifts.findById(id, ownerUserId)) { "No gift $id" }.let {
+            Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemoteGiftFields.serializer(), it.toRemoteFields()))
+        }
+        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$entityType is not synced")
+    }
+
     /** Moves the entity to [version] and marks it known to the backend; returns its tombstone. */
     private suspend fun adoptVersion(entityType: SyncEntityType, id: UUID, ownerUserId: UUID, version: Long): Instant? {
         val adopted = when (entityType) {
@@ -102,6 +196,16 @@ class SyncReconciler @Inject constructor(
             SyncEntityType.WISHLIST, SyncEntityType.WISH -> null
         }
     }
+}
+
+/**
+ * The format of a conflict's local snapshot: the entity's Remote*Fields, the same JSON a push
+ * sends, with every field written out, nulls included, so a later reader needs no defaults to tell
+ * a cleared value from a missing one.
+ */
+private val SNAPSHOT_JSON = Json {
+    explicitNulls = true
+    encodeDefaults = true
 }
 
 enum class CommitOutcome {

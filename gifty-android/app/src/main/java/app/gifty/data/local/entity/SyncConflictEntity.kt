@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * A local change the backend rejected because the row had moved on since [baseVersion]. The
+ * Local changes the backend could not take because the row had moved on since [baseVersion]. The
  * backend's row wins locally; the losing local state is kept here so the user does not silently
  * lose it.
  */
@@ -24,12 +24,19 @@ data class SyncConflictEntity(
     val ownerUserId: UUID,
     val entityType: SyncEntityType,
     val entityId: UUID,
-    /** The rejected mutation. */
+    /**
+     * The mutation whose evidence proved the conflict. Not necessarily the source of
+     * [localSnapshotJson]: changes made after it was sent are folded into the same snapshot.
+     */
     val mutationId: UUID,
-    /** The version the rejected change was based on. */
+    /** The version the losing changes were based on. */
     val baseVersion: Long,
-    /** The backend's version that won. */
+    /** The backend's version seen when the conflict was settled; it may have moved on since. */
     val remoteVersion: Long,
+    /**
+     * The entity's latest local state when the conflict was settled, as its Remote*Fields JSON
+     * (type given by [entityType]). It may include changes made after [mutationId] was sent.
+     */
     val localSnapshotJson: String,
     val createdAt: Instant,
     val seenAt: Instant?,

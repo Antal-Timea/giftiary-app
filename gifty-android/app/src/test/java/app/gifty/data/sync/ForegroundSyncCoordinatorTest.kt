@@ -40,6 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -1099,6 +1100,72 @@ class ForegroundSyncCoordinatorTest {
         assertNotNull(database.personDao().findById(cecil, bob))
     }
 
+    // ---- conflicts ----
+
+    @Test
+    fun `a conflict settled by a push-only drain is pulled by that same drain`() = test {
+        val coordinator = startIdle(owner = alice)
+        val anna = conflictedPerson()
+
+        coordinator.requestSync()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Run 1", "Pull"), drainSteps())
+        assertEquals("Anna (other device)", database.personDao().findById(anna, alice)!!.name)
+        assertEquals(1, database.syncConflictDao().observeUnseen(alice).first().size)
+    }
+
+    @Test
+    fun `a conflict settled before the push stops is pulled by a later drain, not by this one`() = test {
+        val coordinator = startIdle(owner = alice)
+        val anna = conflictedPerson()
+        addPerson("Béla", alice)
+        backend.script += listOf(Behavior.Normal, Behavior.Fail(RemoteFailure.FORBIDDEN))
+
+        coordinator.requestSync()
+        advanceUntilIdle()
+
+        assertTrue(runs().single(), "stopped PERMISSION" in runs().single())
+        assertEquals(0, pulls())
+        assertEquals("Anna K.", database.personDao().findById(anna, alice)!!.name)
+
+        coordinator.requestSync()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Run 1", "Run 1", "Pull"), drainSteps())
+        assertEquals("Anna (other device)", database.personDao().findById(anna, alice)!!.name)
+    }
+
+    @Test
+    fun `a conflict settled just before an account switch is pulled when its account is back, never into another`() = test {
+        val coordinator = startIdle(owner = alice)
+        val anna = conflictedPerson()
+        addPerson("Béla", alice)
+        backend.script += Behavior.Normal
+        val hold = hold()
+        coordinator.requestSync()
+        advanceUntilIdle()
+        assertTrue(hold.arrived.isCompleted)
+
+        activeOwner.ownerId.value = null
+        importSession(bob)
+        activeOwner.ownerId.value = bob
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf(token(bob)), backend.fetchTokens.distinct())
+        assertEquals("Anna K.", database.personDao().findById(anna, alice)!!.name)
+        assertEquals(1, database.syncConflictDao().observeUnseen(alice).first().size)
+
+        activeOwner.ownerId.value = null
+        importSession(alice)
+        activeOwner.ownerId.value = alice
+        advanceUntilIdle()
+
+        assertEquals(token(alice), backend.fetchTokens.last())
+        assertEquals("Anna (other device)", database.personDao().findById(anna, alice)!!.name)
+    }
+
     /**
      * An active owner whose every read of the current value can be watched. Changes are never
      * reported to collectors, so a test makes every request itself.
@@ -1245,12 +1312,31 @@ class ForegroundSyncCoordinatorTest {
         return person.id
     }
 
+    /**
+     * Alice's person at version 3, edited here while another device moved the backend's row to
+     * version 4: pushing the edit settles a conflict.
+     */
+    private suspend fun conflictedPerson(): UUID {
+        val anna = syncedPerson("Anna", version = 3)
+        val active = activeOwner.ownerId.value
+        activeOwner.ownerId.value = alice
+        people.updatePerson(anna, "Anna K.", null)
+        activeOwner.ownerId.value = active
+        clock.advanceBy(Duration.ofSeconds(1))
+        backend.rows.getValue(anna).apply {
+            version = 4
+            lastMutationId = UUID.randomUUID()
+            fields = (fields as RemotePersonFields).copy(name = "Anna (other device)")
+        }
+        return anna
+    }
+
     private fun newPusher() = SyncPusher(
         database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
         database.giftDao(),
         SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(),
+            database.giftDao(), database.syncConflictDao(), clock,
         ),
         backend, backend, clock,
     )

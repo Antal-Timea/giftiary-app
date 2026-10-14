@@ -30,9 +30,11 @@ import javax.inject.Singleton
  * A drain is at most [MAX_RUNS_PER_DRAIN] runs of [SyncRunner], then at most one pull if a full
  * sync was asked for and the push was not stopped. A second run follows only one that settled
  * something and left work, so failures that may pass later wait for the next request instead of
- * being retried here. Pushing first gives queued local changes their turn before the backend's
- * data is read; the pull leaves every entity with queued work alone, and queues nothing, so no push
- * follows it. Nothing asks for a drain from inside one, so drains never feed themselves.
+ * being retried here. A run that settles a conflict asks for a full sync, since only a pull brings
+ * in the backend's row; it does not wake anything, so it is this drain's pull or a later one's.
+ * Pushing first gives queued local changes their turn before the backend's data is read; the pull
+ * leaves every entity with queued work alone, and queues nothing, so no push follows it. Nothing
+ * asks for a drain from inside one, so drains never feed themselves.
  *
  * A drain belongs to the account active when it starts and ends if another becomes active; each
  * run and the pull use a token captured for that account just before them.
@@ -106,6 +108,9 @@ class ForegroundSyncCoordinator @Inject constructor(
                 "Run $run: pushed ${result.pushed}, settled ${result.settled}, stopped ${result.stoppedBecause}, " +
                     "needs attention ${result.needsAttention}",
             )
+            // A settled conflict's entity takes the backend's row only through a pull: this
+            // drain's, unless the push stops, and then a later drain's.
+            if (result.conflictsSettled > 0) fullSyncWanted.set(true)
             if (result.stoppedBecause != null) return false
             if (!result.workRemains || result.settled == 0) return true
         }

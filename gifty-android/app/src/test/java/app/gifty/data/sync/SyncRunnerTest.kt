@@ -6,12 +6,15 @@ import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
 import app.gifty.data.local.SyncReconciler
 import app.gifty.data.local.entity.RemoteState
+import app.gifty.data.local.entity.SyncConflictEntity
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.remote.RemoteAccount
 import app.gifty.data.remote.RemoteFailure
 import app.gifty.data.remote.RemoteTestData.token
+import app.gifty.data.remote.dto.RemoteGiftFields
+import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemotePersonFields
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.GiftIdeaRepositoryImpl
@@ -27,10 +30,12 @@ import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -100,7 +105,7 @@ class SyncRunnerTest {
         val result = runner.run(alicesAccount)
 
         assertEquals(listOf(anna.id, idea.id), backend.writes.map { it.entityId })
-        assertEquals(SyncRunResult(pushed = 2, settled = 2, stoppedBecause = null, workRemains = false, needsAttention = false), result)
+        assertEquals(SyncRunResult(pushed = 2, settled = 2, conflictsSettled = 0, stoppedBecause = null, workRemains = false, needsAttention = false), result)
         assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.GIFT_IDEA, idea.id))
     }
 
@@ -196,7 +201,7 @@ class SyncRunnerTest {
         val anna = syncedPerson("Anna")
         people.updatePerson(anna, "Anna K.", null)
         val update = pending(SyncEntityType.PERSON, anna)
-        operations.blockCurrentMutation(update.id, update.mutationId, BlockReason.REMOTE_NEWER.name)
+        operations.blockCurrentMutation(update.id, update.mutationId, BlockReason.REJECTED.name)
         val idea = ideas.addGiftIdea(ideaFor(anna))
 
         val result = runner.run(alicesAccount)
@@ -601,6 +606,136 @@ class SyncRunnerTest {
         assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.PERSON, anna.id))
     }
 
+    // ---- conflicts ----
+
+    @Test
+    fun `a conflict is counted as settled, and the backend's row arrives with the next pull`() = runTest {
+        val anna = syncedPerson("Anna", version = 3)
+        people.updatePerson(anna, "Anna K.", null)
+        movedOnRemotely(anna, version = 5) { (it as RemotePersonFields).copy(name = "Anna (other device)") }
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(SyncRunResult(pushed = 1, settled = 1, conflictsSettled = 1, stoppedBecause = null, workRemains = false, needsAttention = false), result)
+        assertEquals("Anna K.", people.getPerson(anna)?.name)
+
+        newPuller().pull(alicesAccount)
+
+        assertEquals("Anna (other device)", people.getPerson(anna)?.name)
+        assertEquals(5L, database.personDao().findById(anna, alice)!!.version)
+        assertTrue(conflicts().single().localSnapshotJson.contains("\"name\":\"Anna K.\""))
+    }
+
+    @Test
+    fun `a local deletion that loses comes back from the backend, and is kept as the conflict`() = runTest {
+        val anna = syncedPerson("Anna", version = 3)
+        people.deletePerson(anna)
+        movedOnRemotely(anna, version = 4) { (it as RemotePersonFields).copy(name = "Anna (other device)") }
+
+        assertEquals(1, runner.run(alicesAccount).conflictsSettled)
+        newPuller().pull(alicesAccount)
+
+        val after = database.personDao().findById(anna, alice)!!
+        assertNull(after.deletedAt)
+        assertEquals("Anna (other device)", after.name)
+        assertFalse(conflicts().single().localSnapshotJson.contains("\"deleted_at\":null"))
+    }
+
+    @Test
+    fun `a local edit that loses to a deletion on the backend is deleted, and is kept as the conflict`() = runTest {
+        val anna = syncedPerson("Anna", version = 3)
+        people.updatePerson(anna, "Anna K.", null)
+        val deletedAt = Instant.parse("2026-10-11T08:00:00Z")
+        movedOnRemotely(anna, version = 4) { (it as RemotePersonFields).copy(deletedAt = deletedAt) }
+
+        assertEquals(1, runner.run(alicesAccount).conflictsSettled)
+        newPuller().pull(alicesAccount)
+
+        assertEquals(deletedAt, database.personDao().findById(anna, alice)!!.deletedAt)
+        val snapshot = conflicts().single().localSnapshotJson
+        assertTrue(snapshot, snapshot.contains("\"name\":\"Anna K.\"") && snapshot.contains("\"deleted_at\":null"))
+    }
+
+    @Test
+    fun `a conflicted parent's new child is still pushed in the same run`() = runTest {
+        val anna = syncedPerson("Anna", version = 3)
+        people.updatePerson(anna, "Anna K.", null)
+        movedOnRemotely(anna, version = 4) { it }
+        val idea = ideas.addGiftIdea(ideaFor(anna))
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(1, result.conflictsSettled)
+        assertEquals(2, result.settled)
+        assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.GIFT_IDEA, idea.id))
+        assertNull(operations.findForEntity(SyncEntityType.GIFT_IDEA, idea.id))
+    }
+
+    @Test
+    fun `marking an idea given while another device edited it records the gift, and the idea reopens from the backend`() = runTest {
+        // Documents the per-entity outcome of a compound change; a guard against giving the idea twice is a later phase's.
+        val anna = syncedPerson("Anna", version = 1)
+        val idea = syncedIdea(anna)
+        movedOnRemotely(idea, version = 2) { (it as RemoteGiftIdeaFields).copy(note = "From the other device") }
+        val gift = ideas.markAsGiven(idea, LocalDate.of(2026, 10, 11), null)
+
+        val result = runner.run(alicesAccount)
+        newPuller().pull(alicesAccount)
+
+        assertEquals(1, result.conflictsSettled)
+        assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.GIFT, gift.id))
+        assertEquals(idea, backend.rows.getValue(gift.id).let { (it.fields as RemoteGiftFields).sourceGiftIdeaId })
+        val reopened = database.giftIdeaDao().findById(idea, alice)!!
+        assertNull(reopened.archivedAt)
+        assertEquals("From the other device", reopened.note)
+        assertFalse(conflicts().single().localSnapshotJson.contains("\"archived_at\":null"))
+    }
+
+    @Test
+    fun `a conflict blocked by an earlier version is settled by a run, without a write and without waiting on parents`() = runTest {
+        val anna = syncedPerson("Anna", version = 1)
+        val idea = syncedIdea(anna)
+        ideas.updateGiftIdea(idea, ideaFor(anna).copy(name = "Blue scarf"))
+        val blocked = pending(SyncEntityType.GIFT_IDEA, idea)
+        operations.blockCurrentMutation(blocked.id, blocked.mutationId, BlockReason.REMOTE_NEWER.name)
+        movedOnRemotely(idea, version = 3) { it }
+        // Its person no longer counts as known remotely, and nothing will push it.
+        database.personDao().run { update(findById(anna, alice)!!.copy(version = 0, remoteState = RemoteState.LOCAL_ONLY)) }
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(SyncRunResult(pushed = 1, settled = 1, conflictsSettled = 1, stoppedBecause = null, workRemains = false, needsAttention = false), result)
+        assertTrue(backend.writes.isEmpty())
+        assertEquals(blocked.mutationId, conflicts().single().id)
+    }
+
+    @Test
+    fun `a blocked conflict the backend gives no proof for stays blocked and is not counted as settled`() = runTest {
+        val anna = syncedPerson("Anna", version = 3)
+        people.updatePerson(anna, "Anna K.", null)
+        val blocked = pending(SyncEntityType.PERSON, anna)
+        operations.blockCurrentMutation(blocked.id, blocked.mutationId, BlockReason.REMOTE_NEWER.name)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(SyncRunResult(pushed = 1, settled = 0, conflictsSettled = 0, stoppedBecause = null, workRemains = false, needsAttention = true), result)
+        assertEquals(BlockReason.REMOTE_NEWER.name, pending(SyncEntityType.PERSON, anna).blockedReason)
+        assertTrue(conflicts().isEmpty())
+    }
+
+    @Test
+    fun `repeated runs settle a conflict once`() = runTest {
+        val anna = syncedPerson("Anna", version = 3)
+        people.updatePerson(anna, "Anna K.", null)
+        movedOnRemotely(anna, version = 4) { it }
+
+        val results = List(3) { runner.run(alicesAccount) }
+
+        assertEquals(listOf(1, 0, 0), results.map { it.conflictsSettled })
+        assertEquals(1, conflicts().size)
+        assertEquals(1, backend.writes.size)
+    }
+
     // ---- attention ----
 
     @Test
@@ -634,10 +769,26 @@ class SyncRunnerTest {
         database.giftDao(),
         SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(),
+            database.giftDao(), database.syncConflictDao(), clock,
         ),
         backend, backend, clock,
     )
+
+    private fun newPuller() = SyncPuller(
+        database, backend, database.syncOperationDao(), database.personDao(), database.occasionDao(),
+        database.giftIdeaDao(), database.giftDao(), activeOwner,
+    )
+
+    private suspend fun conflicts(): List<SyncConflictEntity> = database.syncConflictDao().observeUnseen(alice).first()
+
+    /** Another device's update of the row, to [version], with [change] to its fields. */
+    private fun movedOnRemotely(id: UUID, version: Long, change: (Any) -> Any) {
+        backend.rows.getValue(id).apply {
+            this.version = version
+            lastMutationId = UUID.randomUUID()
+            fields = change(fields)
+        }
+    }
 
     private fun newRunner() = SyncRunner(
         database.syncOperationDao(),

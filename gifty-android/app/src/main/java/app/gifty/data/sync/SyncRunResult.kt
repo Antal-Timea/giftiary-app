@@ -7,8 +7,13 @@ package app.gifty.data.sync
 data class SyncRunResult(
     /** Operations handed to [SyncPusher.push]. */
     val pushed: Int,
-    /** Pushes that settled their mutation: completed, superseded by a newer change, or blocked. */
+    /** Pushes that settled their mutation: completed, superseded by a newer change, blocked, or a conflict. */
     val settled: Int,
+    /**
+     * Of [settled], the operations settled as conflicts. Their entities still show the local state
+     * until a pull brings in the backend's rows.
+     */
+    val conflictsSettled: Int,
     /** Why the run ended early, or null if it went through every candidate it could. */
     val stoppedBecause: StopReason?,
     /** Whether any unblocked operation of the owner is still queued. */

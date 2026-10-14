@@ -24,6 +24,13 @@ internal sealed interface Verdict {
     /** The mutation has not committed and, as sent, never can. */
     data class CannotCommit(val reason: BlockReason) : Verdict
 
+    /**
+     * The mutation has not committed, and the row has moved on to [remoteVersion], past the version
+     * the update expects. That version is the entity's, not the mutation's, so no change based on
+     * it can commit either: the conflict is settled, and the backend's row wins.
+     */
+    data class RemoteNewer(val remoteVersion: Long) : Verdict
+
     /** It has not committed, and sending the same mutation again is safe and may succeed. */
     data object MaySend : Verdict
 
@@ -45,9 +52,9 @@ internal sealed interface Verdict {
  *   Anything that committed before the row was read is then in it; so what remains judges what
  *   the mutation can still do from now on.
  *
- * Absence of evidence is never taken as failure: [Verdict.CannotCommit] only where the backend's
- * own rules rule a commit out (a version that has moved on, a row that cannot reappear, a key
- * already taken).
+ * Absence of evidence is never taken as failure: [Verdict.CannotCommit] and [Verdict.RemoteNewer]
+ * only where the backend's own rules rule a commit out (a version that has moved on, a row that
+ * cannot reappear, a key already taken).
  */
 internal fun judge(
     uncertainty: Uncertainty,
@@ -73,7 +80,7 @@ internal fun judge(
         // Rows are never hard-deleted and never change owner, so an invisible row stays invisible.
         row == null -> Verdict.CannotCommit(BlockReason.REMOTE_MISSING)
         // Versions only grow, so the update's condition can never match again.
-        row.version > expectedVersion -> Verdict.CannotCommit(BlockReason.REMOTE_NEWER)
+        row.version > expectedVersion -> Verdict.RemoteNewer(row.version)
         row.version == expectedVersion -> when (uncertainty) {
             Uncertainty.NO_ANSWER -> Verdict.MaySend
             // Still at the expected version, so another unique key refused the values.
@@ -94,7 +101,11 @@ enum class BlockReason {
     /** The backend refused the values: a constraint, or a unique key other than the row's id. */
     REJECTED,
 
-    /** Conflict: the remote row has moved past the version the change was based on. */
+    /**
+     * Conflict: the remote row has moved past the version the change was based on. No longer
+     * stored: such a conflict is settled instead. Operations blocked for it by earlier versions
+     * of the app are settled by their next push.
+     */
     REMOTE_NEWER,
 
     /** Conflict: the remote row is no longer visible to the account. */
