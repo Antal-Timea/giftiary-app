@@ -46,6 +46,25 @@ class SupabaseRemoteReader(
 
     override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = findRow(account, "gifts", id)
 
+    override suspend fun findGiftBySourceIdea(account: RemoteAccount, giftIdeaId: UUID): RemoteGift? {
+        val rows = clients.call(account) { client ->
+            client.from("gifts").select {
+                filter {
+                    eq("source_gift_idea_id", giftIdeaId)
+                    eq("owner_user_id", account.ownerUserId)
+                }
+                // Two, so that a second row is seen and refused rather than cut off.
+                limit(2)
+            }.decodeList<RemoteGift>()
+        }
+        // Evidence that another gift holds the idea, so an untrustworthy answer is an error, never "none".
+        if (rows.isEmpty()) return null
+        val row = rows.singleOrNull() ?: throw RemoteException(RemoteFailure.SERVER)
+        if (row.sourceGiftIdeaId != giftIdeaId) throw RemoteException(RemoteFailure.SERVER)
+        requireOwner(account, row.ownerUserId)
+        return row
+    }
+
     override suspend fun findMutation(account: RemoteAccount, mutationId: UUID): RemoteSyncMutation? {
         val rows = clients.call(account) { client ->
             client.from("sync_mutations").select {

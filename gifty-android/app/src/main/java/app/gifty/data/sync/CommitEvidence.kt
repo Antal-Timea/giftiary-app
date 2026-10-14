@@ -31,6 +31,12 @@ internal sealed interface Verdict {
      */
     data class RemoteNewer(val remoteVersion: Long) : Verdict
 
+    /**
+     * The insert has not committed and, as sent, never can: its id is free, so the duplicate was
+     * another unique key of the row, e.g. a gift's source idea already held by another gift.
+     */
+    data object DuplicateKey : Verdict
+
     /** It has not committed, and sending the same mutation again is safe and may succeed. */
     data object MaySend : Verdict
 
@@ -52,9 +58,9 @@ internal sealed interface Verdict {
  *   Anything that committed before the row was read is then in it; so what remains judges what
  *   the mutation can still do from now on.
  *
- * Absence of evidence is never taken as failure: [Verdict.CannotCommit] and [Verdict.RemoteNewer]
- * only where the backend's own rules rule a commit out (a version that has moved on, a row that
- * cannot reappear, a key already taken).
+ * Absence of evidence is never taken as failure: [Verdict.CannotCommit], [Verdict.RemoteNewer]
+ * and [Verdict.DuplicateKey] only where the backend's own rules rule a commit out (a version that
+ * has moved on, a row that cannot reappear, a key already taken).
  */
 internal fun judge(
     uncertainty: Uncertainty,
@@ -71,7 +77,7 @@ internal fun judge(
             // The id exists remotely, but not through this mutation.
             row != null -> Verdict.CannotCommit(BlockReason.REMOTE_ID_TAKEN)
             // The id is free, so the duplicate was another unique key, e.g. a gift's source idea.
-            uncertainty == Uncertainty.DUPLICATE -> Verdict.CannotCommit(BlockReason.REJECTED)
+            uncertainty == Uncertainty.DUPLICATE -> Verdict.DuplicateKey
             uncertainty == Uncertainty.NO_ANSWER -> Verdict.MaySend
             else -> Verdict.Unknown
         }

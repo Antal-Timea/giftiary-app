@@ -770,6 +770,40 @@ class SyncRunnerTest {
         assertEquals(1, backend.writes.size)
     }
 
+    @Test
+    fun `two devices giving the same idea offline end with the backend's gift only, the other one kept as a conflict`() = runTest {
+        val anna = syncedPerson("Anna", version = 1)
+        val idea = syncedIdea(anna)
+        // This device gives the idea while another device's gift from it, and its archive, reached the backend first.
+        val losing = ideas.markAsGiven(idea, LocalDate.of(2026, 10, 11), null)
+        val winner = UUID.randomUUID()
+        backend.seed(winner, alice, 1, UUID.randomUUID(), RemoteGiftFields(
+            GiftDirection.GIVEN, null, anna, null, idea, "Scarf", LocalDate.of(2026, 10, 10), null, null, null, null, null, null,
+        ))
+        movedOnRemotely(idea, version = 2) { (it as RemoteGiftIdeaFields).copy(archivedAt = Instant.parse("2026-10-10T09:00:00Z")) }
+
+        val result = runner.run(alicesAccount)
+        newPuller().pull(alicesAccount)
+
+        assertEquals("the idea's archive and the gift", 2, result.conflictsSettled)
+        assertFalse(result.needsAttention)
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+        assertEquals(listOf(winner), database.giftDao().observeActive(alice).first().map { it.gift.id })
+        val lost = database.giftDao().findById(losing.id, alice)!!
+        assertNotNull(lost.deletedAt)
+        assertEquals(0L to RemoteState.LOCAL_ONLY, lost.version to lost.remoteState)
+        assertNull("never sent again", backend.rows[losing.id])
+        val giftConflict = conflicts().single { it.entityId == losing.id }
+        assertEquals(0L to 1L, giftConflict.baseVersion to giftConflict.remoteVersion)
+        assertTrue(giftConflict.localSnapshotJson.contains("\"source_gift_idea_id\":\"$idea\""))
+        assertTrue("still given", ideas.observeGiftIdeas().first().none { it.idea.id == idea })
+
+        // Nothing is left to push, and the next sync changes nothing.
+        val writes = backend.writes.size
+        runner.run(alicesAccount)
+        assertEquals(writes, backend.writes.size)
+    }
+
     // ---- attention ----
 
     @Test

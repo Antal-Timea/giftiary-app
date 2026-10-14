@@ -12,7 +12,10 @@ import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
 import app.gifty.data.remote.RemoteAccount
 import app.gifty.data.remote.RemoteFailure
+import app.gifty.data.remote.RemoteException
 import app.gifty.data.remote.RemoteTestData.token
+import app.gifty.data.remote.dto.RemoteGift
+import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemotePersonFields
 import app.gifty.data.remote.dto.RemoteSyncMutation
 import app.gifty.data.remote.toRemoteFields
@@ -35,6 +38,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -951,6 +955,167 @@ class SyncPusherTest {
         assertEquals(create.mutationId, pending(SyncEntityType.PERSON, anna.id).inFlightMutationId)
     }
 
+    // ---- a gift refused because its idea already has a gift ----
+
+    @Test
+    fun `a gift whose idea already has another gift on the backend is settled as a conflict, never sent again`() = runTest {
+        val (_, losing, winner) = duplicateGift()
+        val create = pending(SyncEntityType.GIFT, losing)
+        val before = database.giftDao().findById(losing, alice)!!
+
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, create.id))
+
+        assertEquals(1, backend.writes.count { it.entityId == losing })
+        assertEquals(1, backend.sourceLookups)
+        assertNull(operations.findForEntity(SyncEntityType.GIFT, losing))
+        val after = database.giftDao().findById(losing, alice)!!
+        assertEquals(0L to RemoteState.LOCAL_ONLY, after.version to after.remoteState)
+        assertEquals(clock.instant, after.deletedAt)
+        assertEquals(
+            SyncConflictEntity(
+                id = create.mutationId, ownerUserId = alice, entityType = SyncEntityType.GIFT, entityId = losing,
+                mutationId = create.mutationId, baseVersion = 0, remoteVersion = 1,
+                localSnapshotJson = snapshotOf(before.toRemoteFields()), createdAt = clock.instant, seenAt = null,
+            ),
+            conflicts().single(),
+        )
+        assertEquals("the winner is untouched", 1L, backend.rows.getValue(winner).version)
+    }
+
+    @Test
+    fun `a duplicate gift edited while in flight is kept with the edit, and the edit is not sent`() = runTest {
+        val (_, losing, _) = duplicateGift()
+        val create = pending(SyncEntityType.GIFT, losing)
+        val hold = Behavior.Hold()
+        backend.script += hold
+
+        val push = async { pusher.push(alicesAccount, create.id) }
+        hold.arrived.await()
+        val entry = gifts.getGift(losing)!!.gift
+        gifts.updateGift(losing, giftFor(checkNotNull(entry.recipientPersonId)).copy(name = entry.name, givenAt = entry.givenAt, note = "Wrapped in green"))
+        hold.release.complete(Unit)
+
+        assertEquals(PushOutcome.ConflictSettled, push.await())
+        assertEquals(1, backend.writes.count { it.entityId == losing })
+        val snapshot = conflicts().single().localSnapshotJson
+        assertTrue(snapshot, "\"note\":\"Wrapped in green\"" in snapshot)
+        assertEquals(create.mutationId, conflicts().single().mutationId)
+    }
+
+    @Test
+    fun `refused values never look for another gift of the idea`() = runTest {
+        val (_, losing, _) = duplicateGift(withWinner = false)
+        backend.script += Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION)
+
+        assertEquals(PushOutcome.Blocked(BlockReason.REJECTED), pusher.push(alicesAccount, pending(SyncEntityType.GIFT, losing).id))
+
+        assertEquals(0, backend.sourceLookups)
+        assertTrue(conflicts().isEmpty())
+    }
+
+    @Test
+    fun `a duplicate without a proven winner is refused as before`() = runTest {
+        // No gift of the idea at all, or only this very gift.
+        val (_, losing, _) = duplicateGift(withWinner = false)
+        val create = pending(SyncEntityType.GIFT, losing)
+        backend.script += Behavior.Fail(RemoteFailure.DUPLICATE)
+        assertEquals(PushOutcome.Blocked(BlockReason.REJECTED), pusher.push(alicesAccount, create.id))
+
+        val (_, self, _) = duplicateGift(withWinner = false)
+        backend.script += Behavior.Fail(RemoteFailure.DUPLICATE)
+        backend.sourceLookup = { idea -> remoteGift(self, idea, version = 1) }
+        assertEquals(PushOutcome.Blocked(BlockReason.REJECTED), pusher.push(alicesAccount, pending(SyncEntityType.GIFT, self).id))
+
+        assertEquals(2, backend.sourceLookups)
+        assertTrue(conflicts().isEmpty())
+        listOf(losing, self).forEach {
+            assertNull(database.giftDao().findById(it, alice)!!.deletedAt)
+            assertEquals(BlockReason.REJECTED.name, pending(SyncEntityType.GIFT, it).blockedReason)
+        }
+    }
+
+    @Test
+    fun `untrustworthy or unreadable evidence of a winner settles nothing and keeps the gift in flight`() = runTest {
+        val (_, losing, _) = duplicateGift()
+        val create = pending(SyncEntityType.GIFT, losing)
+        val refused: suspend (UUID) -> RemoteGift? = { throw RemoteException(RemoteFailure.SERVER) }
+        val impossible: suspend (UUID) -> RemoteGift? = { idea -> remoteGift(UUID.randomUUID(), idea, version = 0) }
+        val offline: suspend (UUID) -> RemoteGift? = { throw RemoteException(RemoteFailure.NETWORK) }
+        val signedOut: suspend (UUID) -> RemoteGift? = { throw RemoteException(RemoteFailure.UNAUTHENTICATED) }
+        listOf(
+            // Another owner's, another idea's or several rows: refused by the reader.
+            refused to PushOutcome.Unresolved(RemoteFailure.SERVER),
+            // A winner no backend could hold.
+            impossible to PushOutcome.Unresolved(RemoteFailure.SERVER),
+            offline to PushOutcome.Unresolved(RemoteFailure.NETWORK),
+            signedOut to PushOutcome.SessionRequired(RemoteFailure.UNAUTHENTICATED),
+        ).forEach { (lookup, expected) ->
+            backend.sourceLookup = lookup
+            assertEquals(expected, pusher.push(alicesAccount, create.id))
+            assertStillInFlight(SyncEntityType.GIFT, losing, create.mutationId)
+        }
+        assertTrue(conflicts().isEmpty())
+
+        // Once the evidence can be read, the next push finds the refusal again and settles it.
+        backend.sourceLookup = null
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, create.id))
+        assertEquals(create.mutationId, conflicts().single().id)
+    }
+
+    @Test
+    fun `a duplicate of anything but a gift is refused as before, without looking for a winner`() = runTest {
+        val anna = people.addPerson("Anna", null)
+        backend.script += Behavior.Fail(RemoteFailure.DUPLICATE)
+
+        assertEquals(PushOutcome.Blocked(BlockReason.REJECTED), pusher.push(alicesAccount, pending(SyncEntityType.PERSON, anna.id).id))
+
+        assertEquals(0, backend.sourceLookups)
+    }
+
+    @Test
+    fun `a settled duplicate is not settled again, also after a push cut short before settling`() = runTest {
+        val (_, losing, _) = duplicateGift()
+        val create = pending(SyncEntityType.GIFT, losing)
+        backend.sourceLookup = { throw CancellationException("cut short") }
+        assertTrue(runCatching { pusher.push(alicesAccount, create.id) }.exceptionOrNull() is CancellationException)
+        assertStillInFlight(SyncEntityType.GIFT, losing, create.mutationId)
+        backend.sourceLookup = null
+
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, create.id))
+        assertEquals(PushOutcome.Stale, pusher.push(alicesAccount, create.id))
+
+        assertEquals(1, conflicts().size)
+    }
+
+    @Test
+    fun `a duplicate is settled for the operation's own account, whichever is active`() = runTest {
+        val (_, losing, _) = duplicateGift()
+        val create = pending(SyncEntityType.GIFT, losing)
+        activeOwner.ownerId.value = bob
+
+        assertEquals(PushOutcome.Stale, pusher.push(bobsAccount, create.id))
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, create.id))
+
+        assertEquals(alice, conflicts().single().ownerUserId)
+    }
+
+    @Test
+    fun `a gift blocked as refused earlier stays blocked until the user edits it`() = runTest {
+        val (_, losing, _) = duplicateGift()
+        val create = pending(SyncEntityType.GIFT, losing)
+        operations.blockCurrentMutation(create.id, create.mutationId, BlockReason.REJECTED.name)
+
+        assertEquals(PushOutcome.Blocked(BlockReason.REJECTED), pusher.push(alicesAccount, create.id))
+        assertEquals(0, backend.sourceLookups)
+        assertTrue(backend.writes.isEmpty())
+
+        val entry = gifts.getGift(losing)!!.gift
+        gifts.updateGift(losing, giftFor(checkNotNull(entry.recipientPersonId)).copy(name = entry.name, givenAt = entry.givenAt, note = "Edited"))
+
+        assertEquals(PushOutcome.ConflictSettled, pusher.push(alicesAccount, create.id))
+        assertTrue("\"note\":\"Edited\"" in conflicts().single().localSnapshotJson)
+    }
+
     // ---- fixtures ----
 
     private suspend fun conflicts(): List<SyncConflictEntity> = database.syncConflictDao().observeUnseen(alice).first()
@@ -1005,6 +1170,39 @@ class SyncPusherTest {
     }
 
     private fun personFields(name: String) = RemotePersonFields(name, null, null, null, null)
+
+    private fun snapshotOf(fields: RemoteGiftFields) = Json { explicitNulls = true }.encodeToString(RemoteGiftFields.serializer(), fields)
+
+    /**
+     * Concurrent conversions on two devices: an idea the backend has, given here as a local gift,
+     * while [withWinner] another device's gift from the same idea already reached the backend.
+     * Returns the idea, the local (losing) gift and the remote (winning) gift.
+     */
+    private suspend fun duplicateGift(withWinner: Boolean = true): Triple<UUID, UUID, UUID> {
+        val anna = syncedPerson(version = 1)
+        val idea = ideas.addGiftIdea(
+            GiftIdeaDetails(anna, occasionId = null, name = "Scarf", status = GiftIdeaStatus.PURCHASED, estimatedPrice = null,
+                actualPrice = null, productUrl = null, note = null),
+        )
+        val ideaEntity = database.giftIdeaDao().findById(idea.id, alice)!!.copy(version = 1, remoteState = RemoteState.SYNCED)
+        database.giftIdeaDao().update(ideaEntity)
+        operations.delete(pending(SyncEntityType.GIFT_IDEA, idea.id))
+        backend.seed(idea.id, alice, 1, UUID.randomUUID(), ideaEntity.toRemoteFields())
+        val winner = UUID.randomUUID()
+        if (withWinner) {
+            backend.seed(winner, alice, 1, UUID.randomUUID(), RemoteGiftFields(
+                GiftDirection.GIVEN, null, anna, null, idea.id, "Scarf", LocalDate.of(2026, 10, 10), null, null, null, null, null, null,
+            ))
+        }
+        val losing = ideas.markAsGiven(idea.id, LocalDate.of(2026, 10, 11), null)
+        operations.findForEntity(SyncEntityType.GIFT_IDEA, idea.id)?.let { operations.delete(it) }
+        return Triple(idea.id, losing.id, winner)
+    }
+
+    private fun remoteGift(id: UUID, idea: UUID, version: Long) = RemoteGift(
+        id, alice, GiftDirection.GIVEN, null, null, null, idea, "Scarf", LocalDate.of(2026, 10, 10), null, null, null, null,
+        null, version, Instant.EPOCH, Instant.EPOCH, null, UUID.randomUUID(),
+    )
 
     private fun giftFor(personId: UUID) = GiftDetails(
         direction = GiftDirection.GIVEN, giverPersonId = null, recipientPersonId = personId, occasionId = null,

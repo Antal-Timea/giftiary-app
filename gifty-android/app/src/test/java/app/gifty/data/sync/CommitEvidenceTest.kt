@@ -46,7 +46,7 @@ class CommitEvidenceTest {
 
     @Test
     fun `an insert refused as a duplicate while its id is free hit another unique key`() {
-        assertEquals(Verdict.CannotCommit(BlockReason.REJECTED), judge(Uncertainty.DUPLICATE, mutation, null, null, null))
+        assertEquals(Verdict.DuplicateKey, judge(Uncertainty.DUPLICATE, mutation, null, null, null))
     }
 
     @Test

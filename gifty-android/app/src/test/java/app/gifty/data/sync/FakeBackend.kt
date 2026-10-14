@@ -26,8 +26,8 @@ import java.util.UUID
 /**
  * The backend as the writer and reader see it, with its real rules: inserts start at version 1,
  * updates are compare-and-set on owner and version and add one, every mutation id is single-use
- * across all rows (23505 otherwise), referenced rows must exist (23503 otherwise), and a write and
- * its ledger entry appear together.
+ * across all rows (23505 otherwise), so is a gift's source idea, tombstones included (23505),
+ * referenced rows must exist (23503 otherwise), and a write and its ledger entry appear together.
  *
  * Each write follows the next scripted [Behavior], so tests can lose a request or a response,
  * commit late, refuse, or hold a request open.
@@ -95,6 +95,13 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
 
     /** Runs right after a row lookup, e.g. to let a lingering write commit at exactly that point. */
     var afterRowRead: (() -> Unit)? = null
+
+    /** Lookups of a gift by its source idea, made through [findGiftBySourceIdea]. */
+    var sourceLookups = 0
+        private set
+
+    /** Answers [findGiftBySourceIdea] instead of the rows, e.g. with a row no backend should return, or by failing. */
+    var sourceLookup: (suspend (giftIdeaId: UUID) -> RemoteGift?)? = null
 
     /** Tables read in full, in order, and the token each read carried. */
     val fetches: MutableList<String> = Collections.synchronizedList(mutableListOf())
@@ -195,6 +202,7 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         if (expected == null) {
             if (id in rows || mutationId in ledger) throw RemoteException(RemoteFailure.DUPLICATE)
             requireReferences(owner, fields)
+            requireFreeSource(id, fields)
             rows[id] = Row(owner, 1, mutationId, fields)
             record(mutationId, owner, tableOf(fields), id, 1)
             return Committed(1)
@@ -202,6 +210,7 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         val row = rows[id]?.takeIf { it.owner == owner && it.version == expected } ?: return NoMatch
         if (mutationId in ledger || row.lastMutationId == mutationId) throw RemoteException(RemoteFailure.DUPLICATE)
         requireReferences(owner, fields)
+        requireFreeSource(id, fields)
         row.version += 1
         row.lastMutationId = mutationId
         row.fields = fields
@@ -218,6 +227,13 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
             else -> emptyList()
         }
         if (references.filterNotNull().any { rows[it]?.owner != owner }) throw RemoteException(RemoteFailure.MISSING_REFERENCE)
+    }
+
+    /** The unique key on a gift's source idea, which counts every gift, deleted ones too. */
+    private fun requireFreeSource(id: UUID, fields: Any) {
+        val source = (fields as? RemoteGiftFields)?.sourceGiftIdeaId ?: return
+        val taken = rows.any { (other, row) -> other != id && (row.fields as? RemoteGiftFields)?.sourceGiftIdeaId == source }
+        if (taken) throw RemoteException(RemoteFailure.DUPLICATE)
     }
 
     private fun tableOf(fields: Any) = when (fields) {
@@ -246,6 +262,18 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = visible(account, id)?.let { giftIdea(id, it) }
 
     override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = visible(account, id)?.let { gift(id, it) }
+
+    override suspend fun findGiftBySourceIdea(account: RemoteAccount, giftIdeaId: UUID): RemoteGift? {
+        read()
+        sourceLookups++
+        sourceLookup?.let { return it(giftIdeaId) }
+        val found = synchronized(rows) {
+            rows.entries.firstOrNull { (_, row) ->
+                row.owner == account.ownerUserId && (row.fields as? RemoteGiftFields)?.sourceGiftIdeaId == giftIdeaId
+            }
+        }
+        return found?.let { (id, row) -> gift(id, row) }
+    }
 
     private fun person(id: UUID, row: Row): RemotePerson {
         val f = row.fields as RemotePersonFields

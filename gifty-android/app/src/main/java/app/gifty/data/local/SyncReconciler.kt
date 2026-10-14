@@ -157,6 +157,58 @@ class SyncReconciler @Inject constructor(
         true
     }
 
+    /**
+     * Settles the create of gift [giftId] as a conflict, now that another gift of the owner is
+     * proven to hold [sourceGiftIdeaId] on the backend, at [winnerVersion]: the backend allows one
+     * gift per idea, so no content of this one can be inserted.
+     *
+     * In one transaction the gift's current state, including any change made after
+     * [provingMutationId] was sent, is kept in `sync_conflict` (with base version 0, which only a
+     * create can have), the gift is deleted locally, and its operation is removed. The gift never
+     * reached the backend and nothing is queued for it, so it stays local; the next pull brings
+     * in the winner.
+     *
+     * Unless [provingMutationId] is still the gift's mutation in flight for this owner, nothing
+     * changes and false is returned.
+     */
+    suspend fun settleDuplicateGift(
+        ownerUserId: UUID,
+        giftId: UUID,
+        provingMutationId: UUID,
+        sourceGiftIdeaId: UUID,
+        winnerVersion: Long,
+    ): Boolean = database.withTransaction {
+        val operation = operations.findForEntity(SyncEntityType.GIFT, giftId)
+        if (operation == null || operation.ownerUserId != ownerUserId || operation.inFlightMutationId != provingMutationId) {
+            return@withTransaction false
+        }
+        val gift = checkNotNull(gifts.findById(giftId, ownerUserId)) { "No gift $giftId" }
+        // An insert in flight leaves the gift unknown to the backend, and its source never changes.
+        check(gift.remoteState == RemoteState.LOCAL_ONLY && gift.version == 0L && gift.sourceGiftIdeaId == sourceGiftIdeaId) {
+            "Gift $giftId is not a local create from $sourceGiftIdeaId"
+        }
+        require(winnerVersion >= 1) { "Impossible backend version $winnerVersion" }
+        val now = Instant.now(clock).truncatedTo(ChronoUnit.MILLIS)
+        conflicts.insert(
+            SyncConflictEntity(
+                id = provingMutationId,
+                ownerUserId = ownerUserId,
+                entityType = SyncEntityType.GIFT,
+                entityId = giftId,
+                mutationId = provingMutationId,
+                baseVersion = 0,
+                remoteVersion = winnerVersion,
+                localSnapshotJson = SNAPSHOT_JSON.encodeToString(RemoteGiftFields.serializer(), gift.toRemoteFields()),
+                createdAt = now,
+                seenAt = null,
+            ),
+        )
+        // Not queued: the backend never had the gift. Already deleted locally, it stays as it was.
+        gifts.softDelete(giftId, ownerUserId, now)
+        operations.delete(operation)
+        true
+    }
+
     private class Snapshot(val remoteState: RemoteState, val version: Long, val json: String)
 
     /** The entity's current state as the backend would store it. */

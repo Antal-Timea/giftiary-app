@@ -17,6 +17,7 @@ import app.gifty.data.remote.RemoteAccount
 import app.gifty.data.remote.RemoteException
 import app.gifty.data.remote.RemoteFailure
 import app.gifty.data.remote.RemoteReader
+import app.gifty.data.remote.RemoteRowValidator
 import app.gifty.data.remote.RemoteWriter
 import app.gifty.data.remote.UpdateOutcome
 import app.gifty.data.remote.dto.RemoteRow
@@ -57,6 +58,10 @@ import javax.inject.Inject
  * conflict, and the backend's row reaches Room through the next pull. An operation that an earlier
  * version of the app blocked for this is settled the same way, on a fresh read of the row; it is
  * never sent.
+ *
+ * A gift insert refused because another gift of the account already holds its source idea is a
+ * conflict too, but only on that proof, read right after the refusal: the losing gift is kept as a
+ * conflict and dropped locally. Every other refusal blocks the mutation, as before.
  *
  * Network requests are never made inside a Room transaction. Cancellation is not a failure: it
  * leaves the mutation in flight, to be settled by the next push.
@@ -108,6 +113,7 @@ class SyncPusher @Inject constructor(
             is Verdict.Committed -> committed(mutation, verdict.version)
             is Verdict.CannotCommit -> cannotCommit(mutation, verdict.reason)
             is Verdict.RemoteNewer -> conflict(mutation, verdict.remoteVersion, wasBlocked = false)
+            Verdict.DuplicateKey -> duplicateKey(account, mutation)
             Verdict.MaySend -> unresolved(mutation, RemoteFailure.NETWORK)
             Verdict.Unknown -> unresolved(mutation, null)
         }
@@ -217,6 +223,27 @@ class SyncPusher @Inject constructor(
             mutation.ownerUserId, mutation.entityType, mutation.entityId, mutation.mutationId, wasBlocked,
             baseVersion = checkNotNull(mutation.expectedVersion) { "Only an update can conflict" },
             remoteVersion = remoteVersion,
+        )
+        return if (settled) PushOutcome.ConflictSettled else PushOutcome.Stale
+    }
+
+    /**
+     * Settles an insert refused for a unique key other than its id. Only a gift made from an idea
+     * that another gift of the account already holds on the backend is settled as a conflict; the
+     * winner must be read now, valid, and not this gift. Without that proof the mutation is
+     * refused as before. A failed read decides nothing: the mutation stays in flight.
+     */
+    private suspend fun duplicateKey(account: RemoteAccount, mutation: InFlight): PushOutcome {
+        val source = if (mutation.entityType == SyncEntityType.GIFT) {
+            gifts.findById(mutation.entityId, mutation.ownerUserId)?.sourceGiftIdeaId
+        } else {
+            null
+        }
+        val winner = source?.let { reader.findGiftBySourceIdea(account, it) }
+        if (source == null || winner == null || winner.id == mutation.entityId) return cannotCommit(mutation, BlockReason.REJECTED)
+        RemoteRowValidator.validate(winner)
+        val settled = reconciler.settleDuplicateGift(
+            mutation.ownerUserId, mutation.entityId, mutation.mutationId, source, winner.version,
         )
         return if (settled) PushOutcome.ConflictSettled else PushOutcome.Stale
     }

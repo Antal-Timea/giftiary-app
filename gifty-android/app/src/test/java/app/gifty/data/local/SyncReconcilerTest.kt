@@ -412,7 +412,87 @@ class SyncReconcilerTest {
         assertTrue(conflicts().isEmpty())
     }
 
+    // ---- a gift refused because its idea already has a gift ----
+
+    @Test
+    fun `a duplicate gift is kept as a conflict, deleted locally and its operation removed, in one step`() = runTest {
+        val (idea, gift) = givenGift()
+        val sent = send(SyncEntityType.GIFT, gift)
+        val before = database.giftDao().findById(gift, alice)!!
+
+        assertTrue(reconciler.settleDuplicateGift(alice, gift, sent, idea, winnerVersion = 3))
+
+        assertNull(operations.findForEntity(SyncEntityType.GIFT, gift))
+        assertEquals(before.copy(deletedAt = clock.instant, updatedAt = clock.instant), database.giftDao().findById(gift, alice))
+        val conflict = conflicts().single()
+        assertEquals(sent to sent, conflict.id to conflict.mutationId)
+        assertEquals(0L to 3L, conflict.baseVersion to conflict.remoteVersion)
+        assertTrue(conflict.localSnapshotJson, conflict.localSnapshotJson.endsWith("\"deleted_at\":null}"))
+    }
+
+    @Test
+    fun `a duplicate gift the user deleted meanwhile keeps its own deletion`() = runTest {
+        val (idea, gift) = givenGift()
+        val sent = send(SyncEntityType.GIFT, gift)
+        clock.advanceBy(Duration.ofMinutes(1))
+        gifts.deleteGift(gift)
+        val deleted = database.giftDao().findById(gift, alice)!!
+        clock.advanceBy(Duration.ofMinutes(1))
+
+        assertTrue(reconciler.settleDuplicateGift(alice, gift, sent, idea, winnerVersion = 1))
+
+        assertEquals(deleted, database.giftDao().findById(gift, alice))
+        assertTrue(conflicts().single().localSnapshotJson.contains("\"deleted_at\":\"${deleted.deletedAt}\""))
+    }
+
+    @Test
+    fun `a duplicate for another mutation, a repeated one or another account's changes nothing`() = runTest {
+        val (idea, gift) = givenGift()
+
+        assertUnchanged(SyncEntityType.GIFT, gift) {
+            val current = pending(SyncEntityType.GIFT, gift).mutationId
+            assertFalse("not in flight", reconciler.settleDuplicateGift(alice, gift, current, idea, 1))
+            val sent = send(SyncEntityType.GIFT, gift)
+            assertFalse(reconciler.settleDuplicateGift(alice, gift, UUID.randomUUID(), idea, 1))
+            assertFalse(reconciler.settleDuplicateGift(bob, gift, sent, idea, 1))
+            operations.update(pending(SyncEntityType.GIFT, gift).copy(inFlightMutationId = null))
+        }
+        val sent = send(SyncEntityType.GIFT, gift)
+        assertTrue(reconciler.settleDuplicateGift(alice, gift, sent, idea, 1))
+        assertFalse("repeated", reconciler.settleDuplicateGift(alice, gift, sent, idea, 1))
+        assertEquals(1, conflicts().size)
+    }
+
+    @Test
+    fun `an impossible duplicate is refused and nothing is applied`() = runTest {
+        val (idea, gift) = givenGift()
+        val sent = send(SyncEntityType.GIFT, gift)
+
+        assertUnchanged(SyncEntityType.GIFT, gift) {
+            // Another idea, a backend version no row has, a gift the backend already knows.
+            assertTrue(runCatching { reconciler.settleDuplicateGift(alice, gift, sent, UUID.randomUUID(), 1) }.exceptionOrNull() is IllegalStateException)
+            assertTrue(runCatching { reconciler.settleDuplicateGift(alice, gift, sent, idea, 0) }.exceptionOrNull() is IllegalArgumentException)
+            listOf(1L to RemoteState.LOCAL_ONLY, 0L to RemoteState.SYNCED, 1L to RemoteState.SYNCED).forEach { (version, state) ->
+                database.giftDao().run { update(findById(gift, alice)!!.copy(version = version, remoteState = state)) }
+                val refused = runCatching { reconciler.settleDuplicateGift(alice, gift, sent, idea, 1) }
+                assertTrue("$version/$state", refused.exceptionOrNull() is IllegalStateException)
+            }
+            database.giftDao().run { update(findById(gift, alice)!!.copy(version = 0, remoteState = RemoteState.LOCAL_ONLY)) }
+        }
+        assertTrue(conflicts().isEmpty())
+    }
+
     // ---- fixtures ----
+
+    /** An idea for Anna given here: returns the idea and its gift, whose create is pending. */
+    private suspend fun givenGift(): Pair<UUID, UUID> {
+        val idea = ideas.addGiftIdea(
+            GiftIdeaDetails(anna.id, occasionId = null, name = "Book", status = GiftIdeaStatus.IDEA, estimatedPrice = null,
+                actualPrice = null, productUrl = null, note = null),
+        )
+        val gift = ideas.markAsGiven(idea.id, LocalDate.of(2026, 10, 11), null)
+        return idea.id to gift.id
+    }
 
     private suspend fun conflicts(): List<SyncConflictEntity> = database.syncConflictDao().observeUnseen(alice).first()
 

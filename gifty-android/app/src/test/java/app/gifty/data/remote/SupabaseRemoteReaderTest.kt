@@ -206,6 +206,46 @@ class SupabaseRemoteReaderTest {
         }
     }
 
+    @Test
+    fun `a gift is looked up by its source idea for the account, tombstones included`() = runTest {
+        val id = UUID.randomUUID()
+        val idea = UUID.randomUUID()
+        answer = { respondRows(listOf(RemoteTestData.gift(id, alice, mapOf("source_gift_idea_id" to idea.toString(), "deleted_at" to "2026-10-14T08:00:00+00:00")))) }
+
+        val gift = reader.findGiftBySourceIdea(alice(), idea)
+
+        assertEquals(id, gift?.id)
+        assertEquals(idea, gift?.sourceGiftIdeaId)
+        val request = requests.single()
+        assertEquals("gifts", request.url.encodedPath.substringAfterLast('/'))
+        assertEquals("eq.$idea", request.url.parameters["source_gift_idea_id"])
+        assertEquals("eq.$alice", request.url.parameters["owner_user_id"])
+        assertEquals("2", request.url.parameters["limit"])
+        assertTrue(request.url.parameters.names().none { it == "deleted_at" || it == "id" })
+    }
+
+    @Test
+    fun `no gift made from the idea is reported as none`() = runTest {
+        answer = { respondRows(emptyList()) }
+
+        assertNull(reader.findGiftBySourceIdea(alice(), UUID.randomUUID()))
+    }
+
+    @Test
+    fun `a source lookup answered with another idea's gift, another owner or several gifts is refused`() = runTest {
+        val idea = UUID.randomUUID()
+        val source = mapOf("source_gift_idea_id" to idea.toString())
+        listOf(
+            listOf(RemoteTestData.gift(UUID.randomUUID(), alice)),
+            listOf(RemoteTestData.gift(UUID.randomUUID(), alice, mapOf("source_gift_idea_id" to null))),
+            listOf(RemoteTestData.gift(UUID.randomUUID(), bob, source)),
+            listOf(RemoteTestData.gift(UUID.randomUUID(), alice, source), RemoteTestData.gift(UUID.randomUUID(), alice, source)),
+        ).forEach { rows ->
+            answer = { respondRows(rows) }
+            assertFailure(RemoteFailure.SERVER) { reader.findGiftBySourceIdea(alice(), idea) }
+        }
+    }
+
     // ---- accounts ----
 
     @Test

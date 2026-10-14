@@ -41,6 +41,12 @@ interface RemoteReader {
     suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift?
 
     /**
+     * The account's gift made from idea [giftIdeaId], tombstoned or not; null if it has none
+     * visible. The backend allows one per idea, so anything else is an error.
+     */
+    suspend fun findGiftBySourceIdea(account: RemoteAccount, giftIdeaId: UUID): RemoteGift?
+
+    /**
      * The ledger entry proving that [mutationId] committed, or null if there is none yet.
      *
      * Null is not proof that the mutation will never commit: a request carrying it may still be
