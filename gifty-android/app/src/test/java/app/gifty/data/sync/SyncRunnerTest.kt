@@ -804,6 +804,68 @@ class SyncRunnerTest {
         assertEquals(writes, backend.writes.size)
     }
 
+    // ---- what a run tells about trying again ----
+
+    @Test
+    fun `only network and server trouble counts as transient`() = runTest {
+        val lost = addPerson("Lost", null)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.LoseRequest)
+        val server = addPerson("Server", null)
+        backend.script += Behavior.Fail(RemoteFailure.SERVER)
+        // Refused values after an earlier copy was sent stay unresolved, but trying again cannot help.
+        val refused = addPerson("Refused", null)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.Fail(RemoteFailure.CONSTRAINT_VIOLATION))
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(2, result.transientFailures)
+        assertFalse(result.deferred)
+        listOf(lost, server, refused).forEach { assertNotNull(pending(SyncEntityType.PERSON, it.id).inFlightMutationId) }
+    }
+
+    @Test
+    fun `work stuck behind a parent that cannot reach the backend is neither transient nor deferred`() = runTest {
+        val anna = addPerson("Anna", null)
+        block(SyncEntityType.PERSON, anna.id, BlockReason.REJECTED)
+        ideas.addGiftIdea(ideaFor(anna.id))
+
+        val result = runner.run(alicesAccount)
+
+        assertTrue(result.workRemains)
+        assertEquals(0, result.transientFailures)
+        assertFalse(result.deferred)
+        assertTrue(backend.writes.isEmpty())
+    }
+
+    @Test
+    fun `a run is deferred only when its budget ran out with candidates left`() = runTest {
+        repeat(SyncRunner.MAX_PUSHES) { addPerson("Person $it", null) }
+        val exact = runner.run(alicesAccount)
+        assertEquals(SyncRunner.MAX_PUSHES, exact.pushed)
+        assertFalse("nothing was left over", exact.deferred)
+
+        repeat(SyncRunner.MAX_PUSHES + 1) { addPerson("More $it", null) }
+        val over = runner.run(alicesAccount)
+        assertEquals(SyncRunner.MAX_PUSHES, over.pushed)
+        assertTrue(over.deferred)
+    }
+
+    @Test
+    fun `a newer change left behind a settled one is deferred work`() = runTest {
+        val anna = addPerson("Anna", null)
+        val hold = Behavior.Hold()
+        backend.script += hold
+
+        val run = async { runner.run(alicesAccount) }
+        hold.arrived.await()
+        people.updatePerson(anna.id, "Anna K.", null)
+        hold.release.complete(Unit)
+
+        val result = run.await()
+        assertTrue(result.deferred)
+        assertEquals(0, result.transientFailures)
+    }
+
     // ---- attention ----
 
     @Test
@@ -873,6 +935,11 @@ class SyncRunnerTest {
         checkNotNull(operations.findForEntity(type, id)) { "No pending $type operation" }
 
     private fun writesFor(id: UUID) = backend.writes.count { it.entityId == id }
+
+    private suspend fun block(type: SyncEntityType, id: UUID, reason: BlockReason) {
+        val operation = pending(type, id)
+        assertEquals(1, operations.blockCurrentMutation(operation.id, operation.mutationId, reason.name))
+    }
 
     private suspend fun remoteStateOf(type: SyncEntityType, id: UUID): RemoteState = when (type) {
         SyncEntityType.PERSON -> database.personDao().findById(id, alice)!!.remoteState

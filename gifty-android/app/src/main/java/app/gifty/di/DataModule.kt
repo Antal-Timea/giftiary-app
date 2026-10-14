@@ -8,6 +8,8 @@ import app.gifty.data.repository.SyncStatusRepositoryImpl
 import app.gifty.data.sync.ForegroundSyncCoordinator
 import app.gifty.data.sync.FullSyncRequester
 import app.gifty.data.sync.SyncRequester
+import app.gifty.data.sync.SyncScheduler
+import app.gifty.data.sync.WorkManagerSyncScheduler
 import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.OwnerSession
 import app.gifty.domain.repository.AccountSession
@@ -57,6 +59,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindFullSyncRequester(impl: ForegroundSyncCoordinator): FullSyncRequester
+
+    @Binds
+    abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler
 
     companion object {
 

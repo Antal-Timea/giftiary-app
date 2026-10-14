@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
+import app.gifty.data.auth.BackgroundSessionResult
 import app.gifty.data.local.SyncReconciler
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
@@ -18,8 +19,11 @@ import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.sync.FakeBackend.Behavior
 import app.gifty.data.user.ActiveOwner
+import app.gifty.domain.model.AuthUser
 import app.gifty.domain.model.Person
+import app.gifty.domain.repository.OwnerSessionState
 import app.gifty.testing.FakeActiveOwner
+import app.gifty.testing.FakeSyncScheduler
 import app.gifty.testing.MutableClock
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
@@ -31,9 +35,11 @@ import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -95,6 +101,7 @@ class ForegroundSyncCoordinatorTest {
     private lateinit var runner: SyncRunner
     private lateinit var puller: SyncPuller
     private lateinit var people: PersonRepositoryImpl
+    private val scheduler = FakeSyncScheduler()
 
     private val operations get() = database.syncOperationDao()
 
@@ -245,12 +252,12 @@ class ForegroundSyncCoordinatorTest {
     fun `a request made before start waits for the consumer`() = test {
         // An open account whose opening was never reported, and no session: neither the owner nor
         // the token collector can ask for sync, and a drain shows only as a failed capture.
-        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, appScope)
+        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, appScope)
         quiet.start()
         advanceUntilIdle()
         assertTrue("starting alone asks for nothing", logs().isEmpty())
 
-        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, appScope)
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, appScope)
         coordinator.requestSync()
         advanceUntilIdle()
         assertTrue("nothing drains before start", logs().isEmpty())
@@ -910,7 +917,7 @@ class ForegroundSyncCoordinatorTest {
     @Test
     fun `a push request after a full sync request, both before start, still pulls`() = test {
         // Only these requests can start a drain: the owner's opening is never reported.
-        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, appScope)
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, appScope)
         importSession(alice)
         activeOwner.ownerId.value = alice
         val bela = remotePerson("Béla")
@@ -1019,7 +1026,7 @@ class ForegroundSyncCoordinatorTest {
     @Test
     fun `an account opening right after the old account's token was read for its pull gets its own pull`() = test {
         // Owner changes are not reported, so the only request for Bob's full sync is the one below.
-        val coordinator = ForegroundSyncCoordinator(WatchedOwner(activeOwner.ownerId), RemoteAccounts(tokenAuth), runner, puller, appScope)
+        val coordinator = ForegroundSyncCoordinator(WatchedOwner(activeOwner.ownerId), RemoteAccounts(tokenAuth), runner, puller, scheduler, appScope)
         importSession(alice)
         activeOwner.ownerId.value = alice
         coordinator.start()
@@ -1070,7 +1077,7 @@ class ForegroundSyncCoordinatorTest {
     @Test
     fun `an account opening between the owner check and taking the full sync request gets it back`() = test {
         val owner = WatchedOwner(activeOwner.ownerId)
-        val coordinator = ForegroundSyncCoordinator(owner, RemoteAccounts(tokenAuth), runner, puller, appScope)
+        val coordinator = ForegroundSyncCoordinator(owner, RemoteAccounts(tokenAuth), runner, puller, scheduler, appScope)
         importSession(alice)
         activeOwner.ownerId.value = alice
         coordinator.start()
@@ -1166,6 +1173,189 @@ class ForegroundSyncCoordinatorTest {
         assertEquals("Anna (other device)", database.personDao().findById(anna, alice)!!.name)
     }
 
+    // ---- background work ----
+
+    @Test
+    fun `a saved change asks for a background catch-up after its commit and before any drain, a new token does not`() = test {
+        val coordinator = startIdle(owner = alice)
+        scheduler.calls.clear()
+        val writer = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), SyncOperationQueue(database.syncOperationDao(), clock),
+            activeOwner, clock, coordinator,
+        )
+        var queuedAtCatchUp = -1
+        scheduler.onCatchUp = {
+            queuedAtCatchUp = database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sync_operation").use {
+                it.moveToFirst()
+                it.getInt(0)
+            }
+            assertTrue("no drain before the catch-up is asked for", runs().isEmpty())
+        }
+
+        val anna = writer.addPerson("Anna", null)
+        assertEquals("asked for after the commit", 1, queuedAtCatchUp)
+        advanceUntilIdle()
+
+        assertEquals(listOf(FakeSyncScheduler.CATCH_UP), scheduler.calls)
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+
+        importSession(alice, "refreshed")
+        advanceUntilIdle()
+        assertEquals("a token only wakes", listOf(FakeSyncScheduler.CATCH_UP), scheduler.calls)
+        assertEquals(2, runs().size)
+    }
+
+    @Test
+    fun `a failure to schedule never fails the save, and the change is still pushed`() = test {
+        val coordinator = startIdle(owner = alice)
+        scheduler.onCatchUp = { throw IllegalStateException("WorkManager is not initialized") }
+        val writer = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), SyncOperationQueue(database.syncOperationDao(), clock),
+            activeOwner, clock, coordinator,
+        )
+
+        val anna = writer.addPerson("Anna", null)
+        advanceUntilIdle()
+
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertTrue(logs().contains("Could not schedule background sync: IllegalStateException"))
+    }
+
+    @Test
+    fun `an account becoming ready keeps the periodic job scheduled`() = test {
+        start(owner = alice)
+
+        assertEquals(listOf(FakeSyncScheduler.PERIODIC), scheduler.calls)
+    }
+
+    @Test
+    fun `a drain already under way never answers a later wait, the next one does`() = test {
+        val coordinator = startIdle(owner = alice)
+        val anna = addPerson("Anna", alice)
+        // The drain under way gets no answer, so it would end transient; the next one delivers.
+        val hold = Behavior.Hold(then = Behavior.LoseRequest).also { backend.script += listOf(it, Behavior.LoseRequest) }
+        coordinator.requestSync()
+        advanceUntilIdle()
+        assertTrue(hold.arrived.isCompleted)
+
+        val waiter = async(start = CoroutineStart.UNDISPATCHED) { coordinator.syncAndAwait(full = false) }
+        advanceUntilIdle()
+        assertFalse(waiter.isCompleted)
+
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(DrainOutcome.DONE, waiter.await())
+        assertEquals(2, runs().size)
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+    }
+
+    @Test
+    fun `waits made before a drain starts share it, also one racing a pending wake-up`() = test {
+        val coordinator = startIdle(owner = alice)
+        addPerson("Anna", alice)
+        // Only the drain that takes the waits pulls, as one of them asks, and its pull fails; the
+        // drain their own wake-ups add afterwards pulls nothing and finishes cleanly.
+        backend.beforeFetch = { throw RemoteException(RemoteFailure.NETWORK) }
+        // A wake-up already handed to the consumer, and two waits registered before it drains.
+        coordinator.requestSync()
+        val first = async(start = CoroutineStart.UNDISPATCHED) { coordinator.syncAndAwait(full = false) }
+        val second = async(start = CoroutineStart.UNDISPATCHED) { coordinator.syncAndAwait(full = true) }
+        advanceUntilIdle()
+
+        assertEquals("answered by the first drain", DrainOutcome.TRANSIENT, first.await())
+        assertEquals(DrainOutcome.TRANSIENT, second.await())
+        assertEquals(listOf("Run 1", "Pull", "Run 1"), drainSteps())
+    }
+
+    @Test
+    fun `giving up a wait leaves the drain and every other wait alone`() = test {
+        val coordinator = startIdle(owner = alice)
+        val anna = addPerson("Anna", alice)
+        val hold = hold()
+        val abandoned = async(start = CoroutineStart.UNDISPATCHED) { coordinator.syncAndAwait(full = false) }
+        val kept = async(start = CoroutineStart.UNDISPATCHED) { coordinator.syncAndAwait(full = false) }
+        advanceUntilIdle()
+        assertTrue(hold.arrived.isCompleted)
+
+        abandoned.cancel()
+        hold.release.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(DrainOutcome.DONE, kept.await())
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+    }
+
+    @Test
+    fun `a drain that fails unexpectedly answers its waits as transient`() = test {
+        val coordinator = startIdle(owner = alice)
+        addPerson("Anna", alice)
+        backend.script += Behavior.Crash(IllegalStateException("broken invariant"))
+
+        assertEquals(DrainOutcome.TRANSIENT, coordinator.syncAndAwait(full = false))
+    }
+
+    @Test
+    fun `a drain's outcome comes only from what it saw`() = test {
+        val coordinator = startIdle(owner = alice)
+        suspend fun outcome(full: Boolean = false) = coordinator.syncAndAwait(full).also { advanceUntilIdle() }
+
+        assertEquals("nothing to do", DrainOutcome.DONE, outcome(full = true))
+
+        addPerson("Lost", alice)
+        backend.script += listOf(Behavior.LoseRequest, Behavior.LoseRequest)
+        assertEquals("no answer", DrainOutcome.TRANSIENT, outcome())
+        assertEquals("then delivered", DrainOutcome.DONE, outcome())
+
+        backend.beforeFetch = { throw RemoteException(RemoteFailure.NETWORK) }
+        assertEquals("the pull failed", DrainOutcome.TRANSIENT, outcome(full = true))
+        backend.beforeFetch = {}
+
+        addPerson("Refused", alice)
+        backend.script += Behavior.Fail(RemoteFailure.FORBIDDEN)
+        assertEquals(DrainOutcome.NOT_PERMITTED, outcome())
+
+        tokenRead = { null }
+        assertEquals(DrainOutcome.SESSION_UNUSABLE, outcome())
+        tokenRead = { it }
+
+        activeOwner.ownerId.value = null
+        assertEquals(DrainOutcome.NO_OWNER, outcome())
+    }
+
+    @Test
+    fun `a drain that ran out of pushes leaves the rest deferred, not failed`() = test {
+        val coordinator = startIdle(owner = alice)
+        repeat(2 * SyncRunner.MAX_PUSHES + 1) { addPerson("Person $it", alice) }
+
+        assertEquals(DrainOutcome.DEFERRED, coordinator.syncAndAwait(full = false))
+        assertEquals(DrainOutcome.DONE, coordinator.syncAndAwait(full = false))
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+    }
+
+    @Test
+    fun `a background job in a later process pushes a change whose catch-up was never scheduled`() = test {
+        // Committed, but the process died before asking for a catch-up.
+        val anna = addPerson("Anna", alice)
+        val bela = remotePerson("Béla")
+        // A token to capture that no token collector hears of, and an account whose opening reaches
+        // no collector either: in this new process only the job asks for a drain.
+        sessionOverride = session(alice)
+        activeOwner.ownerId.value = alice
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(tokenAuth), runner, puller, scheduler, appScope)
+        coordinator.start()
+        advanceUntilIdle()
+        assertTrue(runs().isEmpty())
+        val ready = MutableStateFlow<OwnerSessionState>(OwnerSessionState.Ready(AuthUser(alice, "alice@example.com")))
+        val job = BackgroundSync(ready, { BackgroundSessionResult.READY }, coordinator::syncAndAwait)
+
+        assertFalse("done, not retried", job.run(full = true, attempt = 0))
+
+        assertEquals(RemoteState.SYNCED, remoteStateOf(anna))
+        assertNotNull(database.personDao().findById(bela, alice))
+        assertEquals(listOf("Run 1", "Pull"), drainSteps())
+    }
+
     /**
      * An active owner whose every read of the current value can be watched. Changes are never
      * reported to collectors, so a test makes every request itself.
@@ -1203,7 +1393,7 @@ class ForegroundSyncCoordinatorTest {
     }
 
     private fun newCoordinator(scope: CoroutineScope) =
-        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(tokenAuth), runner, puller, scope)
+        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(tokenAuth), runner, puller, scheduler, scope)
 
     // Every token the coordinator captures is read through here: a test may replace the session,
     // or act at the exact moment a token is read.

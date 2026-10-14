@@ -48,16 +48,18 @@ class SyncRunner @Inject constructor(
 
     suspend fun run(account: RemoteAccount): SyncRunResult {
         val owner = account.ownerUserId
-        if (!running.tryLock()) return summarize(account, pushed = 0, settled = 0, conflictsSettled = 0, StopReason.ALREADY_RUNNING)
+        if (!running.tryLock()) return summarize(account, Progress(), StopReason.ALREADY_RUNNING)
         try {
             val candidates = queue(account).filter { it.blockedReason == null || it.isBlockedConflict() }.sortedWith(PUSH_ORDER)
-            var pushed = 0
-            var settled = 0
-            var conflictsSettled = 0
+            val progress = Progress()
             var stoppedBecause: StopReason? = null
             for (operation in candidates) {
                 currentCoroutineContext().ensureActive()
-                if (pushed == MAX_PUSHES) break
+                if (progress.pushed == MAX_PUSHES) {
+                    // Candidates are left that this run may not push; the next one can.
+                    progress.deferred = true
+                    break
+                }
                 if (activeOwner.ownerId.value != owner) {
                     stoppedBecause = StopReason.OWNER_CHANGED
                     break
@@ -68,24 +70,32 @@ class SyncRunner @Inject constructor(
                     continue
                 }
 
-                pushed++
+                progress.pushed++
                 when (val outcome = pusher.push(account, operation.id)) {
-                    PushOutcome.Completed, PushOutcome.NewerChangePending -> settled++
+                    PushOutcome.Completed -> progress.settled++
+                    PushOutcome.NewerChangePending -> {
+                        progress.settled++
+                        // The newer change waits for the next run, which can push it at once.
+                        progress.deferred = true
+                    }
                     PushOutcome.ConflictSettled -> {
-                        settled++
-                        conflictsSettled++
+                        progress.settled++
+                        progress.conflictsSettled++
                     }
                     // A blocked conflict that stays blocked was not settled now.
-                    is PushOutcome.Blocked -> if (operation.blockedReason == null) settled++
+                    is PushOutcome.Blocked -> if (operation.blockedReason == null) progress.settled++
                     PushOutcome.Stale -> Unit
-                    is PushOutcome.Unresolved -> if (outcome.failure == RemoteFailure.FORBIDDEN) {
-                        stoppedBecause = StopReason.PERMISSION
+                    is PushOutcome.Unresolved -> when (outcome.failure) {
+                        RemoteFailure.FORBIDDEN -> stoppedBecause = StopReason.PERMISSION
+                        // Transport and server trouble that a later attempt can get past; nothing else is.
+                        RemoteFailure.NETWORK, RemoteFailure.SERVER -> progress.transientFailures++
+                        else -> Unit
                     }
                     is PushOutcome.SessionRequired -> stoppedBecause = StopReason.SESSION_REQUIRED
                 }
                 if (stoppedBecause != null) break
             }
-            return summarize(account, pushed, settled, conflictsSettled, stoppedBecause)
+            return summarize(account, progress, stoppedBecause)
         } finally {
             running.unlock()
         }
@@ -98,14 +108,17 @@ class SyncRunner @Inject constructor(
     private suspend fun queue(account: RemoteAccount): List<SyncOperationEntity> =
         operations.getAllForOwner(account.ownerUserId).filter { it.entityType in PUSHED_TYPES }
 
+    /** What one run did, counted as it goes. */
+    private class Progress {
+        var pushed = 0
+        var settled = 0
+        var conflictsSettled = 0
+        var transientFailures = 0
+        var deferred = false
+    }
+
     /** The run's counters, with what is left read from the queue as it is now. */
-    private suspend fun summarize(
-        account: RemoteAccount,
-        pushed: Int,
-        settled: Int,
-        conflictsSettled: Int,
-        stoppedBecause: StopReason?,
-    ): SyncRunResult {
+    private suspend fun summarize(account: RemoteAccount, progress: Progress, stoppedBecause: StopReason?): SyncRunResult {
         val queue = queue(account)
         val queued = queue.associateBy { EntityRef(it.entityType, it.entityId) }
         val needsAttention = queue.any { it.blockedReason != null } ||
@@ -119,9 +132,11 @@ class SyncRunner @Inject constructor(
                     }
             }
         return SyncRunResult(
-            pushed = pushed,
-            settled = settled,
-            conflictsSettled = conflictsSettled,
+            pushed = progress.pushed,
+            settled = progress.settled,
+            conflictsSettled = progress.conflictsSettled,
+            transientFailures = progress.transientFailures,
+            deferred = progress.deferred,
             stoppedBecause = stoppedBecause,
             workRemains = queue.any { it.blockedReason == null },
             needsAttention = needsAttention,

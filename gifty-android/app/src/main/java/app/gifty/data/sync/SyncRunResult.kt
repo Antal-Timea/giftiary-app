@@ -14,6 +14,16 @@ data class SyncRunResult(
      * until a pull brings in the backend's rows.
      */
     val conflictsSettled: Int,
+    /**
+     * Pushes left unresolved by the network or the server: the only failures a later attempt can
+     * get past without anything else changing first.
+     */
+    val transientFailures: Int = 0,
+    /**
+     * Whether the next run can push more at once: this one used its whole budget with candidates
+     * left, or a push left a newer change behind it. Not merely work remaining, which may be stuck.
+     */
+    val deferred: Boolean = false,
     /** Why the run ended early, or null if it went through every candidate it could. */
     val stoppedBecause: StopReason?,
     /** Whether any unblocked operation of the owner is still queued. */

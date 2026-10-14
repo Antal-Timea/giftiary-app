@@ -97,6 +97,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.work.runtime.ktx)
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.hilt.android)
@@ -116,6 +117,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.work.testing)
     testImplementation(libs.ktor.client.mock)
 
     // The minified decoding smoke: its entry point serves PostgREST rows from a mock engine.
