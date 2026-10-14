@@ -201,4 +201,29 @@
     <string name="account_preparation_failed_title">Something went wrong</string>
     <string name="account_preparation_failed_message">Could not prepare your data on this device.</string>
     <string name="account_preparation_retry">Try again</string>
+    <plurals name="sync_status_waiting">
+        <item quantity="one">%1$d change saved on this device, waiting to sync</item>
+        <item quantity="other">%1$d changes saved on this device, waiting to sync</item>
+    </plurals>
+    <string name="sync_status_nothing_waiting">No changes waiting to sync</string>
+    <plurals name="sync_status_attention">
+        <item quantity="one">%1$d item needs your attention</item>
+        <item quantity="other">%1$d items need your attention</item>
+    </plurals>
+    <string name="sync_status_open_attention">Show what needs attention</string>
+    <string name="sync_status_unavailable">Sync status cannot be shown right now.</string>
+    <string name="sync_attention_title">Needs attention</string>
+    <string name="sync_attention_empty_title">Nothing needs your attention</string>
+    <string name="sync_attention_empty_message">Your changes are saved on this device first and sent to your account from there.</string>
+    <string name="sync_attention_replaced">This was changed on another device too. That version was kept, so your changes made here were not applied.</string>
+    <string name="sync_attention_duplicate_gift">This idea was given on another device too. That gift was kept and this one was removed.</string>
+    <string name="sync_attention_refused">Your account did not accept this change. Check its details.</string>
+    <string name="sync_attention_unavailable">This change cannot reach your account.</string>
+    <string name="sync_attention_open">Open</string>
+    <string name="sync_attention_dismiss">Dismiss</string>
+    <string name="sync_item_person">Person</string>
+    <string name="sync_item_occasion">Occasion</string>
+    <string name="sync_item_gift_idea">Gift idea</string>
+    <string name="sync_item_gift">Gift</string>
+    <string name="sync_item_unnamed">Unnamed item</string>
 </resources>

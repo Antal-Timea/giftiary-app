@@ -2,8 +2,10 @@ package app.gifty.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -11,6 +13,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.gifty.domain.model.GiftDirection
+import app.gifty.domain.model.SyncItem
+import app.gifty.domain.model.SyncItemType
 import app.gifty.presentation.giftideas.GiftIdeaDetailScreen
 import app.gifty.presentation.giftideas.GiftIdeaDetailViewModel
 import app.gifty.presentation.giftideas.GiftIdeaEditorScreen
@@ -33,6 +37,8 @@ import app.gifty.presentation.people.PersonDetailScreen
 import app.gifty.presentation.people.PersonDetailViewModel
 import app.gifty.presentation.people.PersonEditorScreen
 import app.gifty.presentation.people.PersonEditorViewModel
+import app.gifty.presentation.sync.SyncAttentionScreen
+import app.gifty.presentation.sync.SyncStatusViewModel
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
@@ -41,6 +47,9 @@ data object HomeRoute
 
 @Serializable
 data object PeopleRoute
+
+@Serializable
+data object SyncAttentionRoute
 
 @Serializable
 data class PersonDetailRoute(val personId: String)
@@ -92,10 +101,19 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         composable<HomeRoute> {
+            val syncStatus by hiltViewModel<SyncStatusViewModel>().content.collectAsStateWithLifecycle()
             HomeScreen(
+                syncStatus = syncStatus,
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
+                onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
                 onSignOut = onSignOut,
+            )
+        }
+        composable<SyncAttentionRoute> {
+            SyncAttentionScreen(
+                onBack = navController.popBackStackUnlessPaused(),
+                onOpen = { item -> navController.navigate(routeOf(item)) },
             )
         }
         composable<PeopleRoute> {
@@ -257,6 +275,14 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/** The existing screen of an item that needs attention: its detail screen, or the editor for an occasion. */
+private fun routeOf(item: SyncItem): Any = when (item.type) {
+    SyncItemType.PERSON -> PersonDetailRoute(item.id.toString())
+    SyncItemType.OCCASION -> EditOccasionRoute(item.id.toString())
+    SyncItemType.GIFT_IDEA -> GiftIdeaDetailRoute(item.id.toString())
+    SyncItemType.GIFT -> GiftDetailRoute(item.id.toString())
 }
 
 private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()

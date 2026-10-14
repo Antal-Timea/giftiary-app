@@ -200,4 +200,29 @@
     <string name="account_preparation_failed_title">Valami hiba történt</string>
     <string name="account_preparation_failed_message">Nem sikerült előkészíteni az adataidat ezen az eszközön.</string>
     <string name="account_preparation_retry">Próbáld újra</string>
+    <plurals name="sync_status_waiting">
+        <item quantity="one">%1$d változás elmentve ezen az eszközön, szinkronizálásra vár</item>
+        <item quantity="other">%1$d változás elmentve ezen az eszközön, szinkronizálásra vár</item>
+    </plurals>
+    <string name="sync_status_nothing_waiting">Nincs szinkronizálásra váró változás</string>
+    <plurals name="sync_status_attention">
+        <item quantity="one">%1$d elem figyelmet igényel</item>
+        <item quantity="other">%1$d elem figyelmet igényel</item>
+    </plurals>
+    <string name="sync_status_open_attention">Figyelmet igénylő elemek megjelenítése</string>
+    <string name="sync_status_unavailable">A szinkronizálás állapota most nem jeleníthető meg.</string>
+    <string name="sync_attention_title">Figyelmet igényel</string>
+    <string name="sync_attention_empty_title">Semmi nem igényel figyelmet</string>
+    <string name="sync_attention_empty_message">A változtatásaid először ezen az eszközön mentődnek el, és innen kerülnek a fiókodba.</string>
+    <string name="sync_attention_replaced">Ezt egy másik eszközön is módosították. Az a változat maradt meg, így az itt végzett módosításaid nem kerültek be.</string>
+    <string name="sync_attention_duplicate_gift">Ezt az ötletet egy másik eszközön is megajándékozottnak jelölték. Az az ajándék maradt meg, ez pedig törlődött.</string>
+    <string name="sync_attention_refused">A fiókod nem fogadta el ezt a változást. Ellenőrizd az adatait.</string>
+    <string name="sync_attention_unavailable">Ez a változás nem jut el a fiókodba.</string>
+    <string name="sync_attention_open">Megnyitás</string>
+    <string name="sync_attention_dismiss">Elvetés</string>
+    <string name="sync_item_person">Személy</string>
+    <string name="sync_item_occasion">Alkalom</string>
+    <string name="sync_item_gift_idea">Ajándékötlet</string>
+    <string name="sync_item_gift">Ajándék</string>
+    <string name="sync_item_unnamed">Névtelen elem</string>
 </resources>

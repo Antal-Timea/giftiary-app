@@ -4,6 +4,7 @@ import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.repository.SyncStatusRepositoryImpl
 import app.gifty.data.sync.ForegroundSyncCoordinator
 import app.gifty.data.sync.FullSyncRequester
 import app.gifty.data.sync.SyncRequester
@@ -14,6 +15,7 @@ import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonRepository
+import app.gifty.domain.repository.SyncStatusRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -40,6 +42,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindPersonRepository(impl: PersonRepositoryImpl): PersonRepository
+
+    @Binds
+    abstract fun bindSyncStatusRepository(impl: SyncStatusRepositoryImpl): SyncStatusRepository
 
     @Binds
     abstract fun bindActiveOwner(impl: OwnerSession): ActiveOwner

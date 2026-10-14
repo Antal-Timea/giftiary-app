@@ -19,15 +19,20 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import app.gifty.R
+import app.gifty.domain.model.SyncStatus
 import app.gifty.presentation.components.GiftyPrimaryButton
 import app.gifty.presentation.components.GiftySecondaryButton
+import app.gifty.presentation.sync.SyncStatusContent
+import app.gifty.presentation.sync.SyncStatusLine
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 
 @Composable
 fun HomeScreen(
+    syncStatus: SyncStatusContent,
     onOpenGifts: () -> Unit,
     onOpenPeople: () -> Unit,
+    onOpenSyncAttention: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -53,6 +58,8 @@ fun HomeScreen(
                 color = colors.textPrimary,
             )
             Spacer(Modifier.weight(1f))
+            SyncStatusLine(content = syncStatus, onOpenAttention = onOpenSyncAttention)
+            Spacer(Modifier.height(GiftySpacing.l))
             GiftyPrimaryButton(
                 text = stringResource(R.string.home_open_gifts),
                 onClick = onOpenGifts,
@@ -80,6 +87,12 @@ fun HomeScreen(
 @Composable
 private fun HomeScreenPreview() {
     GiftyTheme {
-        HomeScreen(onOpenGifts = {}, onOpenPeople = {}, onSignOut = {})
+        HomeScreen(
+            syncStatus = SyncStatusContent.Loaded(SyncStatus(waitingCount = 3, attention = emptyList())),
+            onOpenGifts = {},
+            onOpenPeople = {},
+            onOpenSyncAttention = {},
+            onSignOut = {},
+        )
     }
 }
