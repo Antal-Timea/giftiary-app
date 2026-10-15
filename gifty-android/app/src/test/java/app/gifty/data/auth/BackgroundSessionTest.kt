@@ -1,5 +1,8 @@
 package app.gifty.data.auth
 
+import app.gifty.data.remote.RemoteAccounts
+import app.gifty.data.remote.RemoteException
+import app.gifty.data.remote.RemoteTestData.token
 import app.gifty.domain.model.AuthState
 import app.gifty.testing.MutableClock
 import io.github.jan.supabase.annotations.SupabaseInternal
@@ -24,8 +27,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -137,6 +142,8 @@ class BackgroundSessionTest {
 
             assertEquals(1, requests.size)
             assertFalse("the SDK's retrying refresh must not be left running", auth.isAutoRefreshRunning)
+            assertNull("the stale session is not made usable", auth.currentSessionOrNull())
+            assertEquals(SessionStatus.Initializing, auth.sessionStatus.value)
         }
     }
 
@@ -149,6 +156,8 @@ class BackgroundSessionTest {
 
         assertEquals(1, requests.size)
         assertFalse(auth.isAutoRefreshRunning)
+        assertNull("the stale session is not made usable", auth.currentSessionOrNull())
+        assertEquals(SessionStatus.Initializing, auth.sessionStatus.value)
         assertEquals("revoked", sessionManager.loadSession()?.refreshToken)
     }
 
@@ -198,6 +207,98 @@ class BackgroundSessionTest {
 
         assertEquals(1, states.size)
         assertEquals(userId, (states.single() as AuthState.SignedIn).user.id)
+    }
+
+    @Test
+    fun `an expired or expiring session is only ever published once refreshed`() = runTest {
+        listOf(now.minusSeconds(60), now.plusSeconds(120)).forEach { expiresAt ->
+            requests.clear()
+            sentToBackground(session("stale-access", "refresh", expiresAt = expiresAt))
+            val published = publishedTokens()
+
+            assertEquals(BackgroundSessionResult.READY, background.prepare())
+
+            assertEquals("$expiresAt", listOf("refreshed-access"), published)
+            assertEquals(1, requests.size)
+        }
+    }
+
+    @Test
+    fun `a session that is not about to expire is published once, as stored, without a request`() = runTest {
+        sentToBackground(session("access", "refresh", expiresAt = now.plusSeconds(3000)))
+        val published = publishedTokens()
+
+        assertEquals(BackgroundSessionResult.READY, background.prepare())
+
+        assertEquals(listOf("access"), published)
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `while the refresh is under way nothing can sync from the stale token`() = runTest {
+        // Real tokens of this account, so a published one could actually be captured for sync.
+        val stale = token(userId, "stale")
+        val fresh = session(token(userId, "fresh"), "fresh-refresh", expiresAt = now.plusSeconds(3600))
+        sentToBackground(session(stale, "refresh", expiresAt = now.minusSeconds(60)))
+        val accounts = RemoteAccounts(auth)
+        var tokenChanges = 0
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { accounts.accessTokenChanges.collect { tokenChanges++ } }
+        val published = publishedTokens()
+        val held = CompletableDeferred<Unit>()
+        val arrived = CompletableDeferred<Unit>()
+        answer = {
+            arrived.complete(Unit)
+            held.await()
+            respondSession(fresh)
+        }
+
+        val preparing = async { background.prepare() }
+        arrived.await()
+
+        assertEquals("no token change wakes a sync", 0, tokenChanges)
+        assertTrue("nothing published", published.isEmpty())
+        assertNull(auth.currentSessionOrNull())
+        val capture = runCatching { accounts.capture(userId) }.exceptionOrNull()
+        assertTrue("no token to capture: $capture", capture is RemoteException)
+
+        held.complete(Unit)
+        assertEquals(BackgroundSessionResult.READY, preparing.await())
+
+        assertEquals(1, tokenChanges)
+        assertEquals(listOf(fresh.accessToken), published)
+        assertEquals(fresh.accessToken, accounts.capture(userId).accessToken)
+    }
+
+    @Test
+    fun `a failed refresh publishes nothing at all`() = runTest {
+        listOf<suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>(
+            { throw IOException("offline") },
+            { respondError(HttpStatusCode.ServiceUnavailable, "server_error") },
+            { respondError(HttpStatusCode.BadRequest, "refresh_token_not_found") },
+        ).forEach { failing ->
+            sentToBackground(session("stale-access", "refresh", expiresAt = now.minusSeconds(60)))
+            val published = publishedTokens()
+            answer = failing
+
+            background.prepare()
+
+            assertTrue(published.toString(), published.isEmpty())
+            assertNull(auth.currentSessionOrNull())
+        }
+    }
+
+    /** Access tokens the SDK publishes as current from now on, in order. */
+    private fun TestScope.publishedTokens(): List<String> {
+        val tokens = mutableListOf<String>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            var first = true
+            auth.sessionStatus.collect { status ->
+                // The state already there when watching starts is not a publication.
+                if (!first) (status as? SessionStatus.Authenticated)?.let { tokens += it.session.accessToken }
+                first = false
+            }
+        }
+        return tokens
     }
 
     /** What the SDK's lifecycle hook leaves when the app goes to the background. */
