@@ -19,6 +19,7 @@ import app.gifty.domain.model.AuthUser
 import app.gifty.domain.repository.NoActiveOwnerException
 import app.gifty.domain.repository.OwnerSessionState
 import app.gifty.testing.FakeAuthRepository
+import app.gifty.testing.FakeReminderScheduler
 import app.gifty.testing.FakeSyncScheduler
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +56,7 @@ class OwnerSessionTest {
 
     private val auth = FakeAuthRepository()
     private val scheduler = FakeSyncScheduler()
+    private val reminders = FakeReminderScheduler()
     private lateinit var database: GiftyDatabase
     private lateinit var claimDao: ControlledClaimDao
 
@@ -72,7 +74,7 @@ class OwnerSessionTest {
     /** Starts a session whose every owner and state change is recorded, in order. */
     private fun TestScope.startSession(): Recorded {
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
-        val session = OwnerSession(auth, LegacyOwnerStore(context), LegacyOwnershipClaim(database, claimDao), scheduler, scope)
+        val session = OwnerSession(auth, LegacyOwnerStore(context), LegacyOwnershipClaim(database, claimDao), scheduler, reminders, scope)
         val recorded = Recorded(session)
         scope.launch { session.ownerId.collect { recorded.owners += it } }
         scope.launch { session.state.collect { recorded.states += it } }
@@ -224,7 +226,7 @@ class OwnerSessionTest {
     }
 
     @Test
-    fun `only an explicit sign-out cancels background sync, not restoring or another account`() = runTest {
+    fun `only an explicit sign-out cancels background sync and reminders, not restoring or another account`() = runTest {
         auth.state.value = AuthState.SignedIn(alice)
         val recorded = startSession()
         recorded.session.awaitState(OwnerSessionState.Ready(alice))
@@ -232,10 +234,12 @@ class OwnerSessionTest {
         auth.state.value = AuthState.SignedIn(bob)
         recorded.session.awaitState(OwnerSessionState.Ready(bob))
         assertTrue(scheduler.calls.isEmpty())
+        assertTrue(reminders.calls.isEmpty())
 
         recorded.session.signOut()
 
         assertEquals(listOf(FakeSyncScheduler.CANCEL), scheduler.calls)
+        assertEquals(listOf(FakeReminderScheduler.CANCEL), reminders.calls)
     }
 
     @Test

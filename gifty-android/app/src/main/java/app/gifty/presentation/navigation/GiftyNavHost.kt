@@ -1,10 +1,16 @@
 package app.gifty.presentation.navigation
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavHostController
@@ -31,6 +37,9 @@ import app.gifty.presentation.gifts.GiftHistoryScreen
 import app.gifty.presentation.home.ComingUpTarget
 import app.gifty.presentation.home.ComingUpViewModel
 import app.gifty.presentation.home.HomeScreen
+import app.gifty.presentation.home.ReminderCardActions
+import app.gifty.presentation.home.ReminderCardViewModel
+import app.gifty.presentation.home.notificationSettingsIntent
 import app.gifty.presentation.occasions.OccasionEditorScreen
 import app.gifty.presentation.occasions.OccasionEditorTarget
 import app.gifty.presentation.occasions.OccasionEditorViewModel
@@ -105,9 +114,32 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
         composable<HomeRoute> {
             val syncStatus by hiltViewModel<SyncStatusViewModel>().content.collectAsStateWithLifecycle()
             val comingUp by hiltViewModel<ComingUpViewModel>().content.collectAsStateWithLifecycle()
+            val reminders = hiltViewModel<ReminderCardViewModel>()
+            val reminderCard by reminders.state.collectAsStateWithLifecycle()
+            // Coming back from the system's notification settings must show what was changed there.
+            LifecycleResumeEffect(reminders) {
+                reminders.onResume()
+                onPauseOrDispose {}
+            }
+            val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                reminders.onPermissionResult()
+            }
+            val askToNotify = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+            val context = LocalContext.current
             HomeScreen(
                 syncStatus = syncStatus,
                 comingUp = comingUp,
+                reminderCard = reminderCard,
+                reminderActions = ReminderCardActions(
+                    onTurnOn = { if (reminders.onTurnOn()) askToNotify() },
+                    onTurnOff = reminders::onTurnOff,
+                    onAllow = askToNotify,
+                    onOpenSettings = { context.startActivity(notificationSettingsIntent(context)) },
+                ),
                 onOpenComingUp = { target ->
                     navController.navigate(
                         when (target) {

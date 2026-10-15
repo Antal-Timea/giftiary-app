@@ -1,9 +1,6 @@
 package app.gifty.domain.usecase
 
 import app.gifty.domain.model.UpcomingOccasion
-import app.gifty.domain.model.nextOccurrence
-import app.gifty.domain.model.turningAge
-import app.gifty.domain.repository.OccasionEntry
 import app.gifty.domain.repository.OccasionRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +11,6 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 /**
@@ -28,17 +24,7 @@ class ObserveUpcomingOccasionsUseCase @Inject constructor(
 ) {
 
     operator fun invoke(): Flow<List<UpcomingOccasion>> =
-        combine(repository.observeOccasions(), localDates()) { entries, today -> upcoming(entries, today) }
-
-    private fun upcoming(entries: List<OccasionEntry>, today: LocalDate): List<UpcomingOccasion> =
-        entries.mapNotNull { entry ->
-            val date = entry.occasion.nextOccurrence(onOrAfter = today) ?: return@mapNotNull null
-            val daysUntil = ChronoUnit.DAYS.between(today, date)
-            if (daysUntil > WINDOW_DAYS) return@mapNotNull null
-            UpcomingOccasion(entry.occasion, entry.person, date, daysUntil.toInt(), turningAge(entry.occasion, date))
-        }.sortedWith(
-            compareBy<UpcomingOccasion>({ it.date }, { it.person?.name ?: it.occasion.title.orEmpty() }, { it.occasion.id }),
-        )
+        combine(repository.observeOccasions(), localDates()) { entries, today -> upcomingOccasions(entries, today, WINDOW_DAYS) }
 
     /**
      * Today, and each new day once it starts. The wait is worked out again from the clock after

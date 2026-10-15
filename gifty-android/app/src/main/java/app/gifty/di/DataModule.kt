@@ -1,5 +1,8 @@
 package app.gifty.di
 
+import app.gifty.data.reminders.ReminderScheduler
+import app.gifty.data.reminders.ReminderSettingsRepositoryImpl
+import app.gifty.data.reminders.WorkManagerReminderScheduler
 import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
@@ -17,6 +20,7 @@ import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonRepository
+import app.gifty.domain.repository.ReminderSettingsRepository
 import app.gifty.domain.repository.SyncStatusRepository
 import dagger.Binds
 import dagger.Module
@@ -63,6 +67,12 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler
+
+    @Binds
+    abstract fun bindReminderScheduler(impl: WorkManagerReminderScheduler): ReminderScheduler
+
+    @Binds
+    abstract fun bindReminderSettingsRepository(impl: ReminderSettingsRepositoryImpl): ReminderSettingsRepository
 
     companion object {
 

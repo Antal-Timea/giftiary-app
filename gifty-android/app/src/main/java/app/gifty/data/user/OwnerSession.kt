@@ -2,6 +2,7 @@ package app.gifty.data.user
 
 import android.util.Log
 import app.gifty.data.local.LegacyOwnershipClaim
+import app.gifty.data.reminders.ReminderScheduler
 import app.gifty.data.sync.SyncScheduler
 import app.gifty.di.ApplicationScope
 import app.gifty.domain.model.AuthState
@@ -34,6 +35,7 @@ class OwnerSession @Inject constructor(
     private val legacyOwnerStore: LegacyOwnerStore,
     private val legacyClaim: LegacyOwnershipClaim,
     private val syncScheduler: SyncScheduler,
+    private val reminderScheduler: ReminderScheduler,
     @ApplicationScope private val scope: CoroutineScope,
 ) : ActiveOwner, AccountSession {
 
@@ -72,6 +74,8 @@ class OwnerSession @Inject constructor(
         synchronized(lock) { closeLocked(OwnerSessionState.Restoring) }
         // Background sync is the signed-out account's no longer; the next account schedules its own.
         syncScheduler.cancelAll()
+        // The account's reminder choice stays for its return; only its heartbeat stops.
+        reminderScheduler.cancel()
         scope.launch {
             try {
                 authRepository.signOut()

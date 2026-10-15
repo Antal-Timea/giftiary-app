@@ -14,6 +14,7 @@ import app.gifty.domain.repository.GiftDetails
 import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.NoActiveOwnerException
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.repository.OccasionSnapshot
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.Dispatchers
@@ -108,6 +109,7 @@ class ActiveOwnerRepositoriesTest {
 
         assertEquals(emptyList<Any>(), occasions.observeOccasionsForPerson(anna.id).first())
         assertEquals(emptyList<Any>(), occasions.observeOccasions().first())
+        assertEquals(OccasionSnapshot(bob, emptyList()), occasions.getOccasionSnapshot())
         assertEquals(emptyList<Any>(), gifts.observeGifts().first())
         assertEquals(emptyList<Any>(), gifts.observeGiftsForPerson(anna.id).first())
         assertEquals(emptyList<Any>(), ideas.observeGiftIdeas().first())
@@ -126,6 +128,7 @@ class ActiveOwnerRepositoriesTest {
 
         assertEquals(emptyList<Person>(), people.observePeople().first())
         assertEquals(emptyList<Any>(), occasions.observeOccasions().first())
+        assertNull(occasions.getOccasionSnapshot())
         assertNull(people.observePerson(anna.id).first())
         assertNull(people.getPerson(anna.id))
         assertNull(gifts.observeGift(gift.id).first())

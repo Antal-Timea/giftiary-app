@@ -7,11 +7,13 @@ import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OccasionEntry
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.OccasionRepository
+import app.gifty.domain.repository.OccasionSnapshot
 import app.gifty.domain.repository.PersonNotFoundException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -31,8 +33,11 @@ class FakeOccasionRepository : OccasionRepository {
     /** The active people [observeOccasions] reports; occasions of anyone else are left out like a deleted person's. */
     val people = MutableStateFlow<Map<UUID, Person>>(emptyMap())
 
-    /** When set, [observeOccasions] fails with it, standing in for a failing local read. */
+    /** When set, [observeOccasions] and [getOccasionSnapshot] fail with it, standing in for a failing local read. */
     var readFailure: Exception? = null
+
+    /** The account [getOccasionSnapshot] reads for; null stands for no account. */
+    var snapshotOwner: UUID? = UUID.randomUUID()
 
     val currentOccasions: List<Occasion> get() = occasions.value
 
@@ -56,6 +61,12 @@ class FakeOccasionRepository : OccasionRepository {
                 }
             },
         )
+    }
+
+    override suspend fun getOccasionSnapshot(): OccasionSnapshot? {
+        readFailure?.let { throw it }
+        val owner = snapshotOwner ?: return null
+        return OccasionSnapshot(owner, observeOccasions().first())
     }
 
     override suspend fun getOccasion(id: UUID): Occasion? = occasions.value.find { it.id == id }

@@ -5,6 +5,7 @@ import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.SyncOperationQueue
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
+import app.gifty.data.local.entity.OccasionWithPerson
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.mapper.toDomain
@@ -15,6 +16,7 @@ import app.gifty.data.user.scoped
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OccasionEntry
+import app.gifty.domain.repository.OccasionSnapshot
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonNotFoundException
@@ -43,13 +45,19 @@ class OccasionRepositoryImpl @Inject constructor(
 
     override fun observeOccasions(): Flow<List<OccasionEntry>> =
         activeOwner.scoped(emptyList()) { ownerUserId ->
-            occasionDao.observeActiveWithPerson(ownerUserId).map { rows ->
-                // Saves and pulls only store real dates, but a single corrupt row must not take
-                // down every screen that lists occasions; Occasion would refuse to be built.
-                rows.filter { Occasion.dateProblem(it.occasion.day, it.occasion.month, it.occasion.year) == null }
-                    .map { OccasionEntry(it.occasion.toDomain(), it.person?.toDomain()) }
-            }
+            occasionDao.observeActiveWithPerson(ownerUserId).map { it.toEntries() }
         }
+
+    override suspend fun getOccasionSnapshot(): OccasionSnapshot? {
+        val ownerUserId = activeOwner.ownerId.value ?: return null
+        return OccasionSnapshot(ownerUserId, occasionDao.findActiveWithPerson(ownerUserId).toEntries())
+    }
+
+    // Saves and pulls only store real dates, but a single corrupt row must not take down every
+    // screen that lists occasions; Occasion would refuse to be built.
+    private fun List<OccasionWithPerson>.toEntries(): List<OccasionEntry> =
+        filter { Occasion.dateProblem(it.occasion.day, it.occasion.month, it.occasion.year) == null }
+            .map { OccasionEntry(it.occasion.toDomain(), it.person?.toDomain()) }
 
     override suspend fun getOccasion(id: UUID): Occasion? =
         activeOwner.ownerId.value?.let { ownerUserId -> occasionDao.findActiveById(id, ownerUserId)?.toDomain() }

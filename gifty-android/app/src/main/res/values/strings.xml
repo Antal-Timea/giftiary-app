@@ -17,6 +17,25 @@
     </plurals>
     <string name="coming_up_unavailable">Upcoming occasions cannot be shown right now.</string>
 
+    <string name="reminder_card_off">Get a reminder on the day of an occasion and a week before.</string>
+    <string name="reminder_card_on">Reminders are on, on the day and a week before.</string>
+    <string name="reminder_card_needs_permission">Allow notifications to get reminders.</string>
+    <string name="reminder_card_blocked">Notifications are turned off for Gifty.</string>
+    <string name="reminder_turn_on">Turn on</string>
+    <string name="reminder_turn_off">Turn off</string>
+    <string name="reminder_allow">Allow</string>
+    <string name="reminder_open_settings">Open settings</string>
+    <string name="reminder_channel_name">Occasion reminders</string>
+    <string name="reminder_channel_description">A note on the day of an occasion and a week before.</string>
+    <string name="reminder_public_text">You have occasions coming up.</string>
+    <string name="reminder_today">today</string>
+    <plurals name="reminder_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
+    <string name="reminder_line">%1$s: %2$s, %3$s</string>
+    <string name="reminder_line_short">%1$s, %2$s</string>
+
     <string name="navigate_back">Back</string>
     <string name="action_cancel">Cancel</string>
 

@@ -29,16 +29,13 @@ interface OccasionDao {
 
     /** The owner's active occasions, each either without a person or with an active one of the same owner. */
     @Transaction
-    @Query(
-        """
-        SELECT occasion.* FROM occasion
-        LEFT JOIN person ON person.id = occasion.personId
-        WHERE occasion.ownerUserId = :ownerUserId AND occasion.deletedAt IS NULL
-            AND (occasion.personId IS NULL OR (person.ownerUserId = :ownerUserId AND person.deletedAt IS NULL))
-        ORDER BY occasion.month, occasion.day, occasion.id
-        """,
-    )
+    @Query(ACTIVE_WITH_PERSON)
     fun observeActiveWithPerson(ownerUserId: UUID): Flow<List<OccasionWithPerson>>
+
+    /** The same rows as [observeActiveWithPerson], read once. */
+    @Transaction
+    @Query(ACTIVE_WITH_PERSON)
+    suspend fun findActiveWithPerson(ownerUserId: UUID): List<OccasionWithPerson>
 
     @Query(
         """
@@ -88,3 +85,12 @@ interface OccasionDao {
     )
     suspend fun adoptRemoteVersion(id: UUID, ownerUserId: UUID, version: Long): Int
 }
+
+// Shared so that the live and the one-off read can never disagree about which rows count.
+private const val ACTIVE_WITH_PERSON = """
+    SELECT occasion.* FROM occasion
+    LEFT JOIN person ON person.id = occasion.personId
+    WHERE occasion.ownerUserId = :ownerUserId AND occasion.deletedAt IS NULL
+        AND (occasion.personId IS NULL OR (person.ownerUserId = :ownerUserId AND person.deletedAt IS NULL))
+    ORDER BY occasion.month, occasion.day, occasion.id
+"""

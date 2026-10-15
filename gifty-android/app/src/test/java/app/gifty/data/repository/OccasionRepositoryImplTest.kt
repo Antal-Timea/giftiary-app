@@ -180,6 +180,25 @@ class OccasionRepositoryImplTest {
     }
 
     @Test
+    fun `a snapshot is one read for the current account, by the same rules as the live list`() = runTest {
+        val annasBirthday = repository.addOccasion(anna.id, birthday)
+        val christmas = repository.addOccasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
+        occasionDao.insert(occasionEntity(anna).copy(day = 31, month = 4))
+        val bela = person(ownerUserId).also { personDao.insert(it) }
+        repository.addOccasion(bela.id, birthday)
+        personDao.softDelete(bela.id, ownerUserId, clock.instant)
+        val strangersPerson = person(otherOwnerId).also { personDao.insert(it) }
+        occasionDao.insert(occasionEntity(strangersPerson).copy(ownerUserId = ownerUserId))
+        occasionDao.insert(occasionEntity(strangersPerson))
+
+        val snapshot = repository.getOccasionSnapshot()!!
+
+        assertEquals(ownerUserId, snapshot.ownerId)
+        assertEquals(listOf(annasBirthday, christmas), snapshot.entries.map { it.occasion })
+        assertEquals(repository.observeOccasions().first(), snapshot.entries)
+    }
+
+    @Test
     fun `an occasion cannot be added for a deleted person`() = runTest {
         personDao.softDelete(anna.id, ownerUserId, clock.instant)
 

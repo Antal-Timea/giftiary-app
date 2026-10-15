@@ -42,6 +42,8 @@ fun HomeScreen(
     syncStatus: SyncStatusContent,
     comingUp: ComingUpContent,
     onOpenComingUp: (ComingUpTarget) -> Unit,
+    reminderCard: ReminderCardState,
+    reminderActions: ReminderCardActions,
     onOpenGifts: () -> Unit,
     onOpenPeople: () -> Unit,
     onOpenSyncAttention: () -> Unit,
@@ -76,6 +78,10 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.height(GiftySpacing.xxl))
                 ComingUpSection(content = comingUp, onOpen = onOpenComingUp)
+                if (reminderCard != ReminderCardState.Hidden) {
+                    Spacer(Modifier.height(GiftySpacing.l))
+                    ReminderCard(state = reminderCard, actions = reminderActions)
+                }
             }
             Spacer(Modifier.height(GiftySpacing.l))
             SyncStatusLine(content = syncStatus, onOpenAttention = onOpenSyncAttention)
@@ -117,6 +123,8 @@ private fun HomeScreenPreview() {
                 ),
             ),
             onOpenComingUp = {},
+            reminderCard = ReminderCardState.Off,
+            reminderActions = ReminderCardActions({}, {}, {}, {}),
             onOpenGifts = {},
             onOpenPeople = {},
             onOpenSyncAttention = {},

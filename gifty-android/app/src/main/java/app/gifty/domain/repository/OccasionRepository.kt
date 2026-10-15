@@ -18,6 +18,9 @@ interface OccasionRepository {
     /** All active occasions with their people; an occasion whose person was deleted is left out. */
     fun observeOccasions(): Flow<List<OccasionEntry>>
 
+    /** The same occasions as [observeOccasions], read once for the current account; null without one. */
+    suspend fun getOccasionSnapshot(): OccasionSnapshot?
+
     /** Returns null if the occasion does not exist or has been deleted. */
     suspend fun getOccasion(id: UUID): Occasion?
 
@@ -48,6 +51,12 @@ data class OccasionEntry(
     val occasion: Occasion,
     /** Null for an occasion of the user's own, such as Christmas. */
     val person: Person?,
+)
+
+/** Occasions read for one account; [ownerId] says whose, so a caller can tell if the account changed since. */
+data class OccasionSnapshot(
+    val ownerId: UUID,
+    val entries: List<OccasionEntry>,
 )
 
 class OccasionNotFoundException(id: UUID) : Exception("Occasion $id does not exist")

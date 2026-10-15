@@ -16,6 +16,25 @@
     </plurals>
     <string name="coming_up_unavailable">A közelgő alkalmak most nem jeleníthetők meg.</string>
 
+    <string name="reminder_card_off">Kérj emlékeztetőt az alkalom napján és egy héttel előtte.</string>
+    <string name="reminder_card_on">Az emlékeztetők be vannak kapcsolva: az alkalom napján és egy héttel előtte.</string>
+    <string name="reminder_card_needs_permission">Engedélyezd az értesítéseket az emlékeztetőkhöz.</string>
+    <string name="reminder_card_blocked">A Gifty értesítései ki vannak kapcsolva.</string>
+    <string name="reminder_turn_on">Bekapcsolás</string>
+    <string name="reminder_turn_off">Kikapcsolás</string>
+    <string name="reminder_allow">Engedélyezés</string>
+    <string name="reminder_open_settings">Beállítások megnyitása</string>
+    <string name="reminder_channel_name">Alkalom-emlékeztetők</string>
+    <string name="reminder_channel_description">Értesítés az alkalom napján és egy héttel előtte.</string>
+    <string name="reminder_public_text">Közelgő alkalmaid vannak.</string>
+    <string name="reminder_today">ma</string>
+    <plurals name="reminder_in_days">
+        <item quantity="one">%1$d nap múlva</item>
+        <item quantity="other">%1$d nap múlva</item>
+    </plurals>
+    <string name="reminder_line">%1$s: %2$s, %3$s</string>
+    <string name="reminder_line_short">%1$s, %2$s</string>
+
     <string name="navigate_back">Vissza</string>
     <string name="action_cancel">Mégse</string>
 
