@@ -30,6 +30,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -88,6 +89,8 @@ class BackgroundSessionTest {
 
     @After
     fun tearDown() {
+        // A test may start the SDK's own refresh job; it must not outlive the test and keep retrying.
+        runBlocking { auth.close() }
         engine.close()
     }
 
