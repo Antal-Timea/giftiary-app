@@ -24,6 +24,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 import java.util.Locale
 import java.util.UUID
 
@@ -159,5 +160,83 @@ class GiftIdeaEditorViewModelTest {
         val state = viewModel(GiftIdeaEditorTarget.Existing(UUID.randomUUID())).uiState.value
 
         assertEquals(GiftIdeaEditorStatus.NOT_FOUND, state.status)
+    }
+
+    // General occasions, of no person, such as Christmas
+
+    private val christmas = occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
+    private val newYear = occasion(null, OccasionDetails(OccasionType.CUSTOM, "New Year", 1, 1, null, true))
+    private val belasNameDay = occasion(bela.id, OccasionDetails(OccasionType.NAME_DAY, null, 4, 11, null, true))
+
+    @Test
+    fun `the recipient's occasions come first, then the general ones in calendar order, never another person's`() {
+        occasions.givenOccasions(christmas, annasBirthday, belasNameDay, newYear)
+
+        val state = viewModel(GiftIdeaEditorTarget.New(anna.id)).uiState.value
+
+        assertEquals(listOf(null, annasBirthday, newYear, christmas), state.occasionOptions)
+    }
+
+    @Test
+    fun `general occasions are offered before anyone is chosen`() {
+        occasions.givenOccasions(annasBirthday, christmas)
+
+        assertEquals(listOf(null, christmas), viewModel().uiState.value.occasionOptions)
+    }
+
+    @Test
+    fun `an idea is saved with a general occasion`() = runTest {
+        occasions.givenOccasions(christmas)
+        val viewModel = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        viewModel.onOccasionChange(christmas)
+        viewModel.onNameChange("Scarf")
+
+        viewModel.save()
+
+        assertEquals(christmas.id, ideas.lastSaved!!.occasionId)
+    }
+
+    @Test
+    fun `changing the recipient keeps a general occasion and clears the previous one's own`() {
+        occasions.givenOccasions(annasBirthday, christmas)
+        val viewModel = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        viewModel.onOccasionChange(christmas)
+        viewModel.onRecipientChange(bela)
+        assertEquals(christmas.id, viewModel.uiState.value.occasionId)
+
+        viewModel.onRecipientChange(anna)
+        viewModel.onOccasionChange(annasBirthday)
+        viewModel.onRecipientChange(bela)
+
+        assertNull(viewModel.uiState.value.occasionId)
+    }
+
+    @Test
+    fun `an idea's general occasion is offered once, and while selected even after it was deleted`() {
+        occasions.givenOccasions(christmas)
+        val withChristmas = ideaEntry(ideaDetails(anna).copy(occasionId = christmas.id), anna).copy(occasion = christmas)
+        val deletedNewYear = ideaEntry(ideaDetails(anna).copy(occasionId = newYear.id), anna).copy(occasion = newYear)
+        ideas.givenIdeas(withChristmas, deletedNewYear)
+
+        assertEquals(listOf(null, christmas), viewModel(GiftIdeaEditorTarget.Existing(withChristmas.idea.id)).uiState.value.occasionOptions)
+        val editing = viewModel(GiftIdeaEditorTarget.Existing(deletedNewYear.idea.id))
+        assertEquals(listOf(null, christmas, newYear), editing.uiState.value.occasionOptions)
+
+        editing.onOccasionChange(christmas)
+        assertEquals("not offered again once something else is chosen", listOf(null, christmas), editing.uiState.value.occasionOptions)
+    }
+
+    @Test
+    fun `general occasions that cannot be read leave the editor and the idea's occasion alone`() = runTest {
+        occasions.readFailure = IOException("disk")
+        val withChristmas = ideaEntry(ideaDetails(anna).copy(occasionId = christmas.id), anna).copy(occasion = christmas)
+        ideas.givenIdeas(withChristmas)
+
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(withChristmas.idea.id))
+
+        assertEquals(GiftIdeaEditorStatus.EDITING, viewModel.uiState.value.status)
+        assertEquals(christmas, viewModel.uiState.value.selectedOccasion)
+        viewModel.save()
+        assertEquals(christmas.id, ideas.lastSaved!!.occasionId)
     }
 }

@@ -188,6 +188,17 @@ class GiftRepositoryImplTest {
     }
 
     @Test
+    fun `a general occasion can be referenced by a gift with anyone`() = runTest {
+        val christmas = occasions.addOccasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
+
+        val given = gifts.addGift(givenTo(anna.id).copy(occasionId = christmas.id))
+        val received = gifts.addGift(givenTo(anna.id).copy(direction = GiftDirection.RECEIVED, giverPersonId = bela.id, recipientPersonId = null, occasionId = christmas.id))
+
+        assertEquals(christmas, gifts.getGift(given.id)?.occasion)
+        assertEquals(christmas, gifts.getGift(received.id)?.occasion)
+    }
+
+    @Test
     fun `another person's occasion cannot be referenced`() = runTest {
         val belasBirthday = occasions.addOccasion(bela.id, birthdayDetails)
 

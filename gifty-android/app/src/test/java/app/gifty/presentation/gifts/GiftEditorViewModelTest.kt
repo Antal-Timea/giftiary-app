@@ -261,4 +261,56 @@ class GiftEditorViewModelTest {
 
         assertEquals(GiftEditorStatus.NOT_FOUND, state.status)
     }
+
+    // General occasions, of no person, such as Christmas
+
+    private val christmas = occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
+    private val newYear = occasion(null, OccasionDetails(OccasionType.CUSTOM, "New Year", 1, 1, null, true))
+
+    @Test
+    fun `the person's occasions come first, then the general ones in calendar order`() {
+        occasions.givenOccasions(christmas, annasBirthday, belasNameDay, newYear)
+        val viewModel = viewModel()
+
+        assertEquals("before anyone is chosen", listOf(null, newYear, christmas), viewModel.uiState.value.occasionOptions)
+        viewModel.onPersonChange(anna)
+        assertEquals(listOf(null, annasBirthday, newYear, christmas), viewModel.uiState.value.occasionOptions)
+    }
+
+    @Test
+    fun `a received gift is saved with a general occasion, which a change of person keeps`() = runTest {
+        occasions.givenOccasions(annasBirthday, christmas)
+        val viewModel = viewModel(GiftEditorTarget.New(GiftDirection.RECEIVED, anna.id))
+        viewModel.onOccasionChange(christmas)
+        viewModel.onPersonChange(bela)
+        viewModel.onNameChange("Book")
+
+        viewModel.save()
+
+        val saved = gifts.lastSaved!!
+        assertEquals(christmas.id, saved.occasionId)
+        assertEquals(bela.id, saved.giverPersonId)
+    }
+
+    @Test
+    fun `a gift's deleted general occasion stays offered once while selected`() {
+        occasions.givenOccasions(christmas)
+        val deletedNewYear = giftEntry(giftDetails(person = anna).copy(occasionId = newYear.id), anna).copy(occasion = newYear)
+        gifts.givenGifts(deletedNewYear)
+
+        val state = viewModel(GiftEditorTarget.Existing(deletedNewYear.gift.id)).uiState.value
+
+        assertEquals(listOf(null, christmas, newYear), state.occasionOptions)
+        assertEquals(newYear, state.selectedOccasion)
+    }
+
+    @Test
+    fun `general occasions that cannot be read leave the editor usable`() {
+        occasions.readFailure = IOException("disk")
+        val viewModel = viewModel()
+        viewModel.onPersonChange(anna)
+
+        assertEquals(GiftEditorStatus.EDITING, viewModel.uiState.value.status)
+        assertEquals(listOf(null, annasBirthday), viewModel.uiState.value.occasionOptions)
+    }
 }

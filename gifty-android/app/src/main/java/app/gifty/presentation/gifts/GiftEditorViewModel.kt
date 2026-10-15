@@ -67,6 +67,7 @@ class GiftEditorViewModel @AssistedInject constructor(
                 .collect { people -> _uiState.update { it.withActivePeople(people) } }
         }
         observeOccasionsOfSelectedPerson()
+        observeGeneralOccasions()
     }
 
     fun onDirectionChange(direction: GiftDirection) {
@@ -86,7 +87,7 @@ class GiftEditorViewModel @AssistedInject constructor(
 
     fun onPersonChange(person: Person) {
         _uiState.update {
-            val keepsOccasion = it.selectedOccasion?.personId == person.id
+            val keepsOccasion = it.selectedOccasion?.fitsPerson(person.id) == true
             it.copy(
                 personId = person.id,
                 occasionId = if (keepsOccasion) it.occasionId else null,
@@ -175,6 +176,17 @@ class GiftEditorViewModel @AssistedInject constructor(
             } catch (_: Exception) {
                 _uiState.update { it.copy(status = GiftEditorStatus.LOAD_FAILED) }
             }
+        }
+    }
+
+    // The user's own occasions fit any idea or gift; they are offered whoever it is for. A failed
+    // read only leaves them out: the editor and any occasion it was loaded with stay usable.
+    private fun observeGeneralOccasions() {
+        viewModelScope.launch {
+            occasionRepository.observeOccasions()
+                .map(::generalOccasions)
+                .catch { emit(emptyList()) }
+                .collect { occasions -> _uiState.update { it.copy(generalOccasions = occasions) } }
         }
     }
 
@@ -290,6 +302,7 @@ data class GiftEditorUiState(
     val activePeople: List<Person> = emptyList(),
     val peopleLoaded: Boolean = false,
     val personOccasions: List<Occasion> = emptyList(),
+    val generalOccasions: List<Occasion> = emptyList(),
     /** The person and occasion the gift was loaded with; they may have been deleted since. */
     val historicalPerson: Person? = null,
     val historicalOccasion: Occasion? = null,
@@ -305,9 +318,9 @@ data class GiftEditorUiState(
 
     val selectedPerson: Person? get() = personOptions.find { it.id == personId }
 
-    /** "No occasion", the selected person's active occasions and, while selected, the original one. */
+    /** "No occasion", the selected person's active occasions, the general ones and, while selected, the original one. */
     val occasionOptions: List<Occasion?>
-        get() = occasionChoices(personOccasions, historicalOccasion, occasionId)
+        get() = occasionChoices(personOccasions, generalOccasions, historicalOccasion, occasionId)
 
     val selectedOccasion: Occasion? get() = occasionOptions.find { it?.id == occasionId && it != null }
 

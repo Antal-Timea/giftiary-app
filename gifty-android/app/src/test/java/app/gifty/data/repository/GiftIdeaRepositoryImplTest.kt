@@ -260,6 +260,21 @@ class GiftIdeaRepositoryImplTest {
     // --- Mark as given ---
 
     @Test
+    fun `a general occasion fits an idea for anyone, also after the recipient changes, and carries over to the gift`() = runTest {
+        val christmas = occasions.addOccasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
+
+        val idea = ideas.addGiftIdea(ideaFor(anna.id).copy(occasionId = christmas.id))
+        assertEquals(christmas, ideas.getGiftIdea(idea.id)?.occasion)
+        ideas.updateGiftIdea(idea.id, ideaFor(bela.id).copy(occasionId = christmas.id))
+        assertEquals(christmas.id, ideas.getGiftIdea(idea.id)?.idea?.occasionId)
+
+        val gift = ideas.markAsGiven(idea.id, LocalDate.of(2026, 12, 24), null)
+
+        assertEquals(christmas.id, gifts.getGift(gift.id)?.gift?.occasionId)
+        assertEquals(bela.id, gifts.getGift(gift.id)?.gift?.recipientPersonId)
+    }
+
+    @Test
     fun `marking as given creates exactly one given gift that copies the idea`() = runTest {
         val annasBirthday = occasions.addOccasion(anna.id, birthday)
         val idea = ideas.addGiftIdea(

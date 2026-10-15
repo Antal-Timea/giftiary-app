@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.repository.OccasionEntry
 import app.gifty.domain.repository.OccasionRepository
+import app.gifty.presentation.gifts.generalOccasions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +25,7 @@ class OwnOccasionsViewModel @Inject constructor(
 
     val content: StateFlow<OwnOccasionsContent> = repository.observeOccasions()
         .map<List<OccasionEntry>, OwnOccasionsContent> { entries ->
-            OwnOccasionsContent.Loaded(
-                entries.filter { it.person == null }
-                    .map { it.occasion }
-                    .sortedWith(compareBy<Occasion>({ it.month }, { it.day }, { it.id })),
-            )
+            OwnOccasionsContent.Loaded(generalOccasions(entries))
         }
         .catch { emit(OwnOccasionsContent.LoadFailed) }
         .stateIn(

@@ -20,6 +20,8 @@ import app.gifty.domain.usecase.SaveGiftIdeaResult
 import app.gifty.domain.usecase.SaveGiftIdeaUseCase
 import app.gifty.presentation.gifts.PriceError
 import app.gifty.presentation.gifts.PriceFormat
+import app.gifty.presentation.gifts.fitsPerson
+import app.gifty.presentation.gifts.generalOccasions
 import app.gifty.presentation.gifts.occasionChoices
 import app.gifty.presentation.gifts.personChoices
 import dagger.assisted.Assisted
@@ -72,11 +74,12 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
                 .collect { people -> _uiState.update { it.withActivePeople(people) } }
         }
         observeOccasionsOfRecipient()
+        observeGeneralOccasions()
     }
 
     fun onRecipientChange(person: Person) {
         _uiState.update {
-            val keepsOccasion = it.selectedOccasion?.personId == person.id
+            val keepsOccasion = it.selectedOccasion?.fitsPerson(person.id) == true
             it.copy(
                 recipientId = person.id,
                 occasionId = if (keepsOccasion) it.occasionId else null,
@@ -184,6 +187,17 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
         }
     }
 
+    // The user's own occasions fit any idea or gift; they are offered whoever it is for. A failed
+    // read only leaves them out: the editor and any occasion it was loaded with stay usable.
+    private fun observeGeneralOccasions() {
+        viewModelScope.launch {
+            occasionRepository.observeOccasions()
+                .map(::generalOccasions)
+                .catch { emit(emptyList()) }
+                .collect { occasions -> _uiState.update { it.copy(generalOccasions = occasions) } }
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeOccasionsOfRecipient() {
         viewModelScope.launch {
@@ -268,6 +282,7 @@ data class GiftIdeaEditorUiState(
     val activePeople: List<Person> = emptyList(),
     val peopleLoaded: Boolean = false,
     val recipientOccasions: List<Occasion> = emptyList(),
+    val generalOccasions: List<Occasion> = emptyList(),
     /** The recipient and occasion the idea was loaded with; they may have been deleted since. */
     val historicalRecipient: Person? = null,
     val historicalOccasion: Occasion? = null,
@@ -282,7 +297,7 @@ data class GiftIdeaEditorUiState(
 
     val selectedRecipient: Person? get() = recipientOptions.find { it.id == recipientId }
 
-    val occasionOptions: List<Occasion?> get() = occasionChoices(recipientOccasions, historicalOccasion, occasionId)
+    val occasionOptions: List<Occasion?> get() = occasionChoices(recipientOccasions, generalOccasions, historicalOccasion, occasionId)
 
     val selectedOccasion: Occasion? get() = occasionOptions.find { it?.id == occasionId && it != null }
 
