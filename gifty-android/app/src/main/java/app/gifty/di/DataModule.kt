@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import java.time.Clock
+import java.time.ZoneId
 import javax.inject.Singleton
 
 @Module
@@ -67,6 +68,10 @@ abstract class DataModule {
 
         @Provides
         fun provideClock(): Clock = Clock.systemUTC()
+
+        /** Not a singleton: each new consumer gets the device's zone as it is then. */
+        @Provides
+        fun provideZoneId(): ZoneId = ZoneId.systemDefault()
 
         @Provides
         @Singleton

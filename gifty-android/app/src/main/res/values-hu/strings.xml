@@ -2,6 +2,20 @@
     <string name="home_tagline">Emlékezz · Tervezz · Oszd meg</string>
     <string name="home_open_people">Emberek</string>
 
+    <string name="coming_up_title">Hamarosan</string>
+    <string name="coming_up_today">Ma</string>
+    <string name="coming_up_tomorrow">Holnap</string>
+    <plurals name="coming_up_in_days">
+        <item quantity="one">%1$d nap múlva</item>
+        <item quantity="other">%1$d nap múlva</item>
+    </plurals>
+    <string name="coming_up_turns">%1$d éves lesz</string>
+    <plurals name="coming_up_empty">
+        <item quantity="one">A következő %1$d napban nincs közelgő alkalom</item>
+        <item quantity="other">A következő %1$d napban nincs közelgő alkalom</item>
+    </plurals>
+    <string name="coming_up_unavailable">A közelgő alkalmak most nem jeleníthetők meg.</string>
+
     <string name="navigate_back">Vissza</string>
     <string name="action_cancel">Mégse</string>
 

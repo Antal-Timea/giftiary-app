@@ -7,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 import app.gifty.R
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.OccasionType
+import java.time.LocalDate
 import java.time.Month
 import java.time.format.TextStyle
 import java.util.Locale
@@ -33,6 +34,12 @@ fun occasionTitle(occasion: Occasion): String =
 @ReadOnlyComposable
 fun occasionDate(occasion: Occasion): String =
     OccasionDateFormatter.format(occasion.day, occasion.month, occasion.year, currentLocale())
+
+/** The day an occasion falls on next; the year is left out, as it is clear from how soon it is. */
+@Composable
+@ReadOnlyComposable
+fun occurrenceDate(date: LocalDate): String =
+    OccasionDateFormatter.format(date.dayOfMonth, date.monthValue, year = null, currentLocale())
 
 /** Standalone month name for pickers, e.g. "March" or "március". */
 @Composable

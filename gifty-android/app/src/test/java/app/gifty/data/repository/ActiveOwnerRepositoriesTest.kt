@@ -107,6 +107,7 @@ class ActiveOwnerRepositoriesTest {
         activeOwner.ownerId.value = bob
 
         assertEquals(emptyList<Any>(), occasions.observeOccasionsForPerson(anna.id).first())
+        assertEquals(emptyList<Any>(), occasions.observeOccasions().first())
         assertEquals(emptyList<Any>(), gifts.observeGifts().first())
         assertEquals(emptyList<Any>(), gifts.observeGiftsForPerson(anna.id).first())
         assertEquals(emptyList<Any>(), ideas.observeGiftIdeas().first())
@@ -124,6 +125,7 @@ class ActiveOwnerRepositoriesTest {
         activeOwner.ownerId.value = null
 
         assertEquals(emptyList<Person>(), people.observePeople().first())
+        assertEquals(emptyList<Any>(), occasions.observeOccasions().first())
         assertNull(people.observePerson(anna.id).first())
         assertNull(people.getPerson(anna.id))
         assertNull(gifts.observeGift(gift.id).first())

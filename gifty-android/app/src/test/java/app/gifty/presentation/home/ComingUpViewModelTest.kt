@@ -1,0 +1,95 @@
+package app.gifty.presentation.home
+
+import app.gifty.domain.model.OccasionType
+import app.gifty.domain.model.SyncStatus
+import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.usecase.ObserveUpcomingOccasionsUseCase
+import app.gifty.presentation.sync.SyncStatusContent
+import app.gifty.presentation.sync.SyncStatusViewModel
+import app.gifty.testing.FakeOccasionRepository
+import app.gifty.testing.FakeSyncStatusRepository
+import app.gifty.testing.MainDispatcherRule
+import app.gifty.testing.MutableClock
+import app.gifty.testing.occasion
+import app.gifty.testing.person
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import java.io.IOException
+import java.time.Instant
+import java.time.ZoneOffset
+
+class ComingUpViewModelTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
+    private val repository = FakeOccasionRepository()
+    private val anna = person("Anna")
+    private val clock = MutableClock(Instant.parse("2026-05-10T10:00:00Z"))
+
+    init {
+        repository.people.value = mapOf(anna.id to anna)
+    }
+
+    @Test
+    fun `nothing is shown before the occasions are read, then at most five, soonest first`() = runTest {
+        repository.givenOccasions(*(11..17).map { day -> occasion(anna.id, birthday(day = day)) }.toTypedArray())
+        val viewModel = viewModel()
+        assertEquals(ComingUpContent.Loading, viewModel.content.value)
+
+        collect(viewModel.content)
+
+        val items = (viewModel.content.value as ComingUpContent.Loaded).items
+        assertEquals((11..15).toList(), items.map { it.upcoming.date.dayOfMonth })
+    }
+
+    @Test
+    fun `nothing coming up is an empty list, not a failure`() = runTest {
+        val viewModel = viewModel()
+        collect(viewModel.content)
+
+        assertEquals(ComingUpContent.Loaded(emptyList()), viewModel.content.value)
+    }
+
+    @Test
+    fun `an occasion opens its person, and one of the user's own opens its editor`() = runTest {
+        val annasBirthday = occasion(anna.id, birthday(day = 12))
+        val christmas = occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 5, null, true))
+        repository.givenOccasions(annasBirthday, christmas)
+        val viewModel = viewModel()
+        collect(viewModel.content)
+
+        assertEquals(
+            listOf(ComingUpTarget.Person(anna.id), ComingUpTarget.Occasion(christmas.id)),
+            (viewModel.content.value as ComingUpContent.Loaded).items.map { it.target },
+        )
+    }
+
+    @Test
+    fun `occasions that cannot be read leave the sync status shown as it is`() = runTest {
+        repository.readFailure = IOException("disk")
+        val syncRepository = FakeSyncStatusRepository().apply { status.value = SyncStatus(waitingCount = 2, attention = emptyList()) }
+        val comingUp = viewModel()
+        val syncStatus = SyncStatusViewModel(syncRepository)
+
+        collect(comingUp.content)
+        collect(syncStatus.content)
+
+        assertEquals(ComingUpContent.Unavailable, comingUp.content.value)
+        assertEquals(SyncStatusContent.Loaded(SyncStatus(waitingCount = 2, attention = emptyList())), syncStatus.content.value)
+    }
+
+    private fun viewModel() = ComingUpViewModel(ObserveUpcomingOccasionsUseCase(repository, clock, ZoneOffset.UTC))
+
+    private fun birthday(day: Int) = OccasionDetails(OccasionType.BIRTHDAY, null, day, 5, null, true)
+
+    private fun TestScope.collect(content: StateFlow<*>) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { content.collect {} }
+    }
+}

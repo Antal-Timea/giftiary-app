@@ -28,6 +28,8 @@ import app.gifty.presentation.gifts.GiftEditorScreen
 import app.gifty.presentation.gifts.GiftEditorTarget
 import app.gifty.presentation.gifts.GiftEditorViewModel
 import app.gifty.presentation.gifts.GiftHistoryScreen
+import app.gifty.presentation.home.ComingUpTarget
+import app.gifty.presentation.home.ComingUpViewModel
 import app.gifty.presentation.home.HomeScreen
 import app.gifty.presentation.occasions.OccasionEditorScreen
 import app.gifty.presentation.occasions.OccasionEditorTarget
@@ -102,8 +104,18 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         composable<HomeRoute> {
             val syncStatus by hiltViewModel<SyncStatusViewModel>().content.collectAsStateWithLifecycle()
+            val comingUp by hiltViewModel<ComingUpViewModel>().content.collectAsStateWithLifecycle()
             HomeScreen(
                 syncStatus = syncStatus,
+                comingUp = comingUp,
+                onOpenComingUp = { target ->
+                    navController.navigate(
+                        when (target) {
+                            is ComingUpTarget.Person -> PersonDetailRoute(target.personId.toString())
+                            is ComingUpTarget.Occasion -> EditOccasionRoute(target.occasionId.toString())
+                        },
+                    )
+                },
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
                 onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },

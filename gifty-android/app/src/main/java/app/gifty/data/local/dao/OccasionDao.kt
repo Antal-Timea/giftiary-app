@@ -3,8 +3,10 @@ package app.gifty.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import app.gifty.data.local.entity.OccasionEntity
+import app.gifty.data.local.entity.OccasionWithPerson
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.util.UUID
@@ -24,6 +26,19 @@ interface OccasionDao {
         """,
     )
     fun observeActiveForPerson(ownerUserId: UUID, personId: UUID): Flow<List<OccasionEntity>>
+
+    /** The owner's active occasions, each either without a person or with an active one of the same owner. */
+    @Transaction
+    @Query(
+        """
+        SELECT occasion.* FROM occasion
+        LEFT JOIN person ON person.id = occasion.personId
+        WHERE occasion.ownerUserId = :ownerUserId AND occasion.deletedAt IS NULL
+            AND (occasion.personId IS NULL OR (person.ownerUserId = :ownerUserId AND person.deletedAt IS NULL))
+        ORDER BY occasion.month, occasion.day, occasion.id
+        """,
+    )
+    fun observeActiveWithPerson(ownerUserId: UUID): Flow<List<OccasionWithPerson>>
 
     @Query(
         """

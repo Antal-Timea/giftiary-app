@@ -2,12 +2,17 @@ package app.gifty.testing
 
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.OccasionType
+import app.gifty.domain.model.Person
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.repository.OccasionEntry
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonNotFoundException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import java.time.Instant
@@ -23,6 +28,12 @@ class FakeOccasionRepository : OccasionRepository {
     /** When set, writes throw it, standing in for a failing local database. */
     var writeFailure: Exception? = null
 
+    /** The active people [observeOccasions] reports; occasions of anyone else are left out like a deleted person's. */
+    val people = MutableStateFlow<Map<UUID, Person>>(emptyMap())
+
+    /** When set, [observeOccasions] fails with it, standing in for a failing local read. */
+    var readFailure: Exception? = null
+
     val currentOccasions: List<Occasion> get() = occasions.value
 
     fun givenOccasions(vararg occasion: Occasion) {
@@ -32,6 +43,20 @@ class FakeOccasionRepository : OccasionRepository {
 
     override fun observeOccasionsForPerson(personId: UUID): Flow<List<Occasion>> =
         occasions.map { list -> list.filter { it.personId == personId }.sortedWith(compareBy({ it.month }, { it.day })) }
+
+    override fun observeOccasions(): Flow<List<OccasionEntry>> = flow {
+        readFailure?.let { throw it }
+        emitAll(
+            combine(occasions, people) { list, people ->
+                list.mapNotNull { occasion ->
+                    when (val personId = occasion.personId) {
+                        null -> OccasionEntry(occasion, null)
+                        else -> people[personId]?.let { OccasionEntry(occasion, it) }
+                    }
+                }
+            },
+        )
+    }
 
     override suspend fun getOccasion(id: UUID): Occasion? = occasions.value.find { it.id == id }
 

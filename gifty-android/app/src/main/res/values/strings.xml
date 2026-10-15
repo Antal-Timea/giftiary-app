@@ -3,6 +3,20 @@
     <string name="home_tagline">Remember · Plan · Share</string>
     <string name="home_open_people">People</string>
 
+    <string name="coming_up_title">Coming up</string>
+    <string name="coming_up_today">Today</string>
+    <string name="coming_up_tomorrow">Tomorrow</string>
+    <plurals name="coming_up_in_days">
+        <item quantity="one">In %1$d day</item>
+        <item quantity="other">In %1$d days</item>
+    </plurals>
+    <string name="coming_up_turns">turns %1$d</string>
+    <plurals name="coming_up_empty">
+        <item quantity="one">Nothing coming up in the next %1$d day</item>
+        <item quantity="other">Nothing coming up in the next %1$d days</item>
+    </plurals>
+    <string name="coming_up_unavailable">Upcoming occasions cannot be shown right now.</string>
+
     <string name="navigate_back">Back</string>
     <string name="action_cancel">Cancel</string>
 

@@ -14,6 +14,7 @@ import app.gifty.data.user.ActiveOwner
 import app.gifty.data.user.scoped
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.repository.OccasionEntry
 import app.gifty.domain.repository.OccasionNotFoundException
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonNotFoundException
@@ -38,6 +39,16 @@ class OccasionRepositoryImpl @Inject constructor(
     override fun observeOccasionsForPerson(personId: UUID): Flow<List<Occasion>> =
         activeOwner.scoped(emptyList()) { ownerUserId ->
             occasionDao.observeActiveForPerson(ownerUserId, personId).map { occasions -> occasions.map { it.toDomain() } }
+        }
+
+    override fun observeOccasions(): Flow<List<OccasionEntry>> =
+        activeOwner.scoped(emptyList()) { ownerUserId ->
+            occasionDao.observeActiveWithPerson(ownerUserId).map { rows ->
+                // Saves and pulls only store real dates, but a single corrupt row must not take
+                // down every screen that lists occasions; Occasion would refuse to be built.
+                rows.filter { Occasion.dateProblem(it.occasion.day, it.occasion.month, it.occasion.year) == null }
+                    .map { OccasionEntry(it.occasion.toDomain(), it.person?.toDomain()) }
+            }
         }
 
     override suspend fun getOccasion(id: UUID): Occasion? =

@@ -2,6 +2,7 @@ package app.gifty.domain.repository
 
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.OccasionType
+import app.gifty.domain.model.Person
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -13,6 +14,9 @@ interface OccasionRepository {
 
     /** The person's active occasions in calendar order (month, day). */
     fun observeOccasionsForPerson(personId: UUID): Flow<List<Occasion>>
+
+    /** All active occasions with their people; an occasion whose person was deleted is left out. */
+    fun observeOccasions(): Flow<List<OccasionEntry>>
 
     /** Returns null if the occasion does not exist or has been deleted. */
     suspend fun getOccasion(id: UUID): Occasion?
@@ -38,6 +42,12 @@ data class OccasionDetails(
     val month: Int,
     val year: Int?,
     val repeatsYearly: Boolean,
+)
+
+data class OccasionEntry(
+    val occasion: Occasion,
+    /** Null for an occasion of the user's own, such as Christmas. */
+    val person: Person?,
 )
 
 class OccasionNotFoundException(id: UUID) : Exception("Occasion $id does not exist")

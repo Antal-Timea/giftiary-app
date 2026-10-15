@@ -166,6 +166,20 @@ class OccasionRepositoryImplTest {
     }
 
     @Test
+    fun `all occasions come with their person, and a date that cannot exist is left out instead of failing`() = runTest {
+        val annasBirthday = repository.addOccasion(anna.id, birthday)
+        val christmas = repository.addOccasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
+        // Only reachable through corrupted local data: saves and pulls validate dates.
+        occasionDao.insert(occasionEntity(anna).copy(day = 31, month = 4))
+        occasionDao.insert(occasionEntity(anna).copy(day = 29, month = 2, year = 2027))
+
+        val entries = repository.observeOccasions().first()
+
+        assertEquals(listOf(annasBirthday, christmas), entries.map { it.occasion })
+        assertEquals(listOf("Someone", null), entries.map { it.person?.name })
+    }
+
+    @Test
     fun `an occasion cannot be added for a deleted person`() = runTest {
         personDao.softDelete(anna.id, ownerUserId, clock.instant)
 

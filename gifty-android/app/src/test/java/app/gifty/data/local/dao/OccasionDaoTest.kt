@@ -47,6 +47,26 @@ class OccasionDaoTest {
     }
 
     @Test
+    fun `all of an owner's active occasions come with their person, never through a deleted or foreign one`() = runTest {
+        val annasBirthday = occasion(anna, day = 12, month = 3)
+        val christmas = occasion(anna, day = 24, month = 12).copy(personId = null, type = OccasionType.CHRISTMAS)
+        val deletedOccasion = occasion(anna, day = 1, month = 1)
+        val belasBirthday = occasion(bela, day = 4, month = 11)
+        // An owner's row pointing at another owner's person must not reveal that person.
+        val throughStranger = occasion(strangersPerson, day = 2, month = 2).copy(ownerUserId = owner)
+        val strangers = occasion(strangersPerson, day = 5, month = 5)
+        listOf(annasBirthday, christmas, deletedOccasion, belasBirthday, throughStranger, strangers).forEach { dao.insert(it) }
+        dao.softDelete(deletedOccasion.id, owner, DELETED_AT)
+        database.personDao().softDelete(bela.id, owner, DELETED_AT)
+
+        val rows = dao.observeActiveWithPerson(owner).first()
+
+        assertEquals(listOf(annasBirthday, christmas), rows.map { it.occasion })
+        assertEquals(listOf(anna, null), rows.map { it.person })
+        assertEquals(listOf(strangers), dao.observeActiveWithPerson(otherOwner).first().map { it.occasion })
+    }
+
+    @Test
     fun `observes only the active occasions of the requested owner and person`() = runTest {
         val annasBirthday = occasion(anna, day = 12, month = 3)
         val deleted = occasion(anna, day = 1, month = 1)
@@ -114,5 +134,6 @@ class OccasionDaoTest {
 
     private companion object {
         val CREATED_AT: Instant = Instant.parse("2026-05-01T12:00:00Z")
+        val DELETED_AT: Instant = Instant.parse("2026-06-01T00:00:00Z")
     }
 }
