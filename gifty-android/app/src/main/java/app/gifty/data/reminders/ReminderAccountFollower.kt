@@ -1,21 +1,25 @@
 package app.gifty.data.reminders
 
-import app.gifty.data.user.ActiveOwner
 import app.gifty.di.ApplicationScope
+import app.gifty.domain.repository.AccountSession
+import app.gifty.domain.repository.OwnerSessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Keeps reminders in step with whose data is open. Each change of account first removes the
- * digests of everyone else, so one account's names never stay in view for another; an open
- * account then gets its heartbeat if it chose reminders, including after a crash that came
- * between saving that choice and scheduling it.
+ * Keeps reminders in step with whose data is open. An open account keeps only its own digest, so
+ * another account's names never stay in view, and gets its heartbeat if it chose reminders,
+ * including after a crash that came between saving that choice and scheduling it.
+ *
+ * Restoring decides nothing: every process start passes through it, also one started for other
+ * background work, and the account being restored is usually the one whose digest is showing.
+ * Explicit sign-out is handled at once by [ReminderSignOut].
  */
 @Singleton
 class ReminderAccountFollower @Inject constructor(
-    private val activeOwner: ActiveOwner,
+    private val accountSession: AccountSession,
     private val preferences: ReminderPreferences,
     private val scheduler: ReminderScheduler,
     private val notifier: ReminderNotifier,
@@ -31,11 +35,18 @@ class ReminderAccountFollower @Inject constructor(
             started = true
         }
         scope.launch {
-            activeOwner.ownerId.collect { owner ->
-                notifier.cancelAllExcept(owner)
-                // No owner happens on every restore and switch too; only an explicit sign-out cancels.
-                if (owner == null) return@collect
-                if (preferences.isEnabled(owner)) scheduler.ensureScheduled() else scheduler.cancel()
+            accountSession.state.collect { state ->
+                when (state) {
+                    OwnerSessionState.Restoring -> Unit
+                    OwnerSessionState.SignedOut -> notifier.cancelAllExcept(null)
+                    // Its data is not open, but the account is still the one signed in.
+                    is OwnerSessionState.Failed -> notifier.cancelAllExcept(state.user.id)
+                    is OwnerSessionState.Ready -> {
+                        val owner = state.user.id
+                        notifier.cancelAllExcept(owner)
+                        if (preferences.isEnabled(owner)) scheduler.ensureScheduled() else scheduler.cancel()
+                    }
+                }
             }
         }
     }

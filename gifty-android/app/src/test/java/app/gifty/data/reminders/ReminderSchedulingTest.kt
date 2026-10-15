@@ -2,7 +2,9 @@ package app.gifty.data.reminders
 
 import android.Manifest
 import android.app.Application
+import android.app.NotificationChannel
 import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
 import androidx.work.NetworkType
@@ -10,13 +12,18 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
+import app.gifty.domain.model.AuthUser
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.model.UpcomingOccasion
+import app.gifty.domain.repository.AccountSession
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.repository.OwnerSessionState
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.FakeReminderScheduler
 import app.gifty.testing.occasion
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -42,6 +49,7 @@ class ReminderSchedulingTest {
     private val bob = UUID.randomUUID()
     private val preferences = ReminderPreferences(application)
     private val notifier = ReminderNotifier(application, DeviceNotificationAccess(application))
+    private val scheduler = FakeReminderScheduler()
     private lateinit var workManager: WorkManager
 
     @Before
@@ -86,7 +94,6 @@ class ReminderSchedulingTest {
     @Test
     fun `turning reminders on and off is the open account's, and runs or stops the heartbeat`() {
         val owner = FakeActiveOwner(alice)
-        val scheduler = FakeReminderScheduler()
         val settings = ReminderSettingsRepositoryImpl(owner, preferences, scheduler, notifier, DeviceNotificationAccess(application))
         notifier.post(alice, listOf(due()))
 
@@ -105,26 +112,108 @@ class ReminderSchedulingTest {
         assertEquals(2, scheduler.calls.size)
     }
 
+    // How digests follow the account. A digest is shown by its tag; "other" is an unrelated notification.
+
     @Test
-    fun `when the account changes, other accounts' digests go and the heartbeat follows the new account's choice`() = runTest {
-        val owner = FakeActiveOwner(alice)
-        val scheduler = FakeReminderScheduler()
+    fun `a process starting while the account is restored leaves the account's digest alone`() = runTest {
+        notifier.post(alice, listOf(due()))
+        postUnrelated()
+        val session = FakeAccountSession(OwnerSessionState.Restoring)
+
+        follow(session)
+
+        assertEquals(setOf(alice.toString(), "other"), shownTags())
+        assertTrue("nothing decided while restoring", scheduler.calls.isEmpty())
+    }
+
+    @Test
+    fun `the restored account keeps its digest and its heartbeat`() = runTest {
         preferences.setEnabled(alice, true)
         notifier.post(alice, listOf(due()))
-        val follower = ReminderAccountFollower(owner, preferences, scheduler, notifier, CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)))
+        val session = FakeAccountSession(OwnerSessionState.Restoring)
+        follow(session)
 
-        follower.start()
-        assertEquals("open with reminders on", listOf(FakeReminderScheduler.ENSURE), scheduler.calls)
-        assertEquals(listOf(alice.toString()), manager.activeNotifications.map { it.tag })
+        session.state.value = ready(alice)
 
-        owner.ownerId.value = null
-        assertTrue("no account, no names", manager.activeNotifications.isEmpty())
-        assertEquals("closing is not signing out: the heartbeat stays", 1, scheduler.calls.size)
+        assertEquals(setOf(alice.toString()), shownTags())
+        assertEquals(listOf(FakeReminderScheduler.ENSURE), scheduler.calls)
+    }
 
+    @Test
+    fun `signing out takes the digest back and stops the heartbeat at once, keeping the account's choice`() {
+        preferences.setEnabled(alice, true)
+        preferences.setLastDigest(alice, LocalDate.of(2026, 5, 10))
         notifier.post(alice, listOf(due()))
-        owner.ownerId.value = bob
-        assertTrue(manager.activeNotifications.isEmpty())
+        postUnrelated()
+
+        ReminderSignOut(scheduler, notifier).onSignOut()
+
+        assertEquals(setOf("other"), shownTags())
+        assertEquals(listOf(FakeReminderScheduler.CANCEL), scheduler.calls)
+        assertTrue(preferences.isEnabled(alice))
+        assertEquals(LocalDate.of(2026, 5, 10), preferences.lastDigest(alice))
+    }
+
+    @Test
+    fun `another account opening takes the first one's digest away, and keeps its own`() = runTest {
+        preferences.setEnabled(alice, true)
+        notifier.post(alice, listOf(due()))
+        postUnrelated()
+        val session = FakeAccountSession(ready(alice))
+        follow(session)
+
+        session.state.value = OwnerSessionState.Restoring
+        assertEquals("not yet: it may be alice again", setOf(alice.toString(), "other"), shownTags())
+        notifier.post(bob, listOf(due()))
+        session.state.value = ready(bob)
+
+        assertEquals(setOf(bob.toString(), "other"), shownTags())
         assertEquals("bob has reminders off", FakeReminderScheduler.CANCEL, scheduler.calls.last())
+    }
+
+    @Test
+    fun `signed out, no account's digest is left, other notifications stay`() = runTest {
+        notifier.post(alice, listOf(due()))
+        notifier.post(bob, listOf(due()))
+        postUnrelated()
+        val session = FakeAccountSession(OwnerSessionState.Restoring)
+        follow(session)
+
+        session.state.value = OwnerSessionState.SignedOut
+
+        assertEquals(setOf("other"), shownTags())
+    }
+
+    @Test
+    fun `an account that failed to open keeps only its own digest`() = runTest {
+        notifier.post(alice, listOf(due()))
+        notifier.post(bob, listOf(due()))
+        val session = FakeAccountSession(OwnerSessionState.Restoring)
+        follow(session)
+
+        session.state.value = OwnerSessionState.Failed(AuthUser(bob, null))
+
+        assertEquals(setOf(bob.toString()), shownTags())
+    }
+
+    private fun TestScope.follow(session: AccountSession) {
+        ReminderAccountFollower(session, preferences, scheduler, notifier, CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)))
+            .start()
+    }
+
+    private fun shownTags() = manager.activeNotifications.map { it.tag ?: "other" }.toSet()
+
+    private fun postUnrelated() {
+        manager.createNotificationChannel(NotificationChannel("other", "Other", NotificationManager.IMPORTANCE_DEFAULT))
+        manager.notify(ReminderNotifier.DIGEST_ID, NotificationCompat.Builder(application, "other").setSmallIcon(android.R.drawable.ic_dialog_info).build())
+    }
+
+    private fun ready(owner: UUID) = OwnerSessionState.Ready(AuthUser(owner, null))
+
+    private class FakeAccountSession(initial: OwnerSessionState) : AccountSession {
+        override val state = MutableStateFlow(initial)
+        override fun retry() = Unit
+        override fun signOut() = Unit
     }
 
     private fun heartbeat() = workManager.getWorkInfosForUniqueWork(WorkManagerReminderScheduler.NAME).get()

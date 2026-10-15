@@ -1,5 +1,8 @@
 package app.gifty.data.user
 
+import android.Manifest
+import android.app.Application
+import android.app.NotificationManager
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -12,15 +15,23 @@ import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.local.entity.SyncOperation
 import app.gifty.data.local.entity.SyncOperationEntity
+import app.gifty.data.reminders.DeviceNotificationAccess
+import app.gifty.data.reminders.ReminderNotifier
+import app.gifty.data.reminders.ReminderPreferences
+import app.gifty.data.reminders.ReminderSignOut
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.AuthState
 import app.gifty.domain.model.AuthUser
+import app.gifty.domain.model.OccasionType
+import app.gifty.domain.model.UpcomingOccasion
 import app.gifty.domain.repository.NoActiveOwnerException
+import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.repository.OwnerSessionState
 import app.gifty.testing.FakeAuthRepository
 import app.gifty.testing.FakeReminderScheduler
 import app.gifty.testing.FakeSyncScheduler
+import app.gifty.testing.occasion
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,8 +52,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,6 +70,8 @@ class OwnerSessionTest {
     private val auth = FakeAuthRepository()
     private val scheduler = FakeSyncScheduler()
     private val reminders = FakeReminderScheduler()
+    private val notifier = ReminderNotifier(context, DeviceNotificationAccess(context))
+    private val reminderPreferences = ReminderPreferences(context)
     private lateinit var database: GiftyDatabase
     private lateinit var claimDao: ControlledClaimDao
 
@@ -74,7 +89,7 @@ class OwnerSessionTest {
     /** Starts a session whose every owner and state change is recorded, in order. */
     private fun TestScope.startSession(): Recorded {
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
-        val session = OwnerSession(auth, LegacyOwnerStore(context), LegacyOwnershipClaim(database, claimDao), scheduler, reminders, scope)
+        val session = OwnerSession(auth, LegacyOwnerStore(context), LegacyOwnershipClaim(database, claimDao), scheduler, ReminderSignOut(reminders, notifier), scope)
         val recorded = Recorded(session)
         scope.launch { session.ownerId.collect { recorded.owners += it } }
         scope.launch { session.state.collect { recorded.states += it } }
@@ -247,6 +262,10 @@ class OwnerSessionTest {
         auth.state.value = AuthState.SignedIn(alice)
         val recorded = startSession()
         recorded.session.awaitState(OwnerSessionState.Ready(alice))
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        reminderPreferences.setEnabled(alice.id, true)
+        reminderPreferences.setLastDigest(alice.id, LocalDate.of(2026, 5, 10))
+        notifier.post(alice.id, listOf(digestEntry()))
         val gate = CompletableDeferred<Unit>()
         auth.signOutGate = gate
 
@@ -255,6 +274,11 @@ class OwnerSessionTest {
         assertEquals(1, auth.signOutCalls)
         assertNull(recorded.session.ownerId.value)
         assertEquals(OwnerSessionState.Restoring, recorded.session.state.value)
+        // Reminders stop at once too: no digest left, no heartbeat; the account's choice and day stay.
+        assertTrue(activeDigests().isEmpty())
+        assertEquals(listOf(FakeReminderScheduler.CANCEL), reminders.calls)
+        assertTrue(reminderPreferences.isEnabled(alice.id))
+        assertEquals(LocalDate.of(2026, 5, 10), reminderPreferences.lastDigest(alice.id))
 
         gate.complete(Unit)
         recorded.session.awaitState(OwnerSessionState.SignedOut)
@@ -372,4 +396,15 @@ class OwnerSessionTest {
             return real.claimPeople(legacyOwnerId, accountOwnerId)
         }
     }
+
+    private fun activeDigests() = context.getSystemService(NotificationManager::class.java).activeNotifications
+        .filter { it.notification.channelId == ReminderNotifier.CHANNEL_ID }
+
+    private fun digestEntry() = UpcomingOccasion(
+        occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true)),
+        null,
+        LocalDate.of(2026, 12, 24),
+        0,
+        null,
+    )
 }
