@@ -1,6 +1,5 @@
 package app.gifty.presentation.people
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +27,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gifty.R
 import app.gifty.domain.model.Occasion
@@ -42,8 +39,7 @@ import app.gifty.presentation.components.LoadingContent
 import app.gifty.presentation.components.MessageContent
 import app.gifty.presentation.giftideas.GiftIdeaRow
 import app.gifty.presentation.gifts.GiftRow
-import app.gifty.presentation.occasions.occasionDate
-import app.gifty.presentation.occasions.occasionTitle
+import app.gifty.presentation.occasions.OccasionRow
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 import java.time.Instant
@@ -220,31 +216,6 @@ private fun SectionHeading(text: String) {
         style = MaterialTheme.typography.titleMedium,
         color = GiftyTheme.colors.textPrimary,
     )
-}
-
-@Composable
-private fun OccasionRow(occasion: Occasion, onClick: () -> Unit) {
-    val colors = GiftyTheme.colors
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClickLabel = stringResource(R.string.people_edit), onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(horizontal = GiftySpacing.l, vertical = GiftySpacing.m),
-        verticalArrangement = Arrangement.spacedBy(GiftySpacing.xs),
-    ) {
-        Text(
-            text = occasionTitle(occasion),
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.textPrimary,
-        )
-        val date = occasionDate(occasion)
-        Text(
-            text = if (occasion.repeatsYearly) date else stringResource(R.string.occasion_date_one_time, date),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textSecondary,
-        )
-    }
 }
 
 @Composable

@@ -257,4 +257,100 @@ class OccasionEditorViewModelTest {
         assertEquals(OccasionEditorStatus.EDITING, state.status)
         assertEquals("12", state.day)
     }
+
+    // Occasions of the user's own, without a person
+
+    @Test
+    fun `a new occasion of the user's own starts as Christmas, and birthdays and name days are not offered`() {
+        val state = viewModel(OccasionEditorTarget.New(null)).uiState.value
+
+        assertEquals(OccasionType.CHRISTMAS, state.type)
+        assertEquals(listOf(OccasionType.CHRISTMAS, OccasionType.ANNIVERSARY, OccasionType.CUSTOM), state.typeOptions)
+    }
+
+    @Test
+    fun `a person's new occasion is offered as before`() {
+        val state = viewModel(OccasionEditorTarget.New(personId)).uiState.value
+
+        assertEquals(OccasionType.BIRTHDAY, state.type)
+        assertEquals(listOf(OccasionType.BIRTHDAY, OccasionType.NAME_DAY, OccasionType.ANNIVERSARY, OccasionType.CUSTOM), state.typeOptions)
+    }
+
+    @Test
+    fun `an occasion of the user's own is saved without a person`() = runTest {
+        val viewModel = viewModel(OccasionEditorTarget.New(null))
+
+        viewModel.onDayChange("24")
+        viewModel.onMonthChange(12)
+        viewModel.save()
+
+        assertEquals(OccasionEditorStatus.CLOSED, viewModel.uiState.value.status)
+        val saved = repository.currentOccasions.single()
+        assertNull(saved.personId)
+        assertEquals(OccasionType.CHRISTMAS, saved.type)
+    }
+
+    @Test
+    fun `a custom occasion of the user's own needs a name, which is trimmed and dropped for other types`() = runTest {
+        val viewModel = viewModel(OccasionEditorTarget.New(null))
+        viewModel.onTypeChange(OccasionType.CUSTOM)
+        viewModel.onDayChange("1")
+        viewModel.onMonthChange(6)
+        viewModel.save()
+        assertEquals(setOf(OccasionInputError.TITLE_REQUIRED), viewModel.uiState.value.errors)
+
+        viewModel.onTitleChange("  Housewarming  ")
+        viewModel.save()
+        assertEquals("Housewarming", repository.currentOccasions.single().title)
+
+        val other = viewModel(OccasionEditorTarget.New(null))
+        other.onTitleChange("Ignored")
+        other.onTypeChange(OccasionType.ANNIVERSARY)
+        other.onDayChange("2")
+        other.onMonthChange(7)
+        other.save()
+        assertNull(repository.currentOccasions.last().title)
+    }
+
+    @Test
+    fun `an occasion of the user's own is edited and deleted like any other`() = runTest {
+        val anniversary = occasion(null, OccasionDetails(OccasionType.ANNIVERSARY, null, 18, 6, 2015, true))
+        repository.givenOccasions(anniversary)
+        val viewModel = viewModel(OccasionEditorTarget.Existing(anniversary.id))
+        assertFalse(viewModel.uiState.value.forPerson)
+        assertEquals(listOf(OccasionType.CHRISTMAS, OccasionType.ANNIVERSARY, OccasionType.CUSTOM), viewModel.uiState.value.typeOptions)
+
+        viewModel.onDayChange("19")
+        viewModel.save()
+        assertEquals(OccasionEditorStatus.CLOSED, viewModel.uiState.value.status)
+        assertEquals(19, repository.currentOccasions.single().day)
+        assertNull(repository.currentOccasions.single().personId)
+
+        val deleting = viewModel(OccasionEditorTarget.Existing(anniversary.id))
+        deleting.onDeleteRequested()
+        deleting.onDeleteConfirmed()
+        assertEquals(OccasionEditorStatus.CLOSED, deleting.uiState.value.status)
+        assertTrue(repository.currentOccasions.isEmpty())
+    }
+
+    @Test
+    fun `an occasion of the user's own of a type not offered for them keeps it selectable`() = runTest {
+        // E.g. synced from elsewhere; a new one would not offer it.
+        val birthday = occasion(null, OccasionDetails(OccasionType.BIRTHDAY, null, 3, 4, null, true))
+        repository.givenOccasions(birthday)
+
+        val state = viewModel(OccasionEditorTarget.Existing(birthday.id)).uiState.value
+
+        assertEquals(OccasionType.BIRTHDAY, state.type)
+        assertEquals(listOf(OccasionType.CHRISTMAS, OccasionType.ANNIVERSARY, OccasionType.CUSTOM, OccasionType.BIRTHDAY), state.typeOptions)
+        assertFalse(OccasionType.BIRTHDAY in viewModel(OccasionEditorTarget.New(null)).uiState.value.typeOptions)
+    }
+
+    @Test
+    fun `a route without a person opens the user's own occasion, a malformed one opens nothing`() {
+        assertEquals(OccasionEditorTarget.New(null), OccasionEditorTarget.newFor(null))
+        assertEquals(OccasionEditorTarget.New(personId), OccasionEditorTarget.newFor(personId.toString()))
+        assertNull(OccasionEditorTarget.newFor("not-a-uuid"))
+        assertNull(OccasionEditorTarget.newFor(""))
+    }
 }

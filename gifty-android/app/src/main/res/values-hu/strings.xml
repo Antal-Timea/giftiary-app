@@ -16,6 +16,11 @@
     </plurals>
     <string name="coming_up_unavailable">A közelgő alkalmak most nem jeleníthetők meg.</string>
 
+    <string name="own_occasions_title">Saját alkalmaid</string>
+    <string name="own_occasions_empty_title">Még nincs saját alkalmad</string>
+    <string name="own_occasions_empty_message">Add hozzá a karácsonyt, az évfordulódat vagy más napot, amelyre ajándékot tervezel.</string>
+    <string name="own_occasions_load_failed">A saját alkalmaid most nem jeleníthetők meg.</string>
+
     <string name="reminder_card_off">Kérj emlékeztetőt az alkalom napján és egy héttel előtte.</string>
     <string name="reminder_card_on">Az emlékeztetők be vannak kapcsolva: az alkalom napján és egy héttel előtte.</string>
     <string name="reminder_card_needs_permission">Engedélyezd az értesítéseket az emlékeztetőkhöz.</string>

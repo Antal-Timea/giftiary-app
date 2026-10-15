@@ -43,6 +43,7 @@ import app.gifty.presentation.home.notificationSettingsIntent
 import app.gifty.presentation.occasions.OccasionEditorScreen
 import app.gifty.presentation.occasions.OccasionEditorTarget
 import app.gifty.presentation.occasions.OccasionEditorViewModel
+import app.gifty.presentation.occasions.OwnOccasionsScreen
 import app.gifty.presentation.people.PeopleScreen
 import app.gifty.presentation.people.PersonDetailScreen
 import app.gifty.presentation.people.PersonDetailViewModel
@@ -71,8 +72,12 @@ data object AddPersonRoute
 @Serializable
 data class EditPersonRoute(val personId: String)
 
+/** Without a person, a new occasion of the user's own. */
 @Serializable
-data class AddOccasionRoute(val personId: String)
+data class AddOccasionRoute(val personId: String? = null)
+
+@Serializable
+data object OwnOccasionsRoute
 
 @Serializable
 data class EditOccasionRoute(val occasionId: String)
@@ -150,6 +155,7 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                 },
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
+                onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
                 onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
                 onSignOut = onSignOut,
             )
@@ -203,14 +209,25 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
         composable<AddOccasionRoute> { entry ->
-            WithUuid(entry.toRoute<AddOccasionRoute>().personId, navController) { personId ->
+            val raw = entry.toRoute<AddOccasionRoute>().personId
+            val target = OccasionEditorTarget.newFor(raw)
+            if (target != null) {
                 OccasionEditorScreen(
                     viewModel = hiltViewModel<OccasionEditorViewModel, OccasionEditorViewModel.Factory> { factory ->
-                        factory.create(OccasionEditorTarget.New(personId))
+                        factory.create(target)
                     },
                     onClose = navController.popBackStackUnlessPaused(),
                 )
+            } else {
+                LaunchedEffect(raw) { navController.popBackStack() }
             }
+        }
+        composable<OwnOccasionsRoute> {
+            OwnOccasionsScreen(
+                onBack = navController.popBackStackUnlessPaused(),
+                onAddOccasion = dropUnlessResumed { navController.navigate(AddOccasionRoute()) },
+                onEditOccasion = { id -> navController.navigate(EditOccasionRoute(id.toString())) },
+            )
         }
         composable<EditOccasionRoute> { entry ->
             WithUuid(entry.toRoute<EditOccasionRoute>().occasionId, navController) { occasionId ->

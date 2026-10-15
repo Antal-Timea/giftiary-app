@@ -42,6 +42,17 @@ class ComingUpTextTest {
         assertEquals("Beállítások megnyitása", hu.getString(R.string.reminder_open_settings))
     }
 
+    @Test
+    fun `the user's own occasions are named in both languages`() {
+        val en = context(Locale.ENGLISH)
+        assertEquals("Your occasions", en.getString(R.string.own_occasions_title))
+        assertEquals("No occasions of your own yet", en.getString(R.string.own_occasions_empty_title))
+
+        val hu = context(Locale.forLanguageTag("hu"))
+        assertEquals("Saját alkalmaid", hu.getString(R.string.own_occasions_title))
+        assertEquals("A saját alkalmaid most nem jeleníthetők meg.", hu.getString(R.string.own_occasions_load_failed))
+    }
+
     private fun context(locale: Locale): Context {
         val base = ApplicationProvider.getApplicationContext<Context>()
         val configuration = Configuration(base.resources.configuration).apply { setLocale(locale) }

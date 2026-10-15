@@ -46,6 +46,7 @@ fun HomeScreen(
     reminderActions: ReminderCardActions,
     onOpenGifts: () -> Unit,
     onOpenPeople: () -> Unit,
+    onOpenOwnOccasions: () -> Unit,
     onOpenSyncAttention: () -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -78,6 +79,13 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.height(GiftySpacing.xxl))
                 ComingUpSection(content = comingUp, onOpen = onOpenComingUp)
+                // Always here, also with nothing coming up: the user's own occasions have no other place.
+                TextButton(
+                    onClick = onOpenOwnOccasions,
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+                ) {
+                    Text(text = stringResource(R.string.own_occasions_title), style = MaterialTheme.typography.labelLarge)
+                }
                 if (reminderCard != ReminderCardState.Hidden) {
                     Spacer(Modifier.height(GiftySpacing.l))
                     ReminderCard(state = reminderCard, actions = reminderActions)
@@ -127,6 +135,7 @@ private fun HomeScreenPreview() {
             reminderActions = ReminderCardActions({}, {}, {}, {}),
             onOpenGifts = {},
             onOpenPeople = {},
+            onOpenOwnOccasions = {},
             onOpenSyncAttention = {},
             onSignOut = {},
         )

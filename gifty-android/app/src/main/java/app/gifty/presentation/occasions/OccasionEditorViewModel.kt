@@ -30,10 +30,16 @@ class OccasionEditorViewModel @AssistedInject constructor(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        OccasionEditorUiState(
-            isNew = target is OccasionEditorTarget.New,
-            status = if (target is OccasionEditorTarget.New) OccasionEditorStatus.EDITING else OccasionEditorStatus.LOADING,
-        ),
+        when (target) {
+            is OccasionEditorTarget.New -> OccasionEditorUiState(
+                isNew = true,
+                status = OccasionEditorStatus.EDITING,
+                forPerson = target.personId != null,
+                // The user's own occasions are mostly Christmas; a person's, a birthday.
+                type = if (target.personId != null) OccasionType.BIRTHDAY else OccasionType.CHRISTMAS,
+            )
+            is OccasionEditorTarget.Existing -> OccasionEditorUiState(isNew = false, status = OccasionEditorStatus.LOADING)
+        },
     )
     val uiState: StateFlow<OccasionEditorUiState> = _uiState.asStateFlow()
 
@@ -153,6 +159,7 @@ class OccasionEditorViewModel @AssistedInject constructor(
                     } else {
                         it.copy(
                             status = OccasionEditorStatus.EDITING,
+                            forPerson = occasion.personId != null,
                             type = occasion.type,
                             title = occasion.title.orEmpty(),
                             day = occasion.day.toString(),
@@ -190,13 +197,27 @@ class OccasionEditorViewModel @AssistedInject constructor(
 }
 
 sealed interface OccasionEditorTarget {
-    data class New(val personId: UUID) : OccasionEditorTarget
+    /** A new occasion of [personId], or of the user's own if it is null. */
+    data class New(val personId: UUID?) : OccasionEditorTarget
     data class Existing(val occasionId: UUID) : OccasionEditorTarget
+
+    companion object {
+        /**
+         * The new-occasion target for a route's person id: none means the user's own occasion, a
+         * malformed one nothing at all, never quietly the user's own.
+         */
+        fun newFor(personId: String?): New? = when (personId) {
+            null -> New(null)
+            else -> runCatching { UUID.fromString(personId) }.getOrNull()?.let(::New)
+        }
+    }
 }
 
 data class OccasionEditorUiState(
     val isNew: Boolean,
     val status: OccasionEditorStatus,
+    /** Whether the occasion is a person's; the user's own occasions offer other types. */
+    val forPerson: Boolean = true,
     val type: OccasionType = OccasionType.BIRTHDAY,
     val title: String = "",
     val day: String = "",
@@ -209,9 +230,15 @@ data class OccasionEditorUiState(
     val confirmingDelete: Boolean = false,
     val writeFailed: Boolean = false,
 ) {
-    /** Christmas is not offered for a person, but an existing one stays selectable. */
+    /**
+     * Christmas is not offered for a person, nor a birthday or name day for the user's own
+     * occasions, which have no one to show them for; an existing occasion's type stays selectable.
+     */
     val typeOptions: List<OccasionType>
-        get() = if (type in PERSON_OCCASION_TYPES) PERSON_OCCASION_TYPES else PERSON_OCCASION_TYPES + type
+        get() {
+            val offered = if (forPerson) PERSON_OCCASION_TYPES else OWN_OCCASION_TYPES
+            return if (type in offered) offered else offered + type
+        }
 
     val showsTitle: Boolean get() = type == OccasionType.CUSTOM
 
@@ -224,6 +251,11 @@ data class OccasionEditorUiState(
         val PERSON_OCCASION_TYPES = listOf(
             OccasionType.BIRTHDAY,
             OccasionType.NAME_DAY,
+            OccasionType.ANNIVERSARY,
+            OccasionType.CUSTOM,
+        )
+        val OWN_OCCASION_TYPES = listOf(
+            OccasionType.CHRISTMAS,
             OccasionType.ANNIVERSARY,
             OccasionType.CUSTOM,
         )
