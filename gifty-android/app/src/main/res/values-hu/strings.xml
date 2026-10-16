@@ -16,6 +16,15 @@
     </plurals>
     <string name="coming_up_unavailable">A közelgő alkalmak most nem jeleníthetők meg.</string>
 
+    <plurals name="coming_up_ideas">
+        <item quantity="one">%1$d ötlet</item>
+        <item quantity="other">%1$d ötlet</item>
+    </plurals>
+    <plurals name="coming_up_bought">
+        <item quantity="one">%1$d megvéve</item>
+        <item quantity="other">%1$d megvéve</item>
+    </plurals>
+
     <string name="own_occasions_title">Saját alkalmaid</string>
     <string name="own_occasions_empty_title">Még nincs saját alkalmad</string>
     <string name="own_occasions_empty_message">Add hozzá a karácsonyt, az évfordulódat vagy más napot, amelyre ajándékot tervezel.</string>

@@ -1,5 +1,6 @@
 package app.gifty.presentation.home
 
+import android.content.res.Resources
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,12 +14,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.gifty.R
+import app.gifty.domain.model.OccasionPlan
 import app.gifty.domain.model.UpcomingOccasion
 import app.gifty.domain.usecase.ObserveUpcomingOccasionsUseCase
 import app.gifty.presentation.occasions.occasionTitle
@@ -69,6 +72,7 @@ private fun ComingUpRow(item: ComingUpItem, onClick: () -> Unit) {
         occasion.takeIf { upcoming.person != null },
         occurrenceDate(upcoming.date),
         upcoming.turningAge?.let { stringResource(R.string.coming_up_turns, it) },
+        occasionPlanText(LocalResources.current, item.plan),
     ).joinToString(" · ")
     val openLabel = stringResource(
         when (item.target) {
@@ -116,4 +120,16 @@ private fun Message(text: String) {
         style = MaterialTheme.typography.bodyMedium,
         color = GiftyTheme.colors.textSecondary,
     )
+}
+
+/**
+ * "2 ideas · 1 bought", or null when nothing is planned. Bought is left out while there is none;
+ * nothing is said about what is missing, since Gifty cannot know it.
+ */
+fun occasionPlanText(resources: Resources, plan: OccasionPlan?): String? {
+    if (plan == null || plan.ideas == 0) return null
+    return listOfNotNull(
+        resources.getQuantityString(R.plurals.coming_up_ideas, plan.ideas, plan.ideas),
+        plan.bought.takeIf { it > 0 }?.let { resources.getQuantityString(R.plurals.coming_up_bought, it, it) },
+    ).joinToString(" · ")
 }

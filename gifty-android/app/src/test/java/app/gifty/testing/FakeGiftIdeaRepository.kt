@@ -14,6 +14,8 @@ import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.PersonNotFoundException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import java.time.Instant
@@ -43,7 +45,13 @@ class FakeGiftIdeaRepository : GiftIdeaRepository {
         entries.value = entry.toList()
     }
 
-    override fun observeGiftIdeas(): Flow<List<GiftIdeaEntry>> = entries
+    /** When set, [observeGiftIdeas] fails with it, standing in for a failing local read. */
+    var readFailure: Exception? = null
+
+    override fun observeGiftIdeas(): Flow<List<GiftIdeaEntry>> = flow {
+        readFailure?.let { throw it }
+        emitAll(entries)
+    }
 
     override fun observeGiftIdeasForPerson(personId: UUID): Flow<List<GiftIdeaEntry>> =
         entries.map { list -> list.filter { it.idea.recipientPersonId == personId } }

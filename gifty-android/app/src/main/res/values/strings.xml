@@ -17,6 +17,15 @@
     </plurals>
     <string name="coming_up_unavailable">Upcoming occasions cannot be shown right now.</string>
 
+    <plurals name="coming_up_ideas">
+        <item quantity="one">%1$d idea</item>
+        <item quantity="other">%1$d ideas</item>
+    </plurals>
+    <plurals name="coming_up_bought">
+        <item quantity="one">%1$d bought</item>
+        <item quantity="other">%1$d bought</item>
+    </plurals>
+
     <string name="own_occasions_title">Your occasions</string>
     <string name="own_occasions_empty_title">No occasions of your own yet</string>
     <string name="own_occasions_empty_message">Add Christmas, your anniversary or another day you plan gifts for.</string>

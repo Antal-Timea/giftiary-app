@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.test.core.app.ApplicationProvider
 import app.gifty.R
+import app.gifty.domain.model.OccasionPlan
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -51,6 +53,20 @@ class ComingUpTextTest {
         val hu = context(Locale.forLanguageTag("hu"))
         assertEquals("Saját alkalmaid", hu.getString(R.string.own_occasions_title))
         assertEquals("A saját alkalmaid most nem jeleníthetők meg.", hu.getString(R.string.own_occasions_load_failed))
+    }
+
+    @Test
+    fun `a plan reads as ideas and what is bought, in both languages, and says nothing without ideas`() {
+        val en = context(Locale.ENGLISH).resources
+        assertEquals("1 idea", occasionPlanText(en, OccasionPlan(ideas = 1, bought = 0)))
+        assertEquals("2 ideas · 1 bought", occasionPlanText(en, OccasionPlan(ideas = 2, bought = 1)))
+        assertEquals("3 ideas · 3 bought", occasionPlanText(en, OccasionPlan(ideas = 3, bought = 3)))
+        assertNull(occasionPlanText(en, null))
+        assertNull(occasionPlanText(en, OccasionPlan(ideas = 0, bought = 0)))
+
+        val hu = context(Locale.forLanguageTag("hu")).resources
+        assertEquals("1 ötlet", occasionPlanText(hu, OccasionPlan(1, 0)))
+        assertEquals("2 ötlet · 1 megvéve", occasionPlanText(hu, OccasionPlan(2, 1)))
     }
 
     private fun context(locale: Locale): Context {

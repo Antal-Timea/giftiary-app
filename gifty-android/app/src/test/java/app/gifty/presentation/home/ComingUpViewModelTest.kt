@@ -1,15 +1,21 @@
 package app.gifty.presentation.home
 
+import app.gifty.domain.model.GiftIdeaStatus
+import app.gifty.domain.model.Occasion
+import app.gifty.domain.model.OccasionPlan
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.model.SyncStatus
 import app.gifty.domain.repository.OccasionDetails
 import app.gifty.domain.usecase.ObserveUpcomingOccasionsUseCase
 import app.gifty.presentation.sync.SyncStatusContent
 import app.gifty.presentation.sync.SyncStatusViewModel
+import app.gifty.testing.FakeGiftIdeaRepository
 import app.gifty.testing.FakeOccasionRepository
 import app.gifty.testing.FakeSyncStatusRepository
 import app.gifty.testing.MainDispatcherRule
 import app.gifty.testing.MutableClock
+import app.gifty.testing.ideaDetails
+import app.gifty.testing.ideaEntry
 import app.gifty.testing.occasion
 import app.gifty.testing.person
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +28,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 
 class ComingUpViewModelTest {
@@ -85,7 +92,70 @@ class ComingUpViewModelTest {
         assertEquals(SyncStatusContent.Loaded(SyncStatus(waitingCount = 2, attention = emptyList())), syncStatus.content.value)
     }
 
-    private fun viewModel() = ComingUpViewModel(ObserveUpcomingOccasionsUseCase(repository, clock, ZoneOffset.UTC))
+    private fun viewModel() = ComingUpViewModel(ObserveUpcomingOccasionsUseCase(repository, clock, ZoneOffset.UTC), ideas)
+
+    // Planning summaries
+
+    private val ideas = FakeGiftIdeaRepository().apply { people[anna.id] = anna }
+
+    @Test
+    fun `an occasion with open ideas carries its plan, one without carries none`() = runTest {
+        val birthday = occasion(anna.id, birthday(day = 12))
+        val nameDay = occasion(anna.id, birthday(day = 14))
+        repository.givenOccasions(birthday, nameDay)
+        ideas.givenIdeas(
+            ideaFor(birthday, GiftIdeaStatus.IDEA),
+            ideaFor(birthday, GiftIdeaStatus.PURCHASED),
+            // Linked to an occasion not shown: never counted for another one.
+            ideaFor(occasion(anna.id, birthday(day = 30)), GiftIdeaStatus.PLANNED),
+        )
+        val viewModel = viewModel()
+        collect(viewModel.content)
+
+        assertEquals(listOf(OccasionPlan(2, 1), null), items(viewModel).map { it.plan })
+    }
+
+    @Test
+    fun `plans follow new ideas, a purchase and an idea being given`() = runTest {
+        val birthday = occasion(anna.id, birthday(day = 12))
+        repository.givenOccasions(birthday)
+        val viewModel = viewModel()
+        collect(viewModel.content)
+        assertEquals(null, items(viewModel).single().plan)
+
+        val scarf = ideas.addGiftIdea(ideaDetails(anna).copy(occasionId = birthday.id))
+        assertEquals(OccasionPlan(1, 0), items(viewModel).single().plan)
+
+        ideas.updateStatus(scarf.id, GiftIdeaStatus.PURCHASED)
+        assertEquals(OccasionPlan(1, 1), items(viewModel).single().plan)
+
+        ideas.markAsGiven(scarf.id, LocalDate.of(2026, 5, 12), null)
+        assertEquals("a given idea leaves the active ideas", null, items(viewModel).single().plan)
+    }
+
+    @Test
+    fun `ideas that cannot be read leave the occasions shown, without plans`() = runTest {
+        repository.givenOccasions(occasion(anna.id, birthday(day = 12)))
+        ideas.readFailure = IOException("disk")
+        val viewModel = viewModel()
+        collect(viewModel.content)
+
+        assertEquals(listOf<OccasionPlan?>(null), items(viewModel).map { it.plan })
+    }
+
+    @Test
+    fun `occasions that cannot be read are still unavailable, whatever the ideas`() = runTest {
+        repository.readFailure = IOException("disk")
+        val viewModel = viewModel()
+        collect(viewModel.content)
+
+        assertEquals(ComingUpContent.Unavailable, viewModel.content.value)
+    }
+
+    private fun ideaFor(occasion: Occasion, status: GiftIdeaStatus) =
+        ideaEntry(ideaDetails(anna, status = status).copy(occasionId = occasion.id), anna)
+
+    private fun items(viewModel: ComingUpViewModel) = (viewModel.content.value as ComingUpContent.Loaded).items
 
     private fun birthday(day: Int) = OccasionDetails(OccasionType.BIRTHDAY, null, day, 5, null, true)
 
