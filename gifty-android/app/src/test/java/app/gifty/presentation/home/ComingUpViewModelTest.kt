@@ -65,7 +65,7 @@ class ComingUpViewModelTest {
     }
 
     @Test
-    fun `an occasion opens its person, and one of the user's own opens its editor`() = runTest {
+    fun `every row opens its occasion's plan, a person's occasion as well as the user's own`() = runTest {
         val annasBirthday = occasion(anna.id, birthday(day = 12))
         val christmas = occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 5, null, true))
         repository.givenOccasions(annasBirthday, christmas)
@@ -73,8 +73,8 @@ class ComingUpViewModelTest {
         collect(viewModel.content)
 
         assertEquals(
-            listOf(ComingUpTarget.Person(anna.id), ComingUpTarget.Occasion(christmas.id)),
-            (viewModel.content.value as ComingUpContent.Loaded).items.map { it.target },
+            listOf(annasBirthday.id, christmas.id),
+            (viewModel.content.value as ComingUpContent.Loaded).items.map { it.occasionId },
         )
     }
 

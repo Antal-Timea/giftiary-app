@@ -33,7 +33,7 @@ class ComingUpViewModel @Inject constructor(
         .catch { emit(emptyMap()) }
 
     val content: StateFlow<ComingUpContent> = combine(observeUpcomingOccasions(), plans) { upcoming, plans ->
-        ComingUpContent.Loaded(upcoming.take(MAX_ROWS).map { ComingUpItem(it, it.openTarget(), plans[it.occasion.id]) })
+        ComingUpContent.Loaded(upcoming.take(MAX_ROWS).map { ComingUpItem(it, plans[it.occasion.id]) })
     }
         .catch<ComingUpContent> { emit(ComingUpContent.Unavailable) }
         .stateIn(
@@ -41,10 +41,6 @@ class ComingUpViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             initialValue = ComingUpContent.Loading,
         )
-
-    // An occasion of the user's own has no person to show, but its editor needs only its id.
-    private fun UpcomingOccasion.openTarget(): ComingUpTarget =
-        person?.let { ComingUpTarget.Person(it.id) } ?: ComingUpTarget.Occasion(occasion.id)
 
     companion object {
         const val MAX_ROWS = 5
@@ -60,11 +56,7 @@ sealed interface ComingUpContent {
     data class Loaded(val items: List<ComingUpItem>) : ComingUpContent
 }
 
-/** [plan] is null while nothing is being planned for the occasion. */
-data class ComingUpItem(val upcoming: UpcomingOccasion, val target: ComingUpTarget, val plan: OccasionPlan? = null)
-
-sealed interface ComingUpTarget {
-    data class Person(val personId: UUID) : ComingUpTarget
-
-    data class Occasion(val occasionId: UUID) : ComingUpTarget
+/** [plan] is null while nothing is being planned for the occasion. A row opens its occasion's plan. */
+data class ComingUpItem(val upcoming: UpcomingOccasion, val plan: OccasionPlan? = null) {
+    val occasionId: UUID get() = upcoming.occasion.id
 }

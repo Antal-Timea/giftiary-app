@@ -37,7 +37,7 @@ import java.util.UUID
 fun OwnOccasionsScreen(
     onBack: () -> Unit,
     onAddOccasion: () -> Unit,
-    onEditOccasion: (UUID) -> Unit,
+    onOpenOccasion: (UUID) -> Unit,
     viewModel: OwnOccasionsViewModel = hiltViewModel(),
 ) {
     val content by viewModel.content.collectAsStateWithLifecycle()
@@ -45,7 +45,7 @@ fun OwnOccasionsScreen(
         content = content,
         onBack = onBack,
         onAddOccasion = onAddOccasion,
-        onEditOccasion = { onEditOccasion(it.id) },
+        onOpenOccasion = { onOpenOccasion(it.id) },
     )
 }
 
@@ -54,7 +54,7 @@ fun OwnOccasionsScreen(
     content: OwnOccasionsContent,
     onBack: () -> Unit,
     onAddOccasion: () -> Unit,
-    onEditOccasion: (Occasion) -> Unit,
+    onOpenOccasion: (Occasion) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -78,7 +78,7 @@ fun OwnOccasionsScreen(
                     contentPadding = PaddingValues(top = GiftySpacing.s, bottom = FAB_CLEARANCE),
                 ) {
                     items(content.occasions, key = { it.id }) { occasion ->
-                        OccasionRow(occasion = occasion, onClick = { onEditOccasion(occasion) })
+                        OccasionRow(occasion = occasion, onClick = { onOpenOccasion(occasion) }, clickLabel = R.string.people_open)
                         HorizontalDivider(modifier = Modifier.padding(start = GiftySpacing.l), color = GiftyTheme.colors.divider)
                     }
                 }
@@ -118,7 +118,7 @@ private fun OwnOccasionsPreview() {
             ),
             onBack = {},
             onAddOccasion = {},
-            onEditOccasion = {},
+            onOpenOccasion = {},
         )
     }
 }

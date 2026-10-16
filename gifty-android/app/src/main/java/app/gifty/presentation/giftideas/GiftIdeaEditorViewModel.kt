@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -58,8 +59,12 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
 
     private val _uiState = MutableStateFlow(
         when (target) {
-            is GiftIdeaEditorTarget.New ->
-                GiftIdeaEditorUiState(isNew = true, status = GiftIdeaEditorStatus.EDITING, recipientId = target.personId)
+            is GiftIdeaEditorTarget.New -> GiftIdeaEditorUiState(
+                isNew = true,
+                status = GiftIdeaEditorStatus.EDITING,
+                recipientId = target.personId,
+                occasionId = target.occasionId,
+            )
             is GiftIdeaEditorTarget.Existing ->
                 GiftIdeaEditorUiState(isNew = false, status = GiftIdeaEditorStatus.LOADING)
         },
@@ -75,6 +80,7 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
         }
         observeOccasionsOfRecipient()
         observeGeneralOccasions()
+        if (target is GiftIdeaEditorTarget.New && target.occasionId != null) dropUnavailablePrefill(target)
     }
 
     fun onRecipientChange(person: Person) {
@@ -187,6 +193,29 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
         }
     }
 
+    /**
+     * An occasion handed in to start with, e.g. from its plan, stays selected only if it is one
+     * the editor offers: the person's or a general one. One deleted meanwhile, or not the
+     * person's, is dropped rather than shown blank; so is one that cannot be confirmed.
+     */
+    private fun dropUnavailablePrefill(target: GiftIdeaEditorTarget.New) {
+        val prefill = target.occasionId ?: return
+        viewModelScope.launch {
+            val offered = try {
+                val personOccasions = target.personId?.let { occasionRepository.observeOccasionsForPerson(it).first() }.orEmpty()
+                personOccasions + generalOccasions(occasionRepository.observeOccasions().first())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                emptyList()
+            }
+            if (offered.none { it.id == prefill }) {
+                // Only if the user has not chosen another meanwhile.
+                _uiState.update { if (it.occasionId == prefill) it.copy(occasionId = null) else it }
+            }
+        }
+    }
+
     // The user's own occasions fit any idea or gift; they are offered whoever it is for. A failed
     // read only leaves them out: the editor and any occasion it was loaded with stay usable.
     private fun observeGeneralOccasions() {
@@ -261,9 +290,19 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
 }
 
 sealed interface GiftIdeaEditorTarget {
-    /** [personId] preselects the recipient, e.g. when adding from a person's page. */
-    data class New(val personId: UUID? = null) : GiftIdeaEditorTarget
+    /**
+     * [personId] preselects the recipient, e.g. when adding from a person's page; [occasionId]
+     * the occasion, e.g. when adding from the occasion's plan.
+     */
+    data class New(val personId: UUID? = null, val occasionId: UUID? = null) : GiftIdeaEditorTarget
     data class Existing(val giftIdeaId: UUID) : GiftIdeaEditorTarget
+
+    companion object {
+        /** Preselections from a route; a malformed one is ignored, the other still applies. */
+        fun newFor(personId: String?, occasionId: String?): New = New(personId?.toUuidOrNull(), occasionId?.toUuidOrNull())
+
+        private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()
+    }
 }
 
 data class GiftIdeaEditorUiState(

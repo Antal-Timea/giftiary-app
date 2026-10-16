@@ -41,7 +41,7 @@ import java.util.UUID
 fun HomeScreen(
     syncStatus: SyncStatusContent,
     comingUp: ComingUpContent,
-    onOpenComingUp: (ComingUpTarget) -> Unit,
+    onOpenComingUp: (occasionId: UUID) -> Unit,
     reminderCard: ReminderCardState,
     reminderActions: ReminderCardActions,
     onOpenGifts: () -> Unit,
@@ -146,8 +146,5 @@ private fun previewItem(name: String, type: OccasionType, daysFromToday: Int, ye
     val date = LocalDate.of(2026, 5, 10).plusDays(daysFromToday.toLong())
     val person = Person(UUID.randomUUID(), name, null, null, null, Instant.EPOCH, Instant.EPOCH)
     val occasion = Occasion(UUID.randomUUID(), person.id, type, null, date.dayOfMonth, date.monthValue, year, true, Instant.EPOCH, Instant.EPOCH)
-    return ComingUpItem(
-        UpcomingOccasion(occasion, person, date, daysFromToday, turningAge(occasion, date)),
-        ComingUpTarget.Person(person.id),
-    )
+    return ComingUpItem(UpcomingOccasion(occasion, person, date, daysFromToday, turningAge(occasion, date)))
 }

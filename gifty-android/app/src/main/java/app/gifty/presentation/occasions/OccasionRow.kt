@@ -1,5 +1,6 @@
 package app.gifty.presentation.occasions
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,14 +18,14 @@ import app.gifty.domain.model.Occasion
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
 
-/** An occasion in a list, by its title and date; tapping it opens it for editing. */
+/** An occasion in a list, by its title and date; [clickLabel] says what tapping it does. */
 @Composable
-fun OccasionRow(occasion: Occasion, onClick: () -> Unit) {
+fun OccasionRow(occasion: Occasion, onClick: () -> Unit, @StringRes clickLabel: Int = R.string.people_edit) {
     val colors = GiftyTheme.colors
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = stringResource(R.string.people_edit), onClick = onClick)
+            .clickable(onClickLabel = stringResource(clickLabel), onClick = onClick)
             .heightIn(min = 48.dp)
             .padding(horizontal = GiftySpacing.l, vertical = GiftySpacing.m),
         verticalArrangement = Arrangement.spacedBy(GiftySpacing.xs),

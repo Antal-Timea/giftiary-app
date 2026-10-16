@@ -22,17 +22,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.gifty.R
 import app.gifty.domain.model.OccasionPlan
-import app.gifty.domain.model.UpcomingOccasion
 import app.gifty.domain.usecase.ObserveUpcomingOccasionsUseCase
 import app.gifty.presentation.occasions.occasionTitle
 import app.gifty.presentation.occasions.occurrenceDate
 import app.gifty.presentation.theme.GiftySpacing
 import app.gifty.presentation.theme.GiftyTheme
+import java.util.UUID
 
 @Composable
 fun ComingUpSection(
     content: ComingUpContent,
-    onOpen: (ComingUpTarget) -> Unit,
+    onOpen: (occasionId: UUID) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Until the local read answers there is nothing honest to show, and it answers at once.
@@ -56,7 +56,7 @@ fun ComingUpSection(
             } else {
                 content.items.forEachIndexed { index, item ->
                     if (index > 0) HorizontalDivider(color = colors.divider)
-                    ComingUpRow(item = item, onClick = { onOpen(item.target) })
+                    ComingUpRow(item = item, onClick = { onOpen(item.occasionId) })
                 }
             }
         }
@@ -74,12 +74,7 @@ private fun ComingUpRow(item: ComingUpItem, onClick: () -> Unit) {
         upcoming.turningAge?.let { stringResource(R.string.coming_up_turns, it) },
         occasionPlanText(LocalResources.current, item.plan),
     ).joinToString(" · ")
-    val openLabel = stringResource(
-        when (item.target) {
-            is ComingUpTarget.Person -> R.string.people_open
-            is ComingUpTarget.Occasion -> R.string.people_edit
-        },
-    )
+    val openLabel = stringResource(R.string.people_open)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,15 +93,16 @@ private fun ComingUpRow(item: ComingUpItem, onClick: () -> Unit) {
             Text(text = details, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
         }
         Text(
-            text = whenText(upcoming),
+            text = daysUntilText(upcoming.daysUntil),
             style = MaterialTheme.typography.labelLarge,
             color = if (upcoming.daysUntil == 0) colors.textPrimary else colors.textSecondary,
         )
     }
 }
 
+/** "Today", "Tomorrow" or "In N days". */
 @Composable
-private fun whenText(upcoming: UpcomingOccasion): String = when (val days = upcoming.daysUntil) {
+fun daysUntilText(days: Int): String = when (days) {
     0 -> stringResource(R.string.coming_up_today)
     1 -> stringResource(R.string.coming_up_tomorrow)
     else -> pluralStringResource(R.plurals.coming_up_in_days, days, days)

@@ -30,6 +30,9 @@
     <string name="own_occasions_empty_message">Add hozzá a karácsonyt, az évfordulódat vagy más napot, amelyre ajándékot tervezel.</string>
     <string name="own_occasions_load_failed">A saját alkalmaid most nem jeleníthetők meg.</string>
 
+    <string name="occasion_plan_no_ideas">Ehhez az alkalomhoz még nincs ötlet kapcsolva.</string>
+    <string name="occasion_plan_ideas_unavailable">Az alkalom ötletei most nem jeleníthetők meg.</string>
+
     <string name="reminder_card_off">Kérj emlékeztetőt az alkalom napján és egy héttel előtte.</string>
     <string name="reminder_card_on">Az emlékeztetők be vannak kapcsolva: az alkalom napján és egy héttel előtte.</string>
     <string name="reminder_card_needs_permission">Engedélyezd az értesítéseket az emlékeztetőkhöz.</string>

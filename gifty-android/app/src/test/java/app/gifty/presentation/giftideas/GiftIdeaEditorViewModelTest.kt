@@ -239,4 +239,56 @@ class GiftIdeaEditorViewModelTest {
         viewModel.save()
         assertEquals(christmas.id, ideas.lastSaved!!.occasionId)
     }
+
+    // Starting from an occasion's plan
+
+    @Test
+    fun `a new idea from a general occasion starts with it, and keeps it once a recipient is chosen`() {
+        occasions.givenOccasions(annasBirthday, christmas)
+        val viewModel = viewModel(GiftIdeaEditorTarget.New(occasionId = christmas.id))
+        assertEquals(christmas, viewModel.uiState.value.selectedOccasion)
+        assertNull(viewModel.uiState.value.recipientId)
+
+        viewModel.onRecipientChange(bela)
+
+        assertEquals(christmas, viewModel.uiState.value.selectedOccasion)
+    }
+
+    @Test
+    fun `a new idea from a person's occasion starts with both`() {
+        occasions.givenOccasions(annasBirthday, christmas)
+
+        val state = viewModel(GiftIdeaEditorTarget.New(personId = anna.id, occasionId = annasBirthday.id)).uiState.value
+
+        assertEquals(anna, state.selectedRecipient)
+        assertEquals(annasBirthday, state.selectedOccasion)
+    }
+
+    @Test
+    fun `a starting occasion that is no longer offered is dropped once the choices are known`() {
+        occasions.givenOccasions(annasBirthday)
+        val deleted = UUID.randomUUID()
+
+        assertNull(viewModel(GiftIdeaEditorTarget.New(occasionId = deleted)).uiState.value.occasionId)
+        assertNull(
+            "another person's occasion is not offered for Béla",
+            viewModel(GiftIdeaEditorTarget.New(personId = bela.id, occasionId = annasBirthday.id)).uiState.value.occasionId,
+        )
+    }
+
+    @Test
+    fun `a starting occasion that cannot be confirmed is dropped`() {
+        occasions.givenOccasions(christmas)
+        occasions.readFailure = IOException("disk")
+
+        assertNull(viewModel(GiftIdeaEditorTarget.New(occasionId = christmas.id)).uiState.value.occasionId)
+    }
+
+    @Test
+    fun `a route's malformed occasion is ignored, its person still applies`() {
+        assertEquals(GiftIdeaEditorTarget.New(anna.id, null), GiftIdeaEditorTarget.newFor(anna.id.toString(), "not-a-uuid"))
+        assertEquals(GiftIdeaEditorTarget.New(null, christmas.id), GiftIdeaEditorTarget.newFor("bad", christmas.id.toString()))
+        assertEquals(GiftIdeaEditorTarget.New(anna.id, christmas.id), GiftIdeaEditorTarget.newFor(anna.id.toString(), christmas.id.toString()))
+        assertEquals(GiftIdeaEditorTarget.New(), GiftIdeaEditorTarget.newFor(null, null))
+    }
 }

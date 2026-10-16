@@ -69,6 +69,17 @@ class ComingUpTextTest {
         assertEquals("2 ötlet · 1 megvéve", occasionPlanText(hu, OccasionPlan(2, 1)))
     }
 
+    @Test
+    fun `an occasion's plan page says what it lacks in both languages`() {
+        val en = context(Locale.ENGLISH)
+        assertEquals("No ideas linked to this occasion yet.", en.getString(R.string.occasion_plan_no_ideas))
+        assertEquals("The ideas for this occasion cannot be shown right now.", en.getString(R.string.occasion_plan_ideas_unavailable))
+
+        val hu = context(Locale.forLanguageTag("hu"))
+        assertEquals("Ehhez az alkalomhoz még nincs ötlet kapcsolva.", hu.getString(R.string.occasion_plan_no_ideas))
+        assertEquals("Az alkalom ötletei most nem jeleníthetők meg.", hu.getString(R.string.occasion_plan_ideas_unavailable))
+    }
+
     private fun context(locale: Locale): Context {
         val base = ApplicationProvider.getApplicationContext<Context>()
         val configuration = Configuration(base.resources.configuration).apply { setLocale(locale) }

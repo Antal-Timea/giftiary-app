@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.gifty.domain.model.GiftDirection
+import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.SyncItem
 import app.gifty.domain.model.SyncItemType
 import app.gifty.presentation.giftideas.GiftIdeaDetailScreen
@@ -34,7 +35,6 @@ import app.gifty.presentation.gifts.GiftEditorScreen
 import app.gifty.presentation.gifts.GiftEditorTarget
 import app.gifty.presentation.gifts.GiftEditorViewModel
 import app.gifty.presentation.gifts.GiftHistoryScreen
-import app.gifty.presentation.home.ComingUpTarget
 import app.gifty.presentation.home.ComingUpViewModel
 import app.gifty.presentation.home.HomeScreen
 import app.gifty.presentation.home.ReminderCardActions
@@ -43,6 +43,8 @@ import app.gifty.presentation.home.notificationSettingsIntent
 import app.gifty.presentation.occasions.OccasionEditorScreen
 import app.gifty.presentation.occasions.OccasionEditorTarget
 import app.gifty.presentation.occasions.OccasionEditorViewModel
+import app.gifty.presentation.occasions.OccasionPlanScreen
+import app.gifty.presentation.occasions.OccasionPlanViewModel
 import app.gifty.presentation.occasions.OwnOccasionsScreen
 import app.gifty.presentation.people.PeopleScreen
 import app.gifty.presentation.people.PersonDetailScreen
@@ -99,8 +101,19 @@ data class EditGiftRoute(val giftId: String)
 data class GiftIdeaDetailRoute(val giftIdeaId: String)
 
 /** [personId] only preselects the recipient. */
+/** [personId] and [occasionId] preselect the new idea's recipient and occasion; a malformed one is ignored. */
 @Serializable
-data class AddGiftIdeaRoute(val personId: String? = null)
+data class AddGiftIdeaRoute(val personId: String? = null, val occasionId: String? = null)
+
+@Serializable
+data class OccasionPlanRoute(val occasionId: String)
+
+/** Coming up and Your occasions open an occasion's plan. Person detail still opens its editor. */
+internal fun occasionPlanRoute(occasionId: UUID) = OccasionPlanRoute(occasionId.toString())
+
+/** A new idea from an occasion's plan: for the occasion, and for its person if it has one. */
+internal fun addIdeaRoute(occasion: Occasion) =
+    AddGiftIdeaRoute(personId = occasion.personId?.toString(), occasionId = occasion.id.toString())
 
 @Serializable
 data class EditGiftIdeaRoute(val giftIdeaId: String)
@@ -145,14 +158,7 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                     onAllow = askToNotify,
                     onOpenSettings = { context.startActivity(notificationSettingsIntent(context)) },
                 ),
-                onOpenComingUp = { target ->
-                    navController.navigate(
-                        when (target) {
-                            is ComingUpTarget.Person -> PersonDetailRoute(target.personId.toString())
-                            is ComingUpTarget.Occasion -> EditOccasionRoute(target.occasionId.toString())
-                        },
-                    )
-                },
+                onOpenComingUp = { occasionId -> navController.navigate(occasionPlanRoute(occasionId)) },
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
                 onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
@@ -226,8 +232,22 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             OwnOccasionsScreen(
                 onBack = navController.popBackStackUnlessPaused(),
                 onAddOccasion = dropUnlessResumed { navController.navigate(AddOccasionRoute()) },
-                onEditOccasion = { id -> navController.navigate(EditOccasionRoute(id.toString())) },
+                onOpenOccasion = { id -> navController.navigate(occasionPlanRoute(id)) },
             )
+        }
+        composable<OccasionPlanRoute> { entry ->
+            WithUuid(entry.toRoute<OccasionPlanRoute>().occasionId, navController) { occasionId ->
+                OccasionPlanScreen(
+                    viewModel = hiltViewModel<OccasionPlanViewModel, OccasionPlanViewModel.Factory> { factory ->
+                        factory.create(occasionId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                    onEditOccasion = { id -> navController.navigate(EditOccasionRoute(id.toString())) },
+                    onOpenPerson = { id -> navController.navigate(PersonDetailRoute(id.toString())) },
+                    onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
+                    onAddGiftIdea = { occasion -> navController.navigate(addIdeaRoute(occasion)) },
+                )
+            }
         }
         composable<EditOccasionRoute> { entry ->
             WithUuid(entry.toRoute<EditOccasionRoute>().occasionId, navController) { occasionId ->
@@ -298,11 +318,10 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
         composable<AddGiftIdeaRoute> { entry ->
-            // A malformed preselection is ignored; the editor works without it.
-            val personId = entry.toRoute<AddGiftIdeaRoute>().personId?.toUuidOrNull()
+            val route = entry.toRoute<AddGiftIdeaRoute>()
             GiftIdeaEditorScreen(
                 viewModel = hiltViewModel<GiftIdeaEditorViewModel, GiftIdeaEditorViewModel.Factory> { factory ->
-                    factory.create(GiftIdeaEditorTarget.New(personId))
+                    factory.create(GiftIdeaEditorTarget.newFor(route.personId, route.occasionId))
                 },
                 onClose = navController.popBackStackUnlessPaused(),
                 onOpenPeople = { navController.navigate(PeopleRoute) },
