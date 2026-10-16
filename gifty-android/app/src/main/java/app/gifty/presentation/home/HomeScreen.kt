@@ -46,6 +46,7 @@ fun HomeScreen(
     reminderActions: ReminderCardActions,
     onOpenGifts: () -> Unit,
     onOpenPeople: () -> Unit,
+    onOpenWishlists: () -> Unit,
     onOpenOwnOccasions: () -> Unit,
     onOpenSyncAttention: () -> Unit,
     onSignOut: () -> Unit,
@@ -105,6 +106,12 @@ fun HomeScreen(
                 onClick = onOpenPeople,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(Modifier.height(GiftySpacing.m))
+            GiftySecondaryButton(
+                text = stringResource(R.string.home_open_wishlists),
+                onClick = onOpenWishlists,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(GiftySpacing.s))
             TextButton(
                 onClick = onSignOut,
@@ -135,6 +142,7 @@ private fun HomeScreenPreview() {
             reminderActions = ReminderCardActions({}, {}, {}, {}),
             onOpenGifts = {},
             onOpenPeople = {},
+            onOpenWishlists = {},
             onOpenOwnOccasions = {},
             onOpenSyncAttention = {},
             onSignOut = {},

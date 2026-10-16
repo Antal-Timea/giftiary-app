@@ -53,6 +53,17 @@ import app.gifty.presentation.people.PersonEditorScreen
 import app.gifty.presentation.people.PersonEditorViewModel
 import app.gifty.presentation.sync.SyncAttentionScreen
 import app.gifty.presentation.sync.SyncStatusViewModel
+import app.gifty.presentation.wishlists.WishDetailScreen
+import app.gifty.presentation.wishlists.WishDetailViewModel
+import app.gifty.presentation.wishlists.WishEditorScreen
+import app.gifty.presentation.wishlists.WishEditorTarget
+import app.gifty.presentation.wishlists.WishEditorViewModel
+import app.gifty.presentation.wishlists.WishlistDetailScreen
+import app.gifty.presentation.wishlists.WishlistDetailViewModel
+import app.gifty.presentation.wishlists.WishlistEditorScreen
+import app.gifty.presentation.wishlists.WishlistEditorTarget
+import app.gifty.presentation.wishlists.WishlistEditorViewModel
+import app.gifty.presentation.wishlists.WishlistsScreen
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
@@ -121,6 +132,28 @@ data class EditGiftIdeaRoute(val giftIdeaId: String)
 @Serializable
 data class MarkGiftIdeaGivenRoute(val giftIdeaId: String)
 
+@Serializable
+data object WishlistsRoute
+
+@Serializable
+data class WishlistDetailRoute(val wishlistId: String)
+
+/** [personId] only preselects who the new wishlist is for; a malformed or unavailable one is ignored. */
+@Serializable
+data class AddWishlistRoute(val personId: String? = null)
+
+@Serializable
+data class EditWishlistRoute(val wishlistId: String)
+
+@Serializable
+data class WishDetailRoute(val wishId: String)
+
+@Serializable
+data class AddWishRoute(val wishlistId: String)
+
+@Serializable
+data class EditWishRoute(val wishId: String)
+
 @Composable
 fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
@@ -161,6 +194,7 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                 onOpenComingUp = { occasionId -> navController.navigate(occasionPlanRoute(occasionId)) },
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
+                onOpenWishlists = dropUnlessResumed { navController.navigate(WishlistsRoute) },
                 onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
                 onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
                 onSignOut = onSignOut,
@@ -335,6 +369,84 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                     },
                     onClose = navController.popBackStackUnlessPaused(),
                     onOpenPeople = { navController.navigate(PeopleRoute) },
+                )
+            }
+        }
+        composable<WishlistsRoute> {
+            WishlistsScreen(
+                onBack = navController.popBackStackUnlessPaused(),
+                onAddWishlist = dropUnlessResumed { navController.navigate(AddWishlistRoute()) },
+                onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
+            )
+        }
+        composable<AddWishlistRoute> { entry ->
+            val target = WishlistEditorTarget.newFor(entry.toRoute<AddWishlistRoute>().personId)
+            WishlistEditorScreen(
+                viewModel = hiltViewModel<WishlistEditorViewModel, WishlistEditorViewModel.Factory> { factory ->
+                    factory.create(target)
+                },
+                onClose = navController.popBackStackUnlessPaused(),
+                onCreated = { id ->
+                    // The new wishlist opens in place of the editor, so back returns to where it was created from.
+                    navController.navigate(WishlistDetailRoute(id.toString())) {
+                        popUpTo<AddWishlistRoute> { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable<EditWishlistRoute> { entry ->
+            WithUuid(entry.toRoute<EditWishlistRoute>().wishlistId, navController) { wishlistId ->
+                WishlistEditorScreen(
+                    viewModel = hiltViewModel<WishlistEditorViewModel, WishlistEditorViewModel.Factory> { factory ->
+                        factory.create(WishlistEditorTarget.Existing(wishlistId))
+                    },
+                    onClose = navController.popBackStackUnlessPaused(),
+                    onCreated = {},
+                )
+            }
+        }
+        composable<WishlistDetailRoute> { entry ->
+            WithUuid(entry.toRoute<WishlistDetailRoute>().wishlistId, navController) { wishlistId ->
+                WishlistDetailScreen(
+                    viewModel = hiltViewModel<WishlistDetailViewModel, WishlistDetailViewModel.Factory> { factory ->
+                        factory.create(wishlistId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                    onRename = { id -> navController.navigate(EditWishlistRoute(id.toString())) },
+                    onOpenPerson = { id -> navController.navigate(PersonDetailRoute(id.toString())) },
+                    onAddWish = { id -> navController.navigate(AddWishRoute(id.toString())) },
+                    onOpenWish = { id -> navController.navigate(WishDetailRoute(id.toString())) },
+                )
+            }
+        }
+        composable<AddWishRoute> { entry ->
+            WithUuid(entry.toRoute<AddWishRoute>().wishlistId, navController) { wishlistId ->
+                WishEditorScreen(
+                    viewModel = hiltViewModel<WishEditorViewModel, WishEditorViewModel.Factory> { factory ->
+                        factory.create(WishEditorTarget.New(wishlistId))
+                    },
+                    onClose = navController.popBackStackUnlessPaused(),
+                )
+            }
+        }
+        composable<EditWishRoute> { entry ->
+            WithUuid(entry.toRoute<EditWishRoute>().wishId, navController) { wishId ->
+                WishEditorScreen(
+                    viewModel = hiltViewModel<WishEditorViewModel, WishEditorViewModel.Factory> { factory ->
+                        factory.create(WishEditorTarget.Existing(wishId))
+                    },
+                    onClose = navController.popBackStackUnlessPaused(),
+                )
+            }
+        }
+        composable<WishDetailRoute> { entry ->
+            WithUuid(entry.toRoute<WishDetailRoute>().wishId, navController) { wishId ->
+                WishDetailScreen(
+                    viewModel = hiltViewModel<WishDetailViewModel, WishDetailViewModel.Factory> { factory ->
+                        factory.create(wishId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                    onEditWish = { id -> navController.navigate(EditWishRoute(id.toString())) },
                 )
             }
         }

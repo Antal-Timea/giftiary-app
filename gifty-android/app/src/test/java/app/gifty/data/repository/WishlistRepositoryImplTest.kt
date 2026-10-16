@@ -14,6 +14,7 @@ import app.gifty.data.local.entity.WishEntity
 import app.gifty.data.local.entity.WishlistEntity
 import app.gifty.data.sync.SyncRequester
 import app.gifty.domain.model.Money
+import app.gifty.domain.model.Wishlist
 import app.gifty.domain.repository.NoActiveOwnerException
 import app.gifty.domain.repository.PersonNotFoundException
 import app.gifty.domain.repository.WishDetails
@@ -292,6 +293,47 @@ class WishlistRepositoryImplTest {
     // ---- accounts ----
 
     @Test
+    fun `a single wishlist and wish are observed live, only the account's, and gone once deleted`() = runTest {
+        val list = repository.addWishlist(null, "Birthday")
+        val stored = repository.addWish(list.id, lamp)
+        val theirList = wishlist(otherOwnerId).also { wishlistDao.insert(it) }
+        val theirWish = wish(theirList).also { wishDao.insert(it) }
+
+        assertEquals(list, repository.observeWishlist(list.id).first())
+        assertEquals(stored, repository.observeWish(stored.id).first())
+        assertNull(repository.observeWishlist(theirList.id).first())
+        assertNull(repository.observeWish(theirWish.id).first())
+
+        clock.advanceBy(Duration.ofMinutes(1))
+        repository.renameWishlist(list.id, "Name day")
+        repository.updateWish(stored.id, lamp.copy(name = "Brass lamp"))
+        assertEquals("Name day", repository.observeWishlist(list.id).first()?.name)
+        assertEquals("Brass lamp", repository.observeWish(stored.id).first()?.name)
+
+        repository.deleteWishlist(list.id)
+        assertNull(repository.observeWishlist(list.id).first())
+        assertNull(repository.observeWish(stored.id).first())
+    }
+
+    @Test
+    fun `a running single-wishlist observation follows the account`() = runTest {
+        val mine = repository.addWishlist(null, "Mine")
+        val observed = MutableStateFlow<Wishlist?>(null)
+        var emissions = 0
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeWishlist(mine.id).collect { observed.value = it; emissions++ }
+        }
+        awaitValue(observed) { it == mine }
+
+        activeOwner.ownerId.value = otherOwnerId
+        awaitValue(observed) { it == null }
+
+        activeOwner.ownerId.value = ownerUserId
+        awaitValue(observed) { it == mine }
+        assertTrue(emissions >= 3)
+    }
+
+    @Test
     fun `another owner's wishlists and wishes are never returned, changed or deleted`() = runTest {
         val theirList = wishlist(otherOwnerId).also { wishlistDao.insert(it) }
         val theirWish = wish(theirList).also { wishDao.insert(it) }
@@ -395,6 +437,10 @@ class WishlistRepositoryImplTest {
         assertEquals(listOf(anyas, zoe), repository.observeWishlists().first())
         assertEquals(listOf(first, second), repository.observeWishes(anyas.id).first())
         assertTrue(repository.observeWishes(zoe.id).first().isEmpty())
+    }
+
+    private suspend fun <T> awaitValue(flow: MutableStateFlow<T>, condition: (T) -> Boolean) {
+        withContext(Dispatchers.Default.limitedParallelism(1)) { withTimeout(5_000) { flow.first(condition) } }
     }
 
     // Room emits on its own executor, so the wait is in real time.

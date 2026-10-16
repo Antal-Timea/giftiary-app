@@ -26,6 +26,9 @@ interface WishlistDao {
     fun observeActive(ownerUserId: UUID): Flow<List<WishlistEntity>>
 
     @Query("SELECT * FROM wishlist WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
+    fun observeActiveById(id: UUID, ownerUserId: UUID): Flow<WishlistEntity?>
+
+    @Query("SELECT * FROM wishlist WHERE id = :id AND ownerUserId = :ownerUserId AND deletedAt IS NULL")
     suspend fun findActiveById(id: UUID, ownerUserId: UUID): WishlistEntity?
 
     /** Includes soft-deleted rows; for sync and for checking references existing records already have. */
