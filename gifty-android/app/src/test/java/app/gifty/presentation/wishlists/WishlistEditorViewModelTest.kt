@@ -112,6 +112,8 @@ class WishlistEditorViewModelTest {
 
     @Test
     fun `nothing is saved before the people are known`() = runTest {
+        // Storage would accept Anna, so only the editor's own wait keeps it from saving.
+        wishlists.activePeopleIds = setOf(anna.id)
         val peopleNeverLoad = object : PersonRepository by people {
             override fun observePeople(): Flow<List<Person>> = emptyFlow()
         }
