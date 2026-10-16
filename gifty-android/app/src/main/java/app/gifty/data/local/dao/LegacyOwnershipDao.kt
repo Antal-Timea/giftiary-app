@@ -9,8 +9,8 @@ import java.util.UUID
  * [app.gifty.data.local.LegacyOwnershipClaim] calls them, all inside one transaction; this is not
  * a general way to change owners. Each statement returns the number of rows it moved.
  *
- * Only rows of the legacy owner move: rows of any account are never touched. Wishes are not moved
- * here: their same-owner foreign key cascades the wishlist's new owner to them.
+ * Only rows of the legacy owner move: rows of any account are never touched. Same-owner foreign
+ * keys cascade the rest: a person's new owner moves their wishlists, and a wishlist's its wishes.
  */
 @Dao
 interface LegacyOwnershipDao {
@@ -27,6 +27,11 @@ interface LegacyOwnershipDao {
     @Query("UPDATE gift SET ownerUserId = :accountOwnerId WHERE ownerUserId = :legacyOwnerId")
     suspend fun claimGifts(legacyOwnerId: UUID, accountOwnerId: UUID): Int
 
+    /** Counted before people are claimed, as claiming a person already moves their wishlists. */
+    @Query("SELECT COUNT(*) FROM wishlist WHERE ownerUserId = :legacyOwnerId")
+    suspend fun countWishlists(legacyOwnerId: UUID): Int
+
+    /** Moves the wishlists without a person; those with one moved with their person. */
     @Query("UPDATE wishlist SET ownerUserId = :accountOwnerId WHERE ownerUserId = :legacyOwnerId")
     suspend fun claimWishlists(legacyOwnerId: UUID, accountOwnerId: UUID): Int
 

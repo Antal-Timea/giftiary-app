@@ -361,6 +361,30 @@ class WishlistRepositoryImplTest {
     }
 
     @Test
+    fun `the database refuses a wishlist for another owner's person, and accepts its own owner's or none`() = runTest {
+        val strangersPerson = person(otherOwnerId).also { personDao.insert(it) }
+
+        val crossOwner = runCatching { wishlistDao.insert(wishlist(ownerUserId).copy(personId = strangersPerson.id)) }
+        val missing = runCatching { wishlistDao.insert(wishlist(ownerUserId).copy(personId = UUID.randomUUID())) }
+        val annas = wishlist(ownerUserId).copy(personId = anna.id).also { wishlistDao.insert(it) }
+        val personless = wishlist(ownerUserId).also { wishlistDao.insert(it) }
+
+        assertTrue("${crossOwner.exceptionOrNull()}", crossOwner.exceptionOrNull() is SQLiteConstraintException)
+        assertTrue("${missing.exceptionOrNull()}", missing.exceptionOrNull() is SQLiteConstraintException)
+        assertEquals(setOf(annas.id, personless.id), repository.observeWishlists().first().map { it.id }.toSet())
+    }
+
+    @Test
+    fun `the database refuses moving a person-linked wishlist to another owner on its own`() = runTest {
+        val annas = wishlist(ownerUserId).copy(personId = anna.id).also { wishlistDao.insert(it) }
+
+        val moved = runCatching { wishlistDao.update(annas.copy(ownerUserId = otherOwnerId)) }
+
+        assertTrue("${moved.exceptionOrNull()}", moved.exceptionOrNull() is SQLiteConstraintException)
+        assertEquals(annas, wishlistDao.findById(annas.id, ownerUserId))
+    }
+
+    @Test
     fun `wishlists are listed by name, ignoring case, and wishes in the order they were added`() = runTest {
         val zoe = repository.addWishlist(null, "zoe")
         val anyas = repository.addWishlist(anna.id, "Anya")

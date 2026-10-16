@@ -30,12 +30,13 @@ class LegacyOwnershipClaim @Inject constructor(
     suspend fun claimLegacyData(legacyOwnerId: UUID, accountOwnerId: UUID): LegacyClaimResult {
         require(legacyOwnerId != accountOwnerId) { "The legacy owner and the account must differ" }
         return database.withTransaction {
+            val wishlists = dao.countWishlists(legacyOwnerId)
             LegacyClaimResult(
                 peopleClaimed = dao.claimPeople(legacyOwnerId, accountOwnerId),
                 occasionsClaimed = dao.claimOccasions(legacyOwnerId, accountOwnerId),
                 giftIdeasClaimed = dao.claimGiftIdeas(legacyOwnerId, accountOwnerId),
                 giftsClaimed = dao.claimGifts(legacyOwnerId, accountOwnerId),
-                wishlistsClaimed = dao.claimWishlists(legacyOwnerId, accountOwnerId),
+                wishlistsClaimed = wishlists.also { dao.claimWishlists(legacyOwnerId, accountOwnerId) },
                 syncOperationsClaimed = dao.claimSyncOperations(legacyOwnerId, accountOwnerId),
             )
         }

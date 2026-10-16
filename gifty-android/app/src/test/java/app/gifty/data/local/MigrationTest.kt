@@ -263,7 +263,7 @@ class MigrationTest {
     // ---- v4 to v5: a wish carries its wishlist's owner ----
 
     @Test
-    fun `v4 to v5 gives each wish its wishlist's owner and keeps every other value of every row`() = runTest {
+    fun `v4 to v5 makes wishlists and wishes same-owner and keeps every value of every row`() = runTest {
         val before = helper.createDatabase(DB_NAME, 4).use { db ->
             insertFullGraph(db)
             ALL_TABLES.associateWith { rows(db, "SELECT * FROM `$it` ORDER BY id") }
@@ -284,28 +284,63 @@ class MigrationTest {
                 indexes(db, "wish"),
             )
             assertEquals(
-                EXPECTED_INDEXES.getValue("wishlist") + ("index_wishlist_id_ownerUserId" to (listOf("id", "ownerUserId") to true)),
+                mapOf(
+                    "index_wishlist_ownerUserId" to (listOf("ownerUserId") to false),
+                    "index_wishlist_personId_ownerUserId" to (listOf("personId", "ownerUserId") to false),
+                    "index_wishlist_id_ownerUserId" to (listOf("id", "ownerUserId") to true),
+                ),
                 indexes(db, "wishlist"),
+            )
+            assertEquals(
+                mapOf(
+                    "index_person_ownerUserId" to (listOf("ownerUserId") to false),
+                    "index_person_id_ownerUserId" to (listOf("id", "ownerUserId") to true),
+                ),
+                indexes(db, "person"),
+            )
+            assertEquals(
+                setOf("wishlist.personId -> person.id CASCADE/NO ACTION", "wishlist.ownerUserId -> person.ownerUserId CASCADE/NO ACTION"),
+                foreignKeys(db, "wishlist").toSet(),
             )
             assertEquals(
                 setOf("wish.wishlistId -> wishlist.id CASCADE/NO ACTION", "wish.ownerUserId -> wishlist.ownerUserId CASCADE/NO ACTION"),
                 foreignKeys(db, "wish").toSet(),
             )
             assertNoDeferredForeignKeys(db)
+            assertEquals(0, db.query("PRAGMA foreign_key_check").use { it.count })
 
             db.execSQL("PRAGMA foreign_keys = ON")
-            val crossOwner = runCatching {
-                db.insert(
-                    "wish", SQLiteDatabase.CONFLICT_ABORT,
-                    ContentValues().apply {
-                        wish(UUID.randomUUID(), WISHLIST_A).forEach { (column, value) ->
-                            if (value == null) putNull(column) else put(column, value.toString())
-                        }
-                        put("ownerUserId", bob.toString())
-                    },
-                )
+            // Bob's wish on Alice's wishlist, and Bob's wishlist for Alice's person.
+            val crossOwnerWish = runCatching {
+                db.insert("wish", SQLiteDatabase.CONFLICT_ABORT, values(wish(UUID.randomUUID(), WISHLIST_A) + ("ownerUserId" to bob.toString())))
             }.exceptionOrNull()
-            assertTrue("$crossOwner", crossOwner is SQLiteConstraintException)
+            assertTrue("$crossOwnerWish", crossOwnerWish is SQLiteConstraintException)
+            val crossOwnerWishlist = runCatching {
+                db.insert("wishlist", SQLiteDatabase.CONFLICT_ABORT, values(wishlist(UUID.randomUUID(), bob, PERSON_A)))
+            }.exceptionOrNull()
+            assertTrue("$crossOwnerWishlist", crossOwnerWishlist is SQLiteConstraintException)
+        }
+    }
+
+    @Test
+    fun `a v4 wishlist of another owner's person fails the migration and stays v4`() = runTest {
+        helper.createDatabase(DB_NAME, 4).use { db ->
+            insert(db, "person", person(PERSON_A, alice))
+            // v4's key is on the person's id alone, so this row is valid there.
+            insert(db, "wishlist", wishlist(WISHLIST_A, bob, PERSON_A))
+            insert(db, "wish", wish(WISH_A, WISHLIST_A))
+        }
+
+        val failure = runCatching { helper.runMigrationsAndValidate(DB_NAME, 5, true, MIGRATION_4_5) }.exceptionOrNull()
+
+        assertTrue("$failure", failure is IllegalStateException && "`wishlist`" in failure.message!!)
+        rawDatabase().use { db ->
+            assertEquals(4, db.version)
+            assertEquals(listOf(bob.toString()), column(db, "SELECT ownerUserId FROM wishlist"))
+            assertEquals(listOf(WISH_A.toString()), column(db, "SELECT id FROM wish"))
+            assertTrue("still the v4 tables", "ownerUserId" !in tableSql(db, "wish") && "`ownerUserId`)" !in tableSql(db, "wishlist"))
+            assertTrue("no new person key", column(db, "SELECT name FROM sqlite_master WHERE name = 'index_person_id_ownerUserId'").isEmpty())
+            assertTrue("no rebuilt table left", column(db, "SELECT name FROM sqlite_master WHERE name LIKE '%\\_new' ESCAPE '\\'").isEmpty())
         }
     }
 
@@ -395,6 +430,10 @@ class MigrationTest {
                 "remoteVersion" to 3L, "localSnapshotJson" to "{}", "createdAt" to 1_700_000_700_000L, "seenAt" to null,
             ),
         )
+    }
+
+    private fun values(values: Map<String, Any?>) = ContentValues().apply {
+        values.forEach { (column, value) -> if (value == null) putNull(column) else put(column, value.toString()) }
     }
 
     private fun insert(db: SupportSQLiteDatabase, table: String, values: Map<String, Any?>) {

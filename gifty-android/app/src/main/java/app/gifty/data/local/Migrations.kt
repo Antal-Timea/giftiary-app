@@ -101,12 +101,13 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
 }
 
 /**
- * v5 gives every wish its owner, always its wishlist's, enforced by a same-owner foreign key over
- * (wishlistId, ownerUserId). Wishlists only gain the unique (id, ownerUserId) key that foreign key
- * needs. Nothing else changes: every wish keeps every value and takes its owner from its wishlist.
+ * v5 makes wishlists and wishes same-owner throughout: a wishlist's person must be its owner's,
+ * over (personId, ownerUserId), and every wish gets an owner, always its wishlist's, over
+ * (wishlistId, ownerUserId). People and wishlists gain the unique (id, ownerUserId) keys these
+ * foreign keys need. Every row keeps every value; each wish takes its owner from its wishlist.
  *
- * Fails, leaving v4 untouched, if a wish has no wishlist to take its owner from; v4's immediate
- * foreign keys make that impossible for data the app wrote.
+ * Fails, leaving v4 untouched, if a wish has no wishlist or a wishlist's person is missing or
+ * another owner's. Nothing is dropped or given another owner to make old data fit.
  */
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -114,9 +115,24 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         val enforced = db.query("PRAGMA foreign_keys").use { it.moveToFirst() && it.getInt(0) != 0 }
         check(!enforced) { "Foreign keys must not be enforced while tables are rebuilt" }
 
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_person_id_ownerUserId` ON `person` (`id`, `ownerUserId`)")
+
+        // Room's v5 definitions, copied verbatim. Wishlist columns are unchanged.
+        db.execSQL(
+            "CREATE TABLE `wishlist_new` (`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `personId` TEXT, " +
+                "`name` TEXT NOT NULL, `version` INTEGER NOT NULL, `remoteState` TEXT NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`), " +
+                "FOREIGN KEY(`personId`, `ownerUserId`) REFERENCES `person`(`id`, `ownerUserId`) " +
+                "ON UPDATE CASCADE ON DELETE NO ACTION )",
+        )
+        val wishlistColumns = WISHLIST_COLUMNS.joinToString { "`$it`" }
+        db.execSQL("INSERT INTO `wishlist_new` ($wishlistColumns) SELECT $wishlistColumns FROM `wishlist`")
+        db.execSQL("DROP TABLE `wishlist`")
+        db.execSQL("ALTER TABLE `wishlist_new` RENAME TO `wishlist`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_wishlist_ownerUserId` ON `wishlist` (`ownerUserId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_wishlist_personId_ownerUserId` ON `wishlist` (`personId`, `ownerUserId`)")
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_wishlist_id_ownerUserId` ON `wishlist` (`id`, `ownerUserId`)")
 
-        // Room's v5 definition, copied verbatim.
         db.execSQL(
             "CREATE TABLE `wish_new` (`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, `wishlistId` TEXT NOT NULL, " +
                 "`name` TEXT NOT NULL, `note` TEXT, `estimatedPriceAmountMinor` INTEGER, `estimatedPriceCurrencyCode` TEXT, " +
@@ -140,10 +156,16 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_wish_wishlistId_ownerUserId` ON `wish` (`wishlistId`, `ownerUserId`)")
 
         db.query("PRAGMA foreign_key_check").use { cursor ->
-            if (cursor.moveToFirst()) error("A row of `${cursor.getString(0)}` refers to a row that does not exist")
+            if (cursor.moveToFirst()) {
+                error("A row of `${cursor.getString(0)}` refers to a row that does not exist or is another owner's")
+            }
         }
     }
 }
+
+private val WISHLIST_COLUMNS = listOf(
+    "id", "ownerUserId", "personId", "name", "version", "remoteState", "createdAt", "updatedAt", "deletedAt",
+)
 
 private val WISH_V4_COLUMNS = listOf(
     "id", "wishlistId", "name", "note", "estimatedPriceAmountMinor", "estimatedPriceCurrencyCode",

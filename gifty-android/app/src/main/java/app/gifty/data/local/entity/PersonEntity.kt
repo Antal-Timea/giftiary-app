@@ -13,7 +13,8 @@ import java.util.UUID
  */
 @Entity(
     tableName = "person",
-    indices = [Index("ownerUserId")],
+    // (id, ownerUserId) is the target of the wishlists' same-owner foreign key.
+    indices = [Index("ownerUserId"), Index(value = ["id", "ownerUserId"], unique = true)],
 )
 data class PersonEntity(
     @PrimaryKey val id: UUID,

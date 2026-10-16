@@ -68,13 +68,14 @@ class LegacyOwnershipClaimTest {
                 occasionsClaimed = 2,
                 giftIdeasClaimed = 3,
                 giftsClaimed = 1,
-                wishlistsClaimed = 1,
+                wishlistsClaimed = 2,
                 syncOperationsClaimed = 2,
             ),
             result,
         )
-        // Only ownerUserId changes, the wish's too, through its key; every other column is as before.
+        // Only ownerUserId changes, the wishes' too, through their keys; every other column is as before.
         assertEquals(before.withOwners(from = setOf(legacy, null), to = accountA), snapshot())
+        assertEquals(0, count("SELECT COUNT(*) FROM pragma_foreign_key_check"))
     }
 
     @Test
@@ -203,7 +204,8 @@ class LegacyOwnershipClaimTest {
 
     /**
      * One owner's rows in every owned table: active, synced (version 3), soft-deleted and archived,
-     * plus a wishlist with a wish, whose owner follows its wishlist's through the foreign key.
+     * plus a wishlist for a person and one without, each with a wish. Their owners follow through the
+     * same-owner keys: the person's wishlist moves with the person, each wish with its wishlist.
      */
     private suspend fun seedDataset(owner: UUID): Dataset {
         val anna = person(owner, deletedAt = null, remoteState = RemoteState.SYNCED, version = 3)
@@ -220,19 +222,21 @@ class LegacyOwnershipClaimTest {
         listOf(idea, archived, deletedIdea).forEach { database.giftIdeaDao().insert(it) }
         val gift = gift(owner, anna.id, birthday.id, archived.id)
         database.giftDao().insert(gift)
-        val wishlistId = UUID.randomUUID()
-        execute(
-            "INSERT INTO wishlist (id, ownerUserId, personId, name, version, remoteState, createdAt, updatedAt, " +
-                "deletedAt) VALUES (?, ?, ?, 'Birthday list', 0, 'LOCAL_ONLY', ?, ?, NULL)",
-            wishlistId.toString(), owner.toString(), anna.id.toString(),
-            created.toEpochMilli(), created.toEpochMilli(),
-        )
-        execute(
-            "INSERT INTO wish (id, ownerUserId, wishlistId, name, note, estimatedPriceAmountMinor, estimatedPriceCurrencyCode, " +
-                "productUrl, photoPath, version, remoteState, createdAt, updatedAt, deletedAt) VALUES " +
-                "(?, ?, ?, 'Scarf', NULL, 12000, 'HUF', NULL, NULL, 0, 'LOCAL_ONLY', ?, ?, NULL)",
-            UUID.randomUUID().toString(), owner.toString(), wishlistId.toString(), created.toEpochMilli(), created.toEpochMilli(),
-        )
+        listOf(anna.id, null).forEach { personId ->
+            val wishlistId = UUID.randomUUID()
+            execute(
+                "INSERT INTO wishlist (id, ownerUserId, personId, name, version, remoteState, createdAt, updatedAt, " +
+                    "deletedAt) VALUES (?, ?, ?, 'Birthday list', 0, 'LOCAL_ONLY', ?, ?, NULL)",
+                wishlistId.toString(), owner.toString(), personId?.toString(),
+                created.toEpochMilli(), created.toEpochMilli(),
+            )
+            execute(
+                "INSERT INTO wish (id, ownerUserId, wishlistId, name, note, estimatedPriceAmountMinor, estimatedPriceCurrencyCode, " +
+                    "productUrl, photoPath, version, remoteState, createdAt, updatedAt, deletedAt) VALUES " +
+                    "(?, ?, ?, 'Scarf', NULL, 12000, 'HUF', NULL, NULL, 0, 'LOCAL_ONLY', ?, ?, NULL)",
+                UUID.randomUUID().toString(), owner.toString(), wishlistId.toString(), created.toEpochMilli(), created.toEpochMilli(),
+            )
+        }
         return Dataset(anna.id, gone.id, deletedOccasion.id, archived.id, deletedIdea.id, gift.id)
     }
 
