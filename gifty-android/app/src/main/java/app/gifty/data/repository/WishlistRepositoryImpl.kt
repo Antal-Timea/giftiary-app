@@ -50,6 +50,11 @@ class WishlistRepositoryImpl @Inject constructor(
             wishDao.observeActiveForWishlist(ownerUserId, wishlistId).map { wishes -> wishes.map { it.toDomain() } }
         }
 
+    override fun observeWishCounts(): Flow<Map<UUID, Int>> =
+        activeOwner.scoped(emptyMap()) { ownerUserId ->
+            wishDao.observeActiveCounts(ownerUserId).map { counts -> counts.associate { it.wishlistId to it.count } }
+        }
+
     override fun observeWishlist(id: UUID): Flow<Wishlist?> =
         activeOwner.scoped(null) { ownerUserId -> wishlistDao.observeActiveById(id, ownerUserId).map { it?.toDomain() } }
 

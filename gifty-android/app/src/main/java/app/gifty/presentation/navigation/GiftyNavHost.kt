@@ -203,7 +203,7 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
         composable<SyncAttentionRoute> {
             SyncAttentionScreen(
                 onBack = navController.popBackStackUnlessPaused(),
-                onOpen = { item -> routeOf(item)?.let { navController.navigate(it) } },
+                onOpen = { item -> navController.navigate(routeOf(item)) },
             )
         }
         composable<PeopleRoute> {
@@ -227,6 +227,8 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                     onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
                     onAddGiftIdea = { id -> navController.navigate(AddGiftIdeaRoute(personId = id.toString())) },
                     onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
+                    onAddWishlist = { id -> navController.navigate(AddWishlistRoute(personId = id.toString())) },
+                    onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
                 )
             }
         }
@@ -469,16 +471,14 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * The existing screen of an item that needs attention: its detail screen, or the editor for an
- * occasion. Wishlists and wishes have no screen yet, so they are never offered for opening.
- */
-private fun routeOf(item: SyncItem): Any? = when (item.type) {
+/** The existing screen of an item that needs attention: its detail screen, or the editor for an occasion. */
+internal fun routeOf(item: SyncItem): Any = when (item.type) {
     SyncItemType.PERSON -> PersonDetailRoute(item.id.toString())
     SyncItemType.OCCASION -> EditOccasionRoute(item.id.toString())
     SyncItemType.GIFT_IDEA -> GiftIdeaDetailRoute(item.id.toString())
     SyncItemType.GIFT -> GiftDetailRoute(item.id.toString())
-    SyncItemType.WISHLIST, SyncItemType.WISH -> null
+    SyncItemType.WISHLIST -> WishlistDetailRoute(item.id.toString())
+    SyncItemType.WISH -> WishDetailRoute(item.id.toString())
 }
 
 private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()

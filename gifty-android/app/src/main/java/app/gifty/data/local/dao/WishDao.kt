@@ -25,6 +25,16 @@ interface WishDao {
     )
     fun observeActiveForWishlist(ownerUserId: UUID, wishlistId: UUID): Flow<List<WishEntity>>
 
+    /** How many active wishes each of the owner's wishlists has; wishlists without any are left out. */
+    @Query(
+        """
+        SELECT wishlistId, COUNT(*) AS count FROM wish
+        WHERE ownerUserId = :ownerUserId AND deletedAt IS NULL
+        GROUP BY wishlistId
+        """,
+    )
+    fun observeActiveCounts(ownerUserId: UUID): Flow<List<WishCount>>
+
     @Query("SELECT * FROM wish WHERE ownerUserId = :ownerUserId AND wishlistId = :wishlistId AND deletedAt IS NULL")
     suspend fun findActiveForWishlist(ownerUserId: UUID, wishlistId: UUID): List<WishEntity>
 
@@ -67,3 +77,5 @@ interface WishDao {
     )
     suspend fun adoptRemoteVersion(id: UUID, ownerUserId: UUID, version: Long): Int
 }
+
+data class WishCount(val wishlistId: UUID, val count: Int)

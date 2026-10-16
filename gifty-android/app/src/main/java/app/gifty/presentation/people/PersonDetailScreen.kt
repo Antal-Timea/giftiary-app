@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -32,6 +33,7 @@ import app.gifty.R
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.model.Person
+import app.gifty.domain.model.Wishlist
 import app.gifty.domain.repository.GiftEntry
 import app.gifty.domain.repository.GiftIdeaEntry
 import app.gifty.presentation.components.GiftyTopBar
@@ -41,6 +43,7 @@ import app.gifty.presentation.giftideas.GiftIdeaRow
 import app.gifty.presentation.gifts.GiftRow
 import app.gifty.presentation.occasions.OccasionRow
 import app.gifty.presentation.theme.GiftySpacing
+import app.gifty.presentation.wishlists.ListRow
 import app.gifty.presentation.theme.GiftyTheme
 import java.time.Instant
 import java.util.UUID
@@ -56,6 +59,8 @@ fun PersonDetailScreen(
     onOpenGift: (UUID) -> Unit,
     onAddGiftIdea: (UUID) -> Unit,
     onOpenGiftIdea: (UUID) -> Unit,
+    onAddWishlist: (UUID) -> Unit,
+    onOpenWishlist: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     PersonDetailScreen(
@@ -68,6 +73,8 @@ fun PersonDetailScreen(
         onOpenGift = { onOpenGift(it.gift.id) },
         onAddGiftIdea = { onAddGiftIdea(it.id) },
         onOpenGiftIdea = { onOpenGiftIdea(it.idea.id) },
+        onAddWishlist = { onAddWishlist(it.id) },
+        onOpenWishlist = { onOpenWishlist(it.wishlist.id) },
     )
 }
 
@@ -82,6 +89,8 @@ fun PersonDetailScreen(
     onOpenGift: (GiftEntry) -> Unit,
     onAddGiftIdea: (Person) -> Unit,
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
+    onAddWishlist: (Person) -> Unit,
+    onOpenWishlist: (PersonWishlist) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val loaded = state as? PersonDetailUiState.Loaded
@@ -117,6 +126,8 @@ fun PersonDetailScreen(
                 onOpenGift = onOpenGift,
                 onAddGiftIdea = { onAddGiftIdea(state.person) },
                 onOpenGiftIdea = onOpenGiftIdea,
+                onAddWishlist = { onAddWishlist(state.person) },
+                onOpenWishlist = onOpenWishlist,
                 modifier = contentModifier,
             )
         }
@@ -132,6 +143,8 @@ private fun PersonDetailContent(
     onOpenGift: (GiftEntry) -> Unit,
     onAddGiftIdea: () -> Unit,
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
+    onAddWishlist: () -> Unit,
+    onOpenWishlist: (PersonWishlist) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftyTheme.colors
@@ -180,6 +193,32 @@ private fun PersonDetailContent(
             }
         }
         item { AddButton(label = stringResource(R.string.person_detail_add_gift_idea), onClick = onAddGiftIdea) }
+
+        item { SectionHeading(stringResource(R.string.person_detail_wishlists)) }
+        if (state.wishlists.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.person_detail_no_wishlists),
+                    modifier = Modifier.padding(horizontal = GiftySpacing.l, vertical = GiftySpacing.s),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                )
+            }
+        } else {
+            items(state.wishlists, key = { it.wishlist.id }) { entry ->
+                ListRow(
+                    title = entry.wishlist.name,
+                    detail = if (entry.wishCount == 0) {
+                        stringResource(R.string.person_detail_wishlist_no_wishes)
+                    } else {
+                        pluralStringResource(R.plurals.person_detail_wish_count, entry.wishCount, entry.wishCount)
+                    },
+                    onClick = { onOpenWishlist(entry) },
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = GiftySpacing.l), color = colors.divider)
+            }
+        }
+        item { AddButton(label = stringResource(R.string.person_detail_add_wishlist), onClick = onAddWishlist) }
 
         item { SectionHeading(stringResource(R.string.person_detail_gifts)) }
         if (state.gifts.isEmpty()) {
@@ -273,6 +312,10 @@ private fun PersonDetailPreview() {
                 ),
                 giftIdeas = emptyList(),
                 gifts = emptyList(),
+                wishlists = listOf(
+                    PersonWishlist(Wishlist(UUID.randomUUID(), previewPerson.id, "Christmas", Instant.EPOCH, Instant.EPOCH), 3),
+                    PersonWishlist(Wishlist(UUID.randomUUID(), previewPerson.id, "Birthday", Instant.EPOCH, Instant.EPOCH), 0),
+                ),
             ),
             onBack = {},
             onEditPerson = {},
@@ -282,6 +325,8 @@ private fun PersonDetailPreview() {
             onOpenGift = {},
             onAddGiftIdea = {},
             onOpenGiftIdea = {},
+            onAddWishlist = {},
+            onOpenWishlist = {},
         )
     }
 }
@@ -291,7 +336,7 @@ private fun PersonDetailPreview() {
 private fun PersonDetailNoOccasionsPreview() {
     GiftyTheme {
         PersonDetailScreen(
-            state = PersonDetailUiState.Loaded(previewPerson, emptyList(), emptyList(), emptyList()),
+            state = PersonDetailUiState.Loaded(previewPerson, emptyList(), emptyList(), emptyList(), emptyList()),
             onBack = {},
             onEditPerson = {},
             onAddOccasion = {},
@@ -300,6 +345,8 @@ private fun PersonDetailNoOccasionsPreview() {
             onOpenGift = {},
             onAddGiftIdea = {},
             onOpenGiftIdea = {},
+            onAddWishlist = {},
+            onOpenWishlist = {},
         )
     }
 }

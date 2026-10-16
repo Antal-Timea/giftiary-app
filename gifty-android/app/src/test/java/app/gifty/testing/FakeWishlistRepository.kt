@@ -51,6 +51,11 @@ class FakeWishlistRepository : WishlistRepository {
         list.filter { it.wishlistId == wishlistId }
     }
 
+    override fun observeWishCounts(): Flow<Map<UUID, Int>> = wishes.map { list ->
+        flowFailure?.let { throw it }
+        list.groupingBy { it.wishlistId }.eachCount()
+    }
+
     override fun observeWishlist(id: UUID): Flow<Wishlist?> = wishlists.map { list ->
         flowFailure?.let { throw it }
         list.find { it.id == id }

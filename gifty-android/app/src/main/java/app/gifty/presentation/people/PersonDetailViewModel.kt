@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gifty.domain.model.Occasion
 import app.gifty.domain.model.Person
+import app.gifty.domain.model.Wishlist
 import app.gifty.domain.repository.GiftEntry
 import app.gifty.domain.repository.GiftIdeaEntry
 import app.gifty.domain.repository.GiftIdeaRepository
 import app.gifty.domain.repository.GiftRepository
 import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonRepository
+import app.gifty.domain.repository.WishlistRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -22,9 +24,9 @@ import kotlinx.coroutines.flow.stateIn
 import java.util.UUID
 
 /**
- * Shows a person together with their occasions, the gift ideas for them and the gifts they gave
- * or received. Both come straight from Room, so edits made in
- * the person or occasion editors appear as soon as they are stored.
+ * Shows a person together with their occasions, the gift ideas for them, the wishlists kept for
+ * them and the gifts they gave or received. All come straight from Room, so edits made in the
+ * editors appear as soon as they are stored.
  */
 @HiltViewModel(assistedFactory = PersonDetailViewModel.Factory::class)
 class PersonDetailViewModel @AssistedInject constructor(
@@ -33,7 +35,12 @@ class PersonDetailViewModel @AssistedInject constructor(
     occasionRepository: OccasionRepository,
     giftRepository: GiftRepository,
     giftIdeaRepository: GiftIdeaRepository,
+    wishlistRepository: WishlistRepository,
 ) : ViewModel() {
+
+    private val wishlists = combine(wishlistRepository.observeWishlists(), wishlistRepository.observeWishCounts()) { lists, counts ->
+        lists.filter { it.personId == personId }.map { PersonWishlist(it, wishCount = counts[it.id] ?: 0) }
+    }
 
     val uiState: StateFlow<PersonDetailUiState> =
         combine(
@@ -41,8 +48,9 @@ class PersonDetailViewModel @AssistedInject constructor(
             occasionRepository.observeOccasionsForPerson(personId),
             giftIdeaRepository.observeGiftIdeasForPerson(personId),
             giftRepository.observeGiftsForPerson(personId),
-        ) { person, occasions, ideas, gifts ->
-            if (person == null) PersonDetailUiState.NotFound else PersonDetailUiState.Loaded(person, occasions, ideas, gifts)
+            wishlists,
+        ) { person, occasions, ideas, gifts, wishlists ->
+            if (person == null) PersonDetailUiState.NotFound else PersonDetailUiState.Loaded(person, occasions, ideas, gifts, wishlists)
         }
             .catch { emit(PersonDetailUiState.LoadFailed) }
             .stateIn(
@@ -71,5 +79,9 @@ sealed interface PersonDetailUiState {
         val occasions: List<Occasion>,
         val giftIdeas: List<GiftIdeaEntry>,
         val gifts: List<GiftEntry>,
+        /** The person's active wishlists, by name. */
+        val wishlists: List<PersonWishlist>,
     ) : PersonDetailUiState
 }
+
+data class PersonWishlist(val wishlist: Wishlist, val wishCount: Int)

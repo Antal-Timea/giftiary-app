@@ -332,4 +332,14 @@
         <item quantity="one">A rajta lévő %d kívánság is törlődik.</item>
         <item quantity="other">A rajta lévő %d kívánság is törlődik.</item>
     </plurals>
+
+    <!-- Wishlists on person detail -->
+    <string name="person_detail_wishlists">Kívánságlisták</string>
+    <string name="person_detail_no_wishlists">Még nincs kívánságlistája.</string>
+    <string name="person_detail_add_wishlist">Kívánságlista hozzáadása</string>
+    <string name="person_detail_wishlist_no_wishes">Még nincs kívánság</string>
+    <plurals name="person_detail_wish_count">
+        <item quantity="one">%d kívánság</item>
+        <item quantity="other">%d kívánság</item>
+    </plurals>
 </resources>

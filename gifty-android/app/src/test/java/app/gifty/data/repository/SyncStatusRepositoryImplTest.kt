@@ -193,7 +193,7 @@ class SyncStatusRepositoryImplTest {
     }
 
     @Test
-    fun `wishlist and wish changes are waiting, and refused or conflicted ones are named, with no screen to open yet`() = runTest {
+    fun `wishlist and wish changes are waiting, and refused or replaced ones open while their rows are active`() = runTest {
         val list = later { wishlists.addWishlist(null, "Birthday") }
         val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null)) }
         assertEquals(2, status().waitingCount)
@@ -206,12 +206,55 @@ class SyncStatusRepositoryImplTest {
         assertEquals(0, status.waitingCount)
         assertEquals(
             listOf(
-                SyncItem(SyncItemType.WISH, lamp.id, "Lamp") to AttentionKind.REPLACED_BY_OTHER_DEVICE,
-                SyncItem(SyncItemType.WISHLIST, list.id, "Birthday") to AttentionKind.REFUSED,
+                Triple(SyncItem(SyncItemType.WISH, lamp.id, "Lamp"), AttentionKind.REPLACED_BY_OTHER_DEVICE, true),
+                Triple(SyncItem(SyncItemType.WISHLIST, list.id, "Birthday"), AttentionKind.REFUSED, true),
             ),
-            status.attention.map { it.item to it.kind },
+            status.attention.map { Triple(it.item, it.kind, it.canOpen) },
         )
-        assertTrue(status.attention.none { it.canOpen })
+    }
+
+    @Test
+    fun `deleted wishlists and wishes stay named but cannot be opened`() = runTest {
+        val list = later { wishlists.addWishlist(null, "Birthday") }
+        val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null)) }
+        operations.findForEntity(SyncEntityType.WISHLIST, list.id)?.let { operations.delete(it) }
+        operations.findForEntity(SyncEntityType.WISH, lamp.id)?.let { operations.delete(it) }
+        conflict(SyncEntityType.WISHLIST, list.id, baseVersion = 2)
+        conflict(SyncEntityType.WISH, lamp.id, baseVersion = 2)
+        assertTrue(status().attention.all { it.canOpen })
+
+        wishlists.deleteWishlist(list.id)
+
+        val attention = status().attention
+        assertEquals(setOf("Birthday", "Lamp"), attention.map { it.item.name }.toSet())
+        assertTrue(attention.none { it.canOpen })
+    }
+
+    @Test
+    fun `an unavailable wishlist is never openable, active or not`() = runTest {
+        val list = later { wishlists.addWishlist(null, "Birthday") }
+        block(SyncEntityType.WISHLIST, list.id, BlockReason.REMOTE_MISSING)
+
+        val item = status().attention.single()
+
+        assertEquals(AttentionKind.UNAVAILABLE, item.kind)
+        assertFalse(item.canOpen)
+    }
+
+    @Test
+    fun `another account's wishlist and wish are neither named nor openable`() = runTest {
+        activeOwner.ownerId.value = bob
+        val bobsList = wishlists.addWishlist(null, "Bob's list")
+        val bobsWish = wishlists.addWish(bobsList.id, WishDetails("Bob's wish", null, null, null))
+        activeOwner.ownerId.value = alice
+        // Only reachable through corrupted data: Alice's conflict pointing at Bob's rows.
+        conflict(SyncEntityType.WISHLIST, bobsList.id, baseVersion = 2)
+        conflict(SyncEntityType.WISH, bobsWish.id, baseVersion = 2)
+
+        val attention = status().attention
+
+        assertEquals(listOf(null, null), attention.map { it.item.name })
+        assertTrue(attention.none { it.canOpen })
     }
 
     @Test

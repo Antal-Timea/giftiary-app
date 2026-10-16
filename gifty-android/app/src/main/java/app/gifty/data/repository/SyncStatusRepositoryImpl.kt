@@ -96,9 +96,12 @@ class SyncStatusRepositoryImpl @Inject constructor(
         SyncEntityType.GIFT -> gifts.findById(id, owner).let {
             SyncItem(SyncItemType.GIFT, id, it?.name) to (it != null && it.deletedAt == null)
         }
-        // No screen shows wishlists or wishes yet, so they are never offered for opening.
-        SyncEntityType.WISHLIST -> SyncItem(SyncItemType.WISHLIST, id, wishlists.findById(id, owner)?.name) to false
-        SyncEntityType.WISH -> SyncItem(SyncItemType.WISH, id, wishes.findById(id, owner)?.name) to false
+        SyncEntityType.WISHLIST -> wishlists.findById(id, owner).let {
+            SyncItem(SyncItemType.WISHLIST, id, it?.name) to (it != null && it.deletedAt == null)
+        }
+        SyncEntityType.WISH -> wishes.findById(id, owner).let {
+            SyncItem(SyncItemType.WISH, id, it?.name) to (it != null && it.deletedAt == null)
+        }
     }
 
     private companion object {

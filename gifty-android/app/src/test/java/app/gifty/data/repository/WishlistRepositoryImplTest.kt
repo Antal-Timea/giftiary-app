@@ -316,6 +316,28 @@ class WishlistRepositoryImplTest {
     }
 
     @Test
+    fun `wish counts include only the account's active wishes`() = runTest {
+        val birthday = repository.addWishlist(null, "Birthday")
+        val christmas = repository.addWishlist(anna.id, "Christmas")
+        val empty = repository.addWishlist(null, "Empty")
+        repository.addWish(birthday.id, lamp)
+        repository.addWish(birthday.id, lamp.copy(name = "Mug"))
+        val gone = repository.addWish(birthday.id, lamp.copy(name = "Socks"))
+        repository.deleteWish(gone.id)
+        repository.addWish(christmas.id, lamp)
+        val theirList = wishlist(otherOwnerId).also { wishlistDao.insert(it) }
+        wishDao.insert(wish(theirList))
+
+        assertEquals(mapOf(birthday.id to 2, christmas.id to 1), repository.observeWishCounts().first())
+        assertTrue(empty.id !in repository.observeWishCounts().first())
+
+        repository.deleteWishlist(christmas.id)
+        assertEquals(mapOf(birthday.id to 2), repository.observeWishCounts().first())
+        activeOwner.ownerId.value = null
+        assertEquals(emptyMap<UUID, Int>(), repository.observeWishCounts().first())
+    }
+
+    @Test
     fun `a running single-wishlist observation follows the account`() = runTest {
         val mine = repository.addWishlist(null, "Mine")
         val observed = MutableStateFlow<Wishlist?>(null)

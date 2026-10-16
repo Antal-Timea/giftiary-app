@@ -22,6 +22,9 @@ interface WishlistRepository {
     /** The active wishes of wishlist [wishlistId], oldest first; empty if it is not the account's. */
     fun observeWishes(wishlistId: UUID): Flow<List<Wish>>
 
+    /** How many active wishes each wishlist has, by wishlist id; a wishlist without wishes is absent. */
+    fun observeWishCounts(): Flow<Map<UUID, Int>>
+
     /** The wishlist as it changes; null while it does not exist, is deleted or is not the account's. */
     fun observeWishlist(id: UUID): Flow<Wishlist?>
 

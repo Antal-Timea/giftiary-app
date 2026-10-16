@@ -333,4 +333,14 @@
         <item quantity="one">Its %d wish will be deleted too.</item>
         <item quantity="other">Its %d wishes will be deleted too.</item>
     </plurals>
+
+    <!-- Wishlists on person detail -->
+    <string name="person_detail_wishlists">Wishlists</string>
+    <string name="person_detail_no_wishlists">No wishlists for them yet.</string>
+    <string name="person_detail_add_wishlist">Add wishlist</string>
+    <string name="person_detail_wishlist_no_wishes">No wishes yet</string>
+    <plurals name="person_detail_wish_count">
+        <item quantity="one">%d wish</item>
+        <item quantity="other">%d wishes</item>
+    </plurals>
 </resources>
