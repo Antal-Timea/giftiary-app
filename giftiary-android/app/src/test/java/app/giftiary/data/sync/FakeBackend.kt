@@ -1,0 +1,384 @@
+package app.giftiary.data.sync
+
+import app.giftiary.data.local.GiftiaryDatabase
+import app.giftiary.data.remote.Committed
+import app.giftiary.data.remote.NoMatch
+import app.giftiary.data.remote.RemoteAccount
+import app.giftiary.data.remote.RemoteException
+import app.giftiary.data.remote.RemoteFailure
+import app.giftiary.data.remote.RemoteReader
+import app.giftiary.data.remote.RemoteWriter
+import app.giftiary.data.remote.UpdateOutcome
+import app.giftiary.data.remote.dto.RemoteGift
+import app.giftiary.data.remote.dto.RemoteGiftFields
+import app.giftiary.data.remote.dto.RemoteGiftIdea
+import app.giftiary.data.remote.dto.RemoteGiftIdeaFields
+import app.giftiary.data.remote.dto.RemoteOccasion
+import app.giftiary.data.remote.dto.RemoteOccasionFields
+import app.giftiary.data.remote.dto.RemotePerson
+import app.giftiary.data.remote.dto.RemotePersonFields
+import app.giftiary.data.remote.dto.RemoteSyncMutation
+import app.giftiary.data.remote.dto.RemoteWish
+import app.giftiary.data.remote.dto.RemoteWishFields
+import app.giftiary.data.remote.dto.RemoteWishlist
+import app.giftiary.data.remote.dto.RemoteWishlistFields
+import kotlinx.coroutines.CompletableDeferred
+import java.time.Instant
+import java.util.Collections
+import java.util.UUID
+
+/**
+ * The backend as the writer and reader see it, with its real rules: inserts start at version 1,
+ * updates are compare-and-set on owner and version and add one, every mutation id is single-use
+ * across all rows (23505 otherwise), so is a gift's source idea, tombstones included (23505),
+ * referenced rows must exist (23503 otherwise), and a write and its ledger entry appear together.
+ *
+ * Each write follows the next scripted [Behavior], so tests can lose a request or a response,
+ * commit late, refuse, or hold a request open.
+ */
+class FakeBackend(private val database: GiftiaryDatabase) : RemoteReader, RemoteWriter {
+
+    class Row(val owner: UUID, var version: Long, var lastMutationId: UUID?, var fields: Any)
+
+    data class Write(
+        val insert: Boolean,
+        val entityId: UUID,
+        val owner: UUID,
+        val token: String,
+        val expectedVersion: Long?,
+        val mutationId: UUID,
+        val fields: Any,
+    )
+
+    sealed interface Behavior {
+        /** Applies the write and answers. */
+        data object Normal : Behavior
+
+        /** Applies the write, but the answer never arrives. */
+        data object LoseResponse : Behavior
+
+        /** Never reaches the database. */
+        data object LoseRequest : Behavior
+
+        /** Gives no answer, then commits just before the next write is handled. */
+        data object CommitLater : Behavior
+
+        /**
+         * Gives no answer while the request stays alive on the server: it commits (or fails) only
+         * when the test calls [commitLingering], at any later point.
+         */
+        data object Linger : Behavior
+
+        /** Refused without applying anything. */
+        data class Fail(val failure: RemoteFailure) : Behavior
+
+        /** Fails the way no remote call should, e.g. through a bug, without applying anything. */
+        data class Crash(val exception: Exception) : Behavior
+
+        /** Signals [arrived], waits for [release], then behaves like [then]. */
+        data class Hold(
+            val arrived: CompletableDeferred<Unit> = CompletableDeferred(),
+            val release: CompletableDeferred<Unit> = CompletableDeferred(),
+            val then: Behavior = Normal,
+        ) : Behavior
+    }
+
+    val rows: MutableMap<UUID, Row> = Collections.synchronizedMap(mutableMapOf())
+    val ledger: MutableMap<UUID, RemoteSyncMutation> = Collections.synchronizedMap(mutableMapOf())
+    val writes: MutableList<Write> = Collections.synchronizedList(mutableListOf())
+    val script = ArrayDeque<Behavior>()
+    var reads = 0
+        private set
+
+    /** Set when a request is made inside a Room transaction, which must never happen. */
+    var requestInsideTransaction = false
+        private set
+
+    /** Makes every read fail, e.g. to lose evidence lookups too. */
+    var readFailure: RemoteFailure? = null
+
+    /** Runs right after a row lookup, e.g. to let a lingering write commit at exactly that point. */
+    var afterRowRead: (() -> Unit)? = null
+
+    /** Lookups of a gift by its source idea, made through [findGiftBySourceIdea]. */
+    var sourceLookups = 0
+        private set
+
+    /** Answers [findGiftBySourceIdea] instead of the rows, e.g. with a row no backend should return, or by failing. */
+    var sourceLookup: (suspend (giftIdeaId: UUID) -> RemoteGift?)? = null
+
+    /** Tables read in full, in order, and the token each read carried. */
+    val fetches: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    val fetchTokens: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
+    /** Run as a table's full read starts and as it returns; they may suspend or throw, e.g. to hold or fail it. */
+    var beforeFetch: suspend (table: String) -> Unit = {}
+    var afterFetch: suspend (table: String) -> Unit = {}
+
+    private val lateCommits = mutableListOf<() -> Unit>()
+    private val lingering = mutableListOf<() -> Unit>()
+
+    /** Lets every lingering request reach the database now, in the order they were sent. */
+    fun commitLingering() {
+        val requests = synchronized(lingering) { lingering.toList().also { lingering.clear() } }
+        requests.forEach { it() }
+    }
+
+    fun seed(id: UUID, owner: UUID, version: Long, lastMutationId: UUID?, fields: Any) {
+        rows[id] = Row(owner, version, lastMutationId, fields)
+    }
+
+    /** A write committed outside the tests' view, e.g. one whose answer was lost: row and ledger together. */
+    fun recordCommit(id: UUID, owner: UUID, version: Long, mutationId: UUID, fields: Any) {
+        rows[id] = Row(owner, version, mutationId, fields)
+        record(mutationId, owner, tableOf(fields), id, version)
+    }
+
+    // ---- writer ----
+
+    override suspend fun insertPerson(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemotePersonFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun insertOccasion(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteOccasionFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun insertGiftIdea(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftIdeaFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun insertGift(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun insertWishlist(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishlistFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun insertWish(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun updatePerson(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemotePersonFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateOccasion(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteOccasionFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateGiftIdea(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteGiftIdeaFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateGift(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteGiftFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateWishlist(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteWishlistFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateWish(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteWishFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    private suspend fun write(account: RemoteAccount, id: UUID, expected: Long?, mutationId: UUID, fields: Any): UpdateOutcome {
+        if (database.inTransaction()) requestInsideTransaction = true
+        synchronized(lateCommits) {
+            lateCommits.forEach { it() }
+            lateCommits.clear()
+        }
+        writes += Write(expected == null, id, account.ownerUserId, account.accessToken, expected, mutationId, fields)
+        var behavior = synchronized(script) { script.removeFirstOrNull() } ?: Behavior.Normal
+        if (behavior is Behavior.Hold) {
+            behavior.arrived.complete(Unit)
+            behavior.release.await()
+            behavior = behavior.then
+        }
+        return when (behavior) {
+            Behavior.Normal -> apply(account.ownerUserId, id, expected, mutationId, fields)
+            Behavior.LoseResponse -> {
+                apply(account.ownerUserId, id, expected, mutationId, fields)
+                throw RemoteException(RemoteFailure.NETWORK)
+            }
+            Behavior.LoseRequest -> throw RemoteException(RemoteFailure.NETWORK)
+            Behavior.Linger -> {
+                synchronized(lingering) {
+                    lingering += { runCatching { apply(account.ownerUserId, id, expected, mutationId, fields) } }
+                }
+                throw RemoteException(RemoteFailure.NETWORK)
+            }
+            Behavior.CommitLater -> {
+                synchronized(lateCommits) {
+                    lateCommits += { runCatching { apply(account.ownerUserId, id, expected, mutationId, fields) } }
+                }
+                throw RemoteException(RemoteFailure.NETWORK)
+            }
+            is Behavior.Fail -> throw RemoteException(behavior.failure)
+            is Behavior.Crash -> throw behavior.exception
+            is Behavior.Hold -> error("Nested hold")
+        }
+    }
+
+    private fun apply(owner: UUID, id: UUID, expected: Long?, mutationId: UUID, fields: Any): UpdateOutcome = synchronized(rows) {
+        if (expected == null) {
+            if (id in rows || mutationId in ledger) throw RemoteException(RemoteFailure.DUPLICATE)
+            requireReferences(owner, fields)
+            requireFreeSource(id, fields)
+            rows[id] = Row(owner, 1, mutationId, fields)
+            record(mutationId, owner, tableOf(fields), id, 1)
+            return Committed(1)
+        }
+        val row = rows[id]?.takeIf { it.owner == owner && it.version == expected } ?: return NoMatch
+        if (mutationId in ledger || row.lastMutationId == mutationId) throw RemoteException(RemoteFailure.DUPLICATE)
+        requireReferences(owner, fields)
+        requireFreeSource(id, fields)
+        row.version += 1
+        row.lastMutationId = mutationId
+        row.fields = fields
+        record(mutationId, owner, tableOf(fields), id, row.version)
+        Committed(row.version)
+    }
+
+    /** The same-owner foreign keys of the real schema. */
+    private fun requireReferences(owner: UUID, fields: Any) {
+        val references = when (fields) {
+            is RemoteOccasionFields -> listOf(fields.personId)
+            is RemoteGiftIdeaFields -> listOf(fields.recipientPersonId, fields.occasionId)
+            is RemoteGiftFields -> listOf(fields.giverPersonId, fields.recipientPersonId, fields.occasionId, fields.sourceGiftIdeaId)
+            is RemoteWishlistFields -> listOf(fields.personId)
+            is RemoteWishFields -> listOf(fields.wishlistId)
+            else -> emptyList()
+        }
+        if (references.filterNotNull().any { rows[it]?.owner != owner }) throw RemoteException(RemoteFailure.MISSING_REFERENCE)
+    }
+
+    /** The unique key on a gift's source idea, which counts every gift, deleted ones too. */
+    private fun requireFreeSource(id: UUID, fields: Any) {
+        val source = (fields as? RemoteGiftFields)?.sourceGiftIdeaId ?: return
+        val taken = rows.any { (other, row) -> other != id && (row.fields as? RemoteGiftFields)?.sourceGiftIdeaId == source }
+        if (taken) throw RemoteException(RemoteFailure.DUPLICATE)
+    }
+
+    private fun tableOf(fields: Any) = when (fields) {
+        is RemotePersonFields -> "people"
+        is RemoteOccasionFields -> "occasions"
+        is RemoteGiftIdeaFields -> "gift_ideas"
+        is RemoteGiftFields -> "gifts"
+        is RemoteWishlistFields -> "wishlists"
+        is RemoteWishFields -> "wishes"
+        else -> error("Unknown fields $fields")
+    }
+
+    private fun record(mutationId: UUID, owner: UUID, table: String, id: UUID, version: Long) {
+        ledger[mutationId] = RemoteSyncMutation(mutationId, owner, table, id, version, NOW)
+    }
+
+    // ---- reader ----
+
+    override suspend fun findMutation(account: RemoteAccount, mutationId: UUID): RemoteSyncMutation? {
+        read()
+        return ledger[mutationId]?.takeIf { it.ownerUserId == account.ownerUserId }
+    }
+
+    override suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson? = visible(account, id)?.let { person(id, it) }
+
+    override suspend fun findOccasion(account: RemoteAccount, id: UUID): RemoteOccasion? = visible(account, id)?.let { occasion(id, it) }
+
+    override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = visible(account, id)?.let { giftIdea(id, it) }
+
+    override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = visible(account, id)?.let { gift(id, it) }
+
+    override suspend fun findWishlist(account: RemoteAccount, id: UUID): RemoteWishlist? = visible(account, id)?.let { wishlist(id, it) }
+
+    override suspend fun findWish(account: RemoteAccount, id: UUID): RemoteWish? = visible(account, id)?.let { wish(id, it) }
+
+    override suspend fun findGiftBySourceIdea(account: RemoteAccount, giftIdeaId: UUID): RemoteGift? {
+        read()
+        sourceLookups++
+        sourceLookup?.let { return it(giftIdeaId) }
+        val found = synchronized(rows) {
+            rows.entries.firstOrNull { (_, row) ->
+                row.owner == account.ownerUserId && (row.fields as? RemoteGiftFields)?.sourceGiftIdeaId == giftIdeaId
+            }
+        }
+        return found?.let { (id, row) -> gift(id, row) }
+    }
+
+    private fun person(id: UUID, row: Row): RemotePerson {
+        val f = row.fields as RemotePersonFields
+        return RemotePerson(id, row.owner, f.name, f.relationship, f.photoPath, f.linkedUserId, row.version, NOW, NOW, f.deletedAt, row.lastMutationId)
+    }
+
+    private fun occasion(id: UUID, row: Row): RemoteOccasion {
+        val f = row.fields as RemoteOccasionFields
+        return RemoteOccasion(
+            id, row.owner, f.personId, f.type, f.title, f.day, f.month, f.year, f.repeatsYearly, row.version, NOW, NOW,
+            f.deletedAt, row.lastMutationId,
+        )
+    }
+
+    private fun giftIdea(id: UUID, row: Row): RemoteGiftIdea {
+        val f = row.fields as RemoteGiftIdeaFields
+        return RemoteGiftIdea(
+            id, row.owner, f.recipientPersonId, f.occasionId, f.name, f.status, f.estimatedPriceAmountMinor,
+            f.estimatedPriceCurrencyCode, f.actualPriceAmountMinor, f.actualPriceCurrencyCode, f.photoPath, f.productUrl,
+            f.note, row.version, NOW, NOW, f.archivedAt, f.deletedAt, row.lastMutationId,
+        )
+    }
+
+    private fun gift(id: UUID, row: Row): RemoteGift {
+        val f = row.fields as RemoteGiftFields
+        return RemoteGift(
+            id, row.owner, f.direction, f.giverPersonId, f.recipientPersonId, f.occasionId, f.sourceGiftIdeaId, f.name,
+            f.givenAt, f.priceAmountMinor, f.priceCurrencyCode, f.photoPath, f.productUrl, f.note, row.version, NOW, NOW,
+            f.deletedAt, row.lastMutationId,
+        )
+    }
+
+    private fun wishlist(id: UUID, row: Row): RemoteWishlist {
+        val f = row.fields as RemoteWishlistFields
+        return RemoteWishlist(id, row.owner, f.personId, f.name, row.version, NOW, NOW, f.deletedAt, row.lastMutationId)
+    }
+
+    private fun wish(id: UUID, row: Row): RemoteWish {
+        val f = row.fields as RemoteWishFields
+        return RemoteWish(
+            id, row.owner, f.wishlistId, f.name, f.note, f.estimatedPriceAmountMinor, f.estimatedPriceCurrencyCode,
+            f.productUrl, f.photoPath, row.version, NOW, NOW, f.deletedAt, row.lastMutationId,
+        )
+    }
+
+    private fun visible(account: RemoteAccount, id: UUID): Row? {
+        read()
+        return rows[id]?.takeIf { it.owner == account.ownerUserId }.also { afterRowRead?.invoke() }
+    }
+
+    private fun read() {
+        if (database.inTransaction()) requestInsideTransaction = true
+        reads++
+        readFailure?.let { throw RemoteException(it) }
+    }
+
+    override suspend fun fetchPeople(account: RemoteAccount) = fetch(account, "people", ::person)
+
+    override suspend fun fetchOccasions(account: RemoteAccount) = fetch(account, "occasions", ::occasion)
+
+    override suspend fun fetchGiftIdeas(account: RemoteAccount) = fetch(account, "gift_ideas", ::giftIdea)
+
+    override suspend fun fetchGifts(account: RemoteAccount) = fetch(account, "gifts", ::gift)
+
+    override suspend fun fetchWishlists(account: RemoteAccount) = fetch(account, "wishlists", ::wishlist)
+
+    override suspend fun fetchWishes(account: RemoteAccount) = fetch(account, "wishes", ::wish)
+
+    /** The account's rows of [table], tombstones included, ordered by id like the real reader's. */
+    private suspend fun <T> fetch(account: RemoteAccount, table: String, toRemote: (UUID, Row) -> T): List<T> {
+        beforeFetch(table)
+        read()
+        fetches += table
+        fetchTokens += account.accessToken
+        val found = synchronized(rows) { rows.filter { (_, row) -> row.owner == account.ownerUserId && tableOf(row.fields) == table }.toList() }
+        return found.sortedBy { it.first }.map { (id, row) -> toRemote(id, row) }.also { afterFetch(table) }
+    }
+
+    private companion object {
+        val NOW: Instant = Instant.parse("2026-10-10T12:00:00Z")
+    }
+}

@@ -1,0 +1,90 @@
+package app.giftiary.presentation.components
+
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.VisualTransformation
+import app.giftiary.presentation.theme.GiftiaryShapes
+import app.giftiary.presentation.theme.GiftiaryTheme
+
+/**
+ * Giftiary input, single-line unless [singleLine] is off. An [errorMessage] puts the field in its
+ * error state and is shown below it, so errors are never communicated by color alone.
+ */
+@Composable
+fun GiftiaryTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    errorMessage: String? = null,
+    enabled: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    suffix: String? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        enabled = enabled,
+        textStyle = MaterialTheme.typography.bodyLarge,
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        suffix = suffix?.let { { Text(it) } },
+        supportingText = errorMessage?.let { { Text(it) } },
+        isError = errorMessage != null,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        visualTransformation = visualTransformation,
+        singleLine = singleLine,
+        minLines = minLines,
+        shape = GiftiaryShapes.input,
+        colors = giftiaryTextFieldColors(),
+    )
+}
+
+/** Shared by every outlined Giftiary input so text fields and dropdowns look identical. */
+@Composable
+internal fun giftiaryTextFieldColors(): TextFieldColors {
+    val colors = GiftiaryTheme.colors
+    return OutlinedTextFieldDefaults.colors(
+        focusedTextColor = colors.textPrimary,
+        unfocusedTextColor = colors.textPrimary,
+        disabledTextColor = colors.textMuted,
+        errorTextColor = colors.textPrimary,
+        focusedContainerColor = colors.inputSurface,
+        unfocusedContainerColor = colors.inputSurface,
+        disabledContainerColor = colors.inputSurface,
+        errorContainerColor = colors.inputSurface,
+        cursorColor = colors.inputFocused,
+        errorCursorColor = colors.error,
+        selectionColors = TextSelectionColors(
+            handleColor = colors.inputFocused,
+            backgroundColor = colors.inputFocused.copy(alpha = 0.3f),
+        ),
+        focusedBorderColor = colors.inputFocused,
+        unfocusedBorderColor = colors.border,
+        disabledBorderColor = colors.divider,
+        errorBorderColor = colors.error,
+        focusedLabelColor = colors.inputFocused,
+        unfocusedLabelColor = colors.textLabel,
+        disabledLabelColor = colors.textMuted,
+        errorLabelColor = colors.error,
+        focusedPlaceholderColor = colors.placeholder,
+        unfocusedPlaceholderColor = colors.placeholder,
+        disabledPlaceholderColor = colors.placeholder,
+        errorSupportingTextColor = colors.error,
+    )
+}

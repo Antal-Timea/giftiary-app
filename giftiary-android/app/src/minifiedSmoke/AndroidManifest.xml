@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Only in the minifiedSmoke build: lets `am instrument` run the decoding smoke in this app. -->
+    <instrumentation
+        android:name="app.giftiary.smoke.MinifiedDecodingSmoke"
+        android:targetPackage="${applicationId}" />
+
+</manifest>

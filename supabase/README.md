@@ -1,4 +1,4 @@
-# Gifty backend (Supabase)
+# Giftiary backend (Supabase)
 
 The PostgreSQL schema, integrity rules and row level security for the data the Android app
 stores offline, plus the server side of the planned sync protocol. The Android app signs in with

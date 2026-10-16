@@ -1,6 +1,6 @@
-# Gifty — Claude Development Guidelines
+# Giftiary — Claude Development Guidelines
 
-This file defines the engineering principles, architectural decisions, and working preferences for the Gifty project.
+This file defines the engineering principles, architectural decisions, and working preferences for the Giftiary project.
 
 Read this file before making any code changes.
 
@@ -10,7 +10,7 @@ These rules apply to all implementation tasks unless a later explicit instructio
 
 # 1. Project Context
 
-Gifty is a production-quality native Android application for remembering, planning, and sharing gifts.
+Giftiary is a production-quality native Android application for remembering, planning, and sharing gifts.
 
 Core product concept:
 
@@ -37,17 +37,17 @@ Do not treat it as a tutorial/demo application.
 
 # 2. Platform
 
-Gifty is a native Android application.
+Giftiary is a native Android application.
 
 Current Android project:
 
-`gifty-android/`
+`giftiary-android/`
 
 Do not convert it to Kotlin Multiplatform.
 
 Do not create iOS code.
 
-Do not reuse or copy code from older Gifty implementations unless explicitly requested.
+Do not reuse or copy code from older Giftiary implementations unless explicitly requested.
 
 Older implementations may be used as product references only.
 
@@ -77,7 +77,7 @@ Planned later:
 - Supabase Storage
 - WorkManager
 
-Retrofit should only be introduced if Gifty needs a genuine external REST API.
+Retrofit should only be introduced if Giftiary needs a genuine external REST API.
 
 Do not use Retrofit as an unnecessary wrapper around Supabase.
 
@@ -166,7 +166,7 @@ Do not introduce multiple Gradle modules unless there is a demonstrated reason l
 
 Current package structure:
 
-    app.gifty
+    app.giftiary
 
     data/
         local/
@@ -264,7 +264,7 @@ Finish and test a slice before expanding into unrelated features.
 
 # 9. Offline-First Principle
 
-User-owned Gifty data is offline-first.
+User-owned Giftiary data is offline-first.
 
 Room is the local source of truth.
 
@@ -816,7 +816,7 @@ Do not build routes before they are needed.
 
 # 30. UI Design Direction
 
-Gifty has a warm, calm, premium visual identity.
+Giftiary has a warm, calm, premium visual identity.
 
 Avoid generic Material-demo appearance.
 

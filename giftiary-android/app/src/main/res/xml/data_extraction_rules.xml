@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: cloud backup and device-to-device transfer. See backup_rules.xml for why. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="app.giftiary_preferences.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="app.giftiary_preferences.xml" />
+    </device-transfer>
+</data-extraction-rules>

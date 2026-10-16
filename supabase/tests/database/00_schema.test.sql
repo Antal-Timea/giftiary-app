@@ -1,4 +1,4 @@
--- The schema invariants Gifty relies on, rather than a restatement of every column.
+-- The schema invariants Giftiary relies on, rather than a restatement of every column.
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(69);
