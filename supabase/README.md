@@ -16,13 +16,18 @@ network. The server is where devices exchange that data later.
 | `occasion` | `occasions` | `day`/`month`/optional `year`, never a full date |
 | `gift_idea` | `gift_ideas` | statuses `IDEA`, `PLANNED`, `PURCHASED` only |
 | `gift` | `gifts` | `direction` `GIVEN`/`RECEIVED`; null giver/recipient = the signed-in user |
+| `wishlist` | `wishlists` | optional `person_id`: a list kept for someone else; null = the user's own |
+| `wish` | `wishes` | carries `owner_user_id`, always its wishlist's (same-owner foreign key) |
 | — | `profiles` | one per auth user, created on sign-up; not synced |
 
 Columns are the Room columns in snake_case. What does **not** cross over:
 
 - `sync_operation` (the outbox) and `remoteState` are device-local bookkeeping. The server row
   itself is the remote state, so there is no sync table or remote-state column here.
-- Wishlists and wishes exist in Room but are not part of the first sync; they are not here yet.
+- Wishlists and wishes (`20261016084000_private_wishlists.sql`, phase W1) are private, owner-only
+  synced rows following every rule below. **This migration has not been applied to the hosted
+  project yet**; that is a separate, explicitly approved step. The Android app does not sync them
+  until a later phase.
 
 ## Rules the schema enforces
 
@@ -45,7 +50,7 @@ later soft-deleted: the deleted gift still records that the idea was given.
 `version = 0` for rows the server has never seen and adopts the server's version after a push.
 
 **Every write is an identified mutation.** Each insert and update of `people`, `occasions`,
-`gift_ideas` and `gifts` must set `last_mutation_id` to a client-generated UUID, and an update
+`gift_ideas`, `gifts`, `wishlists` and `wishes` must set `last_mutation_id` to a client-generated UUID, and an update
 must bring a new one (keeping the row's current id is rejected). That id is the mutation's
 **idempotency identity**; `version` is the **optimistic-concurrency state**. Clients update with
 a compare-and-set, `update ... where id = X and version = expected`, so a write based on a stale
@@ -123,8 +128,10 @@ seed data.
 
 ## Not in this phase
 
-- Wishlists, wishes, sharing, invitations and reservations (reservations will be
-  server-authoritative and hidden from the wishlist owner).
+- Sharing, invitations and reservations. They will live in their own tables, reachable only
+  through functions, never through table access; reservations will be server-authoritative,
+  never write to a wish, never appear in the mutation ledger, and stay hidden from the wishlist
+  owner.
 - The Android side of sync: remote data source, push and pull. The first release will pull each
   table in full for the signed-in owner (`where owner_user_id = A and id > last order by id`,
   served by the `(owner_user_id, id)` indexes).

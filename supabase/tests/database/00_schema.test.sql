@@ -4,7 +4,7 @@ create extension if not exists pgtap with schema extensions;
 select plan(69);
 
 -- Tables in scope, and Android-local concepts that must not exist on the server.
-select tables_are('public', array['profiles', 'people', 'occasions', 'gift_ideas', 'gifts', 'sync_mutations'],
+select tables_are('public', array['profiles', 'people', 'occasions', 'gift_ideas', 'gifts', 'wishlists', 'wishes', 'sync_mutations'],
     'public holds exactly the synced tables, profiles and the mutation ledger');
 select hasnt_table('public', 'sync_operations', 'the sync queue is Android-local');
 select hasnt_column('public', 'people', 'remote_state', 'remote state is Android-local');
