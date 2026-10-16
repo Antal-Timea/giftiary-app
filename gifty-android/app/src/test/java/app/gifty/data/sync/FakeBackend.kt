@@ -18,6 +18,10 @@ import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemotePersonFields
 import app.gifty.data.remote.dto.RemoteSyncMutation
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlist
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import kotlinx.coroutines.CompletableDeferred
 import java.time.Instant
 import java.util.Collections
@@ -144,6 +148,12 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     override suspend fun insertGift(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftFields) =
         write(account, id, null, mutationId, fields) as Committed
 
+    override suspend fun insertWishlist(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishlistFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
+    override suspend fun insertWish(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishFields) =
+        write(account, id, null, mutationId, fields) as Committed
+
     override suspend fun updatePerson(
         account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemotePersonFields,
     ) = write(account, id, expectedVersion, mutationId, fields)
@@ -158,6 +168,14 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
 
     override suspend fun updateGift(
         account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteGiftFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateWishlist(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteWishlistFields,
+    ) = write(account, id, expectedVersion, mutationId, fields)
+
+    override suspend fun updateWish(
+        account: RemoteAccount, id: UUID, expectedVersion: Long, mutationId: UUID, fields: RemoteWishFields,
     ) = write(account, id, expectedVersion, mutationId, fields)
 
     private suspend fun write(account: RemoteAccount, id: UUID, expected: Long?, mutationId: UUID, fields: Any): UpdateOutcome {
@@ -224,6 +242,8 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
             is RemoteOccasionFields -> listOf(fields.personId)
             is RemoteGiftIdeaFields -> listOf(fields.recipientPersonId, fields.occasionId)
             is RemoteGiftFields -> listOf(fields.giverPersonId, fields.recipientPersonId, fields.occasionId, fields.sourceGiftIdeaId)
+            is RemoteWishlistFields -> listOf(fields.personId)
+            is RemoteWishFields -> listOf(fields.wishlistId)
             else -> emptyList()
         }
         if (references.filterNotNull().any { rows[it]?.owner != owner }) throw RemoteException(RemoteFailure.MISSING_REFERENCE)
@@ -241,6 +261,8 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         is RemoteOccasionFields -> "occasions"
         is RemoteGiftIdeaFields -> "gift_ideas"
         is RemoteGiftFields -> "gifts"
+        is RemoteWishlistFields -> "wishlists"
+        is RemoteWishFields -> "wishes"
         else -> error("Unknown fields $fields")
     }
 
@@ -262,6 +284,10 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = visible(account, id)?.let { giftIdea(id, it) }
 
     override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = visible(account, id)?.let { gift(id, it) }
+
+    override suspend fun findWishlist(account: RemoteAccount, id: UUID): RemoteWishlist? = visible(account, id)?.let { wishlist(id, it) }
+
+    override suspend fun findWish(account: RemoteAccount, id: UUID): RemoteWish? = visible(account, id)?.let { wish(id, it) }
 
     override suspend fun findGiftBySourceIdea(account: RemoteAccount, giftIdeaId: UUID): RemoteGift? {
         read()
@@ -306,6 +332,19 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
         )
     }
 
+    private fun wishlist(id: UUID, row: Row): RemoteWishlist {
+        val f = row.fields as RemoteWishlistFields
+        return RemoteWishlist(id, row.owner, f.personId, f.name, row.version, NOW, NOW, f.deletedAt, row.lastMutationId)
+    }
+
+    private fun wish(id: UUID, row: Row): RemoteWish {
+        val f = row.fields as RemoteWishFields
+        return RemoteWish(
+            id, row.owner, f.wishlistId, f.name, f.note, f.estimatedPriceAmountMinor, f.estimatedPriceCurrencyCode,
+            f.productUrl, f.photoPath, row.version, NOW, NOW, f.deletedAt, row.lastMutationId,
+        )
+    }
+
     private fun visible(account: RemoteAccount, id: UUID): Row? {
         read()
         return rows[id]?.takeIf { it.owner == account.ownerUserId }.also { afterRowRead?.invoke() }
@@ -324,6 +363,10 @@ class FakeBackend(private val database: GiftyDatabase) : RemoteReader, RemoteWri
     override suspend fun fetchGiftIdeas(account: RemoteAccount) = fetch(account, "gift_ideas", ::giftIdea)
 
     override suspend fun fetchGifts(account: RemoteAccount) = fetch(account, "gifts", ::gift)
+
+    override suspend fun fetchWishlists(account: RemoteAccount) = fetch(account, "wishlists", ::wishlist)
+
+    override suspend fun fetchWishes(account: RemoteAccount) = fetch(account, "wishes", ::wish)
 
     /** The account's rows of [table], tombstones included, ordered by id like the real reader's. */
     private suspend fun <T> fetch(account: RemoteAccount, table: String, toRemote: (UUID, Row) -> T): List<T> {

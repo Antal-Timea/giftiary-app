@@ -9,6 +9,10 @@ import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemotePersonFields
 import app.gifty.data.remote.dto.RemoteRow
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlist
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -50,6 +54,14 @@ class SupabaseRemoteWriter(
     override suspend fun insertGift(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftFields) =
         insert<RemoteGift>(account, "gifts", id, mutationId, json.encodeToJsonElement(RemoteGiftFields.serializer(), fields))
 
+    override suspend fun insertWishlist(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishlistFields) =
+        insert<RemoteWishlist>(
+            account, "wishlists", id, mutationId, json.encodeToJsonElement(RemoteWishlistFields.serializer(), fields),
+        )
+
+    override suspend fun insertWish(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishFields) =
+        insert<RemoteWish>(account, "wishes", id, mutationId, json.encodeToJsonElement(RemoteWishFields.serializer(), fields))
+
     override suspend fun updatePerson(
         account: RemoteAccount,
         id: UUID,
@@ -90,6 +102,27 @@ class SupabaseRemoteWriter(
         fields: RemoteGiftFields,
     ) = update<RemoteGift>(
         account, "gifts", id, expectedVersion, mutationId, json.encodeToJsonElement(RemoteGiftFields.serializer(), fields),
+    )
+
+    override suspend fun updateWishlist(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteWishlistFields,
+    ) = update<RemoteWishlist>(
+        account, "wishlists", id, expectedVersion, mutationId,
+        json.encodeToJsonElement(RemoteWishlistFields.serializer(), fields),
+    )
+
+    override suspend fun updateWish(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteWishFields,
+    ) = update<RemoteWish>(
+        account, "wishes", id, expectedVersion, mutationId, json.encodeToJsonElement(RemoteWishFields.serializer(), fields),
     )
 
     private suspend inline fun <reified T : RemoteRow> insert(

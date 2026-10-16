@@ -55,4 +55,6 @@ enum class SyncItemType {
     OCCASION,
     GIFT_IDEA,
     GIFT,
+    WISHLIST,
+    WISH,
 }

@@ -42,7 +42,8 @@ class ForeignKeySafetyTest {
             assertTrue("$table: $sql", "DEFERRABLE" !in sql && "DEFERRED" !in sql)
         }
         val foreignKeys = tables.sumOf { table ->
-            db.query("SELECT COUNT(*) FROM pragma_foreign_key_list('$table')").use { it.moveToFirst(); it.getInt(0) }
+            // A key over two columns, like the wish's same-owner key, is listed once per column.
+            db.query("SELECT COUNT(DISTINCT id) FROM pragma_foreign_key_list('$table')").use { it.moveToFirst(); it.getInt(0) }
         }
         assertEquals(9, foreignKeys)
     }

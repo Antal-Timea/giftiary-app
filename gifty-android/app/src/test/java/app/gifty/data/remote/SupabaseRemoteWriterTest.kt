@@ -7,6 +7,8 @@ import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
@@ -200,6 +202,41 @@ class SupabaseRemoteWriterTest {
         assertEquals("Anna", requests[2].json.jsonObject.text("name"))
         assertEquals("2026-10-09T11:00:00Z", requests[3].json.jsonObject.text("archived_at"))
         assertTrue(requests.none { it.data.method == HttpMethod.Delete })
+    }
+
+    @Test
+    fun `wishlists and wishes are inserted and compare-and-set updated in their own tables, deletion as a tombstone`() = runTest {
+        val wishlistId = UUID.fromString("50000000-0000-4000-8000-000000000005")
+        val wishId = UUID.fromString("60000000-0000-4000-8000-000000000006")
+        val deletedAt = Instant.parse("2026-10-09T10:00:00.250Z")
+
+        assertEquals(Committed(1), writer.insertWishlist(alice(), wishlistId, mutations[0], wishlist()))
+        assertEquals(Committed(1), writer.insertWish(alice(), wishId, mutations[1], wish(wishlistId)))
+        assertEquals(Committed(2), writer.updateWishlist(alice(), wishlistId, 1, mutations[2], wishlist().copy(name = "Name day")))
+        assertEquals(Committed(2), writer.updateWish(alice(), wishId, 1, mutations[3], wish(wishlistId).copy(deletedAt = deletedAt)))
+
+        val (insertList, insertWish, updateList, updateWish) = requests
+        assertEquals(listOf("wishlists", "wishes", "wishlists", "wishes"), requests.map { it.table })
+        assertEquals(listOf(HttpMethod.Post, HttpMethod.Post, HttpMethod.Patch, HttpMethod.Patch), requests.map { it.data.method })
+        val listRow = insertList.json.jsonArray.single().jsonObject
+        assertEquals(WISHLIST_FIELDS + setOf("id", "owner_user_id", "last_mutation_id"), listRow.keys)
+        assertEquals(alice.toString(), listRow.text("owner_user_id"))
+        assertEquals(personId.toString(), listRow.text("person_id"))
+        val wishRow = insertWish.json.jsonArray.single().jsonObject
+        assertEquals(WISH_FIELDS + setOf("id", "owner_user_id", "last_mutation_id"), wishRow.keys)
+        assertEquals(alice.toString(), wishRow.text("owner_user_id"))
+        assertEquals(wishlistId.toString(), wishRow.text("wishlist_id"))
+        assertEquals("9007199254740993", wishRow.getValue("estimated_price_amount_minor").jsonPrimitive.content)
+        listOf(updateList to wishlistId, updateWish to wishId).forEach { (request, id) ->
+            assertEquals("eq.$id", request.data.url.parameters["id"])
+            assertEquals("eq.$alice", request.data.url.parameters["owner_user_id"])
+            assertEquals("eq.1", request.data.url.parameters["version"])
+        }
+        assertEquals(WISHLIST_FIELDS + "last_mutation_id", updateList.json.jsonObject.keys)
+        assertEquals("Name day", updateList.json.jsonObject.text("name"))
+        assertEquals(WISH_FIELDS + "last_mutation_id", updateWish.json.jsonObject.keys)
+        assertEquals("2026-10-09T10:00:00.250Z", updateWish.json.jsonObject.text("deleted_at"))
+        assertEquals(NoMatch, writer.updateWish(account(bob, bobsToken), wishId, 2, UUID.randomUUID(), wish(wishlistId)))
     }
 
     // ---- what counts as proof ----
@@ -398,6 +435,13 @@ class SupabaseRemoteWriterTest {
         deletedAt = Instant.parse("2026-10-05T08:00:00.123Z"),
     )
 
+    private fun wishlist() = RemoteWishlistFields(personId = personId, name = "Birthday", deletedAt = null)
+
+    private fun wish(wishlistId: UUID) = RemoteWishFields(
+        wishlistId = wishlistId, name = "Lamp", note = null, estimatedPriceAmountMinor = 9_007_199_254_740_993L,
+        estimatedPriceCurrencyCode = "HUF", productUrl = null, photoPath = null, deletedAt = null,
+    )
+
     private class WriteCase(val table: String, val fields: Set<String>, val write: suspend () -> Any) {
         operator fun component1() = table
         operator fun component2() = fields
@@ -485,6 +529,11 @@ class SupabaseRemoteWriterTest {
             "recipient_person_id", "occasion_id", "name", "status", "estimated_price_amount_minor",
             "estimated_price_currency_code", "actual_price_amount_minor", "actual_price_currency_code", "photo_path",
             "product_url", "note", "archived_at", "deleted_at",
+        )
+        val WISHLIST_FIELDS = setOf("person_id", "name", "deleted_at")
+        val WISH_FIELDS = setOf(
+            "wishlist_id", "name", "note", "estimated_price_amount_minor", "estimated_price_currency_code", "product_url",
+            "photo_path", "deleted_at",
         )
         val GIFT_FIELDS = setOf(
             "direction", "giver_person_id", "recipient_person_id", "occasion_id", "source_gift_idea_id", "name",

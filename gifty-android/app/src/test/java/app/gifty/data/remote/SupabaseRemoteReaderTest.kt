@@ -113,6 +113,31 @@ class SupabaseRemoteReaderTest {
         assertFailure(RemoteFailure.SERVER) { reader.fetchGifts(alice()) }
     }
 
+    @Test
+    fun `wishlists and wishes are read in full from their own tables, for the account only, tombstones included`() = runTest {
+        val ids = (1..3).map { UUID.fromString("0000000$it-0000-4000-8000-000000000000") }
+        tables["wishlists"] = ids.map { RemoteTestData.wishlist(it, alice) } +
+            RemoteTestData.wishlist(UUID.fromString("00000002-0000-4000-8000-0000000000bb"), bob)
+        tables["wishes"] = ids.map { RemoteTestData.wish(it, alice) }
+
+        assertEquals(ids, reader.fetchWishlists(alice()).map { it.id })
+        val wishes = reader.fetchWishes(alice())
+
+        assertEquals(ids, wishes.map { it.id })
+        assertTrue("tombstones are read", wishes.all { it.deletedAt != null })
+        assertEquals(listOf("wishlists", "wishes"), requests.map { it.url.encodedPath.substringAfterLast('/') }.distinct())
+        requests.forEach { assertEquals("eq.$alice", it.url.parameters["owner_user_id"]) }
+    }
+
+    @Test
+    fun `a wishlist or wish of another owner in a response is refused`() = runTest {
+        answer = { respondRows(listOf(RemoteTestData.wishlist(UUID.randomUUID(), bob))) }
+        assertFailure(RemoteFailure.SERVER) { reader.fetchWishlists(alice()) }
+
+        answer = { respondRows(listOf(RemoteTestData.wish(UUID.randomUUID(), bob))) }
+        assertFailure(RemoteFailure.SERVER) { reader.fetchWishes(alice()) }
+    }
+
     // ---- the mutation ledger ----
 
     @Test
@@ -191,6 +216,28 @@ class SupabaseRemoteReaderTest {
         assertNull(reader.findOccasion(alice(), UUID.randomUUID()))
         assertNull(reader.findGiftIdea(alice(), UUID.randomUUID()))
         assertNull(reader.findGift(alice(), UUID.randomUUID()))
+        assertNull(reader.findWishlist(alice(), UUID.randomUUID()))
+        assertNull(reader.findWish(alice(), UUID.randomUUID()))
+    }
+
+    @Test
+    fun `a wishlist and a wish are looked up by id in their own tables, for the account`() = runTest {
+        val id = UUID.randomUUID()
+        answer = { request ->
+            val table = request.url.encodedPath.substringAfterLast('/')
+            respondRows(listOf(if (table == "wishlists") RemoteTestData.wishlist(id, alice) else RemoteTestData.wish(id, alice)))
+        }
+
+        assertEquals(id, reader.findWishlist(alice(), id)?.id)
+        assertEquals(alice, reader.findWish(alice(), id)?.ownerUserId)
+
+        assertEquals(listOf("wishlists", "wishes"), requests.map { it.url.encodedPath.substringAfterLast('/') })
+        requests.forEach { request ->
+            assertEquals("eq.$id", request.url.parameters["id"])
+            assertEquals("eq.$alice", request.url.parameters["owner_user_id"])
+        }
+        answer = { respondRows(listOf(RemoteTestData.wish(id, bob))) }
+        assertFailure(RemoteFailure.SERVER) { reader.findWish(alice(), id) }
     }
 
     @Test

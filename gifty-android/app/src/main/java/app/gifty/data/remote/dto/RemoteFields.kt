@@ -71,3 +71,22 @@ data class RemoteGiftFields(
     val note: String?,
     @SerialName("deleted_at") val deletedAt: Instant?,
 )
+
+@Serializable
+data class RemoteWishlistFields(
+    @SerialName("person_id") val personId: UUID?,
+    val name: String,
+    @SerialName("deleted_at") val deletedAt: Instant?,
+)
+
+@Serializable
+data class RemoteWishFields(
+    @SerialName("wishlist_id") val wishlistId: UUID,
+    val name: String,
+    val note: String?,
+    @SerialName("estimated_price_amount_minor") val estimatedPriceAmountMinor: Long?,
+    @SerialName("estimated_price_currency_code") val estimatedPriceCurrencyCode: String?,
+    @SerialName("product_url") val productUrl: String?,
+    @SerialName("photo_path") val photoPath: String?,
+    @SerialName("deleted_at") val deletedAt: Instant?,
+)

@@ -121,13 +121,13 @@ class ForegroundSyncCoordinatorTest {
         backend = FakeBackend(database)
         runner = SyncRunner(
             database.syncOperationDao(),
-            SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao()),
+            SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),
             newPusher(),
             activeOwner,
         )
         puller = SyncPuller(
             database, backend, database.syncOperationDao(), database.personDao(), database.occasionDao(),
-            database.giftIdeaDao(), database.giftDao(), activeOwner,
+            database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao(), activeOwner,
         )
     }
 
@@ -1523,10 +1523,10 @@ class ForegroundSyncCoordinatorTest {
 
     private fun newPusher() = SyncPusher(
         database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-        database.giftDao(),
+        database.giftDao(), database.wishlistDao(), database.wishDao(),
         SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), database.syncConflictDao(), clock,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), database.syncConflictDao(), clock,
         ),
         backend, backend, clock,
     )

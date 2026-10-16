@@ -4,6 +4,8 @@ import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import java.util.UUID
@@ -15,14 +17,16 @@ import javax.inject.Inject
  *
  * Person ← Occasion (person, optional); Person and Occasion ← GiftIdea (recipient, required;
  * occasion, optional); Person, Occasion and GiftIdea ← Gift (giver, recipient, occasion and source
- * idea, all optional). The graph is acyclic, so Person → Occasion → GiftIdea → Gift is a valid
- * order.
+ * idea, all optional); Person ← Wishlist (person, optional); Wishlist ← Wish (required). The graph
+ * is acyclic, so Person → Occasion → GiftIdea → Gift → Wishlist → Wish is a valid order.
  */
 class SyncDependencies @Inject constructor(
     private val people: PersonDao,
     private val occasions: OccasionDao,
     private val giftIdeas: GiftIdeaDao,
     private val gifts: GiftDao,
+    private val wishlists: WishlistDao,
+    private val wishes: WishDao,
 ) {
 
     /**
@@ -53,7 +57,8 @@ class SyncDependencies @Inject constructor(
                 it.sourceGiftIdeaId?.let { idea -> EntityRef(SyncEntityType.GIFT_IDEA, idea) },
             )
         }
-        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$type is not synced")
+        SyncEntityType.WISHLIST -> wishlists.findById(id, ownerUserId)?.let { listOfNotNull(it.personId?.let(::person)) }
+        SyncEntityType.WISH -> wishes.findById(id, ownerUserId)?.let { listOf(EntityRef(SyncEntityType.WISHLIST, it.wishlistId)) }
     }.orEmpty()
 
     private suspend fun isKnownRemotely(ownerUserId: UUID, parent: EntityRef): Boolean {
@@ -61,6 +66,7 @@ class SyncDependencies @Inject constructor(
             SyncEntityType.PERSON -> people.findById(parent.id, ownerUserId)?.let { it.remoteState to it.version }
             SyncEntityType.OCCASION -> occasions.findById(parent.id, ownerUserId)?.let { it.remoteState to it.version }
             SyncEntityType.GIFT_IDEA -> giftIdeas.findById(parent.id, ownerUserId)?.let { it.remoteState to it.version }
+            SyncEntityType.WISHLIST -> wishlists.findById(parent.id, ownerUserId)?.let { it.remoteState to it.version }
             else -> throw IllegalArgumentException("${parent.type} is never referenced")
         } ?: return false
         return remoteState == RemoteState.SYNCED && version >= 1

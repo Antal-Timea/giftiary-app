@@ -7,6 +7,8 @@ import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.remote.RemoteAccount
@@ -19,6 +21,8 @@ import app.gifty.data.remote.dto.RemoteGiftIdea
 import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemoteRow
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import app.gifty.data.remote.toEntity
 import app.gifty.data.user.ActiveOwner
 import java.util.UUID
@@ -46,6 +50,8 @@ class SyncPuller @Inject constructor(
     private val occasions: OccasionDao,
     private val giftIdeas: GiftIdeaDao,
     private val gifts: GiftDao,
+    private val wishlists: WishlistDao,
+    private val wishes: WishDao,
     private val activeOwner: ActiveOwner,
 ) {
 
@@ -72,6 +78,8 @@ class SyncPuller @Inject constructor(
      * and never change owner, is still there when its own table is read later.
      */
     private suspend fun fetch(account: RemoteAccount): Snapshot {
+        val wishes = reader.fetchWishes(account)
+        val wishlists = reader.fetchWishlists(account)
         val gifts = reader.fetchGifts(account)
         val giftIdeas = reader.fetchGiftIdeas(account)
         val occasions = reader.fetchOccasions(account)
@@ -80,7 +88,9 @@ class SyncPuller @Inject constructor(
         occasions.forEach(RemoteRowValidator::validate)
         giftIdeas.forEach(RemoteRowValidator::validate)
         gifts.forEach(RemoteRowValidator::validate)
-        return Snapshot(people, occasions, giftIdeas, gifts)
+        wishlists.forEach(RemoteRowValidator::validate)
+        wishes.forEach(RemoteRowValidator::validate)
+        return Snapshot(people, occasions, giftIdeas, gifts, wishlists, wishes)
     }
 
     /**
@@ -137,12 +147,34 @@ class SyncPuller @Inject constructor(
             planned
         }
 
+        val wishlistPlan = remote.wishlists.map { wishlist ->
+            val local = wishlists.findByIdForAnyOwner(wishlist.id)
+            val planned = plan(owner, SyncEntityType.WISHLIST, wishlist, local?.let { Local(it.ownerUserId, it.version, it.remoteState) })
+            if (local != null) RemoteRowValidator.requireSamePerson(wishlist, local.personId)
+            if (planned.writes) requirePerson(owner, wishlist.personId, peopleAfter)
+            planned
+        }
+        val wishlistsAfter = wishlistPlan.associate { it.row.id to it.kept }
+
+        val wishPlan = remote.wishes.map { wish ->
+            val local = wishes.findByIdForAnyOwner(wish.id)
+            val planned = plan(owner, SyncEntityType.WISH, wish, local?.let { Local(it.ownerUserId, it.version, it.remoteState) })
+            if (local != null) RemoteRowValidator.requireSameWishlist(wish, local.wishlistId)
+            // Room's same-owner key needs the wishlist, this owner's, before the wish is written.
+            if (planned.writes && !(wishlistsAfter[wish.wishlistId] ?: (wishlists.findById(wish.wishlistId, owner) != null))) {
+                throw unusable()
+            }
+            planned
+        }
+
         personPlan.forEach { write(it.decision, { people.insert(it.row.toEntity()) }, { people.update(it.row.toEntity()) }) }
         occasionPlan.forEach { write(it.decision, { occasions.insert(it.row.toEntity()) }, { occasions.update(it.row.toEntity()) }) }
         ideaPlan.forEach { write(it.decision, { giftIdeas.insert(it.row.toEntity()) }, { giftIdeas.update(it.row.toEntity()) }) }
         giftPlan.forEach { write(it.decision, { gifts.insert(it.row.toEntity()) }, { gifts.update(it.row.toEntity()) }) }
+        wishlistPlan.forEach { write(it.decision, { wishlists.insert(it.row.toEntity()) }, { wishlists.update(it.row.toEntity()) }) }
+        wishPlan.forEach { write(it.decision, { wishes.insert(it.row.toEntity()) }, { wishes.update(it.row.toEntity()) }) }
 
-        val decisions = (personPlan + occasionPlan + ideaPlan + giftPlan).groupingBy { it.decision }.eachCount()
+        val decisions = (personPlan + occasionPlan + ideaPlan + giftPlan + wishlistPlan + wishPlan).groupingBy { it.decision }.eachCount()
         return PullResult.Applied(
             inserted = decisions[Decision.INSERT] ?: 0,
             updated = decisions[Decision.UPDATE] ?: 0,
@@ -203,6 +235,8 @@ class SyncPuller @Inject constructor(
         val occasions: List<RemoteOccasion>,
         val giftIdeas: List<RemoteGiftIdea>,
         val gifts: List<RemoteGift>,
+        val wishlists: List<RemoteWishlist>,
+        val wishes: List<RemoteWish>,
     )
 
     private class Local(val ownerUserId: UUID, val version: Long, val remoteState: RemoteState)

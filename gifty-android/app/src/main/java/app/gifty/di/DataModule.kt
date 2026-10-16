@@ -8,6 +8,7 @@ import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
 import app.gifty.data.repository.SyncStatusRepositoryImpl
+import app.gifty.data.repository.WishlistRepositoryImpl
 import app.gifty.data.sync.ForegroundSyncCoordinator
 import app.gifty.data.sync.FullSyncRequester
 import app.gifty.data.sync.SyncRequester
@@ -22,6 +23,7 @@ import app.gifty.domain.repository.OccasionRepository
 import app.gifty.domain.repository.PersonRepository
 import app.gifty.domain.repository.ReminderSettingsRepository
 import app.gifty.domain.repository.SyncStatusRepository
+import app.gifty.domain.repository.WishlistRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -67,6 +69,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler
+
+    @Binds
+    abstract fun bindWishlistRepository(impl: WishlistRepositoryImpl): WishlistRepository
 
     @Binds
     abstract fun bindReminderScheduler(impl: WorkManagerReminderScheduler): ReminderScheduler

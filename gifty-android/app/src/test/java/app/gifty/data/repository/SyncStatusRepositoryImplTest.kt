@@ -21,6 +21,7 @@ import app.gifty.domain.model.SyncStatus
 import app.gifty.domain.repository.GiftDetails
 import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.repository.WishDetails
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.channels.Channel
@@ -57,6 +58,7 @@ class SyncStatusRepositoryImplTest {
     private lateinit var occasions: OccasionRepositoryImpl
     private lateinit var ideas: GiftIdeaRepositoryImpl
     private lateinit var gifts: GiftRepositoryImpl
+    private lateinit var wishlists: WishlistRepositoryImpl
 
     private val operations get() = database.syncOperationDao()
 
@@ -71,9 +73,12 @@ class SyncStatusRepositoryImplTest {
             clock, SyncRequester {},
         )
         gifts = GiftRepositoryImpl(database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {})
+        wishlists = WishlistRepositoryImpl(
+            database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+        )
         repository = SyncStatusRepositoryImpl(
             database, database.syncOperationDao(), database.syncConflictDao(), database.personDao(), database.occasionDao(),
-            database.giftIdeaDao(), database.giftDao(), activeOwner, clock,
+            database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao(), activeOwner, clock,
         )
     }
 
@@ -185,6 +190,28 @@ class SyncStatusRepositoryImplTest {
             ),
             items,
         )
+    }
+
+    @Test
+    fun `wishlist and wish changes are waiting, and refused or conflicted ones are named, with no screen to open yet`() = runTest {
+        val list = later { wishlists.addWishlist(null, "Birthday") }
+        val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null)) }
+        assertEquals(2, status().waitingCount)
+
+        block(SyncEntityType.WISHLIST, list.id, BlockReason.REJECTED)
+        operations.delete(pending(SyncEntityType.WISH, lamp.id))
+        conflict(SyncEntityType.WISH, lamp.id, baseVersion = 2)
+
+        val status = status()
+        assertEquals(0, status.waitingCount)
+        assertEquals(
+            listOf(
+                SyncItem(SyncItemType.WISH, lamp.id, "Lamp") to AttentionKind.REPLACED_BY_OTHER_DEVICE,
+                SyncItem(SyncItemType.WISHLIST, list.id, "Birthday") to AttentionKind.REFUSED,
+            ),
+            status.attention.map { it.item to it.kind },
+        )
+        assertTrue(status.attention.none { it.canOpen })
     }
 
     @Test

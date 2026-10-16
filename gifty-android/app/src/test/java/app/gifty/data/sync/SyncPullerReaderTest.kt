@@ -60,7 +60,7 @@ class SyncPullerReaderTest {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftyDatabase::class.java).build()
         puller = SyncPuller(
             database, SupabaseRemoteReader(AccountBoundClients(URL, PUBLISHABLE_KEY, engine)), database.syncOperationDao(),
-            database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), FakeActiveOwner(alice),
+            database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao(), FakeActiveOwner(alice),
         )
     }
 

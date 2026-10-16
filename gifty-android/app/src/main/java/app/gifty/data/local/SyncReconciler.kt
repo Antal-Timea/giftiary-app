@@ -7,6 +7,8 @@ import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncConflictEntity
 import app.gifty.data.local.entity.SyncEntityType
@@ -15,6 +17,8 @@ import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.sync.BlockReason
 import kotlinx.serialization.json.Json
@@ -34,6 +38,8 @@ class SyncReconciler @Inject constructor(
     private val occasions: OccasionDao,
     private val giftIdeas: GiftIdeaDao,
     private val gifts: GiftDao,
+    private val wishlists: WishlistDao,
+    private val wishes: WishDao,
     private val conflicts: SyncConflictDao,
     private val clock: Clock,
 ) {
@@ -225,7 +231,12 @@ class SyncReconciler @Inject constructor(
         SyncEntityType.GIFT -> checkNotNull(gifts.findById(id, ownerUserId)) { "No gift $id" }.let {
             Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemoteGiftFields.serializer(), it.toRemoteFields()))
         }
-        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$entityType is not synced")
+        SyncEntityType.WISHLIST -> checkNotNull(wishlists.findById(id, ownerUserId)) { "No wishlist $id" }.let {
+            Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemoteWishlistFields.serializer(), it.toRemoteFields()))
+        }
+        SyncEntityType.WISH -> checkNotNull(wishes.findById(id, ownerUserId)) { "No wish $id" }.let {
+            Snapshot(it.remoteState, it.version, SNAPSHOT_JSON.encodeToString(RemoteWishFields.serializer(), it.toRemoteFields()))
+        }
     }
 
     /** Moves the entity to [version] and marks it known to the backend; returns its tombstone. */
@@ -235,7 +246,8 @@ class SyncReconciler @Inject constructor(
             SyncEntityType.OCCASION -> occasions.adoptRemoteVersion(id, ownerUserId, version)
             SyncEntityType.GIFT_IDEA -> giftIdeas.adoptRemoteVersion(id, ownerUserId, version)
             SyncEntityType.GIFT -> gifts.adoptRemoteVersion(id, ownerUserId, version)
-            SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$entityType is not synced")
+            SyncEntityType.WISHLIST -> wishlists.adoptRemoteVersion(id, ownerUserId, version)
+            SyncEntityType.WISH -> wishes.adoptRemoteVersion(id, ownerUserId, version)
         }
         // The queue proved this mutation is in flight for this entity, so a mismatch here means
         // the local state or the reported version is wrong; nothing is applied.
@@ -245,7 +257,8 @@ class SyncReconciler @Inject constructor(
             SyncEntityType.OCCASION -> occasions.findById(id, ownerUserId)?.deletedAt
             SyncEntityType.GIFT_IDEA -> giftIdeas.findById(id, ownerUserId)?.deletedAt
             SyncEntityType.GIFT -> gifts.findById(id, ownerUserId)?.deletedAt
-            SyncEntityType.WISHLIST, SyncEntityType.WISH -> null
+            SyncEntityType.WISHLIST -> wishlists.findById(id, ownerUserId)?.deletedAt
+            SyncEntityType.WISH -> wishes.findById(id, ownerUserId)?.deletedAt
         }
     }
 }

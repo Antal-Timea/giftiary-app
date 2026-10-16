@@ -275,5 +275,7 @@
     <string name="sync_item_occasion">Occasion</string>
     <string name="sync_item_gift_idea">Gift idea</string>
     <string name="sync_item_gift">Gift</string>
+    <string name="sync_item_wishlist">Wishlist</string>
+    <string name="sync_item_wish">Wish</string>
     <string name="sync_item_unnamed">Unnamed item</string>
 </resources>

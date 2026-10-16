@@ -9,8 +9,8 @@ import java.util.UUID
  * [app.gifty.data.local.LegacyOwnershipClaim] calls them, all inside one transaction; this is not
  * a general way to change owners. Each statement returns the number of rows it moved.
  *
- * Only rows of the legacy owner move: rows of any account are never touched. Wishes have no owner
- * column and follow their wishlist.
+ * Only rows of the legacy owner move: rows of any account are never touched. Wishes are not moved
+ * here: their same-owner foreign key cascades the wishlist's new owner to them.
  */
 @Dao
 interface LegacyOwnershipDao {

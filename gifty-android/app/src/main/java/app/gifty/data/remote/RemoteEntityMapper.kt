@@ -5,10 +5,14 @@ import app.gifty.data.local.entity.GiftIdeaEntity
 import app.gifty.data.local.entity.OccasionEntity
 import app.gifty.data.local.entity.PersonEntity
 import app.gifty.data.local.entity.RemoteState
+import app.gifty.data.local.entity.WishEntity
+import app.gifty.data.local.entity.WishlistEntity
 import app.gifty.data.remote.dto.RemoteGift
 import app.gifty.data.remote.dto.RemoteGiftIdea
 import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -85,6 +89,35 @@ fun RemoteGift.toEntity() = GiftEntity(
     photoPath = photoPath,
     productUrl = productUrl,
     note = note,
+    version = version,
+    remoteState = RemoteState.SYNCED,
+    createdAt = createdAt.toRoomInstant(),
+    updatedAt = updatedAt.toRoomInstant(),
+    deletedAt = deletedAt?.toRoomInstant(),
+)
+
+fun RemoteWishlist.toEntity() = WishlistEntity(
+    id = id,
+    ownerUserId = ownerUserId,
+    personId = personId,
+    name = name,
+    version = version,
+    remoteState = RemoteState.SYNCED,
+    createdAt = createdAt.toRoomInstant(),
+    updatedAt = updatedAt.toRoomInstant(),
+    deletedAt = deletedAt?.toRoomInstant(),
+)
+
+fun RemoteWish.toEntity() = WishEntity(
+    id = id,
+    ownerUserId = ownerUserId,
+    wishlistId = wishlistId,
+    name = name,
+    note = note,
+    estimatedPriceAmountMinor = estimatedPriceAmountMinor,
+    estimatedPriceCurrencyCode = estimatedPriceCurrencyCode,
+    productUrl = productUrl,
+    photoPath = photoPath,
     version = version,
     remoteState = RemoteState.SYNCED,
     createdAt = createdAt.toRoomInstant(),

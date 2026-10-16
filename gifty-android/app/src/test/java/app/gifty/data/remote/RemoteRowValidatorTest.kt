@@ -4,6 +4,8 @@ import app.gifty.data.remote.dto.RemoteGift
 import app.gifty.data.remote.dto.RemoteGiftIdea
 import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
@@ -33,6 +35,10 @@ class RemoteRowValidatorTest {
         UUID.randomUUID(), owner, GiftDirection.GIVEN, null, anna, null, null, "Scarf", LocalDate.of(2026, 5, 12), null, null,
         null, null, null, 1, now, now, null, UUID.randomUUID(),
     )
+    private val wishlist = RemoteWishlist(UUID.randomUUID(), owner, anna, "Birthday", 1, now, now, null, UUID.randomUUID())
+    private val wish = RemoteWish(
+        UUID.randomUUID(), owner, wishlist.id, "Lamp", null, null, null, null, null, 1, now, now, null, UUID.randomUUID(),
+    )
 
     @Test
     fun `valid rows pass`() {
@@ -43,6 +49,9 @@ class RemoteRowValidatorTest {
         RemoteRowValidator.validate(idea.copy(estimatedPriceAmountMinor = 12990, estimatedPriceCurrencyCode = "HUF"))
         RemoteRowValidator.validate(idea.copy(actualPriceAmountMinor = 0, actualPriceCurrencyCode = "EUR"))
         RemoteRowValidator.validate(gift.copy(priceAmountMinor = 1999, priceCurrencyCode = "USD"))
+        RemoteRowValidator.validate(wishlist)
+        RemoteRowValidator.validate(wishlist.copy(personId = null))
+        RemoteRowValidator.validate(wish.copy(estimatedPriceAmountMinor = 4990, estimatedPriceCurrencyCode = "EUR"))
     }
 
     @Test
@@ -52,6 +61,8 @@ class RemoteRowValidatorTest {
             refused("occasion $version") { RemoteRowValidator.validate(occasion.copy(version = version)) }
             refused("idea $version") { RemoteRowValidator.validate(idea.copy(version = version)) }
             refused("gift $version") { RemoteRowValidator.validate(gift.copy(version = version)) }
+            refused("wishlist $version") { RemoteRowValidator.validate(wishlist.copy(version = version)) }
+            refused("wish $version") { RemoteRowValidator.validate(wish.copy(version = version)) }
         }
     }
 
@@ -83,6 +94,9 @@ class RemoteRowValidatorTest {
                 RemoteRowValidator.validate(idea.copy(actualPriceAmountMinor = amount, actualPriceCurrencyCode = currency))
             }
             refused("gift: $case") { RemoteRowValidator.validate(gift.copy(priceAmountMinor = amount, priceCurrencyCode = currency)) }
+            refused("wish: $case") {
+                RemoteRowValidator.validate(wish.copy(estimatedPriceAmountMinor = amount, estimatedPriceCurrencyCode = currency))
+            }
         }
     }
 
@@ -113,6 +127,18 @@ class RemoteRowValidatorTest {
         refused("moved to Béla") { RemoteRowValidator.requireSamePerson(occasion, localPersonId = bela) }
         refused("made general") { RemoteRowValidator.requireSamePerson(occasion.copy(personId = null), localPersonId = anna) }
         refused("given a person") { RemoteRowValidator.requireSamePerson(occasion, localPersonId = null) }
+    }
+
+    @Test
+    fun `a wishlist keeps its person and a wish its wishlist`() {
+        RemoteRowValidator.requireSamePerson(wishlist, localPersonId = anna)
+        RemoteRowValidator.requireSamePerson(wishlist.copy(personId = null), localPersonId = null)
+        RemoteRowValidator.requireSameWishlist(wish, localWishlistId = wishlist.id)
+
+        refused("wishlist moved to Béla") { RemoteRowValidator.requireSamePerson(wishlist, localPersonId = bela) }
+        refused("wishlist made personless") { RemoteRowValidator.requireSamePerson(wishlist.copy(personId = null), localPersonId = anna) }
+        refused("wishlist given a person") { RemoteRowValidator.requireSamePerson(wishlist, localPersonId = null) }
+        refused("wish moved") { RemoteRowValidator.requireSameWishlist(wish, localWishlistId = UUID.randomUUID()) }
     }
 
     private fun refused(case: String, check: () -> Unit) {

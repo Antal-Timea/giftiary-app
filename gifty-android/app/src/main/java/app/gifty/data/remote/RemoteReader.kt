@@ -5,6 +5,8 @@ import app.gifty.data.remote.dto.RemoteGiftIdea
 import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemoteSyncMutation
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import java.util.UUID
 
 /**
@@ -28,6 +30,12 @@ interface RemoteReader {
     /** All of the account's gifts, deleted ones included, ordered by id. */
     suspend fun fetchGifts(account: RemoteAccount): List<RemoteGift>
 
+    /** All of the account's wishlists, deleted ones included, ordered by id. */
+    suspend fun fetchWishlists(account: RemoteAccount): List<RemoteWishlist>
+
+    /** All of the account's wishes, deleted ones included, ordered by id. */
+    suspend fun fetchWishes(account: RemoteAccount): List<RemoteWish>
+
     /** The account's person [id] as the backend has it now, tombstoned or not; null if it has none visible. */
     suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson?
 
@@ -39,6 +47,12 @@ interface RemoteReader {
 
     /** The account's gift [id] as the backend has it now; null if it has none visible. */
     suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift?
+
+    /** The account's wishlist [id] as the backend has it now; null if it has none visible. */
+    suspend fun findWishlist(account: RemoteAccount, id: UUID): RemoteWishlist?
+
+    /** The account's wish [id] as the backend has it now; null if it has none visible. */
+    suspend fun findWish(account: RemoteAccount, id: UUID): RemoteWish?
 
     /**
      * The account's gift made from idea [giftIdeaId], tombstoned or not; null if it has none

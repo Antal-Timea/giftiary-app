@@ -13,6 +13,8 @@ import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import app.gifty.data.local.entity.GiftEntity
 import app.gifty.data.local.entity.GiftIdeaEntity
 import app.gifty.data.local.entity.OccasionEntity
@@ -33,7 +35,7 @@ import app.gifty.data.local.entity.WishlistEntity
         SyncOperationEntity::class,
         SyncConflictEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(UuidConverter::class, TimeConverters::class, EnumConverters::class)
@@ -52,6 +54,10 @@ abstract class GiftyDatabase : RoomDatabase() {
     abstract fun syncConflictDao(): SyncConflictDao
 
     abstract fun legacyOwnershipDao(): LegacyOwnershipDao
+
+    abstract fun wishlistDao(): WishlistDao
+
+    abstract fun wishDao(): WishDao
 
     companion object {
         const val NAME = "gifty.db"

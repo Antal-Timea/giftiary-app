@@ -20,18 +20,23 @@ import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.repository.WishlistRepositoryImpl
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.repository.GiftDetails
+import app.gifty.domain.repository.WishDetails
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -65,6 +70,7 @@ class SyncPullerTest {
     private lateinit var puller: SyncPuller
     private lateinit var people: PersonRepositoryImpl
     private lateinit var gifts: GiftRepositoryImpl
+    private lateinit var wishlists: WishlistRepositoryImpl
 
     private val operations get() = database.syncOperationDao()
     private val personDao get() = database.personDao()
@@ -77,10 +83,13 @@ class SyncPullerTest {
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
         )
+        wishlists = WishlistRepositoryImpl(
+            database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+        )
         backend = FakeBackend(database)
         puller = SyncPuller(
             database, backend, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), activeOwner,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), activeOwner,
         )
     }
 
@@ -291,13 +300,106 @@ class SyncPullerTest {
         val birthday = remoteOccasion(person = anna)
         val idea = remoteIdea(anna, occasion = birthday)
         val gift = remoteGift(recipient = anna, occasion = birthday, sourceIdea = idea)
+        val list = remoteWishlist(person = anna)
+        val lamp = remoteWish(list)
 
         // Room's foreign keys would refuse any child written before its parent.
-        assertEquals(applied(inserted = 4), pull())
+        assertEquals(applied(inserted = 6), pull())
 
-        assertEquals(listOf("gifts", "gift_ideas", "occasions", "people"), backend.fetches)
+        assertEquals(listOf("wishes", "wishlists", "gifts", "gift_ideas", "occasions", "people"), backend.fetches)
         assertEquals(idea, database.giftDao().findById(gift, alice)!!.sourceGiftIdeaId)
         assertEquals(birthday, database.giftIdeaDao().findById(idea, alice)!!.occasionId)
+        assertEquals(anna, database.wishlistDao().findById(list, alice)!!.personId)
+        assertEquals(list, database.wishDao().findById(lamp, alice)!!.wishlistId)
+    }
+
+    // ---- wishlists and wishes ----
+
+    @Test
+    fun `wishlists and wishes arrive as synced rows of the account, tombstones included`() = runTest {
+        val own = remoteWishlist(person = null, version = 2)
+        val lamp = remoteWish(own, version = 3)
+        val gone = remoteWish(own, deletedAt = REMOTE_TIME)
+
+        assertEquals(applied(inserted = 3), pull())
+
+        val list = database.wishlistDao().findById(own, alice)!!
+        assertEquals(2L, list.version)
+        assertEquals(RemoteState.SYNCED, list.remoteState)
+        val wish = database.wishDao().findById(lamp, alice)!!
+        assertEquals(alice, wish.ownerUserId)
+        assertEquals(3L, wish.version)
+        assertEquals(4990L to "EUR", wish.estimatedPriceAmountMinor to wish.estimatedPriceCurrencyCode)
+        assertEquals(REMOTE_TIME, database.wishDao().findById(gone, alice)!!.deletedAt)
+        assertEquals(listOf(lamp), database.wishDao().findActiveForWishlist(alice, own).map { it.id })
+    }
+
+    @Test
+    fun `newer backend versions of a wishlist and a wish replace Room's, and equal ones change nothing`() = runTest {
+        val (list, lamp) = syncedWishlistWithWish(version = 1)
+        backend.seed(list, alice, 2, UUID.randomUUID(), RemoteWishlistFields(null, "Renamed", null))
+
+        assertEquals(applied(updated = 1, unchanged = 1), pull())
+
+        assertEquals("Renamed", database.wishlistDao().findById(list, alice)!!.name)
+        assertEquals(2L, database.wishlistDao().findById(list, alice)!!.version)
+        assertEquals("Lamp", database.wishDao().findById(lamp, alice)!!.name)
+    }
+
+    @Test
+    fun `a queued local wishlist or wish change wins over the backend's row`() = runTest {
+        val (list, lamp) = syncedWishlistWithWish(version = 1)
+        wishlists.renameWishlist(list, "Local name")
+        wishlists.updateWish(lamp, WishDetails("Local lamp", null, null, null))
+        backend.seed(list, alice, 2, UUID.randomUUID(), RemoteWishlistFields(null, "Remote name", null))
+        backend.seed(lamp, alice, 2, UUID.randomUUID(), wishFields(list).copy(name = "Remote lamp"))
+
+        assertEquals(applied(skippedQueued = 2), pull())
+
+        assertEquals("Local name", database.wishlistDao().findById(list, alice)!!.name)
+        assertEquals("Local lamp", database.wishDao().findById(lamp, alice)!!.name)
+    }
+
+    @Test
+    fun `a backend wish of a wishlist Room will not have fails the pull and applies nothing`() = runTest {
+        val anna = remotePerson("Anna")
+        val list = UUID.randomUUID()
+        backend.seed(UUID.randomUUID(), alice, 1, UUID.randomUUID(), wishFields(list))
+
+        assertNothingApplied(anna)
+    }
+
+    @Test
+    fun `a backend wishlist of a person Room will not have fails the pull and applies nothing`() = runTest {
+        val anna = remotePerson("Anna")
+        remoteWishlist(person = UUID.randomUUID())
+
+        assertNothingApplied(anna)
+    }
+
+    @Test
+    fun `a backend row that moves a wish to another wishlist, or a wishlist to another person, fails the pull`() = runTest {
+        val (list, lamp) = syncedWishlistWithWish(version = 1)
+        val other = remoteWishlist(person = null)
+        backend.seed(lamp, alice, 2, UUID.randomUUID(), wishFields(other))
+        val anna = remotePerson("Anna")
+
+        assertNothingApplied(anna)
+
+        backend.seed(lamp, alice, 1, UUID.randomUUID(), wishFields(list))
+        backend.seed(list, alice, 2, UUID.randomUUID(), RemoteWishlistFields(anna, "Birthday", null))
+
+        assertNothingApplied(anna)
+        assertNull(database.wishlistDao().findById(list, alice)!!.personId)
+    }
+
+    @Test
+    fun `another account's wishlist rows are never pulled`() = runTest {
+        backend.seed(UUID.randomUUID(), bob, 1, UUID.randomUUID(), RemoteWishlistFields(null, "Bob's", null))
+
+        assertEquals(applied(), pull())
+
+        assertTrue(database.wishlistDao().observeActive(bob).first().isEmpty())
     }
 
     @Test
@@ -482,7 +584,7 @@ class SyncPullerTest {
 
         assertEquals(PullResult.Failed(RemoteFailure.NETWORK), pull())
 
-        assertEquals(listOf("gifts", "gift_ideas"), backend.fetches)
+        assertEquals(listOf("wishes", "wishlists", "gifts", "gift_ideas"), backend.fetches)
         assertNull(personDao.findById(anna, alice))
     }
 
@@ -537,7 +639,7 @@ class SyncPullerTest {
             override suspend fun insert(gift: GiftEntity) = throw IllegalStateException("disk full")
         }
         val puller = SyncPuller(
-            database, backend, operations, personDao, database.occasionDao(), database.giftIdeaDao(), failingGifts, activeOwner,
+            database, backend, operations, personDao, database.occasionDao(), database.giftIdeaDao(), failingGifts, database.wishlistDao(), database.wishDao(), activeOwner,
         )
 
         val failure = runCatching { puller.pull(alicesAccount) }.exceptionOrNull()
@@ -628,6 +730,31 @@ class SyncPullerTest {
         backend.seed(it, alice, 1, UUID.randomUUID(), giftFields(recipient).copy(occasionId = occasion, sourceGiftIdeaId = sourceIdea))
     }
 
+    private fun remoteWishlist(person: UUID?, version: Long = 1): UUID = UUID.randomUUID().also {
+        backend.seed(it, alice, version, UUID.randomUUID(), RemoteWishlistFields(person, "Birthday", null))
+    }
+
+    private fun remoteWish(wishlist: UUID, version: Long = 1, deletedAt: Instant? = null): UUID = UUID.randomUUID().also {
+        backend.seed(it, alice, version, UUID.randomUUID(), wishFields(wishlist).copy(deletedAt = deletedAt))
+    }
+
+    private fun wishFields(wishlist: UUID) = RemoteWishFields(wishlist, "Lamp", null, 4990, "EUR", null, null, null)
+
+    /** A wishlist without a person and a wish on it, which Room and the backend both have at [version], with nothing queued. */
+    private suspend fun syncedWishlistWithWish(version: Long): Pair<UUID, UUID> {
+        val list = wishlists.addWishlist(null, "Birthday")
+        val wish = wishlists.addWish(list.id, WishDetails("Lamp", null, null, null))
+        val listEntity = database.wishlistDao().findById(list.id, alice)!!.copy(version = version, remoteState = RemoteState.SYNCED)
+        database.wishlistDao().update(listEntity)
+        val wishEntity = database.wishDao().findById(wish.id, alice)!!.copy(version = version, remoteState = RemoteState.SYNCED)
+        database.wishDao().update(wishEntity)
+        operations.delete(operations.findForEntity(SyncEntityType.WISHLIST, list.id)!!)
+        operations.delete(operations.findForEntity(SyncEntityType.WISH, wish.id)!!)
+        backend.seed(list.id, alice, version, UUID.randomUUID(), listEntity.toRemoteFields())
+        backend.seed(wish.id, alice, version, UUID.randomUUID(), wishEntity.toRemoteFields())
+        return list.id to wish.id
+    }
+
     private fun occasionFields(person: UUID?, day: Int = 12, month: Int = 5) =
         RemoteOccasionFields(person, OccasionType.BIRTHDAY, null, day, month, null, true, null)
 
@@ -663,10 +790,10 @@ class SyncPullerTest {
 
     private fun newPusher() = SyncPusher(
         database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-        database.giftDao(),
+        database.giftDao(), database.wishlistDao(), database.wishDao(),
         SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), database.syncConflictDao(), clock,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), database.syncConflictDao(), clock,
         ),
         backend, backend, clock,
     )

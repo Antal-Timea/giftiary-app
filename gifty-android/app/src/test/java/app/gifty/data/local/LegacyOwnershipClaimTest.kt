@@ -73,7 +73,7 @@ class LegacyOwnershipClaimTest {
             ),
             result,
         )
-        // Only ownerUserId changes; every other column of every table, wishes included, is as before.
+        // Only ownerUserId changes, the wish's too, through its key; every other column is as before.
         assertEquals(before.withOwners(from = setOf(legacy, null), to = accountA), snapshot())
     }
 
@@ -203,7 +203,7 @@ class LegacyOwnershipClaimTest {
 
     /**
      * One owner's rows in every owned table: active, synced (version 3), soft-deleted and archived,
-     * plus a wishlist with a wish, which has no owner of its own.
+     * plus a wishlist with a wish, whose owner follows its wishlist's through the foreign key.
      */
     private suspend fun seedDataset(owner: UUID): Dataset {
         val anna = person(owner, deletedAt = null, remoteState = RemoteState.SYNCED, version = 3)
@@ -228,10 +228,10 @@ class LegacyOwnershipClaimTest {
             created.toEpochMilli(), created.toEpochMilli(),
         )
         execute(
-            "INSERT INTO wish (id, wishlistId, name, note, estimatedPriceAmountMinor, estimatedPriceCurrencyCode, " +
+            "INSERT INTO wish (id, ownerUserId, wishlistId, name, note, estimatedPriceAmountMinor, estimatedPriceCurrencyCode, " +
                 "productUrl, photoPath, version, remoteState, createdAt, updatedAt, deletedAt) VALUES " +
-                "(?, ?, 'Scarf', NULL, 12000, 'HUF', NULL, NULL, 0, 'LOCAL_ONLY', ?, ?, NULL)",
-            UUID.randomUUID().toString(), wishlistId.toString(), created.toEpochMilli(), created.toEpochMilli(),
+                "(?, ?, ?, 'Scarf', NULL, 12000, 'HUF', NULL, NULL, 0, 'LOCAL_ONLY', ?, ?, NULL)",
+            UUID.randomUUID().toString(), owner.toString(), wishlistId.toString(), created.toEpochMilli(), created.toEpochMilli(),
         )
         return Dataset(anna.id, gone.id, deletedOccasion.id, archived.id, deletedIdea.id, gift.id)
     }

@@ -133,16 +133,18 @@ class SyncOperationQueue @Inject constructor(
 }
 
 /**
- * Whether another synced row may point at this entity: occasions and gift ideas at people, ideas
- * and gifts at occasions, gifts at their source idea, wishes at their wishlist. Nothing points at
- * a gift. Wishes are treated as referenced until their sync, with reservations, is designed.
+ * Whether another synced row may point at this entity: occasions, gift ideas and wishlists at
+ * people, ideas and gifts at occasions, gifts at their source idea, wishes at their wishlist.
+ * Nothing synced points at a gift or a wish: reservations will refer only to wishes the backend
+ * already has, never to one it has never seen.
  */
 private fun SyncEntityType.canBeReferenced(): Boolean = when (this) {
     SyncEntityType.PERSON,
     SyncEntityType.OCCASION,
     SyncEntityType.GIFT_IDEA,
     SyncEntityType.WISHLIST,
-    SyncEntityType.WISH,
     -> true
-    SyncEntityType.GIFT -> false
+    SyncEntityType.GIFT,
+    SyncEntityType.WISH,
+    -> false
 }

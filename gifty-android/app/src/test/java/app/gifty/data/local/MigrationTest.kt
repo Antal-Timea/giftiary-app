@@ -3,6 +3,7 @@ package app.gifty.data.local
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
+import android.database.sqlite.SQLiteConstraintException
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.room.testing.MigrationTestHelper
@@ -259,6 +260,75 @@ class MigrationTest {
         }
     }
 
+    // ---- v4 to v5: a wish carries its wishlist's owner ----
+
+    @Test
+    fun `v4 to v5 gives each wish its wishlist's owner and keeps every other value of every row`() = runTest {
+        val before = helper.createDatabase(DB_NAME, 4).use { db ->
+            insertFullGraph(db)
+            ALL_TABLES.associateWith { rows(db, "SELECT * FROM `$it` ORDER BY id") }
+        }
+
+        helper.runMigrationsAndValidate(DB_NAME, 5, true, MIGRATION_4_5).use { db ->
+            ALL_TABLES.forEach { table ->
+                val expected = before.getValue(table).map { row ->
+                    if (table == "wish") row + ("ownerUserId" to WISH_OWNERS.getValue(row["id"] as String)) else row
+                }
+                assertEquals("rows of $table", expected, rows(db, "SELECT * FROM `$table` ORDER BY id"))
+            }
+            assertEquals(
+                mapOf(
+                    "index_wish_ownerUserId" to (listOf("ownerUserId") to false),
+                    "index_wish_wishlistId_ownerUserId" to (listOf("wishlistId", "ownerUserId") to false),
+                ),
+                indexes(db, "wish"),
+            )
+            assertEquals(
+                EXPECTED_INDEXES.getValue("wishlist") + ("index_wishlist_id_ownerUserId" to (listOf("id", "ownerUserId") to true)),
+                indexes(db, "wishlist"),
+            )
+            assertEquals(
+                setOf("wish.wishlistId -> wishlist.id CASCADE/NO ACTION", "wish.ownerUserId -> wishlist.ownerUserId CASCADE/NO ACTION"),
+                foreignKeys(db, "wish").toSet(),
+            )
+            assertNoDeferredForeignKeys(db)
+
+            db.execSQL("PRAGMA foreign_keys = ON")
+            val crossOwner = runCatching {
+                db.insert(
+                    "wish", SQLiteDatabase.CONFLICT_ABORT,
+                    ContentValues().apply {
+                        wish(UUID.randomUUID(), WISHLIST_A).forEach { (column, value) ->
+                            if (value == null) putNull(column) else put(column, value.toString())
+                        }
+                        put("ownerUserId", bob.toString())
+                    },
+                )
+            }.exceptionOrNull()
+            assertTrue("$crossOwner", crossOwner is SQLiteConstraintException)
+        }
+    }
+
+    @Test
+    fun `a v4 wish without its wishlist fails the migration and stays v4`() = runTest {
+        helper.createDatabase(DB_NAME, 4).use { db ->
+            insert(db, "wishlist", wishlist(WISHLIST_A, alice, null))
+            insert(db, "wish", wish(WISH_A, WISHLIST_A))
+            // Only possible with foreign keys off, as on this raw connection.
+            insert(db, "wish", wish(WISH_OWN, UUID.randomUUID()))
+        }
+
+        val failure = runCatching { helper.runMigrationsAndValidate(DB_NAME, 5, true, MIGRATION_4_5) }.exceptionOrNull()
+
+        assertTrue("$failure", failure is IllegalStateException && "1 wishes" in failure.message!!)
+        rawDatabase().use { db ->
+            assertEquals(4, db.version)
+            assertEquals(listOf(WISH_A.toString(), WISH_OWN.toString()), column(db, "SELECT id FROM wish ORDER BY id"))
+            assertTrue("still the v4 table", "ownerUserId" !in tableSql(db, "wish"))
+            assertTrue("no rebuilt table left", column(db, "SELECT name FROM sqlite_master WHERE name LIKE '%\\_new' ESCAPE '\\'").isEmpty())
+        }
+    }
+
     private fun assertNoDeferredForeignKeys(db: SupportSQLiteDatabase) {
         REBUILT_TABLES.forEach { table ->
             val sql = db.query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table)).use {
@@ -439,7 +509,7 @@ class MigrationTest {
 
     private suspend fun withRoom(block: suspend (GiftyDatabase) -> Unit) {
         val room = Room.databaseBuilder(context, GiftyDatabase::class.java, DB_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
         try {
             block(room)
@@ -495,6 +565,11 @@ class MigrationTest {
             "gift.sourceGiftIdeaId -> gift_idea.id NO ACTION/NO ACTION",
             "wishlist.personId -> person.id NO ACTION/NO ACTION",
             "wish.wishlistId -> wishlist.id NO ACTION/NO ACTION",
+        )
+
+        val WISH_OWNERS = mapOf(
+            "60000000-0000-4000-8000-000000000001" to "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "60000000-0000-4000-8000-000000000002" to "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
         )
 
         val PERSON_A: UUID = UUID.fromString("a0000000-0000-4000-8000-000000000001")

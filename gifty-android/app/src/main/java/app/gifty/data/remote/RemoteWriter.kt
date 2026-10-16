@@ -4,6 +4,8 @@ import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import java.util.UUID
 
 /**
@@ -30,6 +32,10 @@ interface RemoteWriter {
     suspend fun insertGiftIdea(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftIdeaFields): Committed
 
     suspend fun insertGift(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteGiftFields): Committed
+
+    suspend fun insertWishlist(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishlistFields): Committed
+
+    suspend fun insertWish(account: RemoteAccount, id: UUID, mutationId: UUID, fields: RemoteWishFields): Committed
 
     suspend fun updatePerson(
         account: RemoteAccount,
@@ -61,6 +67,22 @@ interface RemoteWriter {
         expectedVersion: Long,
         mutationId: UUID,
         fields: RemoteGiftFields,
+    ): UpdateOutcome
+
+    suspend fun updateWishlist(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteWishlistFields,
+    ): UpdateOutcome
+
+    suspend fun updateWish(
+        account: RemoteAccount,
+        id: UUID,
+        expectedVersion: Long,
+        mutationId: UUID,
+        fields: RemoteWishFields,
     ): UpdateOutcome
 }
 

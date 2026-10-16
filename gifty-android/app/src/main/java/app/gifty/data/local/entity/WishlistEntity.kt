@@ -17,7 +17,8 @@ import java.util.UUID
             onDelete = ForeignKey.NO_ACTION,
         ),
     ],
-    indices = [Index("ownerUserId"), Index("personId")],
+    // (id, ownerUserId) is the target of the wishes' same-owner foreign key.
+    indices = [Index("ownerUserId"), Index("personId"), Index(value = ["id", "ownerUserId"], unique = true)],
 )
 data class WishlistEntity(
     @PrimaryKey val id: UUID,

@@ -4,10 +4,14 @@ import app.gifty.data.local.entity.GiftEntity
 import app.gifty.data.local.entity.GiftIdeaEntity
 import app.gifty.data.local.entity.OccasionEntity
 import app.gifty.data.local.entity.PersonEntity
+import app.gifty.data.local.entity.WishEntity
+import app.gifty.data.local.entity.WishlistEntity
 import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemoteOccasionFields
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlistFields
 
 // A local row's whole client-decided state, as written to the backend: every business column, the
 // tombstone and the archive marker. Owner, version and timestamps are never part of it.
@@ -60,5 +64,22 @@ fun GiftEntity.toRemoteFields() = RemoteGiftFields(
     photoPath = photoPath,
     productUrl = productUrl,
     note = note,
+    deletedAt = deletedAt,
+)
+
+fun WishlistEntity.toRemoteFields() = RemoteWishlistFields(
+    personId = personId,
+    name = name,
+    deletedAt = deletedAt,
+)
+
+fun WishEntity.toRemoteFields() = RemoteWishFields(
+    wishlistId = wishlistId,
+    name = name,
+    note = note,
+    estimatedPriceAmountMinor = estimatedPriceAmountMinor,
+    estimatedPriceCurrencyCode = estimatedPriceCurrencyCode,
+    productUrl = productUrl,
+    photoPath = photoPath,
     deletedAt = deletedAt,
 )

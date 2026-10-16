@@ -16,18 +16,23 @@ import app.gifty.data.remote.RemoteTestData.token
 import app.gifty.data.remote.dto.RemoteGiftFields
 import app.gifty.data.remote.dto.RemoteGiftIdeaFields
 import app.gifty.data.remote.dto.RemotePersonFields
+import app.gifty.data.remote.dto.RemoteWishFields
+import app.gifty.data.remote.dto.RemoteWishlistFields
 import app.gifty.data.remote.toRemoteFields
 import app.gifty.data.repository.GiftIdeaRepositoryImpl
 import app.gifty.data.repository.GiftRepositoryImpl
 import app.gifty.data.repository.OccasionRepositoryImpl
 import app.gifty.data.repository.PersonRepositoryImpl
+import app.gifty.data.repository.WishlistRepositoryImpl
 import app.gifty.data.sync.FakeBackend.Behavior
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
+import app.gifty.domain.model.Money
 import app.gifty.domain.model.OccasionType
 import app.gifty.domain.repository.GiftIdeaAlreadyGivenException
 import app.gifty.domain.repository.GiftIdeaDetails
 import app.gifty.domain.repository.OccasionDetails
+import app.gifty.domain.repository.WishDetails
 import app.gifty.testing.FakeActiveOwner
 import app.gifty.testing.MutableClock
 import kotlinx.coroutines.CancellationException
@@ -68,6 +73,7 @@ class SyncRunnerTest {
     private lateinit var occasions: OccasionRepositoryImpl
     private lateinit var ideas: GiftIdeaRepositoryImpl
     private lateinit var gifts: GiftRepositoryImpl
+    private lateinit var wishlists: WishlistRepositoryImpl
 
     private val operations get() = database.syncOperationDao()
 
@@ -86,6 +92,9 @@ class SyncRunnerTest {
         )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
+        )
+        wishlists = WishlistRepositoryImpl(
+            database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
         )
         backend = FakeBackend(database)
         runner = newRunner()
@@ -282,28 +291,108 @@ class SyncRunnerTest {
         assertEquals(BlockReason.REJECTED.name, pending(SyncEntityType.PERSON, anna.id).blockedReason)
     }
 
+    // ---- wishlists and wishes ----
+
     @Test
-    fun `wishlist and wish operations are outside sync and left alone`() = runTest {
-        // Nothing in the app queues them yet; inserted directly to pin that the runner ignores them.
-        listOf(SyncEntityType.WISHLIST, SyncEntityType.WISH).forEach { type ->
-            operations.insert(
-                SyncOperationEntity(
-                    id = UUID.randomUUID(), ownerUserId = alice, entityType = type, entityId = UUID.randomUUID(),
-                    operation = SyncOperation.CREATE, mutationId = UUID.randomUUID(), inFlightMutationId = null,
-                    blockedReason = null, createdAt = clock.instant, attemptCount = 0, lastAttemptAt = null,
-                    lastErrorCode = null,
-                ),
-            )
-        }
+    fun `wishlists and wishes sync after the other four types, each after its parent`() = runTest {
         val anna = addPerson("Anna", null)
+        val list = wishlists.addWishlist(anna.id, "Birthday")
+        val lamp = wishlists.addWish(list.id, wishDetails("Lamp"))
+        // Queued after the wishlist and its wish, sent before them.
+        val bela = addPerson("Béla", null)
+        val idea = ideas.addGiftIdea(ideaFor(bela.id))
 
         val result = runner.run(alicesAccount)
 
-        assertEquals("only the person", 1, result.pushed)
-        assertEquals(listOf(anna.id), backend.writes.map { it.entityId })
+        assertEquals(listOf(anna.id, bela.id, idea.id, list.id, lamp.id), backend.writes.map { it.entityId })
+        assertEquals(5, result.settled)
         assertFalse(result.workRemains)
-        assertFalse(result.needsAttention)
-        assertEquals(2, operations.getAllForOwner(alice).count { it.entityType in setOf(SyncEntityType.WISHLIST, SyncEntityType.WISH) })
+        assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.WISHLIST, list.id))
+        assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.WISH, lamp.id))
+        assertEquals(alice, backend.rows.getValue(lamp.id).owner)
+    }
+
+    @Test
+    fun `a wishlist waits for its person and a wish for its wishlist, holding back only their own branch`() = runTest {
+        val anna = addPerson("Anna", null)
+        val annasList = wishlists.addWishlist(anna.id, "Birthday")
+        val annasWish = wishlists.addWish(annasList.id, wishDetails("Lamp"))
+        val ownList = wishlists.addWishlist(null, "Mine")
+        val ownWish = wishlists.addWish(ownList.id, wishDetails("Mug"))
+        backend.script += Behavior.Fail(RemoteFailure.SERVER)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(listOf(anna.id, ownList.id, ownWish.id), backend.writes.map { it.entityId })
+        assertTrue(result.workRemains)
+        assertEquals(RemoteState.LOCAL_ONLY, remoteStateOf(SyncEntityType.WISHLIST, annasList.id))
+        assertNull(pending(SyncEntityType.WISHLIST, annasList.id).inFlightMutationId)
+        assertNull(pending(SyncEntityType.WISH, annasWish.id).inFlightMutationId)
+    }
+
+    @Test
+    fun `a deleted local-only wishlist reaches the backend as a tombstone, and its forgotten wish never does`() = runTest {
+        val list = wishlists.addWishlist(null, "Mine")
+        val lamp = wishlists.addWish(list.id, wishDetails("Lamp"))
+        wishlists.deleteWishlist(list.id)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(listOf(list.id), backend.writes.map { it.entityId })
+        assertNotNull((backend.rows.getValue(list.id).fields as RemoteWishlistFields).deletedAt)
+        assertFalse(lamp.id in backend.rows)
+        assertFalse(result.workRemains)
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+    }
+
+    @Test
+    fun `edits of a synced wishlist and wish are compare-and-set updates from their versions`() = runTest {
+        val (list, lamp) = syncedWishlistWithWish(version = 2)
+        wishlists.renameWishlist(list, "Name day")
+        wishlists.updateWish(lamp, wishDetails("Brass lamp"))
+
+        runner.run(alicesAccount)
+
+        assertEquals(listOf(list to 2L, lamp to 2L), backend.writes.map { it.entityId to it.expectedVersion })
+        assertEquals(3L, database.wishlistDao().findById(list, alice)!!.version)
+        assertEquals(3L, database.wishDao().findById(lamp, alice)!!.version)
+        assertEquals("Name day", (backend.rows.getValue(list).fields as RemoteWishlistFields).name)
+        assertEquals("Brass lamp", (backend.rows.getValue(lamp).fields as RemoteWishFields).name)
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+    }
+
+    @Test
+    fun `a wish whose create answer was lost is settled from the ledger, not created twice`() = runTest {
+        val list = wishlists.addWishlist(null, "Mine")
+        val lamp = wishlists.addWish(list.id, wishDetails("Lamp"))
+        backend.script += listOf(Behavior.Normal, Behavior.LoseResponse)
+
+        val result = runner.run(alicesAccount)
+
+        assertEquals(2, result.settled)
+        assertEquals(RemoteState.SYNCED, remoteStateOf(SyncEntityType.WISH, lamp.id))
+        assertEquals(1L, database.wishDao().findById(lamp.id, alice)!!.version)
+        assertEquals(1, backend.ledger.values.count { it.entityId == lamp.id })
+        assertTrue(operations.getAllForOwner(alice).isEmpty())
+    }
+
+    @Test
+    fun `wishlist and wish edits that lost to another device are kept as conflicts, and the backend's rows win on pull`() = runTest {
+        val (list, lamp) = syncedWishlistWithWish(version = 3)
+        wishlists.renameWishlist(list, "Mine")
+        wishlists.updateWish(lamp, wishDetails("My lamp"))
+        movedOnRemotely(list, version = 4) { (it as RemoteWishlistFields).copy(name = "Theirs") }
+        movedOnRemotely(lamp, version = 5) { (it as RemoteWishFields).copy(name = "Their lamp") }
+
+        assertEquals(2, runner.run(alicesAccount).conflictsSettled)
+        newPuller().pull(alicesAccount)
+
+        assertEquals("Theirs", wishlists.getWishlist(list)?.name)
+        assertEquals("Their lamp", wishlists.getWish(lamp)?.name)
+        assertEquals(4L, database.wishlistDao().findById(list, alice)!!.version)
+        assertEquals(5L, database.wishDao().findById(lamp, alice)!!.version)
+        assertEquals(setOf(SyncEntityType.WISHLIST, SyncEntityType.WISH), conflicts().map { it.entityType }.toSet())
+        assertTrue(conflicts().any { "\"name\":\"My lamp\"" in it.localSnapshotJson })
     }
 
     // ---- mark as given ----
@@ -896,17 +985,17 @@ class SyncRunnerTest {
 
     private fun newPusher() = SyncPusher(
         database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-        database.giftDao(),
+        database.giftDao(), database.wishlistDao(), database.wishDao(),
         SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), database.syncConflictDao(), clock,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), database.syncConflictDao(), clock,
         ),
         backend, backend, clock,
     )
 
     private fun newPuller() = SyncPuller(
         database, backend, database.syncOperationDao(), database.personDao(), database.occasionDao(),
-        database.giftIdeaDao(), database.giftDao(), activeOwner,
+        database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao(), activeOwner,
     )
 
     private suspend fun conflicts(): List<SyncConflictEntity> = database.syncConflictDao().observeUnseen(alice).first()
@@ -922,7 +1011,7 @@ class SyncRunnerTest {
 
     private fun newRunner() = SyncRunner(
         database.syncOperationDao(),
-        SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao()),
+        SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),
         newPusher(),
         activeOwner,
     )
@@ -946,7 +1035,8 @@ class SyncRunnerTest {
         SyncEntityType.OCCASION -> database.occasionDao().findById(id, alice)!!.remoteState
         SyncEntityType.GIFT_IDEA -> database.giftIdeaDao().findById(id, alice)!!.remoteState
         SyncEntityType.GIFT -> database.giftDao().findById(id, alice)!!.remoteState
-        else -> error("Not synced: $type")
+        SyncEntityType.WISHLIST -> database.wishlistDao().findById(id, alice)!!.remoteState
+        SyncEntityType.WISH -> database.wishDao().findById(id, alice)!!.remoteState
     }
 
     /** A person the backend already has at [version], with nothing pending locally. */
@@ -970,6 +1060,23 @@ class SyncRunnerTest {
         backend.seed(idea.id, alice, 1, UUID.randomUUID(), entity.toRemoteFields())
         return idea.id
     }
+
+    /** A wishlist without a person and a wish on it, both on the backend at [version], with nothing pending locally. */
+    private suspend fun syncedWishlistWithWish(version: Long): Pair<UUID, UUID> {
+        val list = wishlists.addWishlist(null, "Birthday")
+        val wish = wishlists.addWish(list.id, wishDetails("Lamp"))
+        val listEntity = database.wishlistDao().findById(list.id, alice)!!.copy(version = version, remoteState = RemoteState.SYNCED)
+        database.wishlistDao().update(listEntity)
+        val wishEntity = database.wishDao().findById(wish.id, alice)!!.copy(version = version, remoteState = RemoteState.SYNCED)
+        database.wishDao().update(wishEntity)
+        operations.delete(pending(SyncEntityType.WISHLIST, list.id))
+        operations.delete(pending(SyncEntityType.WISH, wish.id))
+        backend.seed(list.id, alice, version, UUID.randomUUID(), listEntity.toRemoteFields())
+        backend.seed(wish.id, alice, version, UUID.randomUUID(), wishEntity.toRemoteFields())
+        return list.id to wish.id
+    }
+
+    private fun wishDetails(name: String) = WishDetails(name, note = null, estimatedPrice = Money(4990, "EUR"), productUrl = null)
 
     private fun ideaFor(personId: UUID) = GiftIdeaDetails(
         recipientPersonId = personId, occasionId = null, name = "Scarf", status = GiftIdeaStatus.PURCHASED,

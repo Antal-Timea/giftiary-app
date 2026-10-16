@@ -265,7 +265,7 @@ class SyncOperationQueueTest {
 
     @Test
     fun `deleting a local-only entity that others may reference keeps its create as a tombstone`() = runTest {
-        listOf(SyncEntityType.PERSON, SyncEntityType.OCCASION, SyncEntityType.GIFT_IDEA).forEach { entityType ->
+        listOf(SyncEntityType.PERSON, SyncEntityType.OCCASION, SyncEntityType.GIFT_IDEA, SyncEntityType.WISHLIST).forEach { entityType ->
             val entityId = UUID.randomUUID()
             queue.enqueue(alice, entityType, entityId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
             val create = pending(entityType, entityId)
@@ -279,13 +279,15 @@ class SyncOperationQueueTest {
     }
 
     @Test
-    fun `deleting a local-only gift removes its pending create, since nothing references a gift`() = runTest {
-        val giftId = UUID.randomUUID()
-        queue.enqueue(alice, SyncEntityType.GIFT, giftId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
+    fun `deleting a local-only gift or wish removes its pending create, since nothing references either`() = runTest {
+        listOf(SyncEntityType.GIFT, SyncEntityType.WISH).forEach { entityType ->
+            val entityId = UUID.randomUUID()
+            queue.enqueue(alice, entityType, entityId, SyncOperation.CREATE, RemoteState.LOCAL_ONLY)
 
-        queue.enqueue(alice, SyncEntityType.GIFT, giftId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
+            queue.enqueue(alice, entityType, entityId, SyncOperation.DELETE, RemoteState.LOCAL_ONLY)
 
-        assertNull(dao.findForEntity(SyncEntityType.GIFT, giftId))
+            assertNull("$entityType", dao.findForEntity(entityType, entityId))
+        }
     }
 
     // ---- owners ----

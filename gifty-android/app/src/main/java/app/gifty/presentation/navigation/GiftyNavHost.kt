@@ -169,7 +169,7 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
         composable<SyncAttentionRoute> {
             SyncAttentionScreen(
                 onBack = navController.popBackStackUnlessPaused(),
-                onOpen = { item -> navController.navigate(routeOf(item)) },
+                onOpen = { item -> routeOf(item)?.let { navController.navigate(it) } },
             )
         }
         composable<PeopleRoute> {
@@ -357,12 +357,16 @@ fun GiftyNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** The existing screen of an item that needs attention: its detail screen, or the editor for an occasion. */
-private fun routeOf(item: SyncItem): Any = when (item.type) {
+/**
+ * The existing screen of an item that needs attention: its detail screen, or the editor for an
+ * occasion. Wishlists and wishes have no screen yet, so they are never offered for opening.
+ */
+private fun routeOf(item: SyncItem): Any? = when (item.type) {
     SyncItemType.PERSON -> PersonDetailRoute(item.id.toString())
     SyncItemType.OCCASION -> EditOccasionRoute(item.id.toString())
     SyncItemType.GIFT_IDEA -> GiftIdeaDetailRoute(item.id.toString())
     SyncItemType.GIFT -> GiftDetailRoute(item.id.toString())
+    SyncItemType.WISHLIST, SyncItemType.WISH -> null
 }
 
 private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()

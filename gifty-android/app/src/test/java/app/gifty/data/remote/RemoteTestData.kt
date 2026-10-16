@@ -104,6 +104,39 @@ object RemoteTestData {
         ) + overrides,
     )
 
+    fun wishlist(id: UUID, owner: UUID, overrides: Map<String, Any?> = emptyMap()): JsonObject = row(
+        mapOf(
+            "id" to id.toString(),
+            "owner_user_id" to owner.toString(),
+            "person_id" to "a0000000-0000-4000-8000-00000000000a",
+            "name" to "Birthday",
+            "version" to 2L,
+            "created_at" to "2026-10-01T10:00:00+00:00",
+            "updated_at" to "2026-10-02T10:00:00.250+00:00",
+            "deleted_at" to null,
+            "last_mutation_id" to "c0000000-0000-4000-8000-000000000006",
+        ) + overrides,
+    )
+
+    fun wish(id: UUID, owner: UUID, overrides: Map<String, Any?> = emptyMap()): JsonObject = row(
+        mapOf(
+            "id" to id.toString(),
+            "owner_user_id" to owner.toString(),
+            "wishlist_id" to "70000000-0000-4000-8000-000000000007",
+            "name" to "Lamp",
+            "note" to "Brass",
+            "estimated_price_amount_minor" to 9007199254740993L,
+            "estimated_price_currency_code" to "HUF",
+            "product_url" to "https://example.com/lamp",
+            "photo_path" to "users/$owner/wishes/$id/photo.jpg",
+            "version" to 5L,
+            "created_at" to "2026-10-01T10:00:00+00:00",
+            "updated_at" to "2026-10-05T12:00:00+02:00",
+            "deleted_at" to "2026-10-05T12:00:00+02:00",
+            "last_mutation_id" to "c0000000-0000-4000-8000-000000000007",
+        ) + overrides,
+    )
+
     fun mutation(mutationId: UUID, owner: UUID): JsonObject = row(
         mapOf(
             "mutation_id" to mutationId.toString(),

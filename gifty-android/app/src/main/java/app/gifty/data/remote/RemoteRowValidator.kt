@@ -5,6 +5,8 @@ import app.gifty.data.remote.dto.RemoteGiftIdea
 import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemoteRow
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import app.gifty.domain.model.Occasion
 import java.util.UUID
 
@@ -36,6 +38,25 @@ object RemoteRowValidator {
     fun validate(gift: RemoteGift) {
         requireVersion(gift)
         requireMoney(gift.priceAmountMinor, gift.priceCurrencyCode)
+    }
+
+    fun validate(wishlist: RemoteWishlist) {
+        requireVersion(wishlist)
+    }
+
+    fun validate(wish: RemoteWish) {
+        requireVersion(wish)
+        requireMoney(wish.estimatedPriceAmountMinor, wish.estimatedPriceCurrencyCode)
+    }
+
+    /** A wishlist's person never changes in the app, so a backend row that moved it is not applied. */
+    fun requireSamePerson(wishlist: RemoteWishlist, localPersonId: UUID?) {
+        require(wishlist.personId == localPersonId)
+    }
+
+    /** A wish stays on its wishlist in the app, so a backend row that moved it is not applied. */
+    fun requireSameWishlist(wish: RemoteWish, localWishlistId: UUID) {
+        require(wish.wishlistId == localWishlistId)
     }
 
     /** An occasion's person never changes in the app, so a backend row that moved it is not applied. */

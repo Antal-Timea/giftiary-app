@@ -274,5 +274,7 @@
     <string name="sync_item_occasion">Alkalom</string>
     <string name="sync_item_gift_idea">Ajándékötlet</string>
     <string name="sync_item_gift">Ajándék</string>
+    <string name="sync_item_wishlist">Kívánságlista</string>
+    <string name="sync_item_wish">Kívánság</string>
     <string name="sync_item_unnamed">Névtelen elem</string>
 </resources>

@@ -96,11 +96,11 @@ class SyncPusherTest {
         backend = FakeBackend(database)
         val reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), database.syncConflictDao(), clock,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), database.syncConflictDao(), clock,
         )
         pusher = SyncPusher(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), reconciler, backend, backend, clock,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), reconciler, backend, backend, clock,
         )
     }
 

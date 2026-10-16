@@ -8,6 +8,8 @@ import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.sync.BlockReason
 import app.gifty.data.user.ActiveOwner
@@ -35,6 +37,8 @@ class SyncStatusRepositoryImpl @Inject constructor(
     private val occasions: OccasionDao,
     private val giftIdeas: GiftIdeaDao,
     private val gifts: GiftDao,
+    private val wishlists: WishlistDao,
+    private val wishes: WishDao,
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
 ) : SyncStatusRepository {
@@ -92,11 +96,13 @@ class SyncStatusRepositoryImpl @Inject constructor(
         SyncEntityType.GIFT -> gifts.findById(id, owner).let {
             SyncItem(SyncItemType.GIFT, id, it?.name) to (it != null && it.deletedAt == null)
         }
-        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$type is not synced")
+        // No screen shows wishlists or wishes yet, so they are never offered for opening.
+        SyncEntityType.WISHLIST -> SyncItem(SyncItemType.WISHLIST, id, wishlists.findById(id, owner)?.name) to false
+        SyncEntityType.WISH -> SyncItem(SyncItemType.WISH, id, wishes.findById(id, owner)?.name) to false
     }
 
     private companion object {
-        val SHOWN_TYPES = setOf(SyncEntityType.PERSON, SyncEntityType.OCCASION, SyncEntityType.GIFT_IDEA, SyncEntityType.GIFT)
-        val TABLES = arrayOf("sync_operation", "sync_conflict", "person", "occasion", "gift_idea", "gift")
+        val SHOWN_TYPES = SyncEntityType.entries.toSet()
+        val TABLES = arrayOf("sync_operation", "sync_conflict", "person", "occasion", "gift_idea", "gift", "wishlist", "wish")
     }
 }

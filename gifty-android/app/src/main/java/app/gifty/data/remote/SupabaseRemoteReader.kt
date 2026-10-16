@@ -6,6 +6,8 @@ import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemoteRow
 import app.gifty.data.remote.dto.RemoteSyncMutation
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import java.util.UUID
@@ -38,6 +40,10 @@ class SupabaseRemoteReader(
 
     override suspend fun fetchGifts(account: RemoteAccount): List<RemoteGift> = fetchAll(account, "gifts")
 
+    override suspend fun fetchWishlists(account: RemoteAccount): List<RemoteWishlist> = fetchAll(account, "wishlists")
+
+    override suspend fun fetchWishes(account: RemoteAccount): List<RemoteWish> = fetchAll(account, "wishes")
+
     override suspend fun findPerson(account: RemoteAccount, id: UUID): RemotePerson? = findRow(account, "people", id)
 
     override suspend fun findOccasion(account: RemoteAccount, id: UUID): RemoteOccasion? = findRow(account, "occasions", id)
@@ -45,6 +51,10 @@ class SupabaseRemoteReader(
     override suspend fun findGiftIdea(account: RemoteAccount, id: UUID): RemoteGiftIdea? = findRow(account, "gift_ideas", id)
 
     override suspend fun findGift(account: RemoteAccount, id: UUID): RemoteGift? = findRow(account, "gifts", id)
+
+    override suspend fun findWishlist(account: RemoteAccount, id: UUID): RemoteWishlist? = findRow(account, "wishlists", id)
+
+    override suspend fun findWish(account: RemoteAccount, id: UUID): RemoteWish? = findRow(account, "wishes", id)
 
     override suspend fun findGiftBySourceIdea(account: RemoteAccount, giftIdeaId: UUID): RemoteGift? {
         val rows = clients.call(account) { client ->

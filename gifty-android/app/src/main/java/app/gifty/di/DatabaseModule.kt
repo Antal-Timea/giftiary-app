@@ -6,6 +6,7 @@ import app.gifty.data.local.GiftyDatabase
 import app.gifty.data.local.MIGRATION_1_2
 import app.gifty.data.local.MIGRATION_2_3
 import app.gifty.data.local.MIGRATION_3_4
+import app.gifty.data.local.MIGRATION_4_5
 import app.gifty.data.local.dao.GiftDao
 import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.LegacyOwnershipDao
@@ -13,6 +14,8 @@ import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncConflictDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +31,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GiftyDatabase =
         Room.databaseBuilder(context, GiftyDatabase::class.java, GiftyDatabase.NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides
@@ -51,4 +54,10 @@ object DatabaseModule {
 
     @Provides
     fun provideLegacyOwnershipDao(database: GiftyDatabase): LegacyOwnershipDao = database.legacyOwnershipDao()
+
+    @Provides
+    fun provideWishlistDao(database: GiftyDatabase): WishlistDao = database.wishlistDao()
+
+    @Provides
+    fun provideWishDao(database: GiftyDatabase): WishDao = database.wishDao()
 }

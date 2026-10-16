@@ -183,6 +183,8 @@ private fun syncItemTypeLabel(type: SyncItemType): String = stringResource(
         SyncItemType.OCCASION -> R.string.sync_item_occasion
         SyncItemType.GIFT_IDEA -> R.string.sync_item_gift_idea
         SyncItemType.GIFT -> R.string.sync_item_gift
+        SyncItemType.WISHLIST -> R.string.sync_item_wishlist
+        SyncItemType.WISH -> R.string.sync_item_wish
     },
 )
 

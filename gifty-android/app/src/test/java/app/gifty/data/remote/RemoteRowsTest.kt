@@ -7,6 +7,8 @@ import app.gifty.data.remote.dto.RemoteGiftIdea
 import app.gifty.data.remote.dto.RemoteOccasion
 import app.gifty.data.remote.dto.RemotePerson
 import app.gifty.data.remote.dto.RemoteSyncMutation
+import app.gifty.data.remote.dto.RemoteWish
+import app.gifty.data.remote.dto.RemoteWishlist
 import app.gifty.domain.model.GiftDirection
 import app.gifty.domain.model.GiftIdeaStatus
 import app.gifty.domain.model.OccasionType
@@ -134,6 +136,39 @@ class RemoteRowsTest {
         assertEquals(UUID.fromString("d0000000-0000-4000-8000-00000000000d"), entity.sourceGiftIdeaId)
         assertNull(entity.giverPersonId)
         assertEquals(RemoteState.SYNCED, entity.remoteState)
+    }
+
+    @Test
+    fun `a wishlist keeps its person and name, and maps to a synced Room row of its owner`() {
+        val wishlist = json.decodeFromJsonElement(RemoteWishlist.serializer(), RemoteTestData.wishlist(id, alice))
+
+        assertEquals(UUID.fromString("a0000000-0000-4000-8000-00000000000a"), wishlist.personId)
+        assertEquals("Birthday", wishlist.name)
+        assertEquals(UUID.fromString("c0000000-0000-4000-8000-000000000006"), wishlist.lastMutationId)
+        val entity = wishlist.toEntity()
+        assertEquals(alice, entity.ownerUserId)
+        assertEquals(2L, entity.version)
+        assertEquals(RemoteState.SYNCED, entity.remoteState)
+        assertEquals(Instant.parse("2026-10-02T10:00:00.250Z"), entity.updatedAt)
+        assertNull(json.decodeFromJsonElement(RemoteWishlist.serializer(), RemoteTestData.wishlist(id, alice, mapOf("person_id" to null))).personId)
+    }
+
+    @Test
+    fun `a wish keeps every value, its tombstone and an amount beyond double precision, and its owner is the row's`() {
+        val wish = json.decodeFromJsonElement(RemoteWish.serializer(), RemoteTestData.wish(id, alice))
+
+        val entity = wish.toEntity()
+        assertEquals(alice, entity.ownerUserId)
+        assertEquals(UUID.fromString("70000000-0000-4000-8000-000000000007"), entity.wishlistId)
+        assertEquals("Lamp", entity.name)
+        assertEquals("Brass", entity.note)
+        assertEquals(9007199254740993L, entity.estimatedPriceAmountMinor)
+        assertEquals("HUF", entity.estimatedPriceCurrencyCode)
+        assertEquals("https://example.com/lamp", entity.productUrl)
+        assertEquals("users/$alice/wishes/$id/photo.jpg", entity.photoPath)
+        assertEquals(5L, entity.version)
+        assertEquals(RemoteState.SYNCED, entity.remoteState)
+        assertEquals(Instant.parse("2026-10-05T10:00:00Z"), entity.deletedAt)
     }
 
     @Test

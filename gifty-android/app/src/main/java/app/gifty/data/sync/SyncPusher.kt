@@ -9,6 +9,8 @@ import app.gifty.data.local.dao.GiftIdeaDao
 import app.gifty.data.local.dao.OccasionDao
 import app.gifty.data.local.dao.PersonDao
 import app.gifty.data.local.dao.SyncOperationDao
+import app.gifty.data.local.dao.WishDao
+import app.gifty.data.local.dao.WishlistDao
 import app.gifty.data.local.entity.RemoteState
 import app.gifty.data.local.entity.SyncEntityType
 import app.gifty.data.remote.Committed
@@ -73,6 +75,8 @@ class SyncPusher @Inject constructor(
     private val occasions: OccasionDao,
     private val giftIdeas: GiftIdeaDao,
     private val gifts: GiftDao,
+    private val wishlists: WishlistDao,
+    private val wishes: WishDao,
     private val reconciler: SyncReconciler,
     private val reader: RemoteReader,
     private val writer: RemoteWriter,
@@ -385,7 +389,26 @@ class SyncPusher @Inject constructor(
                 }
             }
         }
-        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$type is not synced")
+        SyncEntityType.WISHLIST -> checkNotNull(wishlists.findById(id, ownerUserId)) { "No wishlist $id" }.let { entity ->
+            val fields = entity.toRemoteFields()
+            Local(entity.remoteState, entity.version) { account, mutationId ->
+                if (entity.remoteState == RemoteState.LOCAL_ONLY) {
+                    writer.insertWishlist(account, id, mutationId, fields)
+                } else {
+                    writer.updateWishlist(account, id, entity.version, mutationId, fields)
+                }
+            }
+        }
+        SyncEntityType.WISH -> checkNotNull(wishes.findById(id, ownerUserId)) { "No wish $id" }.let { entity ->
+            val fields = entity.toRemoteFields()
+            Local(entity.remoteState, entity.version) { account, mutationId ->
+                if (entity.remoteState == RemoteState.LOCAL_ONLY) {
+                    writer.insertWish(account, id, mutationId, fields)
+                } else {
+                    writer.updateWish(account, id, entity.version, mutationId, fields)
+                }
+            }
+        }
     }
 
     /** The backend table, as the ledger names it. */
@@ -394,7 +417,8 @@ class SyncPusher @Inject constructor(
         SyncEntityType.OCCASION -> "occasions"
         SyncEntityType.GIFT_IDEA -> "gift_ideas"
         SyncEntityType.GIFT -> "gifts"
-        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("$this is not synced")
+        SyncEntityType.WISHLIST -> "wishlists"
+        SyncEntityType.WISH -> "wishes"
     }
 
     private suspend fun remoteRow(account: RemoteAccount, mutation: InFlight): RemoteRow? = when (mutation.entityType) {
@@ -402,6 +426,7 @@ class SyncPusher @Inject constructor(
         SyncEntityType.OCCASION -> reader.findOccasion(account, mutation.entityId)
         SyncEntityType.GIFT_IDEA -> reader.findGiftIdea(account, mutation.entityId)
         SyncEntityType.GIFT -> reader.findGift(account, mutation.entityId)
-        SyncEntityType.WISHLIST, SyncEntityType.WISH -> throw IllegalArgumentException("${mutation.entityType} is not synced")
+        SyncEntityType.WISHLIST -> reader.findWishlist(account, mutation.entityId)
+        SyncEntityType.WISH -> reader.findWish(account, mutation.entityId)
     }
 }

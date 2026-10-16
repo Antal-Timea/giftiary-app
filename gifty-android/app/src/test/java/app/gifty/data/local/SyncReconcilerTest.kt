@@ -81,7 +81,7 @@ class SyncReconcilerTest {
         )
         reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),
-            database.giftDao(), database.syncConflictDao(), clock,
+            database.giftDao(), database.wishlistDao(), database.wishDao(), database.syncConflictDao(), clock,
         )
         anna = people.addPerson("Anna", "Sister")
         markKnownToBackend(SyncEntityType.PERSON, anna.id, version = 1)

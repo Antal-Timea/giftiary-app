@@ -146,7 +146,15 @@ class SyncRunner @Inject constructor(
     companion object {
         const val MAX_PUSHES = 100
 
-        private val TYPE_ORDER = listOf(SyncEntityType.PERSON, SyncEntityType.OCCASION, SyncEntityType.GIFT_IDEA, SyncEntityType.GIFT)
+        // Parents before children: the backend's foreign keys need each referenced row first.
+        private val TYPE_ORDER = listOf(
+            SyncEntityType.PERSON,
+            SyncEntityType.OCCASION,
+            SyncEntityType.GIFT_IDEA,
+            SyncEntityType.GIFT,
+            SyncEntityType.WISHLIST,
+            SyncEntityType.WISH,
+        )
         private val PUSHED_TYPES = TYPE_ORDER.toSet()
 
         private val PUSH_ORDER = compareBy<SyncOperationEntity>(
