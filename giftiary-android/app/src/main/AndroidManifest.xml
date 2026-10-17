@@ -23,7 +23,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Email confirmation links redirect to gifty://auth/callback (see AUTH_CALLBACK_URL, which says why the scheme is not renamed). -->
+            <!-- Email confirmation links redirect to giftiary://auth/callback (see AUTH_CALLBACK_URL). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -31,7 +31,7 @@
                 <data
                     android:host="auth"
                     android:path="/callback"
-                    android:scheme="gifty" />
+                    android:scheme="giftiary" />
             </intent-filter>
         </activity>
     </application>

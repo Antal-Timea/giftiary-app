@@ -30,9 +30,6 @@ class AuthCallbackHandler @Inject constructor(
 }
 
 /** Must match the redirect URL allowed in the Supabase Auth settings and the manifest filter. */
-// Still the pre-Giftiary scheme on purpose: the backend's auth redirect allow-list names this exact
-// URL, and confirmation links to any other one would not return to the app. It changes together
-// with that allow-list.
-const val AUTH_CALLBACK_SCHEME = "gifty"
+const val AUTH_CALLBACK_SCHEME = "giftiary"
 const val AUTH_CALLBACK_HOST = "auth"
 const val AUTH_CALLBACK_URL = "$AUTH_CALLBACK_SCHEME://$AUTH_CALLBACK_HOST/callback"
