@@ -51,6 +51,13 @@ import app.giftiary.presentation.people.PersonDetailScreen
 import app.giftiary.presentation.people.PersonDetailViewModel
 import app.giftiary.presentation.people.PersonEditorScreen
 import app.giftiary.presentation.people.PersonEditorViewModel
+import app.giftiary.presentation.sharing.JoinWishlistScreen
+import app.giftiary.presentation.sharing.PendingJoinViewModel
+import app.giftiary.presentation.sharing.SharedWishlistScreen
+import app.giftiary.presentation.sharing.SharedWishlistViewModel
+import app.giftiary.presentation.sharing.SharedWishlistsScreen
+import app.giftiary.presentation.sharing.WishlistAccessScreen
+import app.giftiary.presentation.sharing.WishlistAccessViewModel
 import app.giftiary.presentation.sync.SyncAttentionScreen
 import app.giftiary.presentation.sync.SyncStatusViewModel
 import app.giftiary.presentation.wishlists.WishDetailScreen
@@ -154,9 +161,32 @@ data class AddWishRoute(val wishlistId: String)
 @Serializable
 data class EditWishRoute(val wishId: String)
 
+@Serializable
+data class WishlistAccessRoute(val wishlistId: String)
+
+@Serializable
+data object SharedWishlistsRoute
+
+@Serializable
+data class SharedWishlistRoute(val wishlistId: String)
+
+/** Takes an opened join link from memory when it opens; a token is never a route argument. */
+@Serializable
+data object JoinWishlistRoute
+
 @Composable
 fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val joinPending by hiltViewModel<PendingJoinViewModel>().isPending.collectAsStateWithLifecycle()
+    // A join link opened now, or while signed out, opens the join screen; a fresh one each time,
+    // since the screen takes the link when it opens.
+    LaunchedEffect(joinPending) {
+        if (joinPending) {
+            navController.navigate(JoinWishlistRoute) {
+                popUpTo<JoinWishlistRoute> { inclusive = true }
+            }
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = HomeRoute,
@@ -379,6 +409,7 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                 onBack = navController.popBackStackUnlessPaused(),
                 onAddWishlist = dropUnlessResumed { navController.navigate(AddWishlistRoute()) },
                 onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
+                onOpenShared = dropUnlessResumed { navController.navigate(SharedWishlistsRoute) },
             )
         }
         composable<AddWishlistRoute> { entry ->
@@ -418,8 +449,48 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                     onOpenPerson = { id -> navController.navigate(PersonDetailRoute(id.toString())) },
                     onAddWish = { id -> navController.navigate(AddWishRoute(id.toString())) },
                     onOpenWish = { id -> navController.navigate(WishDetailRoute(id.toString())) },
+                    onShare = { id -> navController.navigate(WishlistAccessRoute(id.toString())) },
                 )
             }
+        }
+        composable<WishlistAccessRoute> { entry ->
+            WithUuid(entry.toRoute<WishlistAccessRoute>().wishlistId, navController) { wishlistId ->
+                WishlistAccessScreen(
+                    viewModel = hiltViewModel<WishlistAccessViewModel, WishlistAccessViewModel.Factory> { factory ->
+                        factory.create(wishlistId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                )
+            }
+        }
+        composable<SharedWishlistsRoute> {
+            SharedWishlistsScreen(
+                viewModel = hiltViewModel(),
+                onBack = navController.popBackStackUnlessPaused(),
+                onJoin = dropUnlessResumed { navController.navigate(JoinWishlistRoute) },
+                onOpenWishlist = { id -> navController.navigate(SharedWishlistRoute(id.toString())) },
+            )
+        }
+        composable<SharedWishlistRoute> { entry ->
+            WithUuid(entry.toRoute<SharedWishlistRoute>().wishlistId, navController) { wishlistId ->
+                SharedWishlistScreen(
+                    viewModel = hiltViewModel<SharedWishlistViewModel, SharedWishlistViewModel.Factory> { factory ->
+                        factory.create(wishlistId)
+                    },
+                    onBack = navController.popBackStackUnlessPaused(),
+                )
+            }
+        }
+        composable<JoinWishlistRoute> {
+            JoinWishlistScreen(
+                viewModel = hiltViewModel(),
+                onBack = navController.popBackStackUnlessPaused(),
+                onJoined = { wishlistId ->
+                    navController.navigate(joinedRoute(wishlistId)) {
+                        popUpTo<JoinWishlistRoute> { inclusive = true }
+                    }
+                },
+            )
         }
         composable<AddWishRoute> { entry ->
             WithUuid(entry.toRoute<AddWishRoute>().wishlistId, navController) { wishlistId ->
@@ -480,6 +551,9 @@ internal fun routeOf(item: SyncItem): Any = when (item.type) {
     SyncItemType.WISHLIST -> WishlistDetailRoute(item.id.toString())
     SyncItemType.WISH -> WishDetailRoute(item.id.toString())
 }
+
+/** A joined list opens in place of the join screen, so back leads to where the join started. */
+internal fun joinedRoute(wishlistId: UUID) = SharedWishlistRoute(wishlistId.toString())
 
 private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()
 

@@ -1,8 +1,10 @@
 package app.giftiary.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -11,6 +13,7 @@ import androidx.navigation.toRoute
 import app.giftiary.presentation.auth.CheckEmailScreen
 import app.giftiary.presentation.auth.CreateAccountScreen
 import app.giftiary.presentation.auth.SignInScreen
+import app.giftiary.presentation.sharing.PendingJoinViewModel
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -26,6 +29,7 @@ data class CheckEmailRoute(val email: String)
 @Composable
 fun AuthNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val joinPending by hiltViewModel<PendingJoinViewModel>().isPending.collectAsStateWithLifecycle()
     NavHost(
         navController = navController,
         startDestination = SignInRoute,
@@ -34,6 +38,7 @@ fun AuthNavHost(modifier: Modifier = Modifier) {
         composable<SignInRoute> {
             SignInScreen(
                 viewModel = hiltViewModel(),
+                joinPending = joinPending,
                 onCreateAccount = dropUnlessResumed { navController.navigate(CreateAccountRoute) },
             )
         }

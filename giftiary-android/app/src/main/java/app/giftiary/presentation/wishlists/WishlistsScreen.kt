@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -29,10 +32,17 @@ fun WishlistsScreen(
     onBack: () -> Unit,
     onAddWishlist: () -> Unit,
     onOpenWishlist: (UUID) -> Unit,
+    onOpenShared: () -> Unit,
     viewModel: WishlistsViewModel = hiltViewModel(),
 ) {
     val content by viewModel.content.collectAsStateWithLifecycle()
-    WishlistsScreen(content = content, onBack = onBack, onAddWishlist = onAddWishlist, onOpenWishlist = onOpenWishlist)
+    WishlistsScreen(
+        content = content,
+        onBack = onBack,
+        onAddWishlist = onAddWishlist,
+        onOpenWishlist = onOpenWishlist,
+        onOpenShared = onOpenShared,
+    )
 }
 
 @Composable
@@ -41,11 +51,25 @@ fun WishlistsScreen(
     onBack: () -> Unit,
     onAddWishlist: () -> Unit,
     onOpenWishlist: (UUID) -> Unit,
+    onOpenShared: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(R.string.wishlists_title), onBack = onBack) },
+        topBar = {
+            GiftiaryTopBar(
+                title = stringResource(R.string.wishlists_title),
+                onBack = onBack,
+                actions = {
+                    TextButton(
+                        onClick = onOpenShared,
+                        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
+                    ) {
+                        Text(stringResource(R.string.wishlists_open_shared))
+                    }
+                },
+            )
+        },
         floatingActionButton = { AddButton(text = stringResource(R.string.wishlists_add), onClick = onAddWishlist) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
@@ -107,6 +131,7 @@ private fun WishlistsPreview() {
             onBack = {},
             onAddWishlist = {},
             onOpenWishlist = {},
+            onOpenShared = {},
         )
     }
 }

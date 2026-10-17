@@ -52,6 +52,7 @@ fun WishlistDetailScreen(
     onOpenPerson: (UUID) -> Unit,
     onAddWish: (UUID) -> Unit,
     onOpenWish: (UUID) -> Unit,
+    onShare: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.content) {
@@ -65,6 +66,7 @@ fun WishlistDetailScreen(
             onOpenPerson = onOpenPerson,
             onAddWish = onAddWish,
             onOpenWish = onOpenWish,
+            onShare = onShare,
             onDeleteRequested = viewModel::onDeleteRequested,
             onDeleteConfirmed = viewModel::onDeleteConfirmed,
             onDeleteDismissed = viewModel::onDeleteDismissed,
@@ -80,6 +82,7 @@ class WishlistDetailScreenActions(
     val onOpenPerson: (UUID) -> Unit,
     val onAddWish: (UUID) -> Unit,
     val onOpenWish: (UUID) -> Unit,
+    val onShare: (UUID) -> Unit,
     val onDeleteRequested: () -> Unit,
     val onDeleteConfirmed: () -> Unit,
     val onDeleteDismissed: () -> Unit,
@@ -109,6 +112,14 @@ fun WishlistDetailScreen(
                 title = loaded?.wishlist?.name.orEmpty(),
                 onBack = actions.onBack,
                 actions = {
+                    if (loaded != null && loaded.canShare) {
+                        TextButton(
+                            onClick = { actions.onShare(loaded.wishlist.id) },
+                            colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
+                        ) {
+                            Text(stringResource(R.string.wishlist_share))
+                        }
+                    }
                     if (loaded != null) {
                         TextButton(
                             onClick = { actions.onRename(loaded.wishlist.id) },
@@ -240,7 +251,7 @@ private fun WishlistDetailPreview() {
                     wishes = listOf(wish("Brass lamp", Money(12990, "HUF"), "The small one"), wish("Wool socks", null, null)),
                 ),
             ),
-            actions = WishlistDetailScreenActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = WishlistDetailScreenActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

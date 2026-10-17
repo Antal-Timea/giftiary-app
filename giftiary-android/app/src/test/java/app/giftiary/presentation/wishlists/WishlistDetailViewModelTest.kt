@@ -61,6 +61,19 @@ class WishlistDetailViewModelTest {
     }
 
     @Test
+    fun `only the user's own wishlist can be shared, never one kept for a person`() = runTest {
+        people.givenPeople(anna)
+        val own = wishlist("Birthday")
+        val forAnna = wishlist("Christmas", personId = anna.id)
+        val orphan = wishlist("Old", personId = UUID.randomUUID())
+        wishlists.givenWishlists(own, forAnna, orphan)
+
+        assertTrue(loaded(viewModel(own.id)).canShare)
+        assertFalse(loaded(viewModel(forAnna.id)).canShare)
+        assertFalse(loaded(viewModel(orphan.id)).canShare)
+    }
+
+    @Test
     fun `renames, new wishes and the person's deletion show at once`() = runTest {
         people.givenPeople(anna)
         val forAnna = wishlist("Christmas", personId = anna.id).also { wishlists.givenWishlists(it) }

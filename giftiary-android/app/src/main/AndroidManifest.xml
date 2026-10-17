@@ -33,6 +33,16 @@
                     android:path="/callback"
                     android:scheme="giftiary" />
             </intent-filter>
+            <!-- Wishlist invites: giftiary://wishlist/join#<token> (see JOIN_LINK_SCHEME). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="wishlist"
+                    android:path="/join"
+                    android:scheme="giftiary" />
+            </intent-filter>
         </activity>
     </application>
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
+import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 
@@ -31,6 +33,7 @@ fun SignInScreen(
     viewModel: SignInViewModel,
     onCreateAccount: () -> Unit,
     modifier: Modifier = Modifier,
+    joinPending: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     SignInContent(
@@ -39,6 +42,7 @@ fun SignInScreen(
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
         onCreateAccount = onCreateAccount,
+        joinPending = joinPending,
         modifier = modifier,
     )
 }
@@ -51,6 +55,7 @@ private fun SignInContent(
     onSubmit: () -> Unit,
     onCreateAccount: () -> Unit,
     modifier: Modifier = Modifier,
+    joinPending: Boolean = false,
 ) {
     val colors = GiftiaryTheme.colors
     Scaffold(modifier = modifier) { contentPadding ->
@@ -80,6 +85,22 @@ private fun SignInContent(
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.textSecondary,
             )
+            // An invite opened while signed out waits in memory and opens once signed in.
+            if (joinPending) {
+                Spacer(Modifier.height(GiftiarySpacing.l))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = GiftiaryShapes.container,
+                    color = colors.surfaceElevated,
+                ) {
+                    Text(
+                        text = stringResource(R.string.auth_join_pending),
+                        modifier = Modifier.padding(GiftiarySpacing.l),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textPrimary,
+                    )
+                }
+            }
             Spacer(Modifier.height(GiftiarySpacing.xxl))
             CredentialsFields(
                 state = state,

@@ -6,6 +6,8 @@ import app.giftiary.data.remote.RemoteReader
 import app.giftiary.data.remote.RemoteWriter
 import app.giftiary.data.remote.SupabaseRemoteReader
 import app.giftiary.data.remote.SupabaseRemoteWriter
+import app.giftiary.data.remote.SupabaseWishlistSharingRepository
+import app.giftiary.domain.repository.WishlistSharingRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,4 +29,7 @@ object RemoteModule {
 
     @Provides
     fun provideRemoteWriter(clients: AccountBoundClients): RemoteWriter = SupabaseRemoteWriter(clients)
+
+    @Provides
+    fun provideWishlistSharingRepository(impl: SupabaseWishlistSharingRepository): WishlistSharingRepository = impl
 }
