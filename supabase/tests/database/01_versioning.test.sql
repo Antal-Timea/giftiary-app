@@ -80,10 +80,14 @@ select is((select version from public.occasions where id = '44444444-4444-4444-8
 select is((select version from public.gifts where id = '55555555-5555-4555-8555-555555555555'), 1::bigint, 'gifts start at version 1');
 
 -- Compare-and-set is the client's where clause: there is no expected-version column to send and
--- no write function in the API schema.
+-- no sync write function in the API schema. The only functions there are the sharing and
+-- reservation calls, which never write synced rows.
 select hasnt_column('public', 'people', 'expected_version', 'updates carry no expected-version column');
-select is((select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace), 0,
-    'no server-side write function exists in the API schema');
+select functions_are('public', array[
+    'create_wishlist_invite', 'revoke_wishlist_invite', 'list_wishlist_access', 'remove_wishlist_member',
+    'redeem_wishlist_invite', 'leave_wishlist', 'get_shared_wishlists', 'get_shared_wishlist',
+    'reserve_wish', 'release_wish'],
+    'the API schema has no sync write function, only the sharing and reservation calls');
 
 select * from finish();
 rollback;
