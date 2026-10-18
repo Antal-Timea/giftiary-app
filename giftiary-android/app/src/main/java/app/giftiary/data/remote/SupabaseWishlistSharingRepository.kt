@@ -107,6 +107,10 @@ class SupabaseWishlistSharingRepository @Inject constructor(
         return SharedWishlist(list.wishlistId, list.name, displayName(list.ownerDisplayName), list.wishes.map(::sharedWish))
     }
 
+    override suspend fun leave(wishlistId: UUID) {
+        rpc("leave_wishlist", buildJsonObject { put("p_wishlist_id", wishlistId.toString()) })
+    }
+
     private suspend fun rpc(function: String, parameters: JsonObject) {
         call { client -> client.postgrest.rpc(function, parameters) }
     }

@@ -196,6 +196,64 @@ class SharingViewModelsTest {
         assertEquals(OnlineContent.Loaded(sharing.sharedWishlist), viewModel.state.value.content)
     }
 
+    @Test
+    fun `leaving a shared list asks first, then ends the membership`() = runTest {
+        val viewModel = SharedWishlistViewModel(listId, sharing)
+
+        viewModel.onLeaveRequested()
+        assertTrue(viewModel.leaving.value.confirming)
+        viewModel.onLeaveDismissed()
+        assertFalse(viewModel.leaving.value.confirming)
+        assertFalse(sharing.calls.any { it.startsWith("leave") })
+
+        viewModel.onLeaveRequested()
+        viewModel.onLeaveConfirmed()
+
+        assertEquals(listOf("leave:$listId"), sharing.calls)
+        assertEquals(LeaveState(left = true), viewModel.leaving.value)
+    }
+
+    @Test
+    fun `a list already gone counts as left`() = runTest {
+        val viewModel = SharedWishlistViewModel(listId, sharing)
+        sharing.failNext += SharingFailure.UNAVAILABLE
+
+        viewModel.onLeaveConfirmed()
+
+        assertTrue(viewModel.leaving.value.left)
+        assertNull(viewModel.leaving.value.failure)
+    }
+
+    @Test
+    fun `a failed leave stays on the list, is reported once and can be tried again`() = runTest {
+        val viewModel = SharedWishlistViewModel(listId, sharing)
+        sharing.failNext += SharingFailure.NETWORK
+
+        viewModel.onLeaveConfirmed()
+        assertEquals(LeaveState(failure = SharingFailure.NETWORK), viewModel.leaving.value)
+        viewModel.onLeaveFailureShown()
+        assertNull(viewModel.leaving.value.failure)
+
+        viewModel.onLeaveConfirmed()
+        assertTrue(viewModel.leaving.value.left)
+        assertEquals(2, sharing.calls.count { it.startsWith("leave") })
+    }
+
+    @Test
+    fun `a leave in progress or done is not repeated`() = runTest {
+        sharing.gate = CompletableDeferred()
+        val viewModel = SharedWishlistViewModel(listId, sharing)
+
+        viewModel.onLeaveConfirmed()
+        viewModel.onLeaveConfirmed()
+        assertTrue(viewModel.leaving.value.isLeaving)
+        sharing.gate!!.complete(Unit)
+        viewModel.onLeaveConfirmed()
+
+        assertEquals(1, sharing.calls.count { it.startsWith("leave") })
+        assertTrue(viewModel.leaving.value.left)
+    }
+
     // ---- join ----
 
     @Test

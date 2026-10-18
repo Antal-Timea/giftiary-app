@@ -51,4 +51,6 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     override suspend fun sharedWishlists() = answer("sharedWishlists") { sharedWishlists }
 
     override suspend fun sharedWishlist(wishlistId: UUID) = answer("sharedWishlist") { checkNotNull(sharedWishlist) }
+
+    override suspend fun leave(wishlistId: UUID) = answer("leave:$wishlistId") {}
 }

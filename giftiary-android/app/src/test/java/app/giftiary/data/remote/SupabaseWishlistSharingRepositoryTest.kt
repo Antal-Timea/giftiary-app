@@ -144,6 +144,22 @@ class SupabaseWishlistSharingRepositoryTest {
     }
 
     @Test
+    fun `leaving sends the list and only that`() = runTest {
+        repository.leave(LIST)
+
+        assertRpc("leave_wishlist", """{"p_wishlist_id":"$LIST"}""")
+    }
+
+    @Test
+    fun `a failed leave is typed like every other call`() = runTest {
+        answer = { throw IOException("offline") }
+        assertFailure(SharingFailure.NETWORK) { repository.leave(LIST) }
+
+        answer = { respondError("P0002", status = HttpStatusCode.NotFound) }
+        assertFailure(SharingFailure.UNAVAILABLE) { repository.leave(LIST) }
+    }
+
+    @Test
     fun `redeeming sends the token and returns the joined list`() = runTest {
         answer = { respondJson("""{"wishlist_id":"$LIST"}""") }
 

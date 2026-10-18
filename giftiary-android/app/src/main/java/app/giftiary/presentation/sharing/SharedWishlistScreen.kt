@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +16,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +32,7 @@ import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.gifts.ProductLink
@@ -42,25 +45,45 @@ import java.util.UUID
 @Composable
 fun SharedWishlistScreen(viewModel: SharedWishlistViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val leaving by viewModel.leaving.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
         viewModel.refresh()
         onPauseOrDispose {}
     }
+    LaunchedEffect(leaving.left) {
+        if (leaving.left) onBack()
+    }
     SharedWishlistScreen(
         state = state,
-        onBack = onBack,
-        onRetry = viewModel::refresh,
-        onRefreshFailureShown = viewModel::onRefreshFailureShown,
+        leaving = leaving,
+        actions = SharedWishlistActions(
+            onBack = onBack,
+            onRetry = viewModel::refresh,
+            onRefreshFailureShown = viewModel::onRefreshFailureShown,
+            onLeaveRequested = viewModel::onLeaveRequested,
+            onLeaveConfirmed = viewModel::onLeaveConfirmed,
+            onLeaveDismissed = viewModel::onLeaveDismissed,
+            onLeaveFailureShown = viewModel::onLeaveFailureShown,
+        ),
     )
 }
 
-/** Read-only: the wishes as the owner keeps them, without anything to act on. */
+class SharedWishlistActions(
+    val onBack: () -> Unit,
+    val onRetry: () -> Unit,
+    val onRefreshFailureShown: () -> Unit,
+    val onLeaveRequested: () -> Unit,
+    val onLeaveConfirmed: () -> Unit,
+    val onLeaveDismissed: () -> Unit,
+    val onLeaveFailureShown: () -> Unit,
+)
+
+/** Read-only: the wishes as the owner keeps them; the only action is leaving the list. */
 @Composable
 fun SharedWishlistScreen(
     state: OnlineState<SharedWishlist>,
-    onBack: () -> Unit,
-    onRetry: () -> Unit,
-    onRefreshFailureShown: () -> Unit,
+    leaving: LeaveState,
+    actions: SharedWishlistActions,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -68,9 +91,18 @@ fun SharedWishlistScreen(
     LaunchedEffect(state.refreshFailure) {
         if (refreshFailure != null) {
             snackbarHostState.showSnackbar(refreshFailure)
-            onRefreshFailureShown()
+            actions.onRefreshFailureShown()
         }
     }
+    val leaveFailure = leaving.failure?.let { retryableFailureText(it) }
+    LaunchedEffect(leaving.failure) {
+        if (leaveFailure != null) {
+            snackbarHostState.showSnackbar(leaveFailure)
+            actions.onLeaveFailureShown()
+        }
+    }
+    val onBack = actions.onBack
+    val onRetry = actions.onRetry
     val loaded = (state.content as? OnlineContent.Loaded)?.value
     Scaffold(
         modifier = modifier,
@@ -86,13 +118,35 @@ fun SharedWishlistScreen(
             } else {
                 FailureContent(retryableFailureText(content.failure), onRetry, contentModifier)
             }
-            is OnlineContent.Loaded -> SharedWishes(content.value, state.isRefreshing, contentModifier)
+            is OnlineContent.Loaded -> SharedWishes(
+                wishlist = content.value,
+                isRefreshing = state.isRefreshing,
+                isLeaving = leaving.isLeaving,
+                onLeave = actions.onLeaveRequested,
+                modifier = contentModifier,
+            )
         }
+    }
+
+    if (leaving.confirming && loaded != null) {
+        GiftiaryConfirmDialog(
+            title = stringResource(R.string.shared_wishlist_leave_dialog_title, loaded.name),
+            message = stringResource(R.string.shared_wishlist_leave_dialog_message),
+            confirmLabel = stringResource(R.string.shared_wishlist_leave_confirm),
+            onConfirm = actions.onLeaveConfirmed,
+            onDismiss = actions.onLeaveDismissed,
+        )
     }
 }
 
 @Composable
-private fun SharedWishes(wishlist: SharedWishlist, isRefreshing: Boolean, modifier: Modifier = Modifier) {
+private fun SharedWishes(
+    wishlist: SharedWishlist,
+    isRefreshing: Boolean,
+    isLeaving: Boolean,
+    onLeave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = GiftiaryTheme.colors
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = GiftiarySpacing.xxl)) {
         item {
@@ -109,6 +163,19 @@ private fun SharedWishes(wishlist: SharedWishlist, isRefreshing: Boolean, modifi
         items(wishlist.wishes, key = { it.id }) { wish ->
             SharedWishRow(wish)
             HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
+        }
+        item {
+            // Quiet, as deleting is on the user's own lists.
+            TextButton(
+                onClick = onLeave,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = GiftiarySpacing.l),
+                enabled = !isLeaving,
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
+            ) {
+                Text(stringResource(R.string.shared_wishlist_leave))
+            }
         }
     }
 }
@@ -153,9 +220,8 @@ private fun SharedWishlistPreview() {
                     ),
                 ),
             ),
-            onBack = {},
-            onRetry = {},
-            onRefreshFailureShown = {},
+            leaving = LeaveState(),
+            actions = SharedWishlistActions({}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

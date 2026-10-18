@@ -382,6 +382,10 @@
     <string name="shared_wishlist_from_fallback">Egy Giftiary-felhasználótól</string>
     <string name="shared_wishlist_unavailable">Ez a kívánságlista nem érhető el.</string>
     <string name="shared_wishlist_no_wishes">Ezen a listán még nincs kívánság.</string>
+    <string name="shared_wishlist_leave">Kilépés a kívánságlistából</string>
+    <string name="shared_wishlist_leave_dialog_title">Kilépsz innen: %1$s?</string>
+    <string name="shared_wishlist_leave_dialog_message">Többé nem látod ezt a kívánságlistát. Új meghívóval később újra csatlakozhatsz.</string>
+    <string name="shared_wishlist_leave_confirm">Kilépés</string>
     <string name="join_wishlist_title">Csatlakozás kívánságlistához</string>
     <string name="join_wishlist_message">Illeszd be a kapott meghívó linket.</string>
     <string name="join_wishlist_input">Meghívó link</string>

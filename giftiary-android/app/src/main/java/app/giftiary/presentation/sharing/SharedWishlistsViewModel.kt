@@ -82,15 +82,18 @@ class SharedWishlistsViewModel @Inject constructor(
     }
 }
 
-/** One shared wishlist, read-only. */
+/** One shared wishlist, read-only apart from leaving it. */
 @HiltViewModel(assistedFactory = SharedWishlistViewModel.Factory::class)
 class SharedWishlistViewModel @AssistedInject constructor(
-    @Assisted wishlistId: UUID,
-    sharing: WishlistSharingRepository,
+    @Assisted private val wishlistId: UUID,
+    private val sharing: WishlistSharingRepository,
 ) : ViewModel() {
 
     private val loader = OnlineLoader { sharing.sharedWishlist(wishlistId) }
     val state: StateFlow<OnlineState<SharedWishlist>> = loader.state.asStateFlow()
+
+    private val _leaving = MutableStateFlow(LeaveState())
+    val leaving: StateFlow<LeaveState> = _leaving.asStateFlow()
 
     fun refresh() = loader.load(viewModelScope)
 
@@ -98,8 +101,44 @@ class SharedWishlistViewModel @AssistedInject constructor(
         loader.state.update { it.copy(refreshFailure = null) }
     }
 
+    fun onLeaveRequested() {
+        _leaving.update { it.copy(confirming = true) }
+    }
+
+    fun onLeaveDismissed() {
+        _leaving.update { it.copy(confirming = false) }
+    }
+
+    fun onLeaveConfirmed() {
+        if (_leaving.value.isLeaving || _leaving.value.left) return
+        _leaving.update { it.copy(confirming = false, isLeaving = true, failure = null) }
+        viewModelScope.launch {
+            val failure = try {
+                sharing.leave(wishlistId)
+                null
+            } catch (e: SharingException) {
+                // No longer a member, or the list is gone: either way the user is out, as asked.
+                e.failure.takeUnless { it == SharingFailure.UNAVAILABLE }
+            }
+            _leaving.update { it.copy(isLeaving = false, left = failure == null, failure = failure) }
+        }
+    }
+
+    fun onLeaveFailureShown() {
+        _leaving.update { it.copy(failure = null) }
+    }
+
     @AssistedFactory
     interface Factory {
         fun create(wishlistId: UUID): SharedWishlistViewModel
     }
 }
+
+data class LeaveState(
+    val confirming: Boolean = false,
+    val isLeaving: Boolean = false,
+    /** The membership has ended; the screen should close. */
+    val left: Boolean = false,
+    /** Leaving failed and may work when tried again; shown once. */
+    val failure: SharingFailure? = null,
+)

@@ -32,6 +32,9 @@ interface WishlistSharingRepository {
     suspend fun sharedWishlists(): List<SharedWishlistSummary>
 
     suspend fun sharedWishlist(wishlistId: UUID): SharedWishlist
+
+    /** Ends the user's own membership; leaving a list one is no longer a member of is not an error. */
+    suspend fun leave(wishlistId: UUID)
 }
 
 enum class SharingFailure {

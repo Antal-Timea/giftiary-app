@@ -383,6 +383,10 @@
     <string name="shared_wishlist_from_fallback">From a Giftiary member</string>
     <string name="shared_wishlist_unavailable">This wishlist isn’t available.</string>
     <string name="shared_wishlist_no_wishes">No wishes on this list yet.</string>
+    <string name="shared_wishlist_leave">Leave this wishlist</string>
+    <string name="shared_wishlist_leave_dialog_title">Leave %1$s?</string>
+    <string name="shared_wishlist_leave_dialog_message">You will no longer see this wishlist. You can join again with a new invite.</string>
+    <string name="shared_wishlist_leave_confirm">Leave</string>
     <string name="join_wishlist_title">Join a wishlist</string>
     <string name="join_wishlist_message">Paste the invite link you received.</string>
     <string name="join_wishlist_input">Invite link</string>
