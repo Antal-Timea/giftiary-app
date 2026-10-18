@@ -254,6 +254,24 @@ class SharingViewModelsTest {
         assertTrue(viewModel.leaving.value.left)
     }
 
+    @Test
+    fun `after leaving, Shared with you no longer lists the list once it refreshes`() = runTest {
+        val left = SharedWishlistSummary(listId, "Birthday", null)
+        val kept = SharedWishlistSummary(UUID.randomUUID(), "Christmas", "Bea")
+        sharing.sharedWishlists = listOf(left, kept)
+        val shared = SharedWishlistsViewModel(sharing)
+        shared.refresh()
+        val detail = SharedWishlistViewModel(listId, sharing)
+
+        detail.onLeaveConfirmed()
+        assertTrue("the detail is told to close", detail.leaving.value.left)
+        // The server no longer lists it; the list screen asks again when it is shown again.
+        sharing.sharedWishlists = listOf(kept)
+        shared.refresh()
+
+        assertEquals(OnlineContent.Loaded(listOf(kept)), shared.state.value.content)
+    }
+
     // ---- join ----
 
     @Test
