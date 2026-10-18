@@ -1,9 +1,11 @@
 # Giftiary backend (Supabase)
 
 The PostgreSQL schema, integrity rules and row level security for the data the Android app
-stores offline, plus the server side of the planned sync protocol. The Android app signs in with
-Supabase Auth, but **no data sync is live yet**: nothing on the device reads or writes these
-tables so far.
+stores offline, the server side of its sync protocol, and wishlist sharing. The Android app signs
+in with Supabase Auth and syncs its own data with these tables: it pushes queued local changes and
+pulls each table in full for the signed-in owner (`where owner_user_id = A and id > last order by
+id`, served by the `(owner_user_id, id)` indexes). Shared wishlists are reached only through the
+sharing functions below and are never stored on the device.
 
 ## How it maps to Android
 
@@ -24,10 +26,14 @@ Columns are the Room columns in snake_case. What does **not** cross over:
 
 - `sync_operation` (the outbox) and `remoteState` are device-local bookkeeping. The server row
   itself is the remote state, so there is no sync table or remote-state column here.
-- Wishlists and wishes (`20261016084000_private_wishlists.sql`, phase W1) are private, owner-only
-  synced rows following every rule below. **This migration has not been applied to the hosted
-  project yet**; that is a separate, explicitly approved step. The Android app does not sync them
-  until a later phase.
+- Wishlists and wishes (`20261016084000_private_wishlists.sql`) are owner-only synced rows
+  following every rule below; the Android app syncs them like the other tables.
+- The sharing tables (`20261017100000_wishlist_sharing.sql`) have no Room counterpart: shared
+  lists, memberships and reservations are server-owned and read online only.
+
+**Hosted project.** At the last recorded apply (W3, 2026-10-17) all six migrations in
+`supabase/migrations` were applied to the hosted project and verified. Check
+`migration list --linked` (read-only, with approval) before relying on this for a release.
 
 ## Rules the schema enforces
 
@@ -88,11 +94,11 @@ other side is optional (both set is a gift between two other people). Exact cale
 
 ## Access
 
-| Role | profiles | people, occasions, gift_ideas, gifts |
-|---|---|---|
-| `anon` | nothing | nothing |
-| `authenticated` | read own; update display name, avatar path, locale | read, insert, update own rows; no delete |
-| `service_role` | select, insert, update, delete (server-side only, never in the app) | same |
+| Role | profiles | people, occasions, gift_ideas, gifts, wishlists, wishes | wishlist_invites, wishlist_members, wish_reservations |
+|---|---|---|---|
+| `anon` | nothing | nothing | nothing |
+| `authenticated` | read own; update display name, avatar path, locale | read, insert, update own rows; no delete | nothing: only through the sharing functions |
+| `service_role` | select, insert, update, delete (server-side only, never in the app) | same | same |
 
 `sync_mutations` is readable by `authenticated` for their own entries only, and writable by no
 client role; `anon` has no access.
@@ -108,10 +114,51 @@ it receives the four data operations, not `ALL`.
 Triggers fire without the caller holding `EXECUTE` on the trigger function, so the sign-up
 trigger works even though Supabase Auth (`supabase_auth_admin`) cannot call it directly.
 
+## Wishlist sharing
+
+An owner shares an own wishlist (one without `person_id`) by invite; a signed-in user who redeems
+the invite becomes a member and can read the list and reserve its wishes. The three sharing tables
+have row level security on and **no policies and no client privileges**, so clients cannot read
+or write them directly and they are not part of Realtime. Everything goes through ten
+`security definer` functions in `public`, executable by `authenticated` only, each with an empty
+`search_path`:
+
+| Function | For | Returns |
+|---|---|---|
+| `create_wishlist_invite(p_wishlist_id, p_valid_days = 7)` | owner | `{invite_id, token, expires_at}` |
+| `revoke_wishlist_invite(p_invite_id)` | owner | nothing |
+| `list_wishlist_access(p_wishlist_id)` | owner | open invites and members (with display names); never reservations |
+| `remove_wishlist_member(p_wishlist_id, p_member_user_id)` | owner | nothing |
+| `redeem_wishlist_invite(p_token)` | guest | `{wishlist_id}`; joining again is not an error |
+| `leave_wishlist(p_wishlist_id)` | guest | nothing |
+| `get_shared_wishlists()` | guest | `[{wishlist_id, name, owner_display_name}]` |
+| `get_shared_wishlist(p_wishlist_id)` | guest | the list and its wishes, each with `reservation_state` |
+| `reserve_wish(p_wish_id)` | guest | `RESERVED_BY_ME` or `RESERVED_BY_OTHER` |
+| `release_wish(p_wish_id)` | guest | `AVAILABLE`, `RESERVED_BY_ME` or `RESERVED_BY_OTHER` |
+
+- **Invites.** A token is 32 random bytes (pgcrypto), sent once to the owner as unpadded
+  base64url; only its SHA-256 is stored. The app shares it as `giftiary://wishlist/join#<token>`.
+  An invite lasts 1–14 days (7 by default); a list has at most 5 open invites and 50 members, both
+  serialized per list with a transaction-scoped advisory lock taken only by create and redeem.
+- **Uniform refusal.** Every access failure (no such invite, list or member, an expired or
+  revoked invite, no access, a full list) is `P0002 not available`, so nothing is learnt about
+  which. `P0001` is the invite limit, `22023` invalid validity days, `40001` a contended reserve,
+  `42501` no session.
+- **Reservations are server-authoritative and owner-blind.** The owner is refused before
+  reservations are looked at, and `list_wishlist_access` carries none. Members learn only
+  `AVAILABLE`, `RESERVED_BY_ME` or `RESERVED_BY_OTHER`, never who. A reservation counts only while
+  its wish, its list and the reserver's membership (the same `membership_id`) are active, so
+  removing a member or a member leaving releases their reservations logically without touching
+  rows; a stale reservation is taken over by the next member who reserves. Reservations never
+  write to a wish and never appear in the mutation ledger.
+
+`tests/database/09_wishlist_sharing.test.sql` covers the access matrix and
+`10_wishlist_sharing_concurrency.test.sql` the concurrent cases (dblink).
+
 ## Local development
 
 Needs the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
-and Docker. From the repository root:
+(used so far as `npx --yes supabase@2.121.0 …`) and Docker. From the repository root:
 
 ```bash
 supabase start      # local stack; prints the local URL and development keys
@@ -126,15 +173,8 @@ service-role keys and `.env` files never go into the repository.
 Migrations are append-only once shared. Tests run inside transactions and roll back; there is no
 seed data.
 
-## Not in this phase
+## Not yet
 
-- Sharing, invitations and reservations. They will live in their own tables, reachable only
-  through functions, never through table access; reservations will be server-authoritative,
-  never write to a wish, never appear in the mutation ledger, and stay hidden from the wishlist
-  owner.
-- The Android side of sync: remote data source, push and pull. The first release will pull each
-  table in full for the signed-in owner (`where owner_user_id = A and id > last order by id`,
-  served by the `(owner_user_id, id)` indexes).
 - Incremental pull (cursors, change logs) and Realtime.
 - Storage. Photo columns hold storage paths, not signed URLs, following
   `users/{userId}/people/{personId}/...`, `users/{userId}/gifts/{giftId}/...` and

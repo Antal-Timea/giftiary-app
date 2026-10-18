@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Auto Backup on Android 8–11. Everything is backed up except the Supabase Auth session. -->
+<!--
+    Auto Backup on Android 8–11. Keep in sync with data_extraction_rules.xml, which applies the
+    same exclusions to cloud backup and device transfer on Android 12+.
+-->
 <full-backup-content>
     <!--
         supabase-kt keeps the session (with its refresh token) and the PKCE code verifier in the
         default SharedPreferences, "<applicationId>_preferences" (multiplatform-settings no-arg).
         A restored session would sign another device in without a password; signing in again
-        there is the safer default. Keep in sync with data_extraction_rules.xml.
+        there is the safer default.
     -->
     <exclude domain="sharedpref" path="app.giftiary_preferences.xml" />
+    <!--
+        The account's data lives on the server; a new device gets it by signing in and syncing.
+        Restoring the local database would also restore its sync queue, mutation ids and owner
+        rows to a device and session they were not written for, a path that is never tested.
+        Trade-off: edits made offline and not yet synced do not move to a new device.
+        WAL and journal files are listed so no part of the database is backed up on its own.
+    -->
+    <exclude domain="database" path="giftiary.db" />
+    <exclude domain="database" path="giftiary.db-wal" />
+    <exclude domain="database" path="giftiary.db-shm" />
+    <exclude domain="database" path="giftiary.db-journal" />
+    <!-- The pre-account owner id; restored elsewhere it could hand data to the wrong account. -->
+    <exclude domain="sharedpref" path="local_user.xml" />
 </full-backup-content>

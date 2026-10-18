@@ -1,0 +1,10 @@
+# Signing material never belongs in git: the upload key and anything holding its passwords.
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+signing.properties
+
+# Local IDE configuration at the repository root.
+/.idea/
