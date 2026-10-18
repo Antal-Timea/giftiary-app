@@ -3,12 +3,15 @@ package app.giftiary.presentation.sharing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -21,9 +24,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
@@ -46,6 +53,7 @@ import java.util.UUID
 fun SharedWishlistScreen(viewModel: SharedWishlistViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val leaving by viewModel.leaving.collectAsStateWithLifecycle()
+    val reservations by viewModel.reservations.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
         viewModel.refresh()
         onPauseOrDispose {}
@@ -56,6 +64,7 @@ fun SharedWishlistScreen(viewModel: SharedWishlistViewModel, onBack: () -> Unit)
     SharedWishlistScreen(
         state = state,
         leaving = leaving,
+        reservations = reservations,
         actions = SharedWishlistActions(
             onBack = onBack,
             onRetry = viewModel::refresh,
@@ -64,6 +73,11 @@ fun SharedWishlistScreen(viewModel: SharedWishlistViewModel, onBack: () -> Unit)
             onLeaveConfirmed = viewModel::onLeaveConfirmed,
             onLeaveDismissed = viewModel::onLeaveDismissed,
             onLeaveFailureShown = viewModel::onLeaveFailureShown,
+            onReserve = viewModel::onReserve,
+            onReleaseRequested = viewModel::onReleaseRequested,
+            onReleaseConfirmed = viewModel::onReleaseConfirmed,
+            onReleaseDismissed = viewModel::onReleaseDismissed,
+            onReservationMessageShown = viewModel::onReservationMessageShown,
         ),
     )
 }
@@ -76,13 +90,19 @@ class SharedWishlistActions(
     val onLeaveConfirmed: () -> Unit,
     val onLeaveDismissed: () -> Unit,
     val onLeaveFailureShown: () -> Unit,
+    val onReserve: (UUID) -> Unit,
+    val onReleaseRequested: (UUID) -> Unit,
+    val onReleaseConfirmed: () -> Unit,
+    val onReleaseDismissed: () -> Unit,
+    val onReservationMessageShown: () -> Unit,
 )
 
-/** Read-only: the wishes as the owner keeps them; the only action is leaving the list. */
+/** The wishes as the owner keeps them; the guest can reserve, release and leave. */
 @Composable
 fun SharedWishlistScreen(
     state: OnlineState<SharedWishlist>,
     leaving: LeaveState,
+    reservations: ReservationActions,
     actions: SharedWishlistActions,
     modifier: Modifier = Modifier,
 ) {
@@ -99,6 +119,13 @@ fun SharedWishlistScreen(
         if (leaveFailure != null) {
             snackbarHostState.showSnackbar(leaveFailure)
             actions.onLeaveFailureShown()
+        }
+    }
+    val reservationMessage = reservations.message?.let { reservationMessageText(it) }
+    LaunchedEffect(reservations.message) {
+        if (reservationMessage != null) {
+            snackbarHostState.showSnackbar(reservationMessage)
+            actions.onReservationMessageShown()
         }
     }
     val onBack = actions.onBack
@@ -122,7 +149,8 @@ fun SharedWishlistScreen(
                 wishlist = content.value,
                 isRefreshing = state.isRefreshing,
                 isLeaving = leaving.isLeaving,
-                onLeave = actions.onLeaveRequested,
+                inFlight = reservations.inFlight,
+                actions = actions,
                 modifier = contentModifier,
             )
         }
@@ -137,6 +165,17 @@ fun SharedWishlistScreen(
             onDismiss = actions.onLeaveDismissed,
         )
     }
+
+    val releasing = reservations.confirmingRelease?.let { id -> loaded?.wishes?.find { it.id == id } }
+    if (releasing != null) {
+        GiftiaryConfirmDialog(
+            title = stringResource(R.string.shared_wish_release_dialog_title, releasing.name),
+            message = stringResource(R.string.shared_wish_release_dialog_message),
+            confirmLabel = stringResource(R.string.shared_wish_release),
+            onConfirm = actions.onReleaseConfirmed,
+            onDismiss = actions.onReleaseDismissed,
+        )
+    }
 }
 
 @Composable
@@ -144,7 +183,8 @@ private fun SharedWishes(
     wishlist: SharedWishlist,
     isRefreshing: Boolean,
     isLeaving: Boolean,
-    onLeave: () -> Unit,
+    inFlight: Set<UUID>,
+    actions: SharedWishlistActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
@@ -161,13 +201,18 @@ private fun SharedWishes(
         item { SectionHeading(stringResource(R.string.wishlist_wishes)) }
         if (wishlist.wishes.isEmpty()) item { ListNote(stringResource(R.string.shared_wishlist_no_wishes)) }
         items(wishlist.wishes, key = { it.id }) { wish ->
-            SharedWishRow(wish)
+            SharedWishRow(
+                wish = wish,
+                busy = wish.id in inFlight,
+                onReserve = { actions.onReserve(wish.id) },
+                onRelease = { actions.onReleaseRequested(wish.id) },
+            )
             HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
         }
         item {
             // Quiet, as deleting is on the user's own lists.
             TextButton(
-                onClick = onLeave,
+                onClick = actions.onLeaveRequested,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = GiftiarySpacing.l),
@@ -180,9 +225,8 @@ private fun SharedWishes(
     }
 }
 
-// Reservation state is deliberately not shown: reserving comes with its own actions later.
 @Composable
-private fun SharedWishRow(wish: SharedWish) {
+private fun SharedWishRow(wish: SharedWish, busy: Boolean, onReserve: () -> Unit, onRelease: () -> Unit) {
     val colors = GiftiaryTheme.colors
     Column(
         modifier = Modifier
@@ -197,7 +241,64 @@ private fun SharedWishRow(wish: SharedWish) {
         }
         // Someone else's link: only web links are offered for opening.
         wish.productUrl?.takeIf { it.isWebLink() }?.let { ProductLink(it) }
+        ReservationLine(wish.name, reservationPresentation(wish.reservation), busy, onReserve, onRelease)
     }
+}
+
+/**
+ * The reservation as text, never colour alone, and the one action it allows. While the server
+ * decides, the last state it reported stays and the action waits.
+ */
+@Composable
+private fun ReservationLine(
+    wishName: String,
+    presentation: ReservationPresentation,
+    busy: Boolean,
+    onReserve: () -> Unit,
+    onRelease: () -> Unit,
+) {
+    val label = presentation.label ?: return
+    val colors = GiftiaryTheme.colors
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(
+                when (label) {
+                    ReservationLabel.AVAILABLE -> R.string.shared_wish_available
+                    ReservationLabel.RESERVED_BY_YOU -> R.string.shared_wish_reserved_by_you
+                    ReservationLabel.RESERVED -> R.string.shared_wish_reserved
+                },
+            ),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (label == ReservationLabel.RESERVED_BY_YOU) colors.primaryActionText else colors.textSecondary,
+        )
+        val action = presentation.action ?: return@Row
+        val reserve = action == ReservationAction.RESERVE
+        val text = stringResource(if (reserve) R.string.shared_wish_reserve else R.string.shared_wish_release)
+        val description = stringResource(
+            if (reserve) R.string.shared_wish_reserve_description else R.string.shared_wish_release_description,
+            wishName,
+        )
+        if (busy) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryAction, strokeWidth = 2.dp)
+        }
+        TextButton(
+            onClick = if (reserve) onReserve else onRelease,
+            enabled = !busy,
+            modifier = Modifier.semantics { contentDescription = description },
+            colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+        ) {
+            Text(text)
+        }
+    }
+}
+
+@Composable
+private fun reservationMessageText(message: ReservationMessage): String = when (message) {
+    ReservationMessage.TAKEN_BY_OTHER -> stringResource(R.string.shared_wish_taken)
+    ReservationMessage.WISH_UNAVAILABLE -> stringResource(R.string.shared_wish_unavailable)
+    ReservationMessage.NETWORK -> stringResource(R.string.sharing_network_error)
+    ReservationMessage.SERVER -> stringResource(R.string.sharing_server_error)
 }
 
 private fun String.isWebLink(): Boolean = startsWith("https://", ignoreCase = true) || startsWith("http://", ignoreCase = true)
@@ -221,7 +322,8 @@ private fun SharedWishlistPreview() {
                 ),
             ),
             leaving = LeaveState(),
-            actions = SharedWishlistActions({}, {}, {}, {}, {}, {}, {}),
+            reservations = ReservationActions(),
+            actions = SharedWishlistActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

@@ -2,6 +2,7 @@ package app.giftiary.testing
 
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.InviteToken
+import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.model.WishlistAccess
@@ -13,7 +14,7 @@ import java.util.UUID
 
 /**
  * Answers set by the test; a failure set in [failNext] is thrown by the next call instead. Calls
- * are recorded by name, and [gate], when set, holds every call until completed.
+ * are recorded by name, and [gate], when set, holds every call made meanwhile until completed.
  */
 class FakeWishlistSharingRepository : WishlistSharingRepository {
 
@@ -22,17 +23,24 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     var sharedWishlists: List<SharedWishlistSummary> = emptyList()
     var sharedWishlist: SharedWishlist? = null
     var redeemedWishlistId: UUID = UUID.randomUUID()
+    var reserveAnswer = ReservationState.RESERVED_BY_ME
+    var releaseAnswer = ReservationState.AVAILABLE
     val failNext = ArrayDeque<SharingFailure>()
     var gate: CompletableDeferred<Unit>? = null
 
     val calls = mutableListOf<String>()
     val redeemedTokens = mutableListOf<InviteToken>()
 
+    // The answer is what the server holds when the call is made, even if it is held back by the
+    // gate and completes later, as a real read would be.
     private suspend fun <T> answer(name: String, value: () -> T): T {
         calls += name
+        val failure = failNext.removeFirstOrNull()
+        val result = if (failure == null) value() else null
         gate?.await()
-        failNext.removeFirstOrNull()?.let { throw SharingException(it) }
-        return value()
+        failure?.let { throw SharingException(it) }
+        @Suppress("UNCHECKED_CAST")
+        return result as T
     }
 
     override suspend fun createInvite(wishlistId: UUID) = answer("createInvite") { checkNotNull(createdInvite) }
@@ -53,4 +61,8 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     override suspend fun sharedWishlist(wishlistId: UUID) = answer("sharedWishlist") { checkNotNull(sharedWishlist) }
 
     override suspend fun leave(wishlistId: UUID) = answer("leave:$wishlistId") {}
+
+    override suspend fun reserve(wishId: UUID) = answer("reserve:$wishId") { reserveAnswer }
+
+    override suspend fun release(wishId: UUID) = answer("release:$wishId") { releaseAnswer }
 }

@@ -160,6 +160,62 @@ class SupabaseWishlistSharingRepositoryTest {
     }
 
     @Test
+    fun `reserving and releasing send the wish and read the server's plain answer`() = runTest {
+        answer = { respondJson("\"RESERVED_BY_ME\"") }
+        assertEquals(ReservationState.RESERVED_BY_ME, repository.reserve(WISH))
+        assertRpc("reserve_wish", """{"p_wish_id":"$WISH"}""")
+
+        requests.clear()
+        answer = { respondJson("\"AVAILABLE\"") }
+        assertEquals(ReservationState.AVAILABLE, repository.release(WISH))
+        assertRpc("release_wish", """{"p_wish_id":"$WISH"}""")
+    }
+
+    @Test
+    fun `reserving reports someone else's reservation as just that`() = runTest {
+        answer = { respondJson("\"RESERVED_BY_OTHER\"") }
+
+        assertEquals(ReservationState.RESERVED_BY_OTHER, repository.reserve(WISH))
+    }
+
+    @Test
+    fun `releasing may report any of the three states`() = runTest {
+        ReservationState.entries.forEach { state ->
+            answer = { respondJson("\"${state.name}\"") }
+            assertEquals(state, repository.release(WISH))
+        }
+    }
+
+    @Test
+    fun `an unexpected reservation answer is a server failure, never a guess`() = runTest {
+        // Reserving can never leave a wish available.
+        listOf("\"AVAILABLE\"", "\"RESERVED\"", "\"reserved_by_me\"", "null", "{}", "[]").forEach { body ->
+            answer = { respondJson(body) }
+            assertFailure(SharingFailure.SERVER) { repository.reserve(WISH) }
+        }
+        listOf("\"SOMETHING_NEW\"", "\"\"", "null", "1").forEach { body ->
+            answer = { respondJson(body) }
+            assertFailure(SharingFailure.SERVER) { repository.release(WISH) }
+        }
+    }
+
+    @Test
+    fun `reservation refusals are typed by SQLSTATE and carry nothing of the answer`() = runTest {
+        answer = { respondError("P0002", status = HttpStatusCode.NotFound, message = "secret detail") }
+        val unavailable = assertFailure(SharingFailure.UNAVAILABLE) { repository.reserve(WISH) }
+        assertFailure(SharingFailure.UNAVAILABLE) { repository.release(WISH) }
+        assertNull(unavailable.cause)
+        assertFalse(unavailable.stackTraceToString().contains("secret detail"))
+
+        answer = { respondError("40001", message = "try again") }
+        assertFailure(SharingFailure.SERVER) { repository.reserve(WISH) }
+
+        answer = { throw IOException("offline") }
+        assertFailure(SharingFailure.NETWORK) { repository.reserve(WISH) }
+        assertFailure(SharingFailure.NETWORK) { repository.release(WISH) }
+    }
+
+    @Test
     fun `redeeming sends the token and returns the joined list`() = runTest {
         answer = { respondJson("""{"wishlist_id":"$LIST"}""") }
 
@@ -315,5 +371,6 @@ class SupabaseWishlistSharingRepositoryTest {
         val MEMBER: UUID = UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
         val OTHER: UUID = UUID.fromString("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
         val THIRD: UUID = UUID.fromString("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+        val WISH: UUID = UUID.fromString("20000000-0000-4000-8000-000000000001")
     }
 }

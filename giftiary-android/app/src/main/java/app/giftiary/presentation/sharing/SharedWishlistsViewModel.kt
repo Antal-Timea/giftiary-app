@@ -2,6 +2,7 @@ package app.giftiary.presentation.sharing
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.repository.SharingException
@@ -38,20 +39,27 @@ sealed interface OnlineContent<out T> {
     data class Failed(val failure: SharingFailure) : OnlineContent<Nothing>
 }
 
-/** Loads [fetch] into an [OnlineState]; a newer load replaces one still running. */
+/**
+ * Loads [fetch] into an [OnlineState]. A newer load replaces one still running: an answer asked
+ * for before it can never overwrite what it shows.
+ */
 private class OnlineLoader<T>(private val fetch: suspend () -> T) {
 
     val state = MutableStateFlow(OnlineState<T>())
     private var loading: Job? = null
+    private var generation = 0L
 
     fun load(scope: CoroutineScope) {
         loading?.cancel()
+        val startedIn = ++generation
         state.update { it.copy(isRefreshing = true, refreshFailure = null) }
         loading = scope.launch {
             try {
                 val value = fetch()
+                if (startedIn != generation) return@launch
                 state.value = OnlineState(OnlineContent.Loaded(value))
             } catch (e: SharingException) {
+                if (startedIn != generation) return@launch
                 state.update { current ->
                     // Unavailable means access is gone: what was shown must not stay on screen.
                     if (current.content is OnlineContent.Loaded && e.failure != SharingFailure.UNAVAILABLE) {
@@ -61,6 +69,14 @@ private class OnlineLoader<T>(private val fetch: suspend () -> T) {
                     }
                 }
             }
+        }
+    }
+
+    /** Changes what is shown by a server answer; callers load again right after. */
+    fun patch(change: (T) -> T) {
+        state.update { current ->
+            val content = current.content as? OnlineContent.Loaded ?: return@update current
+            current.copy(content = OnlineContent.Loaded(change(content.value)), isRefreshing = false)
         }
     }
 }
@@ -128,6 +144,57 @@ class SharedWishlistViewModel @AssistedInject constructor(
         _leaving.update { it.copy(failure = null) }
     }
 
+    private val _reservations = MutableStateFlow(ReservationActions())
+    val reservations: StateFlow<ReservationActions> = _reservations.asStateFlow()
+
+    fun onReserve(wishId: UUID) = act(wishId, reserving = true) { sharing.reserve(wishId) }
+
+    fun onReleaseRequested(wishId: UUID) {
+        if (wishId in _reservations.value.inFlight) return
+        _reservations.update { it.copy(confirmingRelease = wishId) }
+    }
+
+    fun onReleaseDismissed() {
+        _reservations.update { it.copy(confirmingRelease = null) }
+    }
+
+    fun onReleaseConfirmed() {
+        val wishId = _reservations.value.confirmingRelease ?: return
+        _reservations.update { it.copy(confirmingRelease = null) }
+        act(wishId, reserving = false) { sharing.release(wishId) }
+    }
+
+    fun onReservationMessageShown() {
+        _reservations.update { it.copy(message = null) }
+    }
+
+    /**
+     * Never optimistic: the row keeps its last server state until the server answers, and then
+     * shows exactly what it answered before the whole list is read again. That reload replaces
+     * any load started before the action, so an older read never overwrites the answer.
+     */
+    private fun act(wishId: UUID, reserving: Boolean, call: suspend () -> ReservationState) {
+        if (wishId in _reservations.value.inFlight) return
+        _reservations.update { it.copy(inFlight = it.inFlight + wishId) }
+        viewModelScope.launch {
+            val message = try {
+                val answer = call()
+                loader.patch { list -> list.withReservation(wishId, answer) }
+                ReservationMessage.TAKEN_BY_OTHER.takeIf { reserving && answer == ReservationState.RESERVED_BY_OTHER }
+            } catch (e: SharingException) {
+                when (e.failure) {
+                    SharingFailure.UNAVAILABLE -> ReservationMessage.WISH_UNAVAILABLE
+                    SharingFailure.NETWORK -> ReservationMessage.NETWORK
+                    else -> ReservationMessage.SERVER
+                }
+            }
+            _reservations.update { it.copy(inFlight = it.inFlight - wishId, message = message ?: it.message) }
+            // The truth for the whole list; after a lost connection the call may or may not have
+            // committed, so only the server can say. A plain server error assumes nothing new.
+            if (message != ReservationMessage.SERVER) loader.load(viewModelScope)
+        }
+    }
+
     @AssistedFactory
     interface Factory {
         fun create(wishlistId: UUID): SharedWishlistViewModel
@@ -142,3 +209,24 @@ data class LeaveState(
     /** Leaving failed and may work when tried again; shown once. */
     val failure: SharingFailure? = null,
 )
+
+data class ReservationActions(
+    /** Wishes whose reserve or release is waiting for the server; their actions are disabled. */
+    val inFlight: Set<UUID> = emptySet(),
+    val confirmingRelease: UUID? = null,
+    /** Feedback for a finished action, shown once. */
+    val message: ReservationMessage? = null,
+)
+
+enum class ReservationMessage {
+    /** Reserving lost to someone else; who is never known. */
+    TAKEN_BY_OTHER,
+
+    /** The same for a deleted or moved wish, a deleted list and ended access. */
+    WISH_UNAVAILABLE,
+    NETWORK,
+    SERVER,
+}
+
+private fun SharedWishlist.withReservation(wishId: UUID, state: ReservationState): SharedWishlist =
+    copy(wishes = wishes.map { if (it.id == wishId) it.copy(reservation = state) else it })

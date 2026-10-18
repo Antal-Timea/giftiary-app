@@ -387,6 +387,17 @@
     <string name="shared_wishlist_leave_dialog_title">Leave %1$s?</string>
     <string name="shared_wishlist_leave_dialog_message">You will no longer see this wishlist. You can join again with a new invite.</string>
     <string name="shared_wishlist_leave_confirm">Leave</string>
+    <string name="shared_wish_available">Available</string>
+    <string name="shared_wish_reserved_by_you">Reserved by you</string>
+    <string name="shared_wish_reserved">Reserved</string>
+    <string name="shared_wish_reserve">Reserve</string>
+    <string name="shared_wish_reserve_description">Reserve %1$s</string>
+    <string name="shared_wish_release">Release</string>
+    <string name="shared_wish_release_description">Release %1$s</string>
+    <string name="shared_wish_release_dialog_title">Release %1$s?</string>
+    <string name="shared_wish_release_dialog_message">Someone else on this list may reserve it then.</string>
+    <string name="shared_wish_taken">Someone else reserved this first.</string>
+    <string name="shared_wish_unavailable">This wish is no longer available.</string>
     <string name="join_wishlist_title">Join a wishlist</string>
     <string name="join_wishlist_message">Paste the invite link you received.</string>
     <string name="join_wishlist_input">Invite link</string>

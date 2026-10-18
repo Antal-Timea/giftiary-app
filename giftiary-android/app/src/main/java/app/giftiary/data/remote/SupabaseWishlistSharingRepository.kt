@@ -27,6 +27,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -111,6 +112,19 @@ class SupabaseWishlistSharingRepository @Inject constructor(
         rpc("leave_wishlist", buildJsonObject { put("p_wishlist_id", wishlistId.toString()) })
     }
 
+    override suspend fun reserve(wishId: UUID): ReservationState =
+        reservation("reserve_wish", wishId, accepted = RESERVE_ANSWERS)
+
+    override suspend fun release(wishId: UUID): ReservationState =
+        reservation("release_wish", wishId, accepted = ReservationState.entries.toSet())
+
+    // An action's answer decides what the user is shown, so anything unexpected is a failure,
+    // never a guess; e.g. reserving cannot leave a wish available.
+    private suspend fun reservation(function: String, wishId: UUID, accepted: Set<ReservationState>): ReservationState {
+        val answer = rpc(function, buildJsonObject { put("p_wish_id", wishId.toString()) }, String.serializer())
+        return accepted.find { it.name == answer } ?: throw SharingException(SharingFailure.SERVER)
+    }
+
     private suspend fun rpc(function: String, parameters: JsonObject) {
         call { client -> client.postgrest.rpc(function, parameters) }
     }
@@ -157,6 +171,8 @@ class SupabaseWishlistSharingRepository @Inject constructor(
 
     private companion object {
         const val INVITE_VALID_DAYS = 7
+
+        val RESERVE_ANSWERS = setOf(ReservationState.RESERVED_BY_ME, ReservationState.RESERVED_BY_OTHER)
 
         val json = Json { ignoreUnknownKeys = true }
 

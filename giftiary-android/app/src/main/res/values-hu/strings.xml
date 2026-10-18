@@ -386,6 +386,17 @@
     <string name="shared_wishlist_leave_dialog_title">Kilépsz innen: %1$s?</string>
     <string name="shared_wishlist_leave_dialog_message">Többé nem látod ezt a kívánságlistát. Új meghívóval később újra csatlakozhatsz.</string>
     <string name="shared_wishlist_leave_confirm">Kilépés</string>
+    <string name="shared_wish_available">Szabad</string>
+    <string name="shared_wish_reserved_by_you">Te foglaltad le</string>
+    <string name="shared_wish_reserved">Lefoglalva</string>
+    <string name="shared_wish_reserve">Lefoglalom</string>
+    <string name="shared_wish_reserve_description">%1$s lefoglalása</string>
+    <string name="shared_wish_release">Felszabadítom</string>
+    <string name="shared_wish_release_description">%1$s felszabadítása</string>
+    <string name="shared_wish_release_dialog_title">Felszabadítod: %1$s?</string>
+    <string name="shared_wish_release_dialog_message">Utána a lista egy másik tagja is lefoglalhatja.</string>
+    <string name="shared_wish_taken">Valaki más hamarabb lefoglalta.</string>
+    <string name="shared_wish_unavailable">Ez a kívánság már nem érhető el.</string>
     <string name="join_wishlist_title">Csatlakozás kívánságlistához</string>
     <string name="join_wishlist_message">Illeszd be a kapott meghívó linket.</string>
     <string name="join_wishlist_input">Meghívó link</string>

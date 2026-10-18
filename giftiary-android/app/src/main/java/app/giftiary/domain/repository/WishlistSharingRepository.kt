@@ -2,6 +2,7 @@ package app.giftiary.domain.repository
 
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.InviteToken
+import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.model.WishlistAccess
@@ -35,6 +36,15 @@ interface WishlistSharingRepository {
 
     /** Ends the user's own membership; leaving a list one is no longer a member of is not an error. */
     suspend fun leave(wishlistId: UUID)
+
+    /**
+     * Asks the server to reserve the wish for the user and returns what it decided: reserved by
+     * the user, or already reserved by someone else (never by whom).
+     */
+    suspend fun reserve(wishId: UUID): ReservationState
+
+    /** Releases the user's own reservation and returns the wish's state as the server now sees it. */
+    suspend fun release(wishId: UUID): ReservationState
 }
 
 enum class SharingFailure {

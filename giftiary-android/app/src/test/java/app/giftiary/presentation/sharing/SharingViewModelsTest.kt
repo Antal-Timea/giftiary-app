@@ -3,6 +3,8 @@ package app.giftiary.presentation.sharing
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.InviteToken
+import app.giftiary.domain.model.ReservationState
+import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.model.WishlistAccess
@@ -270,6 +272,204 @@ class SharingViewModelsTest {
         shared.refresh()
 
         assertEquals(OnlineContent.Loaded(listOf(kept)), shared.state.value.content)
+    }
+
+    // ---- reservations ----
+
+    private val lamp = SharedWish(UUID.randomUUID(), "Lamp", null, null, null, ReservationState.AVAILABLE)
+    private val socks = SharedWish(UUID.randomUUID(), "Socks", null, null, null, ReservationState.RESERVED_BY_ME)
+
+    private fun reservationViewModel(vararg wishes: SharedWish): SharedWishlistViewModel {
+        sharing.sharedWishlist = SharedWishlist(listId, "Birthday", null, wishes.toList())
+        return SharedWishlistViewModel(listId, sharing).also { it.refresh() }
+    }
+
+    private fun SharedWishlistViewModel.stateOf(wish: SharedWish): ReservationState? =
+        (state.value.content as OnlineContent.Loaded).value.wishes.single { it.id == wish.id }.reservation
+
+    private fun serverHas(vararg wishes: SharedWish) {
+        sharing.sharedWishlist = SharedWishlist(listId, "Birthday", null, wishes.toList())
+    }
+
+    @Test
+    fun `reserving shows the server's answer, then reads the whole list again`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.calls.clear()
+        sharing.reserveAnswer = ReservationState.RESERVED_BY_ME
+        serverHas(lamp.copy(reservation = ReservationState.RESERVED_BY_ME))
+
+        viewModel.onReserve(lamp.id)
+
+        assertEquals(listOf("reserve:${lamp.id}", "sharedWishlist"), sharing.calls)
+        assertEquals(ReservationState.RESERVED_BY_ME, viewModel.stateOf(lamp))
+        assertNull(viewModel.reservations.value.message)
+        assertTrue(viewModel.reservations.value.inFlight.isEmpty())
+    }
+
+    @Test
+    fun `nothing changes before the server answers, and the wish takes one action at a time`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.calls.clear()
+        sharing.gate = CompletableDeferred()
+
+        viewModel.onReserve(lamp.id)
+        viewModel.onReserve(lamp.id)
+        viewModel.onReleaseRequested(lamp.id)
+
+        assertEquals(ReservationState.AVAILABLE, viewModel.stateOf(lamp))
+        assertEquals(setOf(lamp.id), viewModel.reservations.value.inFlight)
+        assertNull("no release while reserving", viewModel.reservations.value.confirmingRelease)
+        assertEquals(listOf("reserve:${lamp.id}"), sharing.calls)
+
+        serverHas(lamp.copy(reservation = ReservationState.RESERVED_BY_ME))
+        sharing.gate!!.complete(Unit)
+        assertEquals(ReservationState.RESERVED_BY_ME, viewModel.stateOf(lamp))
+        assertTrue(viewModel.reservations.value.inFlight.isEmpty())
+    }
+
+    @Test
+    fun `another wish can be reserved while one waits`() = runTest {
+        val other = lamp.copy(id = UUID.randomUUID(), name = "Mug")
+        val viewModel = reservationViewModel(lamp, other)
+        sharing.gate = CompletableDeferred()
+
+        viewModel.onReserve(lamp.id)
+        viewModel.onReserve(other.id)
+
+        assertEquals(setOf(lamp.id, other.id), viewModel.reservations.value.inFlight)
+        sharing.gate!!.complete(Unit)
+    }
+
+    @Test
+    fun `a lost race shows the wish as reserved and says so, naming no one`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.reserveAnswer = ReservationState.RESERVED_BY_OTHER
+        serverHas(lamp.copy(reservation = ReservationState.RESERVED_BY_OTHER))
+
+        viewModel.onReserve(lamp.id)
+
+        assertEquals(ReservationState.RESERVED_BY_OTHER, viewModel.stateOf(lamp))
+        assertEquals(ReservationMessage.TAKEN_BY_OTHER, viewModel.reservations.value.message)
+        viewModel.onReservationMessageShown()
+        assertNull(viewModel.reservations.value.message)
+    }
+
+    @Test
+    fun `releasing asks first, then shows what the server says`() = runTest {
+        val viewModel = reservationViewModel(socks)
+        sharing.calls.clear()
+
+        viewModel.onReleaseRequested(socks.id)
+        assertEquals(socks.id, viewModel.reservations.value.confirmingRelease)
+        viewModel.onReleaseDismissed()
+        assertTrue(sharing.calls.isEmpty())
+
+        sharing.releaseAnswer = ReservationState.AVAILABLE
+        serverHas(socks.copy(reservation = ReservationState.AVAILABLE))
+        viewModel.onReleaseRequested(socks.id)
+        viewModel.onReleaseConfirmed()
+
+        assertNull(viewModel.reservations.value.confirmingRelease)
+        assertEquals(listOf("release:${socks.id}", "sharedWishlist"), sharing.calls)
+        assertEquals(ReservationState.AVAILABLE, viewModel.stateOf(socks))
+    }
+
+    @Test
+    fun `a release answered with another state shows that state, without the lost-race message`() = runTest {
+        val viewModel = reservationViewModel(socks)
+        sharing.releaseAnswer = ReservationState.RESERVED_BY_OTHER
+        serverHas(socks.copy(reservation = ReservationState.RESERVED_BY_OTHER))
+
+        viewModel.onReleaseRequested(socks.id)
+        viewModel.onReleaseConfirmed()
+
+        assertEquals(ReservationState.RESERVED_BY_OTHER, viewModel.stateOf(socks))
+        assertNull(viewModel.reservations.value.message)
+    }
+
+    @Test
+    fun `after a lost connection the last state stays and the list is read again`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.calls.clear()
+        sharing.failNext += SharingFailure.NETWORK
+        // The reservation did commit; only the reload can tell.
+        serverHas(lamp.copy(reservation = ReservationState.RESERVED_BY_ME))
+
+        viewModel.onReserve(lamp.id)
+
+        assertEquals(listOf("reserve:${lamp.id}", "sharedWishlist"), sharing.calls)
+        assertEquals(ReservationMessage.NETWORK, viewModel.reservations.value.message)
+        assertEquals(ReservationState.RESERVED_BY_ME, viewModel.stateOf(lamp))
+    }
+
+    @Test
+    fun `a lost connection never shows a state of its own`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.failNext += SharingFailure.NETWORK
+        sharing.failNext += SharingFailure.NETWORK
+
+        viewModel.onReserve(lamp.id)
+
+        // The reload failed too: what was last read from the server stays.
+        assertEquals(ReservationState.AVAILABLE, viewModel.stateOf(lamp))
+        assertEquals(ReservationMessage.NETWORK, viewModel.reservations.value.message)
+    }
+
+    @Test
+    fun `a server error assumes nothing and reads nothing`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.calls.clear()
+        sharing.failNext += SharingFailure.SERVER
+
+        viewModel.onReserve(lamp.id)
+
+        assertEquals(listOf("reserve:${lamp.id}"), sharing.calls)
+        assertEquals(ReservationState.AVAILABLE, viewModel.stateOf(lamp))
+        assertEquals(ReservationMessage.SERVER, viewModel.reservations.value.message)
+        assertTrue("it can be tried again", viewModel.reservations.value.inFlight.isEmpty())
+    }
+
+    @Test
+    fun `an unavailable wish is reported uniformly and the list read again`() = runTest {
+        val mug = lamp.copy(id = UUID.randomUUID(), name = "Mug")
+        val viewModel = reservationViewModel(lamp, mug)
+        sharing.failNext += SharingFailure.UNAVAILABLE
+        serverHas(mug)
+
+        viewModel.onReserve(lamp.id)
+
+        assertEquals(ReservationMessage.WISH_UNAVAILABLE, viewModel.reservations.value.message)
+        assertEquals(listOf(mug), (viewModel.state.value.content as OnlineContent.Loaded).value.wishes)
+    }
+
+    @Test
+    fun `when access is gone the reload turns the whole list unavailable`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        sharing.failNext += SharingFailure.UNAVAILABLE
+        sharing.failNext += SharingFailure.UNAVAILABLE
+
+        viewModel.onReserve(lamp.id)
+
+        assertEquals(ReservationMessage.WISH_UNAVAILABLE, viewModel.reservations.value.message)
+        assertEquals(OnlineContent.Failed(SharingFailure.UNAVAILABLE), viewModel.state.value.content)
+    }
+
+    @Test
+    fun `a reload asked for before the action cannot overwrite its answer`() = runTest {
+        val viewModel = reservationViewModel(lamp)
+        val staleRead = CompletableDeferred<Unit>()
+        sharing.gate = staleRead
+        // A refresh reads the server before the reservation...
+        viewModel.refresh()
+        sharing.gate = null
+        serverHas(lamp.copy(reservation = ReservationState.RESERVED_BY_ME))
+        sharing.reserveAnswer = ReservationState.RESERVED_BY_ME
+
+        viewModel.onReserve(lamp.id)
+        // ...and answers only now, with the old state.
+        staleRead.complete(Unit)
+
+        assertEquals(ReservationState.RESERVED_BY_ME, viewModel.stateOf(lamp))
     }
 
     // ---- join ----
