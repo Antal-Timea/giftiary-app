@@ -37,6 +37,18 @@ class ReminderCardViewModel @Inject constructor(
             initialValue = ReminderCardState.Hidden,
         )
 
+    /**
+     * The same reminders for Settings, where they are always offered: there the user came looking
+     * for them, so having no occasions yet is no reason to hide them.
+     */
+    val settingsState: StateFlow<ReminderCardState> = setting
+        .map { cardState(hasOccasions = true, it) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = ReminderCardState.Hidden,
+        )
+
     fun onResume() {
         setting.value = readSetting()
     }

@@ -1,8 +1,12 @@
 package app.giftiary.presentation.home
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.giftiary.R
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -82,3 +88,30 @@ private fun CardButton(@StringRes label: Int, onClick: () -> Unit) {
 fun notificationSettingsIntent(context: Context): Intent =
     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
         .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+
+/**
+ * What the reminder card's buttons do, wherever it is shown. Coming back from the system's
+ * notification settings shows what was changed there.
+ */
+@Composable
+fun rememberReminderCardActions(reminders: ReminderCardViewModel): ReminderCardActions {
+    LifecycleResumeEffect(reminders) {
+        reminders.onResume()
+        onPauseOrDispose {}
+    }
+    val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        reminders.onPermissionResult()
+    }
+    val askToNotify = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    val context = LocalContext.current
+    return ReminderCardActions(
+        onTurnOn = { if (reminders.onTurnOn()) askToNotify() },
+        onTurnOff = reminders::onTurnOff,
+        onAllow = askToNotify,
+        onOpenSettings = { context.startActivity(notificationSettingsIntent(context)) },
+    )
+}

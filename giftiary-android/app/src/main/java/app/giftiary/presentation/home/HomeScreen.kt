@@ -49,7 +49,7 @@ fun HomeScreen(
     onOpenWishlists: () -> Unit,
     onOpenOwnOccasions: () -> Unit,
     onOpenSyncAttention: () -> Unit,
-    onSignOut: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
@@ -113,12 +113,13 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(GiftiarySpacing.s))
+            // Sign-out lives in Settings now, with the profile and reminders.
             TextButton(
-                onClick = onSignOut,
+                onClick = onOpenSettings,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
             ) {
-                Text(text = stringResource(R.string.auth_sign_out), style = MaterialTheme.typography.labelLarge)
+                Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -145,7 +146,7 @@ private fun HomeScreenPreview() {
             onOpenWishlists = {},
             onOpenOwnOccasions = {},
             onOpenSyncAttention = {},
-            onSignOut = {},
+            onOpenSettings = {},
         )
     }
 }

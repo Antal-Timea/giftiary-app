@@ -1,16 +1,10 @@
 package app.giftiary.presentation.navigation
 
-import android.Manifest
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavHostController
@@ -37,9 +31,8 @@ import app.giftiary.presentation.gifts.GiftEditorViewModel
 import app.giftiary.presentation.gifts.GiftHistoryScreen
 import app.giftiary.presentation.home.ComingUpViewModel
 import app.giftiary.presentation.home.HomeScreen
-import app.giftiary.presentation.home.ReminderCardActions
 import app.giftiary.presentation.home.ReminderCardViewModel
-import app.giftiary.presentation.home.notificationSettingsIntent
+import app.giftiary.presentation.home.rememberReminderCardActions
 import app.giftiary.presentation.occasions.OccasionEditorScreen
 import app.giftiary.presentation.occasions.OccasionEditorTarget
 import app.giftiary.presentation.occasions.OccasionEditorViewModel
@@ -51,6 +44,7 @@ import app.giftiary.presentation.people.PersonDetailScreen
 import app.giftiary.presentation.people.PersonDetailViewModel
 import app.giftiary.presentation.people.PersonEditorScreen
 import app.giftiary.presentation.people.PersonEditorViewModel
+import app.giftiary.presentation.settings.SettingsScreen
 import app.giftiary.presentation.sharing.JoinWishlistScreen
 import app.giftiary.presentation.sharing.PendingJoinViewModel
 import app.giftiary.presentation.sharing.SharedWishlistScreen
@@ -82,6 +76,9 @@ data object PeopleRoute
 
 @Serializable
 data object SyncAttentionRoute
+
+@Serializable
+data object SettingsRoute
 
 @Serializable
 data class PersonDetailRoute(val personId: String)
@@ -197,36 +194,25 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             val comingUp by hiltViewModel<ComingUpViewModel>().content.collectAsStateWithLifecycle()
             val reminders = hiltViewModel<ReminderCardViewModel>()
             val reminderCard by reminders.state.collectAsStateWithLifecycle()
-            // Coming back from the system's notification settings must show what was changed there.
-            LifecycleResumeEffect(reminders) {
-                reminders.onResume()
-                onPauseOrDispose {}
-            }
-            val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-                reminders.onPermissionResult()
-            }
-            val askToNotify = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-            val context = LocalContext.current
             HomeScreen(
                 syncStatus = syncStatus,
                 comingUp = comingUp,
                 reminderCard = reminderCard,
-                reminderActions = ReminderCardActions(
-                    onTurnOn = { if (reminders.onTurnOn()) askToNotify() },
-                    onTurnOff = reminders::onTurnOff,
-                    onAllow = askToNotify,
-                    onOpenSettings = { context.startActivity(notificationSettingsIntent(context)) },
-                ),
+                reminderActions = rememberReminderCardActions(reminders),
                 onOpenComingUp = { occasionId -> navController.navigate(occasionPlanRoute(occasionId)) },
                 onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
                 onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
                 onOpenWishlists = dropUnlessResumed { navController.navigate(WishlistsRoute) },
                 onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
                 onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
+                onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
+            )
+        }
+        composable<SettingsRoute> {
+            SettingsScreen(
+                viewModel = hiltViewModel(),
+                reminders = hiltViewModel(),
+                onBack = navController.popBackStackUnlessPaused(),
                 onSignOut = onSignOut,
             )
         }
@@ -460,6 +446,7 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
                         factory.create(wishlistId)
                     },
                     onBack = navController.popBackStackUnlessPaused(),
+                    onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
                 )
             }
         }

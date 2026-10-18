@@ -92,7 +92,7 @@ internal fun CredentialsFields(
 }
 
 @Composable
-private fun inputErrorMessage(error: CredentialsInputError): String = when (error) {
+internal fun inputErrorMessage(error: CredentialsInputError): String = when (error) {
     CredentialsInputError.EMAIL_REQUIRED -> stringResource(R.string.auth_error_email_required)
     CredentialsInputError.EMAIL_INVALID -> stringResource(R.string.auth_error_email_invalid)
     CredentialsInputError.PASSWORD_REQUIRED -> stringResource(R.string.auth_error_password_required)
@@ -105,7 +105,7 @@ private fun inputErrorMessage(error: CredentialsInputError): String = when (erro
     CredentialsInputError.PASSWORDS_DO_NOT_MATCH -> stringResource(R.string.auth_error_passwords_do_not_match)
 }
 
-private fun AuthError.messageRes(): Int = when (this) {
+internal fun AuthError.messageRes(): Int = when (this) {
     AuthError.INVALID_CREDENTIALS -> R.string.auth_error_invalid_credentials
     AuthError.EMAIL_ALREADY_REGISTERED -> R.string.auth_error_email_already_registered
     AuthError.EMAIL_NOT_CONFIRMED -> R.string.auth_error_email_not_confirmed
@@ -113,5 +113,7 @@ private fun AuthError.messageRes(): Int = when (this) {
     AuthError.INVALID_EMAIL -> R.string.auth_error_invalid_email
     AuthError.NETWORK_UNAVAILABLE -> R.string.auth_error_network
     AuthError.RATE_LIMITED -> R.string.auth_error_rate_limited
+    AuthError.LINK_INVALID -> R.string.auth_error_link_invalid
+    AuthError.SAME_PASSWORD -> R.string.auth_error_same_password
     AuthError.UNKNOWN -> R.string.auth_error_unknown
 }

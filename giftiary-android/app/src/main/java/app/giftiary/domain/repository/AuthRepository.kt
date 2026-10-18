@@ -19,6 +19,27 @@ interface AuthRepository {
     suspend fun signUp(email: String, password: String): SignUpOutcome
 
     suspend fun signOut()
+
+    /**
+     * Sends a password recovery email for [email]. Succeeds alike whether or not an account exists.
+     *
+     * @throws AuthException
+     */
+    suspend fun requestPasswordReset(email: String)
+
+    /**
+     * Completes a recovery link: exchanges its one-time [code] for a session of the account.
+     *
+     * @throws AuthException [AuthError.LINK_INVALID] for a used, expired or foreign link.
+     */
+    suspend fun exchangeRecoveryCode(code: String)
+
+    /**
+     * Sets a new password for the signed-in account.
+     *
+     * @throws AuthException
+     */
+    suspend fun setNewPassword(password: String)
 }
 
 enum class SignUpOutcome {
@@ -38,6 +59,12 @@ enum class AuthError {
     INVALID_EMAIL,
     NETWORK_UNAVAILABLE,
     RATE_LIMITED,
+
+    /** A recovery link that was used already, expired, or was opened on another device. */
+    LINK_INVALID,
+
+    /** The new password is the one the account already has. */
+    SAME_PASSWORD,
     UNKNOWN,
 }
 

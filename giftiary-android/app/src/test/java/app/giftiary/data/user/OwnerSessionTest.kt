@@ -29,6 +29,7 @@ import app.giftiary.domain.repository.NoActiveOwnerException
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.repository.OwnerSessionState
 import app.giftiary.testing.FakeAuthRepository
+import app.giftiary.testing.FakeRecoveryGate
 import app.giftiary.testing.FakeReminderScheduler
 import app.giftiary.testing.FakeSyncScheduler
 import app.giftiary.testing.occasion
@@ -43,6 +44,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,6 +70,7 @@ class OwnerSessionTest {
     private val bob = AuthUser(UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"), "bob@example.com")
 
     private val auth = FakeAuthRepository()
+    private val recoveryGate = FakeRecoveryGate()
     private val scheduler = FakeSyncScheduler()
     private val reminders = FakeReminderScheduler()
     private val notifier = ReminderNotifier(context, DeviceNotificationAccess(context))
@@ -89,7 +92,7 @@ class OwnerSessionTest {
     /** Starts a session whose every owner and state change is recorded, in order. */
     private fun TestScope.startSession(): Recorded {
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
-        val session = OwnerSession(auth, LegacyOwnerStore(context), LegacyOwnershipClaim(database, claimDao), scheduler, ReminderSignOut(reminders, notifier), scope)
+        val session = OwnerSession(auth, LegacyOwnerStore(context), LegacyOwnershipClaim(database, claimDao), scheduler, ReminderSignOut(reminders, notifier), recoveryGate, scope)
         val recorded = Recorded(session)
         scope.launch { session.ownerId.collect { recorded.owners += it } }
         scope.launch { session.state.collect { recorded.states += it } }
@@ -109,6 +112,43 @@ class OwnerSessionTest {
     private suspend fun OwnerSession.awaitState(expected: OwnerSessionState) = inRealTime { state.first { it == expected } }
 
     private suspend fun ControlledClaimDao.awaitClaimStarted(account: UUID) = inRealTime { started.first { account in it } }
+
+    @Test
+    fun `a session that only exists for a password recovery opens nothing until the recovery is done`() = runTest {
+        auth.state.value = AuthState.SignedOut
+        val recorded = startSession()
+
+        // The recovery closes the gate before it exchanges the link, which signs the account in.
+        recoveryGate.isActive.value = true
+        auth.state.value = AuthState.SignedIn(alice)
+
+        // Preparing runs on real threads: give it time it would have needed to open the account.
+        assertNull(inRealTime { withTimeoutOrNull(1_000) { recorded.session.state.first { it is OwnerSessionState.Ready } } })
+        assertEquals(OwnerSessionState.Restoring, recorded.session.state.value)
+        assertNull(recorded.session.ownerId.value)
+        assertTrue("no owner was ever opened", recorded.owners.all { it == null })
+        assertFalse(recorded.states.any { it is OwnerSessionState.Ready })
+
+        recoveryGate.isActive.value = false
+        recorded.session.awaitState(OwnerSessionState.Ready(alice))
+        assertEquals(alice.id, recorded.session.ownerId.value)
+    }
+
+    @Test
+    fun `a recovery given up through sign-out never opens the account`() = runTest {
+        auth.state.value = AuthState.SignedOut
+        val recorded = startSession()
+        recoveryGate.isActive.value = true
+        auth.state.value = AuthState.SignedIn(alice)
+
+        recorded.session.signOut()
+        recorded.session.awaitState(OwnerSessionState.SignedOut)
+        recoveryGate.isActive.value = false
+
+        assertEquals(OwnerSessionState.SignedOut, recorded.session.state.value)
+        assertTrue(recorded.owners.all { it == null })
+        assertFalse(recorded.states.any { it is OwnerSessionState.Ready })
+    }
 
     @Test
     fun `without a saved session nothing is open`() = runTest {

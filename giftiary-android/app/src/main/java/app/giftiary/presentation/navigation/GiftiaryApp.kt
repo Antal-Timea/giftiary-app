@@ -6,9 +6,12 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.giftiary.data.auth.RecoveryState
 import app.giftiary.domain.repository.OwnerSessionState
 import app.giftiary.presentation.auth.AccountPreparationFailedScreen
 import app.giftiary.presentation.auth.AuthGateViewModel
+import app.giftiary.presentation.auth.PasswordChangedScreen
+import app.giftiary.presentation.auth.RecoveryScreen
 import app.giftiary.presentation.auth.StartupScreen
 
 /**
@@ -18,6 +21,16 @@ import app.giftiary.presentation.auth.StartupScreen
 @Composable
 fun GiftiaryApp(modifier: Modifier = Modifier, viewModel: AuthGateViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recovery by viewModel.recoveryState.collectAsStateWithLifecycle()
+    val passwordChanged by viewModel.passwordChanged.collectAsStateWithLifecycle()
+    if (recovery != RecoveryState.Idle) {
+        RecoveryScreen(viewModel = hiltViewModel(), modifier = modifier)
+        return
+    }
+    if (passwordChanged) {
+        PasswordChangedScreen(onContinue = viewModel::onPasswordChangedShown, modifier = modifier)
+        return
+    }
     when (val current = state) {
         OwnerSessionState.Restoring -> StartupScreen(modifier)
         OwnerSessionState.SignedOut -> AuthNavHost(modifier)

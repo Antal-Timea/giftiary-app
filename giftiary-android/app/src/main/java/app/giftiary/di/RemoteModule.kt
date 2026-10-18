@@ -4,9 +4,11 @@ import app.giftiary.BuildConfig
 import app.giftiary.data.remote.AccountBoundClients
 import app.giftiary.data.remote.RemoteReader
 import app.giftiary.data.remote.RemoteWriter
+import app.giftiary.data.remote.SupabaseProfileRepository
 import app.giftiary.data.remote.SupabaseRemoteReader
 import app.giftiary.data.remote.SupabaseRemoteWriter
 import app.giftiary.data.remote.SupabaseWishlistSharingRepository
+import app.giftiary.domain.repository.ProfileRepository
 import app.giftiary.domain.repository.WishlistSharingRepository
 import dagger.Module
 import dagger.Provides
@@ -32,4 +34,7 @@ object RemoteModule {
 
     @Provides
     fun provideWishlistSharingRepository(impl: SupabaseWishlistSharingRepository): WishlistSharingRepository = impl
+
+    @Provides
+    fun provideProfileRepository(impl: SupabaseProfileRepository): ProfileRepository = impl
 }

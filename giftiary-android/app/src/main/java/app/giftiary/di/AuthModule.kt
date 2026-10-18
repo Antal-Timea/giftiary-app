@@ -4,6 +4,8 @@ import app.giftiary.BuildConfig
 import app.giftiary.data.auth.AUTH_CALLBACK_HOST
 import app.giftiary.data.auth.AUTH_CALLBACK_SCHEME
 import app.giftiary.data.auth.AUTH_CALLBACK_URL
+import app.giftiary.data.auth.PasswordRecovery
+import app.giftiary.data.auth.RecoveryGate
 import app.giftiary.data.auth.SupabaseAuthRepository
 import app.giftiary.domain.repository.AuthRepository
 import dagger.Binds
@@ -25,6 +27,9 @@ abstract class AuthModule {
 
     @Binds
     abstract fun bindAuthRepository(impl: SupabaseAuthRepository): AuthRepository
+
+    @Binds
+    abstract fun bindRecoveryGate(impl: PasswordRecovery): RecoveryGate
 
     companion object {
 

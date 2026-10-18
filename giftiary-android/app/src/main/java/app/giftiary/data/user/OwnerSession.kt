@@ -1,6 +1,7 @@
 package app.giftiary.data.user
 
 import android.util.Log
+import app.giftiary.data.auth.RecoveryGate
 import app.giftiary.data.local.LegacyOwnershipClaim
 import app.giftiary.data.reminders.ReminderSignOut
 import app.giftiary.data.sync.SyncScheduler
@@ -36,6 +37,7 @@ class OwnerSession @Inject constructor(
     private val legacyClaim: LegacyOwnershipClaim,
     private val syncScheduler: SyncScheduler,
     private val reminderSignOut: ReminderSignOut,
+    private val recoveryGate: RecoveryGate,
     @ApplicationScope private val scope: CoroutineScope,
 ) : ActiveOwner, AccountSession {
 
@@ -61,6 +63,8 @@ class OwnerSession @Inject constructor(
             started = true
         }
         scope.launch { authRepository.authState.collect(::onAuthState) }
+        // Its release lets a signed-in account open; while it holds, onAuthState keeps it closed.
+        scope.launch { recoveryGate.isActive.collect { synchronized(lock) { onAuthStateLocked(latestAuth) } } }
     }
 
     override fun retry() = synchronized(lock) {
@@ -92,7 +96,7 @@ class OwnerSession @Inject constructor(
                     stillSignedIn != null && auth is AuthState.SignedIn && auth.user.id == stillSignedIn.id &&
                     _state.value == OwnerSessionState.Restoring && preparation == null
                 ) {
-                    prepareLocked(auth.user)
+                    onAuthStateLocked(auth)
                 }
             }
         }
@@ -100,10 +104,22 @@ class OwnerSession @Inject constructor(
 
     private fun onAuthState(auth: AuthState) = synchronized(lock) {
         latestAuth = auth
+        onAuthStateLocked(auth)
+    }
+
+    private fun onAuthStateLocked(auth: AuthState) {
         when (auth) {
             AuthState.Restoring -> closeLocked(OwnerSessionState.Restoring)
             AuthState.SignedOut -> closeLocked(OwnerSessionState.SignedOut)
             is AuthState.SignedIn -> {
+                // A session that only exists to set a new password opens nothing: no data, no
+                // sync, no reminders, until the recovery is done or given up. Read now, not as
+                // last seen, so a sign-in from the exchange itself already finds it closed.
+                if (recoveryGate.isActive.value) {
+                    val closed = _state.value == OwnerSessionState.Restoring && _ownerId.value == null && preparation == null
+                    if (!closed) closeLocked(OwnerSessionState.Restoring)
+                    return
+                }
                 val alreadyOpen = (_state.value as? OwnerSessionState.Ready)?.user?.id == auth.user.id &&
                     _ownerId.value == auth.user.id
                 // The same account reported again (e.g. the SDK reloading its session when the app

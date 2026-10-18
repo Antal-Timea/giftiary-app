@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -32,6 +34,7 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 fun SignInScreen(
     viewModel: SignInViewModel,
     onCreateAccount: () -> Unit,
+    onForgotPassword: (email: String) -> Unit,
     modifier: Modifier = Modifier,
     joinPending: Boolean = false,
 ) {
@@ -42,6 +45,7 @@ fun SignInScreen(
         onPasswordChange = viewModel::onPasswordChange,
         onSubmit = viewModel::submit,
         onCreateAccount = onCreateAccount,
+        onForgotPassword = { onForgotPassword(state.email) },
         joinPending = joinPending,
         modifier = modifier,
     )
@@ -54,6 +58,7 @@ private fun SignInContent(
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onCreateAccount: () -> Unit,
+    onForgotPassword: () -> Unit,
     modifier: Modifier = Modifier,
     joinPending: Boolean = false,
 ) {
@@ -117,7 +122,15 @@ private fun SignInContent(
                 modifier = Modifier.fillMaxWidth(),
                 loading = state.isSubmitting,
             )
-            Spacer(Modifier.height(GiftiarySpacing.m))
+            TextButton(
+                onClick = onForgotPassword,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isSubmitting,
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+            ) {
+                Text(stringResource(R.string.auth_forgot_password))
+            }
+            Spacer(Modifier.height(GiftiarySpacing.s))
             GiftiarySecondaryButton(
                 text = stringResource(R.string.auth_go_to_create_account),
                 onClick = onCreateAccount,
@@ -138,6 +151,7 @@ private fun SignInPreview() {
             onPasswordChange = {},
             onSubmit = {},
             onCreateAccount = {},
+            onForgotPassword = {},
         )
     }
 }

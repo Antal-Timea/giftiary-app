@@ -9,7 +9,9 @@ import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
+import app.giftiary.domain.repository.ProfileFailure
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.testing.FakeProfileRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.FakeWishlistSharingRepository
 import app.giftiary.testing.MainDispatcherRule
@@ -37,7 +39,9 @@ class SharingViewModelsTest {
     private val invite = ActiveInvite(UUID.randomUUID(), now, now.plusSeconds(604_800))
     private val member = WishlistMember(UUID.randomUUID(), null, now)
 
-    private fun accessViewModel() = WishlistAccessViewModel(listId, sharing, FakeWishlistRepository())
+    private val profiles = FakeProfileRepository()
+
+    private fun accessViewModel() = WishlistAccessViewModel(listId, sharing, FakeWishlistRepository(), profiles)
 
     // ---- owner access ----
 
@@ -151,6 +155,44 @@ class SharingViewModelsTest {
 
         assertEquals(SharingFailure.NETWORK, viewModel.state.value.message)
         assertTrue(viewModel.state.value.changing.isEmpty())
+    }
+
+    @Test
+    fun `an owner without a name is asked for one, and can still create an invite`() = runTest {
+        sharing.createdInvite = CreatedInvite(invite.id, token, invite.expiresAt)
+        val viewModel = accessViewModel()
+
+        viewModel.checkOwnerName()
+        assertTrue(viewModel.state.value.showNamePrompt)
+
+        viewModel.onCreateInvite()
+        assertEquals("the prompt never blocks", sharing.createdInvite, viewModel.state.value.newInvite)
+    }
+
+    @Test
+    fun `the name prompt can be put off for this screen, and goes once a name exists`() = runTest {
+        val viewModel = accessViewModel()
+        viewModel.checkOwnerName()
+
+        viewModel.onNamePromptDismissed()
+        assertFalse(viewModel.state.value.showNamePrompt)
+        viewModel.checkOwnerName()
+        assertFalse("not asked again on this screen", viewModel.state.value.showNamePrompt)
+
+        val other = accessViewModel()
+        profiles.name = "Anna"
+        other.checkOwnerName()
+        assertFalse(other.state.value.showNamePrompt)
+    }
+
+    @Test
+    fun `an unreadable profile shows no prompt rather than a wrong one`() = runTest {
+        profiles.failNext += ProfileFailure.NETWORK
+        val viewModel = accessViewModel()
+
+        viewModel.checkOwnerName()
+
+        assertFalse(viewModel.state.value.showNamePrompt)
     }
 
     // ---- shared lists ----

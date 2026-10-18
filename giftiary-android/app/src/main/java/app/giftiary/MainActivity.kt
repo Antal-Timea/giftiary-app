@@ -6,10 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.giftiary.data.auth.AuthCallbackHandler
+import app.giftiary.data.auth.PasswordRecovery
 import app.giftiary.data.sync.FullSyncRequester
 import app.giftiary.presentation.navigation.GiftiaryApp
 import app.giftiary.presentation.sharing.PendingWishlistJoin
-import app.giftiary.presentation.sharing.pendingJoinOf
 import app.giftiary.presentation.theme.GiftiaryTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -25,6 +25,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var pendingWishlistJoin: PendingWishlistJoin
+
+    @Inject
+    lateinit var passwordRecovery: PasswordRecovery
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,13 +55,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleLink(intent: Intent) {
-        val join = pendingJoinOf(intent)
-        if (join == null) {
-            authCallbackHandler.handle(intent)
-            return
+        when (val link = incomingLinkOf(intent)) {
+            is IncomingLink.Join -> pendingWishlistJoin.offer(link.join)
+            is IncomingLink.Recovery -> passwordRecovery.start(link.link)
+            IncomingLink.Other -> {
+                authCallbackHandler.handle(intent)
+                return
+            }
         }
-        pendingWishlistJoin.offer(join)
-        // The token is held in memory from here on; the activity's own intent no longer carries it.
+        // The secret is held in memory from here on; the activity's own intent no longer carries it.
         intent.data = null
     }
 }

@@ -33,3 +33,10 @@ class AuthCallbackHandler @Inject constructor(
 const val AUTH_CALLBACK_SCHEME = "giftiary"
 const val AUTH_CALLBACK_HOST = "auth"
 const val AUTH_CALLBACK_URL = "$AUTH_CALLBACK_SCHEME://$AUTH_CALLBACK_HOST/callback"
+
+/**
+ * Where recovery emails lead. A path of its own: the SDK's link handling ignores paths and would
+ * treat a recovery link like a confirmation, so it must never reach [AuthCallbackHandler].
+ */
+const val AUTH_RECOVERY_PATH = "/recovery"
+const val AUTH_RECOVERY_URL = "$AUTH_CALLBACK_SCHEME://$AUTH_CALLBACK_HOST$AUTH_RECOVERY_PATH"

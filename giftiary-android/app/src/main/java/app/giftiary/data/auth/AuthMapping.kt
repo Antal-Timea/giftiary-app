@@ -77,4 +77,20 @@ internal fun authErrorFor(code: AuthErrorCode?, statusCode: Int): AuthError = wh
     else -> if (statusCode == HTTP_TOO_MANY_REQUESTS) AuthError.RATE_LIMITED else AuthError.UNKNOWN
 }
 
+/**
+ * For completing a recovery link and setting its new password: whatever says the link or its
+ * session is no longer good is one answer, so the user is offered a new link.
+ */
+internal fun Throwable.toRecoveryError(): AuthError {
+    val code = (this as? AuthRestException)?.errorCode
+    return when (code) {
+        AuthErrorCode.FlowStateNotFound, AuthErrorCode.FlowStateExpired, AuthErrorCode.BadCodeVerifier,
+        AuthErrorCode.OtpExpired, AuthErrorCode.SessionNotFound, AuthErrorCode.BadJwt,
+        -> AuthError.LINK_INVALID
+        AuthErrorCode.SamePassword -> AuthError.SAME_PASSWORD
+        AuthErrorCode.WeakPassword -> AuthError.WEAK_PASSWORD
+        else -> toAuthError()
+    }
+}
+
 private const val HTTP_TOO_MANY_REQUESTS = 429

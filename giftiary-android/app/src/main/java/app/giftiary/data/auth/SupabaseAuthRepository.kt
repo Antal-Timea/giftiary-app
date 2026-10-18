@@ -2,6 +2,7 @@ package app.giftiary.data.auth
 
 import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.model.AuthUser
+import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthException
 import app.giftiary.domain.repository.AuthRepository
 import app.giftiary.domain.repository.SignUpOutcome
@@ -58,6 +59,21 @@ class SupabaseAuthRepository @Inject constructor(
         }
     }
 
+    override suspend fun requestPasswordReset(email: String) = asAuthFailure {
+        auth.resetPasswordForEmail(email, AUTH_RECOVERY_URL)
+    }
+
+    override suspend fun exchangeRecoveryCode(code: String) = asAuthFailure(Throwable::toRecoveryError) {
+        // Saved like any session: setting the new password needs it, and so does what follows.
+        auth.exchangeCodeForSession(code, true)
+        Unit
+    }
+
+    override suspend fun setNewPassword(password: String) = asAuthFailure(Throwable::toRecoveryError) {
+        auth.updateUser { this.password = password }
+        Unit
+    }
+
     /** The SDK's own persisted session, which outlives the transient statuses it passes through. */
     private suspend fun storedUser(): UserInfo? = try {
         auth.sessionManager.loadSession().user
@@ -68,13 +84,16 @@ class SupabaseAuthRepository @Inject constructor(
         null
     }
 
-    private suspend fun <T> asAuthFailure(block: suspend () -> T): T = try {
+    private suspend fun <T> asAuthFailure(
+        errorOf: (Throwable) -> AuthError = Throwable::toAuthError,
+        block: suspend () -> T,
+    ): T = try {
         block()
     } catch (e: CancellationException) {
         throw e
     } catch (e: AuthException) {
         throw e
     } catch (e: Exception) {
-        throw AuthException(e.toAuthError(), e)
+        throw AuthException(errorOf(e), e)
     }
 }

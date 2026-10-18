@@ -1,8 +1,15 @@
 package app.giftiary.presentation.auth
 
+import app.giftiary.data.auth.PasswordRecovery
+import app.giftiary.data.auth.RecoveryLink
+import app.giftiary.data.auth.RecoveryState
+import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.model.AuthUser
 import app.giftiary.domain.repository.AccountSession
 import app.giftiary.domain.repository.OwnerSessionState
+import app.giftiary.testing.FakeAuthRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -26,7 +33,23 @@ class AuthGateViewModelTest {
     }
 
     private val session = FakeAccountSession()
-    private val viewModel = AuthGateViewModel(session)
+    private val auth = FakeAuthRepository().apply { state.value = AuthState.SignedOut }
+    private val recovery = PasswordRecovery(auth, CoroutineScope(Dispatchers.Unconfined))
+    private val viewModel = AuthGateViewModel(session, recovery)
+
+    @Test
+    fun `a password recovery under way is what the gate shows`() {
+        assertEquals(RecoveryState.Idle, viewModel.recoveryState.value)
+
+        recovery.start(RecoveryLink.Code("code"))
+        assertEquals(RecoveryState.ChoosingPassword(), viewModel.recoveryState.value)
+
+        recovery.setPassword("new-password-1")
+        assertEquals(RecoveryState.Idle, viewModel.recoveryState.value)
+        assertEquals(true, viewModel.passwordChanged.value)
+        viewModel.onPasswordChangedShown()
+        assertEquals(false, viewModel.passwordChanged.value)
+    }
 
     @Test
     fun `the gate follows the session from startup to an open account`() {

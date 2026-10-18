@@ -5,11 +5,13 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +20,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.ActiveInvite
@@ -49,8 +53,13 @@ import java.time.Instant
 import java.util.UUID
 
 @Composable
-fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit) {
+fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit, onOpenSettings: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Also on returning from Settings, where the name may just have been added.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.checkOwnerName()
+        onPauseOrDispose {}
+    }
     val name by viewModel.wishlistName.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -73,6 +82,8 @@ fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit)
             onRemoveConfirmed = viewModel::onRemoveConfirmed,
             onRemoveDismissed = viewModel::onRemoveDismissed,
             onMessageShown = viewModel::onMessageShown,
+            onAddName = onOpenSettings,
+            onNamePromptDismissed = viewModel::onNamePromptDismissed,
         ),
     )
 }
@@ -95,6 +106,8 @@ class WishlistAccessActions(
     val onRemoveConfirmed: () -> Unit,
     val onRemoveDismissed: () -> Unit,
     val onMessageShown: () -> Unit,
+    val onAddName: () -> Unit,
+    val onNamePromptDismissed: () -> Unit,
 )
 
 @Composable
@@ -163,7 +176,11 @@ private fun AccessContents(
                 color = colors.textSecondary,
             )
         }
+        if (state.showNamePrompt) {
+            item { NamePrompt(onAddName = actions.onAddName, onDismiss = actions.onNamePromptDismissed) }
+        }
         item {
+            // Never waits for the name prompt: an invite can be created either way.
             val invite = state.newInvite
             if (invite != null) {
                 NewInviteCard(invite = invite, onShare = { actions.onShare(invite) })
@@ -240,6 +257,36 @@ private fun NewInviteCard(invite: CreatedInvite, onShare: () -> Unit) {
     }
 }
 
+/** Suggests a name so members know whose list it is; it asks, it never blocks. */
+@Composable
+private fun NamePrompt(onAddName: () -> Unit, onDismiss: () -> Unit) {
+    val colors = GiftiaryTheme.colors
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
+        shape = GiftiaryShapes.container,
+        color = colors.surfaceElevated,
+    ) {
+        Column(modifier = Modifier.padding(start = GiftiarySpacing.l, end = GiftiarySpacing.s, top = GiftiarySpacing.m)) {
+            Text(
+                text = stringResource(R.string.wishlist_access_name_prompt),
+                modifier = Modifier.padding(end = GiftiarySpacing.s),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textPrimary,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary)) {
+                    Text(stringResource(R.string.wishlist_access_name_prompt_later))
+                }
+                TextButton(onClick = onAddName, colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText)) {
+                    Text(stringResource(R.string.wishlist_access_name_prompt_add))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun accessFailureText(failure: SharingFailure): String = when (failure) {
     SharingFailure.UNAVAILABLE -> stringResource(R.string.wishlist_access_unavailable)
@@ -267,7 +314,7 @@ private fun WishlistAccessPreview() {
                 newInvite = CreatedInvite(invite.id, InviteToken.of("A".repeat(43))!!, invite.expiresAt),
             ),
             wishlistName = "Birthday 2027",
-            actions = WishlistAccessActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = WishlistAccessActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

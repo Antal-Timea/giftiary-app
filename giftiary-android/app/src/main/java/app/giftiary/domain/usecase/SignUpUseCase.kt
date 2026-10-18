@@ -15,14 +15,7 @@ class SignUpUseCase @Inject constructor(
         val trimmedEmail = email.trim()
         val errors = buildSet {
             emailError(trimmedEmail)?.let(::add)
-            when {
-                password.isEmpty() -> add(CredentialsInputError.PASSWORD_REQUIRED)
-                password.length < MIN_PASSWORD_LENGTH -> add(CredentialsInputError.PASSWORD_TOO_SHORT)
-            }
-            when {
-                confirmation.isEmpty() -> add(CredentialsInputError.CONFIRMATION_REQUIRED)
-                confirmation != password -> add(CredentialsInputError.PASSWORDS_DO_NOT_MATCH)
-            }
+            addAll(newPasswordErrors(password, confirmation))
         }
         if (errors.isNotEmpty()) return SignUpResult.Invalid(errors)
 

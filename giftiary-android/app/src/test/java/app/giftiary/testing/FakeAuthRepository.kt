@@ -59,4 +59,36 @@ class FakeAuthRepository : AuthRepository {
         signOutFailure?.let { throw it }
         state.value = AuthState.SignedOut
     }
+
+    // Password recovery: each call fails with its own error when set, and may be held by [gate].
+
+    var resetFailure: AuthError? = null
+    var exchangeFailure: AuthError? = null
+    var setPasswordFailure: AuthError? = null
+
+    /** The account a recovery link signs in, as the SDK does when exchanging its code. */
+    var recoveryUser = AuthUser(UUID.fromString("cccccccc-cccc-4ccc-8ccc-cccccccccccc"), "carol@example.com")
+
+    val resetCalls = mutableListOf<String>()
+    val exchangeCalls = mutableListOf<String>()
+    val setPasswordCalls = mutableListOf<String>()
+
+    override suspend fun requestPasswordReset(email: String) {
+        resetCalls += email
+        gate?.await()
+        resetFailure?.let { throw AuthException(it) }
+    }
+
+    override suspend fun exchangeRecoveryCode(code: String) {
+        exchangeCalls += code
+        gate?.await()
+        exchangeFailure?.let { throw AuthException(it) }
+        state.value = AuthState.SignedIn(recoveryUser)
+    }
+
+    override suspend fun setNewPassword(password: String) {
+        setPasswordCalls += password
+        gate?.await()
+        setPasswordFailure?.let { throw AuthException(it) }
+    }
 }

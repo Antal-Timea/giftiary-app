@@ -114,6 +114,19 @@ class ReminderCardViewModelTest {
         assertEquals(true, settings.enabled[alice])
     }
 
+    @Test
+    fun `Settings offers reminders even before there is an occasion, with the same choice as Home`() = runTest {
+        val viewModel = collected()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.settingsState.collect {} }
+
+        assertEquals(ReminderCardState.Hidden, viewModel.state.value)
+        assertEquals(ReminderCardState.Off, viewModel.settingsState.value)
+
+        viewModel.onTurnOn()
+        assertEquals("one choice, shown in both places", viewModel.state.value, viewModel.settingsState.value)
+        assertEquals(true, settings.enabled[settings.owner])
+    }
+
     private fun TestScope.collected(): ReminderCardViewModel {
         val viewModel = ReminderCardViewModel(occasions, settings)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }

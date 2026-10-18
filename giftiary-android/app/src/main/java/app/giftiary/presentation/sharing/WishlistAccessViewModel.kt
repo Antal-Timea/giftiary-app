@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
+import app.giftiary.domain.repository.ProfileException
+import app.giftiary.domain.repository.ProfileRepository
 import app.giftiary.domain.repository.SharingException
 import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.domain.repository.WishlistRepository
@@ -37,6 +39,7 @@ class WishlistAccessViewModel @AssistedInject constructor(
     @Assisted private val wishlistId: UUID,
     private val sharing: WishlistSharingRepository,
     wishlists: WishlistRepository,
+    private val profiles: ProfileRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(WishlistAccessUiState())
@@ -50,6 +53,27 @@ class WishlistAccessViewModel @AssistedInject constructor(
 
     init {
         load()
+    }
+
+    /**
+     * Asks again whether the owner has a name, e.g. after coming back from Settings. Without one,
+     * a prompt suggests adding it; creating an invite never waits for it.
+     */
+    fun checkOwnerName() {
+        if (_state.value.namePromptDismissed) return
+        viewModelScope.launch {
+            val missing = try {
+                profiles.displayName() == null
+            } catch (_: ProfileException) {
+                // Unknown is not missing: no prompt rather than a wrong one.
+                false
+            }
+            _state.update { it.copy(ownerNameMissing = missing) }
+        }
+    }
+
+    fun onNamePromptDismissed() {
+        _state.update { it.copy(namePromptDismissed = true) }
     }
 
     private var loading: Job? = null
@@ -151,7 +175,12 @@ data class WishlistAccessUiState(
     val confirmingRemoval: WishlistMember? = null,
     /** A failed action or refresh, shown once over the content. */
     val message: SharingFailure? = null,
-)
+    val ownerNameMissing: Boolean = false,
+    /** "Not now" for this screen; it does not come back until the screen is opened again. */
+    val namePromptDismissed: Boolean = false,
+) {
+    val showNamePrompt: Boolean get() = ownerNameMissing && !namePromptDismissed
+}
 
 sealed interface AccessContent {
     data object Loading : AccessContent

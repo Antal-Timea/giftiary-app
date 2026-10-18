@@ -20,3 +20,15 @@ internal fun emailError(email: String): CredentialsInputError? = when {
     !EMAIL_SHAPE.matches(email) -> CredentialsInputError.EMAIL_INVALID
     else -> null
 }
+
+/** A new password and the same typed again, as for a new account and for a password reset. */
+internal fun newPasswordErrors(password: String, confirmation: String): Set<CredentialsInputError> = buildSet {
+    when {
+        password.isEmpty() -> add(CredentialsInputError.PASSWORD_REQUIRED)
+        password.length < MIN_PASSWORD_LENGTH -> add(CredentialsInputError.PASSWORD_TOO_SHORT)
+    }
+    when {
+        confirmation.isEmpty() -> add(CredentialsInputError.CONFIRMATION_REQUIRED)
+        confirmation != password -> add(CredentialsInputError.PASSWORDS_DO_NOT_MATCH)
+    }
+}
