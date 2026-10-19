@@ -268,13 +268,6 @@ class GiftEditorViewModel @AssistedInject constructor(
                 note = note,
             )
         }
-
-        fun PriceFormat.ParseResult.toError(): PriceError? = when (this) {
-            is PriceFormat.ParseResult.Valid -> null
-            PriceFormat.ParseResult.Negative -> PriceError.NEGATIVE
-            PriceFormat.ParseResult.TooPrecise -> PriceError.TOO_PRECISE
-            PriceFormat.ParseResult.Invalid -> PriceError.INVALID
-        }
     }
 }
 
@@ -336,12 +329,6 @@ enum class GiftEditorStatus {
 
     /** The gift was stored locally; the screen should close. */
     CLOSED,
-}
-
-enum class PriceError {
-    INVALID,
-    NEGATIVE,
-    TOO_PRECISE,
 }
 
 enum class GiftWriteError {

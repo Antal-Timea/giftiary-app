@@ -68,3 +68,17 @@ object PriceFormat {
     private val AMOUNT = Regex("""[0-9]+([.,][0-9]+)?""")
     private const val MINUS_SIGNS = "-\u2212"
 }
+
+enum class PriceError {
+    INVALID,
+    NEGATIVE,
+    TOO_PRECISE,
+}
+
+/** Why a typed price cannot be stored, or null when it can; shared by every editor with a price. */
+internal fun PriceFormat.ParseResult.toError(): PriceError? = when (this) {
+    is PriceFormat.ParseResult.Valid -> null
+    PriceFormat.ParseResult.Negative -> PriceError.NEGATIVE
+    PriceFormat.ParseResult.TooPrecise -> PriceError.TOO_PRECISE
+    PriceFormat.ParseResult.Invalid -> PriceError.INVALID
+}

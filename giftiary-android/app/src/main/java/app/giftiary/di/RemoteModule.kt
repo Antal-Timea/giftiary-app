@@ -10,6 +10,7 @@ import app.giftiary.data.remote.SupabaseRemoteWriter
 import app.giftiary.data.remote.SupabaseWishlistSharingRepository
 import app.giftiary.domain.repository.ProfileRepository
 import app.giftiary.domain.repository.WishlistSharingRepository
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,22 +20,25 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object RemoteModule {
+abstract class RemoteModule {
 
-    @Provides
-    @Singleton
-    fun provideAccountBoundClients(): AccountBoundClients =
-        AccountBoundClients(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_PUBLISHABLE_KEY, OkHttp.create())
+    @Binds
+    abstract fun bindWishlistSharingRepository(impl: SupabaseWishlistSharingRepository): WishlistSharingRepository
 
-    @Provides
-    fun provideRemoteReader(clients: AccountBoundClients): RemoteReader = SupabaseRemoteReader(clients)
+    @Binds
+    abstract fun bindProfileRepository(impl: SupabaseProfileRepository): ProfileRepository
 
-    @Provides
-    fun provideRemoteWriter(clients: AccountBoundClients): RemoteWriter = SupabaseRemoteWriter(clients)
+    companion object {
 
-    @Provides
-    fun provideWishlistSharingRepository(impl: SupabaseWishlistSharingRepository): WishlistSharingRepository = impl
+        @Provides
+        @Singleton
+        fun provideAccountBoundClients(): AccountBoundClients =
+            AccountBoundClients(BuildConfig.SUPABASE_URL, BuildConfig.SUPABASE_PUBLISHABLE_KEY, OkHttp.create())
 
-    @Provides
-    fun provideProfileRepository(impl: SupabaseProfileRepository): ProfileRepository = impl
+        @Provides
+        fun provideRemoteReader(clients: AccountBoundClients): RemoteReader = SupabaseRemoteReader(clients)
+
+        @Provides
+        fun provideRemoteWriter(clients: AccountBoundClients): RemoteWriter = SupabaseRemoteWriter(clients)
+    }
 }

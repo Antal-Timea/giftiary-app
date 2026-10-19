@@ -9,6 +9,7 @@ import app.giftiary.domain.repository.WishlistNotFoundException
 import app.giftiary.domain.repository.WishlistRepository
 import app.giftiary.domain.usecase.SaveWishlistResult
 import app.giftiary.domain.usecase.SaveWishlistUseCase
+import app.giftiary.presentation.navigation.toUuidOrNull
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -149,7 +150,7 @@ sealed interface WishlistEditorTarget {
 
     companion object {
         /** From a route argument: a malformed person id is ignored, leaving the user's own wishlist. */
-        fun newFor(personId: String?): New = New(personId?.let { runCatching { UUID.fromString(it) }.getOrNull() })
+        fun newFor(personId: String?): New = New(personId?.toUuidOrNull())
     }
 }
 

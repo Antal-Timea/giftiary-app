@@ -63,7 +63,7 @@ import javax.inject.Inject
  *
  * A gift insert refused because another gift of the account already holds its source idea is a
  * conflict too, but only on that proof, read right after the refusal: the losing gift is kept as a
- * conflict and dropped locally. Every other refusal blocks the mutation, as before.
+ * conflict and dropped locally. Every other refusal blocks the mutation.
  *
  * Network requests are never made inside a Room transaction. Cancellation is not a failure: it
  * leaves the mutation in flight, to be settled by the next push.
@@ -235,7 +235,7 @@ class SyncPusher @Inject constructor(
      * Settles an insert refused for a unique key other than its id. Only a gift made from an idea
      * that another gift of the account already holds on the backend is settled as a conflict; the
      * winner must be read now, valid, and not this gift. Without that proof the mutation is
-     * refused as before. A failed read decides nothing: the mutation stays in flight.
+     * refused like any other. A failed read decides nothing: the mutation stays in flight.
      */
     private suspend fun duplicateKey(account: RemoteAccount, mutation: InFlight): PushOutcome {
         val source = if (mutation.entityType == SyncEntityType.GIFT) {

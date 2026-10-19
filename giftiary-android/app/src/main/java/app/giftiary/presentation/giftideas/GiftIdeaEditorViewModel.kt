@@ -24,6 +24,8 @@ import app.giftiary.presentation.gifts.fitsPerson
 import app.giftiary.presentation.gifts.generalOccasions
 import app.giftiary.presentation.gifts.occasionChoices
 import app.giftiary.presentation.gifts.personChoices
+import app.giftiary.presentation.gifts.toError
+import app.giftiary.presentation.navigation.toUuidOrNull
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -279,13 +281,6 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
         }
 
         fun PriceFormat.ParseResult.moneyOrNull(): Money? = (this as? PriceFormat.ParseResult.Valid)?.money
-
-        fun PriceFormat.ParseResult.toError(): PriceError? = when (this) {
-            is PriceFormat.ParseResult.Valid -> null
-            PriceFormat.ParseResult.Negative -> PriceError.NEGATIVE
-            PriceFormat.ParseResult.TooPrecise -> PriceError.TOO_PRECISE
-            PriceFormat.ParseResult.Invalid -> PriceError.INVALID
-        }
     }
 }
 
@@ -300,8 +295,6 @@ sealed interface GiftIdeaEditorTarget {
     companion object {
         /** Preselections from a route; a malformed one is ignored, the other still applies. */
         fun newFor(personId: String?, occasionId: String?): New = New(personId?.toUuidOrNull(), occasionId?.toUuidOrNull())
-
-        private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()
     }
 }
 

@@ -12,6 +12,7 @@ import app.giftiary.domain.usecase.SaveWishUseCase
 import app.giftiary.domain.usecase.WishInput
 import app.giftiary.presentation.gifts.PriceError
 import app.giftiary.presentation.gifts.PriceFormat
+import app.giftiary.presentation.gifts.toError
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -145,13 +146,6 @@ class WishEditorViewModel @AssistedInject constructor(
             productUrl = wish.productUrl.orEmpty(),
             note = wish.note.orEmpty(),
         )
-
-        fun PriceFormat.ParseResult.toError(): PriceError? = when (this) {
-            is PriceFormat.ParseResult.Valid -> null
-            PriceFormat.ParseResult.Negative -> PriceError.NEGATIVE
-            PriceFormat.ParseResult.TooPrecise -> PriceError.TOO_PRECISE
-            PriceFormat.ParseResult.Invalid -> PriceError.INVALID
-        }
     }
 }
 

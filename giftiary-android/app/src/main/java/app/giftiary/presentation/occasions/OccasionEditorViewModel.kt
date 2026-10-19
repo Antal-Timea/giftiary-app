@@ -10,6 +10,7 @@ import app.giftiary.domain.usecase.OccasionInput
 import app.giftiary.domain.usecase.OccasionInputError
 import app.giftiary.domain.usecase.SaveOccasionResult
 import app.giftiary.domain.usecase.SaveOccasionUseCase
+import app.giftiary.presentation.navigation.toUuidOrNull
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -208,7 +209,7 @@ sealed interface OccasionEditorTarget {
          */
         fun newFor(personId: String?): New? = when (personId) {
             null -> New(null)
-            else -> runCatching { UUID.fromString(personId) }.getOrNull()?.let(::New)
+            else -> personId.toUuidOrNull()?.let(::New)
         }
     }
 }
