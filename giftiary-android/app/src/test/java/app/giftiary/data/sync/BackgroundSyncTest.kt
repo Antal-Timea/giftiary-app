@@ -92,10 +92,8 @@ class BackgroundSyncTest {
 
     @Test
     fun `nothing is synced unless an account is open`() = runTest {
-        listOf(OwnerSessionState.SignedOut, OwnerSessionState.Failed(ready.user)).forEach {
-            state.value = it
-            assertFalse("$it", sync.run(full = true, attempt = 0))
-        }
+        state.value = OwnerSessionState.SignedOut
+        assertFalse(sync.run(full = true, attempt = 0))
         assertTrue(drains.isEmpty())
     }
 

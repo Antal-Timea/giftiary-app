@@ -95,10 +95,8 @@ class ReminderDigestTest {
     }
 
     @Test
-    fun `nothing is shown when signed out, when the account failed to open, or when reminders are off`() = runTest {
+    fun `nothing is shown when signed out or when reminders are off`() = runTest {
         account.value = OwnerSessionState.SignedOut
-        assertFalse(digest().run(0))
-        account.value = OwnerSessionState.Failed(alice)
         assertFalse(digest().run(0))
         account.value = OwnerSessionState.Ready(alice)
         preferences.setEnabled(alice.id, false)

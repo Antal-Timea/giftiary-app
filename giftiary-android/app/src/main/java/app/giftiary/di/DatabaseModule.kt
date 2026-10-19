@@ -9,7 +9,6 @@ import app.giftiary.data.local.MIGRATION_3_4
 import app.giftiary.data.local.MIGRATION_4_5
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
-import app.giftiary.data.local.dao.LegacyOwnershipDao
 import app.giftiary.data.local.dao.OccasionDao
 import app.giftiary.data.local.dao.PersonDao
 import app.giftiary.data.local.dao.SyncConflictDao
@@ -51,9 +50,6 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncConflictDao(database: GiftiaryDatabase): SyncConflictDao = database.syncConflictDao()
-
-    @Provides
-    fun provideLegacyOwnershipDao(database: GiftiaryDatabase): LegacyOwnershipDao = database.legacyOwnershipDao()
 
     @Provides
     fun provideWishlistDao(database: GiftiaryDatabase): WishlistDao = database.wishlistDao()

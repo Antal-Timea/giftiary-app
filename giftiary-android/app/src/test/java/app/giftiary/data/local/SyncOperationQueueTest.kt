@@ -345,10 +345,10 @@ class SyncOperationQueueTest {
 
     @Test
     fun `an operation migrated without an owner stays without one when coalesced`() = runTest {
-        // Pre-v2 operations get their owner from the legacy claim, never from a later write.
-        val created = unclaimed(SyncOperation.CREATE)
-        val updated = unclaimed(SyncOperation.UPDATE)
-        val deleted = unclaimed(SyncOperation.CREATE)
+        // Pre-v2 operations never get an owner from a later write.
+        val created = unowned(SyncOperation.CREATE)
+        val updated = unowned(SyncOperation.UPDATE)
+        val deleted = unowned(SyncOperation.CREATE)
 
         queue.enqueue(alice, SyncEntityType.PERSON, created.entityId, SyncOperation.UPDATE, RemoteState.LOCAL_ONLY)
         queue.enqueue(alice, SyncEntityType.PERSON, updated.entityId, SyncOperation.DELETE, RemoteState.SYNCED)
@@ -362,7 +362,7 @@ class SyncOperationQueueTest {
         assertEquals(deleted.copy(mutationId = deletedNow.mutationId), deletedNow)
     }
 
-    private suspend fun unclaimed(operation: SyncOperation) = SyncOperationEntity(
+    private suspend fun unowned(operation: SyncOperation) = SyncOperationEntity(
         id = UUID.randomUUID(),
         ownerUserId = null,
         entityType = SyncEntityType.PERSON,

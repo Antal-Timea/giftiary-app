@@ -194,8 +194,8 @@ class SyncPuller @Inject constructor(
         // Room ids are not per account. Another account's row with this id is neither "none" nor
         // something to overwrite; ids are random, so this means the local data is wrong.
         check(local == null || local.ownerUserId == owner) { "A local $type has a pulled id but another owner" }
-        // Owner-agnostic on purpose: any queued operation for the entity, even an unclaimed
-        // legacy one, is local intent the backend has not seen.
+        // Owner-agnostic on purpose: any queued operation for the entity, even an unowned
+        // pre-v2 one, is local intent the backend has not seen.
         if (operations.findForEntity(type, row.id) != null) return Decision.QUEUED
         return when {
             local == null -> Decision.INSERT

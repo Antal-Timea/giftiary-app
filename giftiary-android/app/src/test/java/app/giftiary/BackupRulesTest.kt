@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import androidx.test.core.app.ApplicationProvider
 import app.giftiary.data.local.GiftiaryDatabase
-import app.giftiary.data.user.LegacyOwnerStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -30,12 +29,10 @@ class BackupRulesTest {
         "database" to "${GiftiaryDatabase.NAME}-wal",
         "database" to "${GiftiaryDatabase.NAME}-shm",
         "database" to "${GiftiaryDatabase.NAME}-journal",
-        // The pre-account owner id.
-        "sharedpref" to "${LegacyOwnerStore.PREFERENCES_NAME}.xml",
     )
 
     @Test
-    fun `auto backup leaves out the session, the database and the legacy owner`() {
+    fun `auto backup leaves out the session and the database`() {
         assertEquals(expected, excludes(R.xml.backup_rules).getValue("full-backup-content"))
     }
 

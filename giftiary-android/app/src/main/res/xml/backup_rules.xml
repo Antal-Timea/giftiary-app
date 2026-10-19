@@ -22,6 +22,4 @@
     <exclude domain="database" path="giftiary.db-wal" />
     <exclude domain="database" path="giftiary.db-shm" />
     <exclude domain="database" path="giftiary.db-journal" />
-    <!-- The pre-account owner id; restored elsewhere it could hand data to the wrong account. -->
-    <exclude domain="sharedpref" path="local_user.xml" />
 </full-backup-content>

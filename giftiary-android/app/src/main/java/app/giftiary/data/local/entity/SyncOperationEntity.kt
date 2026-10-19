@@ -23,10 +23,9 @@ data class SyncOperationEntity(
     /**
      * The owner of the entity, always set for operations created since schema v2.
      *
-     * Null means exactly one thing: the operation was created under the pre-v2 schema, when a
-     * database had a single legacy device owner and operations had no owner column, and it has
-     * not been through the legacy ownership claim yet. It is not a general "unknown owner"
-     * state; owner-scoped reads never return such operations.
+     * Null means exactly one thing: the operation was created under the pre-v2 schema, when
+     * operations had no owner column. Nothing assigns it an owner any more. It is not a general
+     * "unknown owner" state; owner-scoped reads never return such operations.
      */
     val ownerUserId: UUID?,
     val entityType: SyncEntityType,

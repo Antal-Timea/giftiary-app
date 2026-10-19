@@ -80,7 +80,7 @@ class SyncOperationDaoTest {
     }
 
     @Test
-    fun `pending operations are read per owner and unclaimed ones by nobody`() = runTest {
+    fun `pending operations are read per owner and unowned ones by nobody`() = runTest {
         val alicesOlder = operation(
             SyncEntityType.PERSON, UUID.randomUUID(), SyncOperation.CREATE, Instant.parse("2026-05-01T00:00:00Z"),
         )
@@ -88,12 +88,12 @@ class SyncOperationDaoTest {
             SyncEntityType.GIFT, UUID.randomUUID(), SyncOperation.CREATE, Instant.parse("2026-05-03T00:00:00Z"),
         )
         val bobs = operation(SyncEntityType.PERSON, UUID.randomUUID(), SyncOperation.UPDATE, owner = bob)
-        val unclaimed = operation(SyncEntityType.OCCASION, UUID.randomUUID(), SyncOperation.CREATE, owner = null)
-        listOf(alicesNewer, unclaimed, bobs, alicesOlder).forEach { dao.insert(it) }
+        val unowned = operation(SyncEntityType.OCCASION, UUID.randomUUID(), SyncOperation.CREATE, owner = null)
+        listOf(alicesNewer, unowned, bobs, alicesOlder).forEach { dao.insert(it) }
 
         assertEquals(listOf(alicesOlder, alicesNewer), dao.getPending(alice, limit = 10))
         assertEquals(listOf(bobs), dao.getPending(bob, limit = 10))
-        assertEquals(unclaimed, dao.findForEntity(SyncEntityType.OCCASION, unclaimed.entityId))
+        assertEquals(unowned, dao.findForEntity(SyncEntityType.OCCASION, unowned.entityId))
     }
 
     @Test

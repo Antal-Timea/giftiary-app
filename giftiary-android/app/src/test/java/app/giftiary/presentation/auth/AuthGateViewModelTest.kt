@@ -22,11 +22,7 @@ class AuthGateViewModelTest {
 
     private class FakeAccountSession : AccountSession {
         override val state = MutableStateFlow<OwnerSessionState>(OwnerSessionState.Restoring)
-        var retries = 0
         var signOuts = 0
-        override fun retry() {
-            retries++
-        }
         override fun signOut() {
             signOuts++
         }
@@ -90,14 +86,11 @@ class AuthGateViewModelTest {
     }
 
     @Test
-    fun `a failed preparation offers retry and sign-out`() {
-        session.state.value = OwnerSessionState.Failed(alice)
+    fun `sign-out goes to the session`() {
+        session.state.value = OwnerSessionState.Ready(alice)
 
-        viewModel.retry()
         viewModel.signOut()
 
-        assertEquals(OwnerSessionState.Failed(alice), viewModel.state.value)
-        assertEquals(1, session.retries)
         assertEquals(1, session.signOuts)
     }
 }

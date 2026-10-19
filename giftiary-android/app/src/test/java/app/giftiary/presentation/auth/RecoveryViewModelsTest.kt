@@ -33,7 +33,6 @@ class RecoveryViewModelsTest {
     private var signOuts = 0
     private val session = object : AccountSession {
         override val state = MutableStateFlow<OwnerSessionState>(OwnerSessionState.SignedOut)
-        override fun retry() = Unit
 
         // The ordinary sign-out: the session ends right after.
         override fun signOut() {

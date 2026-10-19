@@ -10,8 +10,8 @@ import java.util.UUID
 @Entity(
     tableName = "wishlist",
     foreignKeys = [
-        // Without a person (null personId) the key does not apply. The update cascade lets the
-        // legacy claim move a person's wishlists, and through them their wishes, with the person.
+        // Without a person (null personId) the key does not apply. Owners never change, so the
+        // update cascade (kept from the schema history) never fires.
         ForeignKey(
             entity = PersonEntity::class,
             parentColumns = ["id", "ownerUserId"],

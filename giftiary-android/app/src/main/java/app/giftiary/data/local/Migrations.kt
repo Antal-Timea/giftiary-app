@@ -8,8 +8,8 @@ import java.util.UUID
  * v2 gives pending sync operations an owner, so pending work can be read per account.
  *
  * Existing operations keep every value and get a null owner. A v1 database belongs to a single
- * legacy device owner, so a null owner means exactly "created under v1, not yet claimed"; the
- * legacy ownership claim assigns it later. The owner is deliberately not guessed here.
+ * legacy device owner, so a null owner means exactly "created under v1". The owner is
+ * deliberately not guessed here.
  */
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -29,7 +29,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
  * random mutation id. SQLite cannot generate those, and a NOT NULL column needs a value for every
  * existing row, so the table is rebuilt and each row is copied with an id generated here. Nothing
  * was ever sent, so nothing is in flight or blocked. Every other value is kept, including a null
- * owner still waiting for the legacy claim.
+ * owner.
  */
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {

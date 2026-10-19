@@ -9,10 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
-/**
- * Decides between the auth flow and the app. Being signed in is not enough: the app opens only
- * once the account's data is prepared ([OwnerSessionState.Ready]).
- */
+/** Decides between the auth flow and the app, which opens only for [OwnerSessionState.Ready]. */
 @HiltViewModel
 class AuthGateViewModel @Inject constructor(
     private val session: AccountSession,
@@ -27,8 +24,6 @@ class AuthGateViewModel @Inject constructor(
     val passwordChanged: StateFlow<Boolean> = recovery.passwordChanged
 
     fun onPasswordChangedShown() = recovery.onPasswordChangedShown()
-
-    fun retry() = session.retry()
 
     fun signOut() = session.signOut()
 }

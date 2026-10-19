@@ -184,18 +184,6 @@ class ReminderSchedulingTest {
         assertEquals(setOf("other"), shownTags())
     }
 
-    @Test
-    fun `an account that failed to open keeps only its own digest`() = runTest {
-        notifier.post(alice, listOf(due()))
-        notifier.post(bob, listOf(due()))
-        val session = FakeAccountSession(OwnerSessionState.Restoring)
-        follow(session)
-
-        session.state.value = OwnerSessionState.Failed(AuthUser(bob, null))
-
-        assertEquals(setOf(bob.toString()), shownTags())
-    }
-
     private fun TestScope.follow(session: AccountSession) {
         ReminderAccountFollower(session, preferences, scheduler, notifier, CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)))
             .start()
@@ -212,7 +200,6 @@ class ReminderSchedulingTest {
 
     private class FakeAccountSession(initial: OwnerSessionState) : AccountSession {
         override val state = MutableStateFlow(initial)
-        override fun retry() = Unit
         override fun signOut() = Unit
     }
 

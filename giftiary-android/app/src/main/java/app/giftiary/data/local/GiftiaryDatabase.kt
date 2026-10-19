@@ -8,7 +8,6 @@ import app.giftiary.data.local.converter.TimeConverters
 import app.giftiary.data.local.converter.UuidConverter
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
-import app.giftiary.data.local.dao.LegacyOwnershipDao
 import app.giftiary.data.local.dao.OccasionDao
 import app.giftiary.data.local.dao.PersonDao
 import app.giftiary.data.local.dao.SyncConflictDao
@@ -52,8 +51,6 @@ abstract class GiftiaryDatabase : RoomDatabase() {
     abstract fun syncOperationDao(): SyncOperationDao
 
     abstract fun syncConflictDao(): SyncConflictDao
-
-    abstract fun legacyOwnershipDao(): LegacyOwnershipDao
 
     abstract fun wishlistDao(): WishlistDao
 

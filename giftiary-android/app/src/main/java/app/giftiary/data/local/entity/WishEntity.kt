@@ -10,9 +10,8 @@ import java.util.UUID
 @Entity(
     tableName = "wish",
     foreignKeys = [
-        // A wish always belongs to its wishlist's owner. Only the legacy ownership claim ever moves
-        // a wishlist to another owner; the update cascade moves its wishes with it, in the same
-        // statement, so the immediate key never sees them apart. Deletion is never cascaded.
+        // A wish always belongs to its wishlist's owner. Owners never change, so the update
+        // cascade (kept from the schema history) never fires. Deletion is never cascaded.
         ForeignKey(
             entity = WishlistEntity::class,
             parentColumns = ["id", "ownerUserId"],

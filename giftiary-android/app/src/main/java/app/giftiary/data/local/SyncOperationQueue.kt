@@ -40,7 +40,7 @@ class SyncOperationQueue @Inject constructor(
             return
         }
         // An entity never changes owner, so neither does its pending operation. A pre-v2 operation
-        // without an owner keeps it that way: assigning one is the legacy claim's job, not a write's.
+        // without an owner keeps it that way: a write never assigns one.
         check(pending.ownerUserId == null || pending.ownerUserId == ownerUserId) {
             "Pending $entityType operation for $entityId belongs to another owner"
         }

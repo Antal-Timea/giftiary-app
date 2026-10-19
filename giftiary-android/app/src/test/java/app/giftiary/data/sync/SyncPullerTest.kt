@@ -276,7 +276,7 @@ class SyncPullerTest {
     }
 
     @Test
-    fun `a queued row of an unclaimed or other account still keeps the entity from being pulled`() = runTest {
+    fun `a queued row without an owner or of another account still keeps the entity from being pulled`() = runTest {
         val id = UUID.randomUUID()
         operations.insert(
             SyncOperationEntity(

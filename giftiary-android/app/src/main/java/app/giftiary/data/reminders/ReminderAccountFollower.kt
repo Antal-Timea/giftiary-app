@@ -39,8 +39,6 @@ class ReminderAccountFollower @Inject constructor(
                 when (state) {
                     OwnerSessionState.Restoring -> Unit
                     OwnerSessionState.SignedOut -> notifier.cancelAllExcept(null)
-                    // Its data is not open, but the account is still the one signed in.
-                    is OwnerSessionState.Failed -> notifier.cancelAllExcept(state.user.id)
                     is OwnerSessionState.Ready -> {
                         val owner = state.user.id
                         notifier.cancelAllExcept(owner)

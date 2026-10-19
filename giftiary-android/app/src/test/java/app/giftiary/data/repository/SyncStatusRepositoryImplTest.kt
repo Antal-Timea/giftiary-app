@@ -266,7 +266,7 @@ class SyncStatusRepositoryImplTest {
         people.addPerson("Bob's other friend", null)
         activeOwner.ownerId.value = alice
         val anna = people.addPerson("Anna", null).id
-        // A pre-v2 operation the legacy claim has not given an owner yet.
+        // A pre-v2 operation without an owner.
         operations.update(pending(SyncEntityType.PERSON, anna).copy(ownerUserId = null))
 
         assertEquals(SyncStatus(waitingCount = 0, attention = emptyList()), status())

@@ -25,7 +25,6 @@ class SettingsViewModelTest {
     private val anna = AuthUser(UUID.randomUUID(), "anna@example.com")
     private val session = object : AccountSession {
         override val state = MutableStateFlow<OwnerSessionState>(OwnerSessionState.Ready(anna))
-        override fun retry() = Unit
         override fun signOut() = Unit
     }
 

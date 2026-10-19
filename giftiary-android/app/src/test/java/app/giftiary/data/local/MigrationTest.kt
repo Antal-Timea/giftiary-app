@@ -112,7 +112,7 @@ class MigrationTest {
                 val actual = dao.findForEntity(expected.entityType, expected.entityId)!!
                 assertEquals(expected.copy(mutationId = actual.mutationId), actual)
             }
-            // Unclaimed operations are invisible to every owner.
+            // Unowned operations are invisible to every owner.
             assertEquals(emptyList<SyncOperationEntity>(), dao.getPending(UUID.randomUUID(), limit = 10))
         }
     }
@@ -122,7 +122,7 @@ class MigrationTest {
         val operations = listOf(
             retried.copy(ownerUserId = alice),
             fresh.copy(ownerUserId = bob),
-            // Still waiting for the legacy claim.
+            // Still without an owner.
             retried.copy(
                 id = UUID.fromString("33333333-3333-4333-8333-333333333333"),
                 ownerUserId = null,
@@ -186,7 +186,7 @@ class MigrationTest {
 
         withRoom { room ->
             val dao = room.syncOperationDao()
-            // Each owner still reads their own operations, oldest first; the unclaimed one by nobody.
+            // Each owner still reads their own operations, oldest first; the unowned one by nobody.
             assertEquals(listOf(operations[0].id, operations[3].id), dao.getPending(alice, limit = 10).map { it.id })
             assertEquals(listOf(operations[1].id), dao.getPending(bob, limit = 10).map { it.id })
             operations.forEach { expected ->
@@ -408,7 +408,7 @@ class MigrationTest {
         insert(db, "wishlist", wishlist(WISHLIST_OWN, bob, null))
         insert(db, "wish", wish(WISH_A, WISHLIST_A) + mapOf("estimatedPriceAmountMinor" to 5000L, "estimatedPriceCurrencyCode" to "EUR"))
         insert(db, "wish", wish(WISH_OWN, WISHLIST_OWN) + mapOf("deletedAt" to 1_700_000_500_000L))
-        // Pending; blocked with an attempt; in flight with a newer change queued and its attempts; unclaimed.
+        // Pending; blocked with an attempt; in flight with a newer change queued and its attempts; unowned.
         insert(db, "sync_operation", operation(1, bob, "PERSON", PERSON_B, "CREATE"))
         insert(
             db, "sync_operation",
