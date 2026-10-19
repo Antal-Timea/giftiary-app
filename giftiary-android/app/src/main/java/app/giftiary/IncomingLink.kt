@@ -11,12 +11,12 @@ sealed interface IncomingLink {
     data class Join(val join: PendingJoin) : IncomingLink
     data class Recovery(val link: RecoveryLink) : IncomingLink
 
-    /** Anything else, including sign-up confirmations, which the SDK's auth callback completes. */
+    /** Anything else, including sign-up confirmations and provider sign-ins, which the auth callback completes. */
     data object Other : IncomingLink
 }
 
-// Recovery is decided before the generic auth callback: the SDK's link handling ignores the path
-// and would sign the account in as if a recovery link were a sign-up confirmation.
+// Recovery is decided before the generic auth callback, so a recovery code always leads to choosing
+// a new password and is never exchanged like a sign-up confirmation.
 fun incomingLinkOf(intent: Intent): IncomingLink =
     pendingJoinOf(intent)?.let(IncomingLink::Join)
         ?: recoveryLinkOf(intent)?.let(IncomingLink::Recovery)

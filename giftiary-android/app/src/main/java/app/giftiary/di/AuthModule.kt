@@ -4,9 +4,11 @@ import app.giftiary.BuildConfig
 import app.giftiary.data.auth.AUTH_CALLBACK_HOST
 import app.giftiary.data.auth.AUTH_CALLBACK_SCHEME
 import app.giftiary.data.auth.AUTH_CALLBACK_URL
+import app.giftiary.data.auth.EnabledAuthProviders
 import app.giftiary.data.auth.PasswordRecovery
 import app.giftiary.data.auth.RecoveryGate
 import app.giftiary.data.auth.SupabaseAuthRepository
+import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.domain.repository.AuthRepository
 import dagger.Binds
 import dagger.Module
@@ -43,7 +45,8 @@ abstract class AuthModule {
                 // The SDK logs whole sessions, tokens included, at debug level.
                 defaultLogLevel = LogLevel.WARNING
                 install(Auth) {
-                    // PKCE: the confirmation link carries a one-time code, not the tokens themselves.
+                    // PKCE: confirmation and provider callback links carry a one-time code, not the
+                    // tokens themselves.
                     flowType = FlowType.PKCE
                     scheme = AUTH_CALLBACK_SCHEME
                     host = AUTH_CALLBACK_HOST
@@ -54,5 +57,13 @@ abstract class AuthModule {
 
         @Provides
         fun provideAuth(client: SupabaseClient): Auth = client.auth
+
+        @Provides
+        fun provideEnabledAuthProviders(): EnabledAuthProviders = EnabledAuthProviders(
+            buildSet {
+                if (BuildConfig.AUTH_GOOGLE_ENABLED) add(AuthProvider.GOOGLE)
+                if (BuildConfig.AUTH_FACEBOOK_ENABLED) add(AuthProvider.FACEBOOK)
+            },
+        )
     }
 }

@@ -405,6 +405,13 @@
     <!-- A1: password recovery and settings -->
     <string name="auth_error_link_invalid">This link can’t be used anymore. Request a new one.</string>
     <string name="auth_error_same_password">Choose a password different from your current one.</string>
+    <string name="auth_or">or</string>
+    <string name="auth_continue_with_google">Continue with Google</string>
+    <string name="auth_continue_with_facebook">Continue with Facebook</string>
+    <string name="auth_provider_signing_in">Signing you in…</string>
+    <string name="auth_error_cancelled">Sign-in was cancelled.</string>
+    <string name="auth_error_provider_failed">That sign-in didn’t work. Please try again.</string>
+    <string name="auth_error_no_browser">To continue, enable a web browser on this phone.</string>
     <string name="auth_forgot_password">Forgot password?</string>
     <string name="auth_forgot_title">Reset your password</string>
     <string name="auth_forgot_message">Enter the email address of your account and we’ll send you a link to choose a new password.</string>

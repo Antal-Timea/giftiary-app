@@ -404,6 +404,13 @@
     <!-- A1: password recovery and settings -->
     <string name="auth_error_link_invalid">Ez a link már nem használható. Kérj újat.</string>
     <string name="auth_error_same_password">Válassz a mostanitól eltérő jelszót.</string>
+    <string name="auth_or">vagy</string>
+    <string name="auth_continue_with_google">Folytatás Google-fiókkal</string>
+    <string name="auth_continue_with_facebook">Folytatás Facebookkal</string>
+    <string name="auth_provider_signing_in">Bejelentkezés…</string>
+    <string name="auth_error_cancelled">A bejelentkezés megszakadt.</string>
+    <string name="auth_error_provider_failed">Ez a bejelentkezés nem sikerült. Próbáld újra.</string>
+    <string name="auth_error_no_browser">A folytatáshoz engedélyezz egy böngészőt ezen a telefonon.</string>
     <string name="auth_forgot_password">Elfelejtetted a jelszavad?</string>
     <string name="auth_forgot_title">Új jelszó beállítása</string>
     <string name="auth_forgot_message">Add meg a fiókod e-mail-címét, és küldünk egy linket, amellyel új jelszót választhatsz.</string>

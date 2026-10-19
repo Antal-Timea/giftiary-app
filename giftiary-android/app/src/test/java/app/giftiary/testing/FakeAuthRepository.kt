@@ -4,6 +4,7 @@ import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.model.AuthUser
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthException
+import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.domain.repository.AuthRepository
 import app.giftiary.domain.repository.SignUpOutcome
 import kotlinx.coroutines.CompletableDeferred
@@ -45,6 +46,30 @@ class FakeAuthRepository : AuthRepository {
             state.value = AuthState.SignedIn(AuthUser(UUID.randomUUID(), email))
         }
         return signUpOutcome
+    }
+
+    // Provider sign-in: the URL is a placeholder; completing a callback signs [callbackUser] in.
+
+    val providerUrlCalls = mutableListOf<AuthProvider>()
+
+    /** Thrown by [providerSignInUrl] instead of returning a URL. */
+    var providerUrlFailure: Exception? = null
+
+    var completeFailure: AuthError? = null
+    val completeCalls = mutableListOf<String>()
+    var callbackUser = AuthUser(UUID.fromString("dddddddd-dddd-4ddd-8ddd-dddddddddddd"), "dora@example.com")
+
+    override fun providerSignInUrl(provider: AuthProvider): String {
+        providerUrlCalls += provider
+        providerUrlFailure?.let { throw it }
+        return "https://auth.example.test/authorize?provider=${provider.name.lowercase()}"
+    }
+
+    override suspend fun completeSignIn(code: String) {
+        completeCalls += code
+        gate?.await()
+        completeFailure?.let { throw AuthException(it) }
+        state.value = AuthState.SignedIn(callbackUser)
     }
 
     /** When set, sign-out waits for it, to observe what happens while the network call runs. */

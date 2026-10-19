@@ -18,6 +18,20 @@ interface AuthRepository {
     /** @throws AuthException */
     suspend fun signUp(email: String, password: String): SignUpOutcome
 
+    /**
+     * The page that signs in with [provider] in a browser. Opening it starts the sign-in; the
+     * session arrives later through the auth callback link, as a confirmed sign-up does.
+     */
+    fun providerSignInUrl(provider: AuthProvider): String
+
+    /**
+     * Completes a sign-in that came back through the auth callback link: exchanges its one-time
+     * [code] for a session.
+     *
+     * @throws AuthException
+     */
+    suspend fun completeSignIn(code: String)
+
     suspend fun signOut()
 
     /**
@@ -40,6 +54,12 @@ interface AuthRepository {
      * @throws AuthException
      */
     suspend fun setNewPassword(password: String)
+}
+
+/** Accounts of another service that can sign in to Giftiary. */
+enum class AuthProvider {
+    GOOGLE,
+    FACEBOOK,
 }
 
 enum class SignUpOutcome {
@@ -65,6 +85,15 @@ enum class AuthError {
 
     /** The new password is the one the account already has. */
     SAME_PASSWORD,
+
+    /** The user turned down signing in at the provider. */
+    CANCELLED,
+
+    /** Nothing on the device can open the provider's sign-in page. */
+    NO_BROWSER,
+
+    /** Signing in with a provider failed for another reason. */
+    PROVIDER_FAILED,
     UNKNOWN,
 }
 

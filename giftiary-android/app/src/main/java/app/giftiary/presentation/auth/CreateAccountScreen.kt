@@ -18,8 +18,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.data.auth.ProviderSignInState
+import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.domain.usecase.CredentialsInputError
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTopBar
@@ -32,8 +35,10 @@ fun CreateAccountScreen(
     onBack: () -> Unit,
     onConfirmationSent: (email: String) -> Unit,
     modifier: Modifier = Modifier,
+    providerViewModel: ProviderSignInViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val providerState by providerViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.confirmationSentTo) {
         state.confirmationSentTo?.let(onConfirmationSent)
     }
@@ -44,6 +49,9 @@ fun CreateAccountScreen(
         onPasswordConfirmationChange = viewModel::onPasswordConfirmationChange,
         onSubmit = viewModel::submit,
         onBack = onBack,
+        providers = providerViewModel.providers,
+        providerState = providerState,
+        onProvider = rememberProviderClick(providerViewModel),
         modifier = modifier,
     )
 }
@@ -56,6 +64,9 @@ private fun CreateAccountContent(
     onPasswordConfirmationChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
+    providers: List<AuthProvider>,
+    providerState: ProviderSignInState,
+    onProvider: (AuthProvider) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -92,7 +103,17 @@ private fun CreateAccountContent(
                 text = stringResource(R.string.auth_create_account),
                 onClick = onSubmit,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !providerState.isBusy,
                 loading = state.credentials.isSubmitting,
+            )
+            Spacer(Modifier.height(GiftiarySpacing.xl))
+            // A provider creates the account on first use, so its buttons serve here too.
+            ProviderSignInSection(
+                providers = providers,
+                state = providerState,
+                onProvider = onProvider,
+                enabled = !state.credentials.isSubmitting,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -113,6 +134,9 @@ private fun CreateAccountPreview() {
             onPasswordConfirmationChange = {},
             onSubmit = {},
             onBack = {},
+            providers = AuthProvider.entries,
+            providerState = ProviderSignInState.Idle,
+            onProvider = {},
         )
     }
 }

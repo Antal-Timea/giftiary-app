@@ -22,8 +22,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.data.auth.ProviderSignInState
+import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.theme.GiftiaryShapes
@@ -37,8 +40,10 @@ fun SignInScreen(
     onForgotPassword: (email: String) -> Unit,
     modifier: Modifier = Modifier,
     joinPending: Boolean = false,
+    providerViewModel: ProviderSignInViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val providerState by providerViewModel.state.collectAsStateWithLifecycle()
     SignInContent(
         state = state,
         onEmailChange = viewModel::onEmailChange,
@@ -46,6 +51,9 @@ fun SignInScreen(
         onSubmit = viewModel::submit,
         onCreateAccount = onCreateAccount,
         onForgotPassword = { onForgotPassword(state.email) },
+        providers = providerViewModel.providers,
+        providerState = providerState,
+        onProvider = rememberProviderClick(providerViewModel),
         joinPending = joinPending,
         modifier = modifier,
     )
@@ -59,10 +67,15 @@ private fun SignInContent(
     onSubmit: () -> Unit,
     onCreateAccount: () -> Unit,
     onForgotPassword: () -> Unit,
+    providers: List<AuthProvider>,
+    providerState: ProviderSignInState,
+    onProvider: (AuthProvider) -> Unit,
     modifier: Modifier = Modifier,
     joinPending: Boolean = false,
 ) {
     val colors = GiftiaryTheme.colors
+    // One sign-in at a time: email and provider buttons wait for each other.
+    val providerBusy = providerState.isBusy
     Scaffold(modifier = modifier) { contentPadding ->
         Column(
             modifier = Modifier
@@ -120,22 +133,30 @@ private fun SignInContent(
                 text = stringResource(R.string.auth_sign_in),
                 onClick = onSubmit,
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !providerBusy,
                 loading = state.isSubmitting,
             )
             TextButton(
                 onClick = onForgotPassword,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isSubmitting,
+                enabled = !state.isSubmitting && !providerBusy,
                 colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
             ) {
                 Text(stringResource(R.string.auth_forgot_password))
             }
             Spacer(Modifier.height(GiftiarySpacing.s))
+            ProviderSignInSection(
+                providers = providers,
+                state = providerState,
+                onProvider = onProvider,
+                enabled = !state.isSubmitting,
+                modifier = Modifier.fillMaxWidth().padding(bottom = GiftiarySpacing.xl),
+            )
             GiftiarySecondaryButton(
                 text = stringResource(R.string.auth_go_to_create_account),
                 onClick = onCreateAccount,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isSubmitting,
+                enabled = !state.isSubmitting && !providerBusy,
             )
         }
     }
@@ -152,6 +173,9 @@ private fun SignInPreview() {
             onSubmit = {},
             onCreateAccount = {},
             onForgotPassword = {},
+            providers = AuthProvider.entries,
+            providerState = ProviderSignInState.Idle,
+            onProvider = {},
         )
     }
 }

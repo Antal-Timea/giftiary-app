@@ -11,8 +11,9 @@
 | Does the app collect or share user data? | Yes: an account (email) and user-entered content are sent to the backend | Collects: yes | `[VERIFY]` category mapping on the current form |
 | Data encrypted in transit? | All backend traffic is HTTPS (Supabase client) | Yes | |
 | Can users request deletion? | No in-app deletion yet; deletion only on request | `[VERIFY]` — depends on the deletion process the owner offers and on current Play policy | `[VERIFY]` |
-| Email address | Required for the account | Collected; purpose: account management | `[VERIFY]` optional vs required wording |
-| Name | Optional display name, shown to people the user shares wishlists with | Collected, optional; shared with other users at the user's request | `[VERIFY]` whether "shared" applies to user-initiated sharing on the current form |
+| Email address | Required for an email account; received from Google or Facebook when the user signs in with them and the provider shares it | Collected; purpose: account management | `[VERIFY]` optional vs required wording |
+| Name | Optional display name, shown to people the user shares wishlists with. With Google or Facebook sign-in, the provider's name (and picture URL) is also stored by the auth service in the account record; the app does not use it | Collected, optional; shared with other users at the user's request (display name only) | `[VERIFY]` whether "shared" applies to user-initiated sharing, and whether the provider profile counts as collected "Name" / "Photos" on the current form |
+| Sign-in with Google or Facebook | Browser-based OAuth through Supabase; no Google or Facebook SDK in the app | Google and Meta act as identity providers at the user's choice | `[VERIFY]` how the current form treats identity providers |
 | Other user-generated content | People, occasions (incl. birthdays of others), gift ideas, gifts, prices, notes, product links, wishlists, wishes | Collected; purpose: app functionality | `[VERIFY]` category ("other user-generated content" or similar) |
 | Contacts | Not read from the device; people are typed in by the user | Not collected (as device contacts) | `[VERIFY]` that typed-in people are not a "Contacts" category answer |
 | Location, photos, files, audio, health, financial info | Not accessed | Not collected | `[VERIFY]` prices of gifts are user notes, not financial info |

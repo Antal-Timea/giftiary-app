@@ -30,6 +30,10 @@ android {
             "SUPABASE_PUBLISHABLE_KEY",
             supabaseSetting("supabase.publishableKey").asBuildConfigString(),
         )
+        // A provider is offered only by builds that enable it on purpose, once its console and
+        // the Supabase provider are set up; anything but "true" leaves its button out.
+        buildConfigField("boolean", "AUTH_GOOGLE_ENABLED", providerEnabled("auth.google.enabled").toString())
+        buildConfigField("boolean", "AUTH_FACEBOOK_ENABLED", providerEnabled("auth.facebook.enabled").toString())
     }
 
     buildTypes {
@@ -89,6 +93,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.browser)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -135,6 +140,14 @@ fun supabaseSetting(name: String): String {
     val value = localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull
     if (value.isNullOrBlank()) logger.warn("Giftiary: $name is not set in local.properties; Supabase is unavailable.")
     return value.orEmpty()
+}
+
+/** Same sources as [supabaseSetting]; only the exact value "true" enables a provider. */
+fun providerEnabled(name: String): Boolean {
+    val localProperties = Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { load(it) }
+    }
+    return (localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull)?.trim() == "true"
 }
 
 fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""

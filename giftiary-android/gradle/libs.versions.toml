@@ -14,6 +14,8 @@ navigation = "2.10.2"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerialization = "1.11.0"
 supabase = "3.8.0"
+# Custom Tabs for provider sign-in; the version auth-kt 3.8.0 already brings in.
+browser = "1.10.0"
 # The Ktor version supabase-kt 3.8.0 is built against.
 ktor = "3.5.1"
 junit = "4.13.2"
@@ -25,6 +27,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }

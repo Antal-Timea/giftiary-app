@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.giftiary.data.auth.AuthCallbackHandler
 import app.giftiary.data.auth.PasswordRecovery
+import app.giftiary.data.auth.ProviderSignIn
 import app.giftiary.data.sync.FullSyncRequester
 import app.giftiary.presentation.navigation.GiftiaryApp
 import app.giftiary.presentation.sharing.PendingWishlistJoin
@@ -29,6 +30,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var passwordRecovery: PasswordRecovery
 
+    @Inject
+    lateinit var providerSignIn: ProviderSignIn
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -47,7 +51,15 @@ class MainActivity : ComponentActivity() {
         fullSyncRequester.requestFullSync()
     }
 
-    // singleTask: a confirmation link opened while Giftiary runs arrives here, not in a second copy.
+    // A provider's callback link arrives in onNewIntent first, so resuming while its sign-in still
+    // waits means the Custom Tab was closed without one.
+    override fun onResume() {
+        super.onResume()
+        providerSignIn.onAppResumed()
+    }
+
+    // singleTask: a confirmation or provider callback link opened while Giftiary runs arrives here,
+    // not in a second copy, and closes the Custom Tab above it.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -58,10 +70,7 @@ class MainActivity : ComponentActivity() {
         when (val link = incomingLinkOf(intent)) {
             is IncomingLink.Join -> pendingWishlistJoin.offer(link.join)
             is IncomingLink.Recovery -> passwordRecovery.start(link.link)
-            IncomingLink.Other -> {
-                authCallbackHandler.handle(intent)
-                return
-            }
+            IncomingLink.Other -> if (!authCallbackHandler.handle(intent)) return
         }
         // The secret is held in memory from here on; the activity's own intent no longer carries it.
         intent.data = null

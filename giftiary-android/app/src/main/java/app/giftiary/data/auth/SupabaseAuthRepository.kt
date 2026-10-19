@@ -4,9 +4,12 @@ import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.model.AuthUser
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthException
+import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.domain.repository.AuthRepository
 import app.giftiary.domain.repository.SignUpOutcome
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.providers.Facebook
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.CancellationException
@@ -46,6 +49,20 @@ class SupabaseAuthRepository @Inject constructor(
             this.password = password
         }
         signUpOutcome(sessionStarted = auth.currentSessionOrNull() != null, returnedUser = returnedUser)
+    }
+
+    // Builds the URL the SDK's own OAuth sign-in would open, PKCE verifier included, so that the
+    // activity can open it in a Custom Tab of its own task. No extra scopes: Giftiary uses no
+    // provider API, so it asks for nothing beyond the sign-in itself.
+    override fun providerSignInUrl(provider: AuthProvider): String = when (provider) {
+        // A shared phone can pick another account after a sign-out instead of the browser's last one.
+        AuthProvider.GOOGLE -> auth.getOAuthUrl(Google, AUTH_CALLBACK_URL) { queryParams["prompt"] = "select_account" }
+        AuthProvider.FACEBOOK -> auth.getOAuthUrl(Facebook, AUTH_CALLBACK_URL)
+    }
+
+    override suspend fun completeSignIn(code: String) = asAuthFailure {
+        auth.exchangeCodeForSession(code)
+        Unit
     }
 
     override suspend fun signOut() {

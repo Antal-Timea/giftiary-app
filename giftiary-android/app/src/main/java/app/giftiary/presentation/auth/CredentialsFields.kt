@@ -115,5 +115,8 @@ internal fun AuthError.messageRes(): Int = when (this) {
     AuthError.RATE_LIMITED -> R.string.auth_error_rate_limited
     AuthError.LINK_INVALID -> R.string.auth_error_link_invalid
     AuthError.SAME_PASSWORD -> R.string.auth_error_same_password
+    AuthError.CANCELLED -> R.string.auth_error_cancelled
+    AuthError.NO_BROWSER -> R.string.auth_error_no_browser
+    AuthError.PROVIDER_FAILED -> R.string.auth_error_provider_failed
     AuthError.UNKNOWN -> R.string.auth_error_unknown
 }
