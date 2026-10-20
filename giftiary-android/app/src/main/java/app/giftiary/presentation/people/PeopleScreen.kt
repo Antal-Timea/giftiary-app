@@ -52,7 +52,7 @@ import java.util.UUID
 
 @Composable
 fun PeopleScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onAddPerson: () -> Unit,
     onOpenPerson: (UUID) -> Unit,
     viewModel: PeopleViewModel = hiltViewModel(),
@@ -73,7 +73,7 @@ fun PeopleScreen(
 @Composable
 fun PeopleScreen(
     state: PeopleUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onAddPerson: () -> Unit,
     onOpenPerson: (Person) -> Unit,
     onDeleteRequested: (Person) -> Unit,

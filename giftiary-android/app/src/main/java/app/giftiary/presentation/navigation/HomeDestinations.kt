@@ -7,6 +7,7 @@ import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.home.ComingUpViewModel
 import app.giftiary.presentation.home.HomeScreen
 import app.giftiary.presentation.home.ReminderCardViewModel
@@ -34,6 +35,7 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
             onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
             onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
             onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
+            showSectionButtons = !LocalWidthClass.current.hasNavigationRail,
         )
     }
     composable<SyncAttentionRoute> {
@@ -46,7 +48,7 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
         SettingsScreen(
             viewModel = hiltViewModel(),
             reminders = hiltViewModel(),
-            onBack = navController.popBackStackUnlessPaused(),
+            onBack = navController.sectionRootBack(),
             onSignOut = onSignOut,
         )
     }

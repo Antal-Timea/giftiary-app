@@ -51,6 +51,8 @@ fun HomeScreen(
     onOpenSyncAttention: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    // Off when the navigation rail leads to the same places.
+    showSectionButtons: Boolean = true,
 ) {
     val colors = GiftiaryTheme.colors
     Scaffold(modifier = modifier) { contentPadding ->
@@ -94,6 +96,7 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(GiftiarySpacing.l))
             SyncStatusLine(content = syncStatus, onOpenAttention = onOpenSyncAttention)
+            if (!showSectionButtons) return@Column
             Spacer(Modifier.height(GiftiarySpacing.l))
             GiftiaryPrimaryButton(
                 text = stringResource(R.string.home_open_gifts),

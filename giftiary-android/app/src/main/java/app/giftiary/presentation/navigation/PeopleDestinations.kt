@@ -16,7 +16,7 @@ import app.giftiary.presentation.people.PersonEditorViewModel
 internal fun NavGraphBuilder.peopleDestinations(navController: NavHostController) {
     composable<PeopleRoute> {
         PeopleScreen(
-            onBack = navController.popBackStackUnlessPaused(),
+            onBack = navController.sectionRootBack(),
             onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
             onOpenPerson = { personId -> navController.navigate(PersonDetailRoute(personId.toString())) },
         )

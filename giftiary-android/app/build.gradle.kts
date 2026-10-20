@@ -124,6 +124,9 @@ dependencies {
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.androidx.work.testing)
     testImplementation(libs.ktor.client.mock)
+    // Compose layout tests under Robolectric; the manifest gives them an activity to run in.
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     // The minified decoding smoke: its entry point serves PostgREST rows from a mock engine.
     add("minifiedSmokeImplementation", libs.ktor.client.mock)

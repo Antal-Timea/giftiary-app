@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name" translatable="false">Giftiary</string>
+    <string name="nav_home">Home</string>
     <string name="home_tagline">Remember · Plan · Share</string>
     <string name="home_open_people">People</string>
 

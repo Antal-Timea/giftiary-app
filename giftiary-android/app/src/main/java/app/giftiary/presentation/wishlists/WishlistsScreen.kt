@@ -29,7 +29,7 @@ import java.util.UUID
 
 @Composable
 fun WishlistsScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onAddWishlist: () -> Unit,
     onOpenWishlist: (UUID) -> Unit,
     onOpenShared: () -> Unit,
@@ -48,7 +48,7 @@ fun WishlistsScreen(
 @Composable
 fun WishlistsScreen(
     content: WishlistsContent,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onAddWishlist: () -> Unit,
     onOpenWishlist: (UUID) -> Unit,
     onOpenShared: () -> Unit,

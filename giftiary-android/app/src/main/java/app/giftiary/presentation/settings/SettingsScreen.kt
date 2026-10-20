@@ -47,7 +47,7 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     reminders: ReminderCardViewModel,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onSignOut: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -69,7 +69,7 @@ fun SettingsScreen(
 }
 
 class SettingsActions(
-    val onBack: () -> Unit,
+    val onBack: (() -> Unit)?,
     val onNameChange: (String) -> Unit,
     val onSave: () -> Unit,
     val onRetry: () -> Unit,

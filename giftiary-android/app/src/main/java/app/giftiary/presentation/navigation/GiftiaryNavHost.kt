@@ -9,7 +9,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.sharing.PendingJoinViewModel
 import java.util.UUID
 
@@ -26,18 +28,32 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
     }
-    NavHost(
-        navController = navController,
-        startDestination = HomeRoute,
+    // Outside the NavHost, so the rail stays put while destinations change beside it.
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    AdaptiveNavigationFrame(
+        selected = backStackEntry?.destination?.section(),
+        onSelect = navController::navigateToSection,
         modifier = modifier,
     ) {
-        homeDestinations(navController, onSignOut)
-        peopleDestinations(navController)
-        occasionDestinations(navController)
-        giftDestinations(navController)
-        wishlistDestinations(navController)
-        sharingDestinations(navController)
+        NavHost(
+            navController = navController,
+            startDestination = HomeRoute,
+        ) {
+            homeDestinations(navController, onSignOut)
+            peopleDestinations(navController)
+            occasionDestinations(navController)
+            giftDestinations(navController)
+            wishlistDestinations(navController)
+            sharingDestinations(navController)
+        }
     }
+}
+
+/** A section's own list: its back arrow is dropped when the rail is there to leave it. */
+@Composable
+internal fun NavHostController.sectionRootBack(): (() -> Unit)? {
+    val back = popBackStackUnlessPaused()
+    return back.takeUnless { LocalWidthClass.current.hasNavigationRail }
 }
 
 /** Route ids are strings; a malformed one closes the destination instead of crashing. */

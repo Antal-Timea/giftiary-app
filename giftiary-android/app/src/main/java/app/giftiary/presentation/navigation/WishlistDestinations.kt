@@ -22,7 +22,7 @@ import app.giftiary.presentation.wishlists.WishlistsScreen
 internal fun NavGraphBuilder.wishlistDestinations(navController: NavHostController) {
     composable<WishlistsRoute> {
         WishlistsScreen(
-            onBack = navController.popBackStackUnlessPaused(),
+            onBack = navController.sectionRootBack(),
             onAddWishlist = dropUnlessResumed { navController.navigate(AddWishlistRoute()) },
             onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
             onOpenShared = dropUnlessResumed { navController.navigate(SharedWishlistsRoute) },

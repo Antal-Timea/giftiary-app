@@ -47,7 +47,7 @@ import java.util.UUID
 
 @Composable
 fun GiftHistoryScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onAddGift: () -> Unit,
     onOpenGift: (UUID) -> Unit,
     onAddGiftIdea: () -> Unit,
@@ -69,7 +69,7 @@ fun GiftHistoryScreen(
 @Composable
 fun GiftHistoryScreen(
     state: GiftHistoryUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onFilterChange: (GiftFilter) -> Unit,
     onAddGift: () -> Unit,
     onOpenGift: (GiftEntry) -> Unit,

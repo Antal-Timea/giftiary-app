@@ -1,4 +1,5 @@
 <resources>
+    <string name="nav_home">Kezdőlap</string>
     <string name="home_tagline">Emlékezz · Tervezz · Oszd meg</string>
     <string name="home_open_people">Emberek</string>
 

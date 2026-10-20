@@ -25,7 +25,7 @@ import app.giftiary.presentation.gifts.GiftHistoryScreen
 internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) {
     composable<GiftHistoryRoute> {
         GiftHistoryScreen(
-            onBack = navController.popBackStackUnlessPaused(),
+            onBack = navController.sectionRootBack(),
             onAddGift = dropUnlessResumed { navController.navigate(AddGiftRoute()) },
             onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
             onAddGiftIdea = dropUnlessResumed { navController.navigate(AddGiftIdeaRoute()) },
