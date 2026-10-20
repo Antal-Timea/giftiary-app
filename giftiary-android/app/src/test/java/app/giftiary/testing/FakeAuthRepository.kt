@@ -55,12 +55,16 @@ class FakeAuthRepository : AuthRepository {
     /** Thrown by [providerSignInUrl] instead of returning a URL. */
     var providerUrlFailure: Exception? = null
 
+    /** When set, finding the provider page waits for it, to observe what happens meanwhile. */
+    var providerUrlGate: CompletableDeferred<Unit>? = null
+
     var completeFailure: AuthError? = null
     val completeCalls = mutableListOf<String>()
     var callbackUser = AuthUser(UUID.fromString("dddddddd-dddd-4ddd-8ddd-dddddddddddd"), "dora@example.com")
 
-    override fun providerSignInUrl(provider: AuthProvider): String {
+    override suspend fun providerSignInUrl(provider: AuthProvider): String {
         providerUrlCalls += provider
+        providerUrlGate?.await()
         providerUrlFailure?.let { throw it }
         return "https://auth.example.test/authorize?provider=${provider.name.lowercase()}"
     }

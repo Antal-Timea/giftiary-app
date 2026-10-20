@@ -12,6 +12,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +24,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import app.giftiary.R
 import app.giftiary.data.auth.ProviderSignIn
 import app.giftiary.data.auth.ProviderSignInState
@@ -30,7 +34,11 @@ import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Signing in with the providers this build offers, shared by sign-in and account creation. */
@@ -43,27 +51,38 @@ class ProviderSignInViewModel @Inject constructor(
 
     val state: StateFlow<ProviderSignInState> = providerSignIn.state
 
-    /** The page to open, or null when nothing is to be opened (see [ProviderSignIn.begin]). */
-    fun begin(provider: AuthProvider): String? = providerSignIn.begin(provider)
+    // Finding the page takes a request; the screen opens it once it is known.
+    private val _pageToOpen = MutableStateFlow<String?>(null)
+    val pageToOpen: StateFlow<String?> = _pageToOpen.asStateFlow()
+
+    fun begin(provider: AuthProvider) {
+        viewModelScope.launch { providerSignIn.begin(provider)?.let { _pageToOpen.value = it } }
+    }
+
+    /** The page to open now, handed out once. */
+    fun takePageToOpen(): String? = _pageToOpen.getAndUpdate { null }
 
     fun onBrowserMissing() = providerSignIn.onBrowserMissing()
 }
 
-/** Opens [provider]'s sign-in page in a Custom Tab of the app's own task. */
-internal fun ProviderSignInViewModel.open(context: Context, provider: AuthProvider) {
-    val url = begin(provider) ?: return
-    try {
-        CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, url.toUri())
-    } catch (_: ActivityNotFoundException) {
-        onBrowserMissing()
-    }
+/** Opens a provider's sign-in page in a Custom Tab of the app's own task; false without a browser. */
+internal fun openProviderPage(context: Context, url: String): Boolean = try {
+    CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, url.toUri())
+    true
+} catch (_: ActivityNotFoundException) {
+    false
 }
 
 @Composable
 internal fun rememberProviderClick(viewModel: ProviderSignInViewModel): (AuthProvider) -> Unit {
     // The activity, so the tab opens in Giftiary's task and the callback link closes it again.
     val context = LocalContext.current
-    return { provider -> viewModel.open(context, provider) }
+    val page by viewModel.pageToOpen.collectAsStateWithLifecycle()
+    LaunchedEffect(page) {
+        val url = viewModel.takePageToOpen() ?: return@LaunchedEffect
+        if (!openProviderPage(context, url)) viewModel.onBrowserMissing()
+    }
+    return viewModel::begin
 }
 
 /** "or", then one button per offered provider, with the provider flow's progress or error. Nothing without providers. */

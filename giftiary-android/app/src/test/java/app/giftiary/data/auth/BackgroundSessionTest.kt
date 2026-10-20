@@ -5,6 +5,7 @@ import app.giftiary.data.remote.RemoteException
 import app.giftiary.data.remote.RemoteTestData.token
 import app.giftiary.domain.model.AuthState
 import app.giftiary.testing.MutableClock
+import app.giftiary.testing.noProviderPages
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.MemoryCodeVerifierCache
@@ -201,7 +202,7 @@ class BackgroundSessionTest {
         auth.importSession(stored, autoRefresh = false, source = SessionSource.Storage)
         val states = mutableListOf<AuthState>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            SupabaseAuthRepository(auth).authState.toList(states)
+            SupabaseAuthRepository(auth, noProviderPages()).authState.toList(states)
         }
         auth.stopAutoRefreshForCurrentSession()
         auth.setSessionStatus(SessionStatus.Initializing)

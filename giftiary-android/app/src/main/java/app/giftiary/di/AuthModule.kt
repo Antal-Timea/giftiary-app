@@ -6,6 +6,7 @@ import app.giftiary.data.auth.AUTH_CALLBACK_SCHEME
 import app.giftiary.data.auth.AUTH_CALLBACK_URL
 import app.giftiary.data.auth.EnabledAuthProviders
 import app.giftiary.data.auth.PasswordRecovery
+import app.giftiary.data.auth.ProviderPageResolver
 import app.giftiary.data.auth.RecoveryGate
 import app.giftiary.data.auth.SupabaseAuthRepository
 import app.giftiary.domain.repository.AuthProvider
@@ -21,6 +22,7 @@ import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.logging.LogLevel
+import io.ktor.client.engine.okhttp.OkHttp
 import javax.inject.Singleton
 
 @Module
@@ -57,6 +59,10 @@ abstract class AuthModule {
 
         @Provides
         fun provideAuth(client: SupabaseClient): Auth = client.auth
+
+        @Provides
+        @Singleton
+        fun provideProviderPageResolver(): ProviderPageResolver = ProviderPageResolver(OkHttp.create())
 
         @Provides
         fun provideEnabledAuthProviders(): EnabledAuthProviders = EnabledAuthProviders(

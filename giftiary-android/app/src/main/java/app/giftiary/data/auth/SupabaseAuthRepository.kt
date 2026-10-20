@@ -29,6 +29,7 @@ import javax.inject.Singleton
 @Singleton
 class SupabaseAuthRepository @Inject constructor(
     private val auth: Auth,
+    private val providerPages: ProviderPageResolver,
 ) : AuthRepository {
 
     override val authState: Flow<AuthState> = auth.sessionStatus.toAuthStates(::storedUser)
@@ -51,13 +52,16 @@ class SupabaseAuthRepository @Inject constructor(
         signUpOutcome(sessionStarted = auth.currentSessionOrNull() != null, returnedUser = returnedUser)
     }
 
-    // Builds the URL the SDK's own OAuth sign-in would open, PKCE verifier included, so that the
-    // activity can open it in a Custom Tab of its own task. No extra scopes: Giftiary uses no
-    // provider API, so it asks for nothing beyond the sign-in itself.
-    override fun providerSignInUrl(provider: AuthProvider): String = when (provider) {
-        // A shared phone can pick another account after a sign-out instead of the browser's last one.
-        AuthProvider.GOOGLE -> auth.getOAuthUrl(Google, AUTH_CALLBACK_URL) { queryParams["prompt"] = "select_account" }
-        AuthProvider.FACEBOOK -> auth.getOAuthUrl(Facebook, AUTH_CALLBACK_URL)
+    // The SDK's own OAuth sign-in URL, PKCE verifier included, resolved to the provider's page so
+    // the activity can open that page in a Custom Tab of its own task. No extra scopes: Giftiary
+    // uses no provider API, so it asks for nothing beyond the sign-in itself.
+    override suspend fun providerSignInUrl(provider: AuthProvider): String = asAuthFailure {
+        val authorizeUrl = when (provider) {
+            // A shared phone can pick another account after a sign-out instead of the browser's last one.
+            AuthProvider.GOOGLE -> auth.getOAuthUrl(Google, AUTH_CALLBACK_URL) { queryParams["prompt"] = "select_account" }
+            AuthProvider.FACEBOOK -> auth.getOAuthUrl(Facebook, AUTH_CALLBACK_URL)
+        }
+        providerPages.providerPage(authorizeUrl)
     }
 
     override suspend fun completeSignIn(code: String) = asAuthFailure {

@@ -21,8 +21,10 @@ interface AuthRepository {
     /**
      * The page that signs in with [provider] in a browser. Opening it starts the sign-in; the
      * session arrives later through the auth callback link, as a confirmed sign-up does.
+     *
+     * @throws AuthException
      */
-    fun providerSignInUrl(provider: AuthProvider): String
+    suspend fun providerSignInUrl(provider: AuthProvider): String
 
     /**
      * Completes a sign-in that came back through the auth callback link: exchanges its one-time

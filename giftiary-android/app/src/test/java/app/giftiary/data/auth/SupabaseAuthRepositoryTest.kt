@@ -1,6 +1,7 @@
 package app.giftiary.data.auth
 
 import app.giftiary.domain.model.AuthState
+import app.giftiary.testing.noProviderPages
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.MemoryCodeVerifierCache
@@ -60,7 +61,7 @@ class SupabaseAuthRepositoryTest {
         auth.importSession(session, autoRefresh = false, source = SessionSource.Storage)
         val states = mutableListOf<AuthState>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            SupabaseAuthRepository(auth).authState.toList(states)
+            SupabaseAuthRepository(auth, noProviderPages()).authState.toList(states)
         }
         return states
     }

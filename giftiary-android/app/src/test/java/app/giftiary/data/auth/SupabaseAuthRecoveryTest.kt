@@ -2,6 +2,7 @@ package app.giftiary.data.auth
 
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthException
+import app.giftiary.testing.noProviderPages
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
@@ -63,7 +64,7 @@ class SupabaseAuthRecoveryTest {
             defaultRedirectUrl = AUTH_CALLBACK_URL
         }
     }.auth
-    private val repository = SupabaseAuthRepository(auth)
+    private val repository = SupabaseAuthRepository(auth, noProviderPages())
 
     @After
     fun tearDown() {
