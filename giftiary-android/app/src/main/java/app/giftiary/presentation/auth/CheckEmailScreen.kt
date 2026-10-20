@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import app.giftiary.R
 import app.giftiary.presentation.components.GiftiarySecondaryButton
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 
@@ -32,6 +33,7 @@ fun CheckEmailScreen(email: String, onBackToSignIn: () -> Unit, modifier: Modifi
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
+                .giftiaryReadableWidth()
                 .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
         ) {
             Spacer(Modifier.weight(1f))

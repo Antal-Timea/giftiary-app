@@ -36,6 +36,7 @@ import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.LoadingContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 
@@ -96,6 +97,7 @@ private fun NewPassword(
             .fillMaxSize()
             .imePadding()
             .verticalScroll(rememberScrollState())
+            .giftiaryReadableWidth()
             .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
     ) {
         Title(stringResource(R.string.auth_new_password_title))
@@ -160,6 +162,7 @@ private fun RecoveryFailed(reason: RecoveryFailure, actions: RecoveryActions, mo
     Column(
         modifier = modifier
             .fillMaxSize()
+            .giftiaryReadableWidth()
             .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
     ) {
         Spacer(Modifier.weight(1f))
@@ -230,6 +233,7 @@ fun PasswordChangedScreen(onContinue: () -> Unit, modifier: Modifier = Modifier)
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
+                .giftiaryReadableWidth()
                 .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
         ) {
             Spacer(Modifier.weight(1f))

@@ -27,8 +27,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.domain.repository.AuthProvider
+import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -83,6 +85,7 @@ private fun SignInContent(
                 .padding(contentPadding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
+                .giftiaryReadableWidth()
                 .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
         ) {
             Text(
@@ -163,6 +166,7 @@ private fun SignInContent(
 }
 
 @PreviewLightDark
+@GiftiaryAdaptivePreviews
 @Composable
 private fun SignInPreview() {
     GiftiaryTheme {

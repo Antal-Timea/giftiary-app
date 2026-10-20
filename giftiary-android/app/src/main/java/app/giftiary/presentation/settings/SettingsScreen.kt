@@ -34,6 +34,7 @@ import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.home.ReminderCard
 import app.giftiary.presentation.home.ReminderCardActions
 import app.giftiary.presentation.home.ReminderCardState
@@ -109,6 +110,7 @@ private fun SettingsContent(
                 .padding(contentPadding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
+                .giftiaryReadableWidth()
                 .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
             verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
         ) {

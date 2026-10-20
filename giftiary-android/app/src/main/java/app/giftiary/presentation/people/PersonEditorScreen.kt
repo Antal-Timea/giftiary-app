@@ -29,6 +29,7 @@ import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 
@@ -106,6 +107,7 @@ private fun PersonForm(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .imePadding()
+            .giftiaryReadableWidth()
             .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
         verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
     ) {

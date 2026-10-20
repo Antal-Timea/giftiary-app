@@ -9,6 +9,7 @@ import app.giftiary.data.auth.AuthCallbackHandler
 import app.giftiary.data.auth.PasswordRecovery
 import app.giftiary.data.auth.ProviderSignIn
 import app.giftiary.data.sync.FullSyncRequester
+import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.navigation.GiftiaryApp
 import app.giftiary.presentation.sharing.PendingWishlistJoin
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -39,7 +40,10 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleLink(intent)
         setContent {
             GiftiaryTheme {
-                GiftiaryApp()
+                // Every layout below adapts to the window's width; resizing updates it.
+                ProvideWidthClass {
+                    GiftiaryApp()
+                }
             }
         }
     }

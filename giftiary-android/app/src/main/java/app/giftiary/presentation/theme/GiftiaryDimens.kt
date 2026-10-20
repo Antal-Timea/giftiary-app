@@ -14,6 +14,11 @@ object GiftiarySpacing {
     val xxxl = 48.dp
 }
 
+/** Widths that keep content readable on wide windows; phones stay below them. */
+object GiftiaryLayout {
+    val readableMaxWidth = 640.dp
+}
+
 /** Modest radii: Giftiary should not read as a stack of rounded cards. */
 object GiftiaryShapes {
     val input = RoundedCornerShape(8.dp)

@@ -31,6 +31,7 @@ import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 
@@ -59,6 +60,7 @@ private fun ForgotPasswordContent(
                 .padding(contentPadding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
+                .giftiaryReadableWidth()
                 .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
         ) {
             Text(
