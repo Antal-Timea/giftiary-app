@@ -1,9 +1,11 @@
 package app.giftiary.presentation.auth
 
-import android.app.Application
 import android.content.Intent
+import android.content.pm.ActivityInfo
+import android.content.pm.ResolveInfo
+import android.content.pm.ServiceInfo
+import androidx.core.net.toUri
 import androidx.activity.ComponentActivity
-import androidx.test.core.app.ApplicationProvider
 import app.giftiary.data.auth.EnabledAuthProviders
 import app.giftiary.data.auth.ProviderSignIn
 import app.giftiary.data.auth.ProviderSignInState
@@ -55,23 +57,53 @@ class ProviderSignInLaunchTest {
         assertNull(viewModel.takePageToOpen())
     }
 
+    private val packageManager = shadowOf(activity.packageManager)
+
+    // An app that opens any web link, optionally with Custom Tabs.
+    private fun installBrowser(packageName: String, customTabs: Boolean) {
+        packageManager.addResolveInfoForIntent(
+            Intent(Intent.ACTION_VIEW, "https://".toUri()).addCategory(Intent.CATEGORY_BROWSABLE),
+            ResolveInfo().apply { activityInfo = ActivityInfo().apply { this.packageName = packageName; name = "$packageName.Browser" } },
+        )
+        if (customTabs) {
+            packageManager.addResolveInfoForIntent(
+                Intent("android.support.customtabs.action.CustomTabsService").setPackage(packageName),
+                ResolveInfo().apply { serviceInfo = ServiceInfo().apply { this.packageName = packageName; name = "$packageName.Tabs" } },
+            )
+        }
+    }
+
     @Test
-    fun `the page opens as the first page of a Custom Tab in the app's task`() {
+    fun `the page opens as the first page of a Custom Tab of a browser, in the app's task`() {
+        installBrowser("com.example.plainbrowser", customTabs = false)
+        installBrowser("com.android.chrome", customTabs = true)
+
         assertTrue(openProviderPage(activity, page))
 
         val started = shadowOf(activity).nextStartedActivity
         assertEquals(Intent.ACTION_VIEW, started.action)
         assertEquals(page, started.dataString)
+        // Pinned to the browser, so the system cannot hand facebook.com to the Facebook app.
+        assertEquals("com.android.chrome", started.`package`)
         assertTrue("a Custom Tab", started.hasExtra("android.support.customtabs.extra.SESSION"))
         assertEquals("not in a task of its own", 0, started.flags and Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 
     @Test
+    fun `without a Custom Tabs browser the page still opens in a browser, never left to the system`() {
+        installBrowser("com.example.plainbrowser", customTabs = false)
+
+        assertTrue(openProviderPage(activity, page))
+
+        assertEquals("com.example.plainbrowser", shadowOf(activity).nextStartedActivity.`package`)
+    }
+
+    @Test
     fun `without a browser nothing opens and the sign-in fails with that reason`() {
-        shadowOf(ApplicationProvider.getApplicationContext<Application>()).checkActivities(true)
         viewModel.begin(AuthProvider.FACEBOOK)
 
         assertFalse(openProviderPage(activity, viewModel.takePageToOpen()!!))
+        assertNull(shadowOf(activity).nextStartedActivity)
         viewModel.onBrowserMissing()
 
         assertEquals(ProviderSignInState.Failed(AuthError.NO_BROWSER), viewModel.state.value)

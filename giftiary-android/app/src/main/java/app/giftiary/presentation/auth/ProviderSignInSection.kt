@@ -2,6 +2,8 @@ package app.giftiary.presentation.auth
 
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import androidx.browser.customtabs.CustomTabsClient
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -65,12 +67,32 @@ class ProviderSignInViewModel @Inject constructor(
     fun onBrowserMissing() = providerSignIn.onBrowserMissing()
 }
 
-/** Opens a provider's sign-in page in a Custom Tab of the app's own task; false without a browser. */
-internal fun openProviderPage(context: Context, url: String): Boolean = try {
-    CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, url.toUri())
-    true
-} catch (_: ActivityNotFoundException) {
-    false
+/**
+ * Opens a provider's sign-in page in a Custom Tab of the app's own task; false without a browser.
+ *
+ * The tab is pinned to a browser: left to the system, a page on facebook.com would go straight to
+ * the Facebook app, which claims the domain but cannot complete this sign-in.
+ */
+internal fun openProviderPage(context: Context, url: String): Boolean {
+    val browser = browserFor(context) ?: return false
+    val tab = CustomTabsIntent.Builder().setShowTitle(true).build()
+    tab.intent.setPackage(browser)
+    return try {
+        tab.launchUrl(context, url.toUri())
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
+}
+
+// Apps that open any web link, i.e. browsers, not apps that only claim a domain. The default one
+// is preferred if it has Custom Tabs, then any with Custom Tabs, then any browser at all.
+private fun browserFor(context: Context): String? {
+    val anyWebLink = Intent(Intent.ACTION_VIEW, "https://".toUri()).addCategory(Intent.CATEGORY_BROWSABLE)
+    val browsers = context.packageManager.queryIntentActivities(anyWebLink, 0)
+        .map { it.activityInfo.packageName }
+        .distinct()
+    return CustomTabsClient.getPackageName(context, browsers) ?: browsers.firstOrNull()
 }
 
 @Composable
