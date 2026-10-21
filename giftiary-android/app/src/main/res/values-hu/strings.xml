@@ -80,6 +80,7 @@
     <string name="person_editor_load_failed">Nem sikerült betölteni ezt a személyt.</string>
 
     <string name="people_open">Megnyitás</string>
+    <string name="people_select_person">Válassz ki valakit, hogy lásd az alkalmait, ötleteit és ajándékait.</string>
 
     <string name="person_detail_occasions">Alkalmak</string>
     <string name="person_detail_add_occasion">Alkalom hozzáadása</string>

@@ -39,6 +39,7 @@ import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.giftideas.GiftIdeaRow
 import app.giftiary.presentation.gifts.GiftRow
 import app.giftiary.presentation.occasions.OccasionRow
@@ -51,7 +52,8 @@ import java.util.UUID
 @Composable
 fun PersonDetailScreen(
     viewModel: PersonDetailViewModel,
-    onBack: () -> Unit,
+    // Null beside the People list, which stays in view instead.
+    onBack: (() -> Unit)?,
     onEditPerson: (UUID) -> Unit,
     onAddOccasion: (UUID) -> Unit,
     onEditOccasion: (UUID) -> Unit,
@@ -81,7 +83,7 @@ fun PersonDetailScreen(
 @Composable
 fun PersonDetailScreen(
     state: PersonDetailUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onEditPerson: (Person) -> Unit,
     onAddOccasion: (Person) -> Unit,
     onEditOccasion: (Occasion) -> Unit,
@@ -149,7 +151,9 @@ private fun PersonDetailContent(
 ) {
     val colors = GiftiaryTheme.colors
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .giftiaryReadableWidth(),
         contentPadding = PaddingValues(bottom = GiftiarySpacing.xxl),
     ) {
         state.person.relationship?.let { relationship ->

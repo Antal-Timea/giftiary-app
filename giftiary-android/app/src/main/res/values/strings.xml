@@ -81,6 +81,7 @@
     <string name="person_editor_load_failed">This person could not be loaded.</string>
 
     <string name="people_open">Open</string>
+    <string name="people_select_person">Select a person to see their occasions, ideas and gifts.</string>
 
     <string name="person_detail_occasions">Occasions</string>
     <string name="person_detail_add_occasion">Add occasion</string>

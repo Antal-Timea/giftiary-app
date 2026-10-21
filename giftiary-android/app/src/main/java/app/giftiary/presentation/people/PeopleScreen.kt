@@ -31,9 +31,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -44,29 +47,35 @@ import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.Lora
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.Instant
 import java.util.UUID
 
+/** [personDetail] is the selected person's detail, shown beside the list on a wide window. */
 @Composable
 fun PeopleScreen(
     onBack: (() -> Unit)?,
     onAddPerson: () -> Unit,
     onOpenPerson: (UUID) -> Unit,
+    personDetail: @Composable (UUID) -> Unit,
     viewModel: PeopleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    PeopleScreen(
+    AdaptivePeopleScreen(
         state = state,
         onBack = onBack,
         onAddPerson = onAddPerson,
-        onOpenPerson = { onOpenPerson(it.id) },
+        onOpenPerson = onOpenPerson,
+        onSelectPerson = viewModel::onPersonSelected,
+        onClearSelection = viewModel::onSelectionCleared,
         onDeleteRequested = viewModel::onDeleteRequested,
         onDeleteConfirmed = viewModel::onDeleteConfirmed,
         onDeleteDismissed = viewModel::onDeleteDismissed,
         onDeleteErrorShown = viewModel::onDeleteErrorShown,
+        personDetail = personDetail,
     )
 }
 
@@ -81,6 +90,8 @@ fun PeopleScreen(
     onDeleteDismissed: () -> Unit,
     onDeleteErrorShown: () -> Unit,
     modifier: Modifier = Modifier,
+    // True beside a detail pane: rows then show which person is open there.
+    selectable: Boolean = false,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val deleteFailedMessage = stringResource(R.string.people_delete_failed)
@@ -110,6 +121,8 @@ fun PeopleScreen(
             } else {
                 PeopleList(
                     people = content.people,
+                    selectedPersonId = state.selectedPersonId.takeIf { selectable },
+                    selectable = selectable,
                     onOpenPerson = onOpenPerson,
                     onDeleteRequested = onDeleteRequested,
                     modifier = contentModifier,
@@ -149,17 +162,23 @@ private fun AddPersonButton(onClick: () -> Unit) {
 @Composable
 private fun PeopleList(
     people: List<Person>,
+    selectedPersonId: UUID?,
+    selectable: Boolean,
     onOpenPerson: (Person) -> Unit,
     onDeleteRequested: (Person) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .giftiaryReadableWidth(),
         contentPadding = PaddingValues(top = GiftiarySpacing.s, bottom = FAB_CLEARANCE),
     ) {
         items(people, key = { it.id }) { person ->
             PersonRow(
                 person = person,
+                selected = person.id == selectedPersonId,
+                selectable = selectable,
                 onClick = { onOpenPerson(person) },
                 onDeleteClick = { onDeleteRequested(person) },
             )
@@ -172,16 +191,25 @@ private fun PeopleList(
 }
 
 @Composable
-private fun PersonRow(person: Person, onClick: () -> Unit, onDeleteClick: () -> Unit) {
+private fun PersonRow(
+    person: Person,
+    selected: Boolean,
+    selectable: Boolean,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+) {
     val colors = GiftiaryTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (selected) colors.surfaceContext else Color.Transparent)
+            // Phones have no selection, so their rows are not announced as "not selected".
+            .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .clickable(onClickLabel = stringResource(R.string.people_open), onClick = onClick)
             .padding(start = GiftiarySpacing.l, end = GiftiarySpacing.xs, top = GiftiarySpacing.m, bottom = GiftiarySpacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Monogram(name = person.name)
+        Monogram(name = person.name, onSelectedRow = selected)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -213,12 +241,14 @@ private fun PersonRow(person: Person, onClick: () -> Unit, onDeleteClick: () -> 
 
 /** Decorative initial; the name next to it already carries the meaning. */
 @Composable
-private fun Monogram(name: String) {
+private fun Monogram(name: String, onSelectedRow: Boolean) {
     val initial = name.substring(0, name.offsetByCodePoints(0, 1)).uppercase()
+    val colors = GiftiaryTheme.colors
     Box(
         modifier = Modifier
             .size(MONOGRAM_SIZE)
-            .background(GiftiaryTheme.colors.surfaceContext, CircleShape)
+            // The selected row is already surfaceContext; the quieter tone keeps the circle visible.
+            .background(if (onSelectedRow) colors.surfaceContextQuiet else colors.surfaceContext, CircleShape)
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {

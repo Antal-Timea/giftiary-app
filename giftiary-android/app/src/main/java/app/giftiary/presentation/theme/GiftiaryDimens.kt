@@ -20,6 +20,9 @@ object GiftiaryLayout {
 
     /** Several columns side by side, e.g. wide Home. */
     val wideMaxWidth = 1040.dp
+
+    /** The list beside a detail pane, e.g. People on a wide window. */
+    val listPaneWidth = 360.dp
 }
 
 /** Modest radii: Giftiary should not read as a stack of rounded cards. */
