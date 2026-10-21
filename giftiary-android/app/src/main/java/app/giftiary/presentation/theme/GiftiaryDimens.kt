@@ -17,6 +17,9 @@ object GiftiarySpacing {
 /** Widths that keep content readable on wide windows; phones stay below them. */
 object GiftiaryLayout {
     val readableMaxWidth = 640.dp
+
+    /** Several columns side by side, e.g. wide Home. */
+    val wideMaxWidth = 1040.dp
 }
 
 /** Modest radii: Giftiary should not read as a stack of rounded cards. */

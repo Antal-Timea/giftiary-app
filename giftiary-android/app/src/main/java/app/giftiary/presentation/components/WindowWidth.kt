@@ -60,6 +60,16 @@ fun Modifier.giftiaryReadableWidth(): Modifier = this
     .widthIn(max = GiftiaryLayout.readableMaxWidth)
     .fillMaxWidth()
 
+/**
+ * Full width up to [GiftiaryLayout.wideMaxWidth], centred beyond it: for layouts with several
+ * columns, which should not spread across a very wide window.
+ */
+fun Modifier.giftiaryWideWidth(): Modifier = this
+    .fillMaxWidth()
+    .wrapContentWidth(Alignment.CenterHorizontally)
+    .widthIn(max = GiftiaryLayout.wideMaxWidth)
+    .fillMaxWidth()
+
 /** Phone, 7" and 10" tablets in both orientations, for screens that adapt to the window width. */
 @Preview(name = "Phone", widthDp = 411, heightDp = 891, showBackground = true)
 @Preview(name = "Tablet 7\" portrait", widthDp = 600, heightDp = 960, showBackground = true)

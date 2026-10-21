@@ -1,6 +1,9 @@
 package app.giftiary.presentation.home
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,8 +30,14 @@ import app.giftiary.domain.model.Person
 import app.giftiary.domain.model.SyncStatus
 import app.giftiary.domain.model.UpcomingOccasion
 import app.giftiary.domain.model.turningAge
+import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
+import app.giftiary.presentation.components.LocalWidthClass
+import app.giftiary.presentation.components.ProvideWidthClass
+import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.components.giftiaryWideWidth
 import app.giftiary.presentation.sync.SyncStatusContent
 import app.giftiary.presentation.sync.SyncStatusLine
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -53,13 +62,31 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     // Off when the navigation rail leads to the same places.
     showSectionButtons: Boolean = true,
+    widthClass: WidthClass = LocalWidthClass.current,
 ) {
-    val colors = GiftiaryTheme.colors
+    val comingUpPart: @Composable () -> Unit = {
+        ComingUpSection(content = comingUp, onOpen = onOpenComingUp)
+        // Always here, also with nothing coming up: the user's own occasions have no other place.
+        OwnOccasionsLink(onOpenOwnOccasions)
+    }
     Scaffold(modifier = modifier) { contentPadding ->
+        if (widthClass == WidthClass.EXPANDED) {
+            WideHome(
+                comingUp = comingUpPart,
+                syncStatus = syncStatus,
+                onOpenSyncAttention = onOpenSyncAttention,
+                reminderCard = reminderCard,
+                reminderActions = reminderActions,
+                modifier = Modifier.padding(contentPadding),
+            )
+            return@Scaffold
+        }
+        // Phones, and medium windows at a readable width.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
+                .giftiaryReadableWidth()
                 .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
         ) {
             // Only the upper part scrolls, so the actions stay in reach however much is coming up.
@@ -68,27 +95,9 @@ fun HomeScreen(
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
             ) {
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colors.textSecondary,
-                )
-                Spacer(Modifier.height(GiftiarySpacing.s))
-                Text(
-                    text = stringResource(R.string.home_tagline),
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.displaySmall,
-                    color = colors.textPrimary,
-                )
+                HomeHeader()
                 Spacer(Modifier.height(GiftiarySpacing.xxl))
-                ComingUpSection(content = comingUp, onOpen = onOpenComingUp)
-                // Always here, also with nothing coming up: the user's own occasions have no other place.
-                TextButton(
-                    onClick = onOpenOwnOccasions,
-                    colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
-                ) {
-                    Text(text = stringResource(R.string.own_occasions_title), style = MaterialTheme.typography.labelLarge)
-                }
+                comingUpPart()
                 if (reminderCard != ReminderCardState.Hidden) {
                     Spacer(Modifier.height(GiftiarySpacing.l))
                     ReminderCard(state = reminderCard, actions = reminderActions)
@@ -97,61 +106,153 @@ fun HomeScreen(
             Spacer(Modifier.height(GiftiarySpacing.l))
             SyncStatusLine(content = syncStatus, onOpenAttention = onOpenSyncAttention)
             if (!showSectionButtons) return@Column
-            Spacer(Modifier.height(GiftiarySpacing.l))
-            GiftiaryPrimaryButton(
-                text = stringResource(R.string.home_open_gifts),
-                onClick = onOpenGifts,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(GiftiarySpacing.m))
-            GiftiarySecondaryButton(
-                text = stringResource(R.string.home_open_people),
-                onClick = onOpenPeople,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(GiftiarySpacing.m))
-            GiftiarySecondaryButton(
-                text = stringResource(R.string.home_open_wishlists),
-                onClick = onOpenWishlists,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(GiftiarySpacing.s))
-            // Sign-out lives in Settings now, with the profile and reminders.
-            TextButton(
-                onClick = onOpenSettings,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
+            SectionButtons(onOpenGifts, onOpenPeople, onOpenWishlists, onOpenSettings)
+        }
+    }
+}
+
+/**
+ * Beside the rail on a wide window: the header across, then what is coming up in the wider
+ * column and the reminder card and sync status beside it, each column scrolling on its own.
+ */
+@Composable
+private fun WideHome(
+    comingUp: @Composable () -> Unit,
+    syncStatus: SyncStatusContent,
+    onOpenSyncAttention: () -> Unit,
+    reminderCard: ReminderCardState,
+    reminderActions: ReminderCardActions,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .giftiaryWideWidth()
+            .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
+    ) {
+        HomeHeader()
+        Spacer(Modifier.height(GiftiarySpacing.xxl))
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.xxl),
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(3f)
+                    .verticalScroll(rememberScrollState()),
             ) {
-                Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.labelLarge)
+                comingUp()
+            }
+            Column(
+                modifier = Modifier
+                    .weight(2f)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            ) {
+                ReminderCard(state = reminderCard, actions = reminderActions)
+                SyncStatusLine(content = syncStatus, onOpenAttention = onOpenSyncAttention)
             }
         }
     }
 }
 
+@Composable
+private fun HomeHeader() {
+    val colors = GiftiaryTheme.colors
+    Text(
+        text = stringResource(R.string.app_name),
+        style = MaterialTheme.typography.labelLarge,
+        color = colors.textSecondary,
+    )
+    Spacer(Modifier.height(GiftiarySpacing.s))
+    Text(
+        text = stringResource(R.string.home_tagline),
+        modifier = Modifier.semantics { heading() },
+        style = MaterialTheme.typography.displaySmall,
+        color = colors.textPrimary,
+    )
+}
+
+@Composable
+private fun OwnOccasionsLink(onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText),
+    ) {
+        Text(text = stringResource(R.string.own_occasions_title), style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/** Where there is no rail, Home is the way to the app's sections. */
+@Composable
+private fun ColumnScope.SectionButtons(
+    onOpenGifts: () -> Unit,
+    onOpenPeople: () -> Unit,
+    onOpenWishlists: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    Spacer(Modifier.height(GiftiarySpacing.l))
+    GiftiaryPrimaryButton(
+        text = stringResource(R.string.home_open_gifts),
+        onClick = onOpenGifts,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(GiftiarySpacing.m))
+    GiftiarySecondaryButton(
+        text = stringResource(R.string.home_open_people),
+        onClick = onOpenPeople,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(GiftiarySpacing.m))
+    GiftiarySecondaryButton(
+        text = stringResource(R.string.home_open_wishlists),
+        onClick = onOpenWishlists,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(GiftiarySpacing.s))
+    // Sign-out lives in Settings now, with the profile and reminders.
+    TextButton(
+        onClick = onOpenSettings,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textSecondary),
+    ) {
+        Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.labelLarge)
+    }
+}
+
 @PreviewLightDark
+@GiftiaryAdaptivePreviews
 @Composable
 private fun HomeScreenPreview() {
     GiftiaryTheme {
-        HomeScreen(
-            syncStatus = SyncStatusContent.Loaded(SyncStatus(waitingCount = 3, attention = emptyList())),
-            comingUp = ComingUpContent.Loaded(
-                listOf(
-                    previewItem("Anna", OccasionType.BIRTHDAY, daysFromToday = 0, year = 1990),
-                    previewItem("Béla", OccasionType.NAME_DAY, daysFromToday = 1, year = null),
-                    previewItem("Csilla", OccasionType.ANNIVERSARY, daysFromToday = 12, year = 2015),
-                ),
-            ),
-            onOpenComingUp = {},
-            reminderCard = ReminderCardState.Off,
-            reminderActions = ReminderCardActions({}, {}, {}, {}),
-            onOpenGifts = {},
-            onOpenPeople = {},
-            onOpenWishlists = {},
-            onOpenOwnOccasions = {},
-            onOpenSyncAttention = {},
-            onOpenSettings = {},
-        )
+        ProvideWidthClass {
+            HomePreviewContent()
+        }
     }
+}
+
+@Composable
+private fun HomePreviewContent() {
+    HomeScreen(
+        syncStatus = SyncStatusContent.Loaded(SyncStatus(waitingCount = 3, attention = emptyList())),
+        comingUp = ComingUpContent.Loaded(
+            listOf(
+                previewItem("Anna", OccasionType.BIRTHDAY, daysFromToday = 0, year = 1990),
+                previewItem("Béla", OccasionType.NAME_DAY, daysFromToday = 1, year = null),
+                previewItem("Csilla", OccasionType.ANNIVERSARY, daysFromToday = 12, year = 2015),
+            ),
+        ),
+        onOpenComingUp = {},
+        reminderCard = ReminderCardState.Off,
+        reminderActions = ReminderCardActions({}, {}, {}, {}),
+        onOpenGifts = {},
+        onOpenPeople = {},
+        onOpenWishlists = {},
+        onOpenOwnOccasions = {},
+        onOpenSyncAttention = {},
+        onOpenSettings = {},
+        showSectionButtons = LocalWidthClass.current == WidthClass.COMPACT,
+    )
 }
 
 private fun previewItem(name: String, type: OccasionType, daysFromToday: Int, year: Int?): ComingUpItem {
