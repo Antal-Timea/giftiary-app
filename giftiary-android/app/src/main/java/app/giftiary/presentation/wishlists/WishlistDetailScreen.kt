@@ -34,10 +34,14 @@ import app.giftiary.R
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Wish
 import app.giftiary.domain.model.Wishlist
+import app.giftiary.presentation.components.GiftiaryAddFab
+import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.ListRow
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.SectionHeading
 import app.giftiary.presentation.gifts.giftPrice
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -132,7 +136,7 @@ fun WishlistDetailScreen(
             )
         },
         floatingActionButton = {
-            if (loaded != null) AddButton(text = stringResource(R.string.wish_add), onClick = { actions.onAddWish(loaded.wishlist.id) })
+            if (loaded != null) GiftiaryAddFab(text = stringResource(R.string.wish_add), onClick = { actions.onAddWish(loaded.wishlist.id) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
@@ -174,7 +178,7 @@ private fun WishlistContents(
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = FAB_CLEARANCE)) {
+    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = GiftiaryAddFabClearance)) {
         item {
             val personId = content.openablePersonId
             Text(
@@ -207,7 +211,12 @@ private fun WishlistContents(
             }
         }
         items(content.wishes, key = { it.id }) { wish ->
-            ListRow(title = wish.name, detail = wishSummary(wish), onClick = { actions.onOpenWish(wish.id) })
+            ListRow(
+                title = wish.name,
+                detail = wishSummary(wish),
+                onClickLabel = stringResource(R.string.wish_open),
+                onClick = { actions.onOpenWish(wish.id) },
+            )
             HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
         }
         item {

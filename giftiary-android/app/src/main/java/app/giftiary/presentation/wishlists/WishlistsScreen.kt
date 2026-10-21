@@ -19,9 +19,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Wishlist
+import app.giftiary.presentation.components.GiftiaryAddFab
+import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.ListRow
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.SectionHeading
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.Instant
@@ -70,7 +74,7 @@ fun WishlistsScreen(
                 },
             )
         },
-        floatingActionButton = { AddButton(text = stringResource(R.string.wishlists_add), onClick = onAddWishlist) },
+        floatingActionButton = { GiftiaryAddFab(text = stringResource(R.string.wishlists_add), onClick = onAddWishlist) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (content) {
@@ -92,11 +96,16 @@ fun WishlistsScreen(
 @Composable
 private fun WishlistsList(content: WishlistsContent.Loaded, onOpenWishlist: (UUID) -> Unit, modifier: Modifier = Modifier) {
     val dividerColor = GiftiaryTheme.colors.divider
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = FAB_CLEARANCE)) {
+    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = GiftiaryAddFabClearance)) {
         if (content.own.isNotEmpty()) {
             item { SectionHeading(stringResource(R.string.wishlists_section_own)) }
             items(content.own, key = { it.id }) { wishlist ->
-                ListRow(title = wishlist.name, detail = null, onClick = { onOpenWishlist(wishlist.id) })
+                ListRow(
+                    title = wishlist.name,
+                    detail = null,
+                    onClickLabel = stringResource(R.string.wishlist_open),
+                    onClick = { onOpenWishlist(wishlist.id) },
+                )
                 HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = dividerColor)
             }
         }
@@ -107,6 +116,7 @@ private fun WishlistsList(content: WishlistsContent.Loaded, onOpenWishlist: (UUI
                 ListRow(
                     title = entry.wishlist.name,
                     detail = wishlistOwnerText(owner),
+                    onClickLabel = stringResource(R.string.wishlist_open),
                     onClick = { onOpenWishlist(entry.wishlist.id) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = dividerColor)

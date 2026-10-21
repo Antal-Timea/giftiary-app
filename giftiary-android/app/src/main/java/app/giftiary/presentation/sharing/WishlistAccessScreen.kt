@@ -45,10 +45,10 @@ import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
+import app.giftiary.presentation.components.SectionHeading
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
-import app.giftiary.presentation.wishlists.SectionHeading
 import java.time.Instant
 import java.util.UUID
 

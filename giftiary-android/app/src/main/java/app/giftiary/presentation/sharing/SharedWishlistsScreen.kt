@@ -34,10 +34,10 @@ import app.giftiary.R
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.ListRow
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
-import app.giftiary.presentation.wishlists.ListRow
 import java.util.UUID
 
 @Composable
@@ -128,6 +128,7 @@ private fun SharedList(
             ListRow(
                 title = wishlist.name,
                 detail = sharedWishlistOwnerText(wishlist.ownerDisplayName),
+                onClickLabel = stringResource(R.string.wishlist_open),
                 onClick = { onOpenWishlist(wishlist.id) },
             )
             HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)

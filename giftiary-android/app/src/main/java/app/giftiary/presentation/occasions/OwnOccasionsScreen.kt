@@ -1,30 +1,24 @@
 package app.giftiary.presentation.occasions
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.OccasionType
+import app.giftiary.presentation.components.GiftiaryAddFab
+import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
@@ -60,7 +54,7 @@ fun OwnOccasionsScreen(
     Scaffold(
         modifier = modifier,
         topBar = { GiftiaryTopBar(title = stringResource(R.string.own_occasions_title), onBack = onBack) },
-        floatingActionButton = { AddOccasionButton(onClick = onAddOccasion) },
+        floatingActionButton = { GiftiaryAddFab(text = stringResource(R.string.occasion_editor_add_title), onClick = onAddOccasion) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (content) {
@@ -75,7 +69,7 @@ fun OwnOccasionsScreen(
             } else {
                 LazyColumn(
                     modifier = contentModifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = GiftiarySpacing.s, bottom = FAB_CLEARANCE),
+                    contentPadding = PaddingValues(top = GiftiarySpacing.s, bottom = GiftiaryAddFabClearance),
                 ) {
                     items(content.occasions, key = { it.id }) { occasion ->
                         OccasionRow(occasion = occasion, onClick = { onOpenOccasion(occasion) }, clickLabel = R.string.people_open)
@@ -86,24 +80,6 @@ fun OwnOccasionsScreen(
         }
     }
 }
-
-@Composable
-private fun AddOccasionButton(onClick: () -> Unit) {
-    val colors = GiftiaryTheme.colors
-    // The content overload keeps the label in the semantics tree, as on the People screen.
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        containerColor = colors.primaryAction,
-        contentColor = colors.onPrimaryAction,
-        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
-    ) {
-        Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-        Spacer(Modifier.width(GiftiarySpacing.m))
-        Text(stringResource(R.string.occasion_editor_add_title))
-    }
-}
-
-private val FAB_CLEARANCE = 96.dp
 
 @PreviewLightDark
 @Composable

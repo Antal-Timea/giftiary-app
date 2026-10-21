@@ -6,17 +6,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +39,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Person
+import app.giftiary.presentation.components.GiftiaryAddFab
+import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
@@ -105,7 +103,7 @@ fun PeopleScreen(
     Scaffold(
         modifier = modifier,
         topBar = { GiftiaryTopBar(title = stringResource(R.string.people_title), onBack = onBack) },
-        floatingActionButton = { AddPersonButton(onClick = onAddPerson) },
+        floatingActionButton = { GiftiaryAddFab(text = stringResource(R.string.people_add), onClick = onAddPerson) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
@@ -143,23 +141,6 @@ fun PeopleScreen(
 }
 
 @Composable
-private fun AddPersonButton(onClick: () -> Unit) {
-    val colors = GiftiaryTheme.colors
-    // The content overload keeps the label in the semantics tree; the animated text/icon
-    // overload left the button unlabeled for accessibility services.
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        containerColor = colors.primaryAction,
-        contentColor = colors.onPrimaryAction,
-        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
-    ) {
-        Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-        Spacer(Modifier.width(GiftiarySpacing.m))
-        Text(stringResource(R.string.people_add))
-    }
-}
-
-@Composable
 private fun PeopleList(
     people: List<Person>,
     selectedPersonId: UUID?,
@@ -172,7 +153,7 @@ private fun PeopleList(
         modifier = modifier
             .fillMaxSize()
             .giftiaryReadableWidth(),
-        contentPadding = PaddingValues(top = GiftiarySpacing.s, bottom = FAB_CLEARANCE),
+        contentPadding = PaddingValues(top = GiftiarySpacing.s, bottom = GiftiaryAddFabClearance),
     ) {
         items(people, key = { it.id }) { person ->
             PersonRow(
@@ -261,9 +242,6 @@ private fun Monogram(name: String, onSelectedRow: Boolean) {
 }
 
 private val MONOGRAM_SIZE = 40.dp
-
-// Keeps the last row reachable above the floating action button.
-private val FAB_CLEARANCE = 96.dp
 
 private val previewPeople = listOf(
     Person(UUID.randomUUID(), "Anna Kovács", "Sister", null, null, Instant.EPOCH, Instant.EPOCH),

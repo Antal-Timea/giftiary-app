@@ -42,11 +42,11 @@ import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
+import app.giftiary.presentation.components.SectionHeading
 import app.giftiary.presentation.gifts.ProductLink
 import app.giftiary.presentation.gifts.giftPrice
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
-import app.giftiary.presentation.wishlists.SectionHeading
 import java.util.UUID
 
 @Composable

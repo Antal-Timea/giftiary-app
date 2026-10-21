@@ -283,6 +283,8 @@
     <string name="home_open_wishlists">Kívánságlisták</string>
     <string name="wishlists_title">Kívánságlisták</string>
     <string name="wishlists_add">Új kívánságlista</string>
+    <string name="wishlist_open">Megnyitás</string>
+    <string name="wish_open">Megnyitás</string>
     <string name="wishlists_load_failed">A kívánságlisták betöltése nem sikerült.</string>
     <string name="wishlists_empty_title">Még nincs kívánságlistád</string>
     <string name="wishlists_empty_message">Gyűjts kívánságokat magadnak vagy a szeretteidnek.</string>

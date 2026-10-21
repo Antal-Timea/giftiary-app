@@ -5,28 +5,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
@@ -35,6 +28,8 @@ import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
+import app.giftiary.presentation.components.GiftiaryAddFab
+import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
@@ -98,16 +93,10 @@ fun GiftHistoryScreen(
         modifier = modifier,
         topBar = { GiftiaryTopBar(title = stringResource(R.string.gifts_title), onBack = onBack) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            GiftiaryAddFab(
+                text = stringResource(if (showsIdeas) R.string.gift_ideas_add else R.string.gifts_add),
                 onClick = if (showsIdeas) onAddGiftIdea else onAddGift,
-                containerColor = colors.primaryAction,
-                contentColor = colors.onPrimaryAction,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
-            ) {
-                Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-                Spacer(Modifier.width(GiftiarySpacing.m))
-                Text(stringResource(if (showsIdeas) R.string.gift_ideas_add else R.string.gifts_add))
-            }
+            )
         },
     ) { contentPadding ->
         Column(
@@ -139,7 +128,7 @@ fun GiftHistoryScreen(
                 )
                 is GiftHistoryContent.IdeasLoaded -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+                    contentPadding = PaddingValues(bottom = GiftiaryAddFabClearance),
                 ) {
                     items(content.ideas, key = { it.idea.id }) { entry ->
                         GiftIdeaRow(
@@ -153,7 +142,7 @@ fun GiftHistoryScreen(
                 }
                 is GiftHistoryContent.Loaded -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+                    contentPadding = PaddingValues(bottom = GiftiaryAddFabClearance),
                 ) {
                     items(content.gifts, key = { it.gift.id }) { entry ->
                         GiftRow(
@@ -209,9 +198,6 @@ private fun filterLabel(filter: GiftFilter): String = when (filter) {
     GiftFilter.RECEIVED -> giftDirectionLabel(GiftDirection.RECEIVED)
     GiftFilter.IDEAS -> stringResource(R.string.gifts_filter_ideas)
 }
-
-// Keeps the last row reachable above the floating action button.
-private val FAB_CLEARANCE = 96.dp
 
 private val previewAnna = Person(UUID.randomUUID(), "Anna Kovács", "Sister", null, null, Instant.EPOCH, Instant.EPOCH)
 

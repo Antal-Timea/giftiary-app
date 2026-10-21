@@ -3,18 +3,13 @@ package app.giftiary.presentation.occasions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -23,16 +18,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.repository.GiftIdeaEntry
+import app.giftiary.presentation.components.GiftiaryAddFab
+import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
@@ -92,7 +87,7 @@ fun OccasionPlanScreen(
                 },
             )
         },
-        floatingActionButton = { if (loaded != null) AddIdeaButton(onClick = { onAddGiftIdea(loaded.occasion) }) },
+        floatingActionButton = { if (loaded != null) GiftiaryAddFab(text = stringResource(R.string.gift_ideas_add), onClick = { onAddGiftIdea(loaded.occasion) }) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (state) {
@@ -114,7 +109,7 @@ private fun PlanContent(
     val colors = GiftiaryTheme.colors
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+        contentPadding = PaddingValues(bottom = GiftiaryAddFabClearance),
     ) {
         item {
             Column(
@@ -183,20 +178,3 @@ private fun Note(text: String) {
     )
 }
 
-@Composable
-private fun AddIdeaButton(onClick: () -> Unit) {
-    val colors = GiftiaryTheme.colors
-    // The content overload keeps the label in the semantics tree, as on the People screen.
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        containerColor = colors.primaryAction,
-        contentColor = colors.onPrimaryAction,
-        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp, pressedElevation = 4.dp),
-    ) {
-        Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null)
-        Spacer(Modifier.width(GiftiarySpacing.m))
-        Text(stringResource(R.string.gift_ideas_add))
-    }
-}
-
-private val FAB_CLEARANCE = 96.dp

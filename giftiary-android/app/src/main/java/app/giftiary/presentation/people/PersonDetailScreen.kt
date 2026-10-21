@@ -25,8 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
@@ -37,14 +35,15 @@ import app.giftiary.domain.model.Wishlist
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.ListRow
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.SectionHeading
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.giftideas.GiftIdeaRow
 import app.giftiary.presentation.gifts.GiftRow
 import app.giftiary.presentation.occasions.OccasionRow
 import app.giftiary.presentation.theme.GiftiarySpacing
-import app.giftiary.presentation.wishlists.ListRow
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.Instant
 import java.util.UUID
@@ -217,6 +216,7 @@ private fun PersonDetailContent(
                     } else {
                         pluralStringResource(R.plurals.person_detail_wish_count, entry.wishCount, entry.wishCount)
                     },
+                    onClickLabel = stringResource(R.string.wishlist_open),
                     onClick = { onOpenWishlist(entry) },
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
@@ -247,18 +247,6 @@ private fun PersonDetailContent(
         }
         item { AddButton(label = stringResource(R.string.person_detail_add_gift), onClick = onAddGift) }
     }
-}
-
-@Composable
-private fun SectionHeading(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier
-            .padding(start = GiftiarySpacing.l, end = GiftiarySpacing.l, top = GiftiarySpacing.xl, bottom = GiftiarySpacing.s)
-            .semantics { heading() },
-        style = MaterialTheme.typography.titleMedium,
-        color = GiftiaryTheme.colors.textPrimary,
-    )
 }
 
 @Composable

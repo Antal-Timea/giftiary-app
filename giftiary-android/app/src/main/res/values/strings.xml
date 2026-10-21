@@ -284,6 +284,8 @@
     <string name="home_open_wishlists">Wishlists</string>
     <string name="wishlists_title">Wishlists</string>
     <string name="wishlists_add">New wishlist</string>
+    <string name="wishlist_open">Open</string>
+    <string name="wish_open">Open</string>
     <string name="wishlists_load_failed">Your wishlists could not be loaded.</string>
     <string name="wishlists_empty_title">No wishlists yet</string>
     <string name="wishlists_empty_message">Collect wishes for yourself or for the people you care about.</string>
