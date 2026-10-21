@@ -17,7 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -82,19 +85,26 @@ fun GiftIdeaStatusSelector(
     }
 }
 
-/** One idea in a list: what it is, for whom, how far along, and what it may cost. */
+/**
+ * One idea in a list: what it is, for whom, how far along, and what it may cost. [selectable] rows,
+ * beside a detail pane, show and announce whether they are the one open there.
+ */
 @Composable
 fun GiftIdeaRow(
     entry: GiftIdeaEntry,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showRecipient: Boolean = true,
+    selectable: Boolean = false,
+    selected: Boolean = false,
 ) {
     val colors = GiftiaryTheme.colors
     val idea = entry.idea
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(if (selected) colors.surfaceContext else Color.Transparent)
+            .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .clickable(onClickLabel = stringResource(R.string.gift_idea_open), onClick = onClick)
             .heightIn(min = 48.dp)
             .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),

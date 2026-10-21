@@ -1,27 +1,19 @@
 package app.giftiary.presentation.people
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.giftiary.R
 import app.giftiary.domain.model.Person
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
+import app.giftiary.presentation.components.ListDetailPanes
 import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
-import app.giftiary.presentation.theme.GiftiaryLayout
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.Instant
 import java.util.UUID
@@ -72,28 +64,22 @@ internal fun AdaptivePeopleScreen(
 
     // Back first closes the person beside the list, then leaves People as usual.
     BackHandler(enabled = selected != null, onBack = onClearSelection)
-    Row(Modifier.fillMaxSize()) {
-        PeopleScreen(
-            state = state,
-            onBack = onBack,
-            onAddPerson = onAddPerson,
-            onOpenPerson = onSelectPerson,
-            onDeleteRequested = onDeleteRequested,
-            onDeleteConfirmed = onDeleteConfirmed,
-            onDeleteDismissed = onDeleteDismissed,
-            onDeleteErrorShown = onDeleteErrorShown,
-            modifier = Modifier
-                .width(GiftiaryLayout.listPaneWidth)
-                .fillMaxHeight(),
-            selectable = true,
-        )
-        VerticalDivider(color = GiftiaryTheme.colors.divider)
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(GiftiaryTheme.colors.background),
-        ) {
+    ListDetailPanes(
+        list = { paneModifier ->
+            PeopleScreen(
+                state = state,
+                onBack = onBack,
+                onAddPerson = onAddPerson,
+                onOpenPerson = onSelectPerson,
+                onDeleteRequested = onDeleteRequested,
+                onDeleteConfirmed = onDeleteConfirmed,
+                onDeleteDismissed = onDeleteDismissed,
+                onDeleteErrorShown = onDeleteErrorShown,
+                modifier = paneModifier,
+                selectable = true,
+            )
+        },
+        detail = {
             val hasPeople = (state.content as? PeopleContent.Loaded)?.people?.isNotEmpty() == true
             when {
                 // Keyed, so each person gets their own scroll position.
@@ -101,8 +87,8 @@ internal fun AdaptivePeopleScreen(
                 // Only an invitation when there is someone to choose.
                 hasPeople -> MessageContent(message = stringResource(R.string.people_select_person))
             }
-        }
-    }
+        },
+    )
 }
 
 private val previewPeople = listOf(

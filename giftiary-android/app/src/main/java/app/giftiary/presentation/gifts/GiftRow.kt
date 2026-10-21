@@ -1,5 +1,6 @@
 package app.giftiary.presentation.gifts
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,7 +13,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.repository.GiftEntry
@@ -22,15 +26,25 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 
 /**
  * One gift in a list: what it was, given or received, with whom, and when. [showPeople] is off
- * where the person is already obvious, e.g. on that person's own page.
+ * where the person is already obvious, e.g. on that person's own page. [selectable] rows, beside a
+ * detail pane, show and announce whether they are the one open there.
  */
 @Composable
-fun GiftRow(entry: GiftEntry, onClick: () -> Unit, modifier: Modifier = Modifier, showPeople: Boolean = true) {
+fun GiftRow(
+    entry: GiftEntry,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showPeople: Boolean = true,
+    selectable: Boolean = false,
+    selected: Boolean = false,
+) {
     val colors = GiftiaryTheme.colors
     val gift = entry.gift
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(if (selected) colors.surfaceContext else Color.Transparent)
+            .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .clickable(onClickLabel = stringResource(R.string.gift_open), onClick = onClick)
             .heightIn(min = 48.dp)
             .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),

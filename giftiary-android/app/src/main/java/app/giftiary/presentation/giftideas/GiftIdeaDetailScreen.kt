@@ -36,6 +36,7 @@ import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.gifts.DetailField
 import app.giftiary.presentation.gifts.ProductLink
 import app.giftiary.presentation.gifts.giftPrice
@@ -48,13 +49,15 @@ import java.util.UUID
 @Composable
 fun GiftIdeaDetailScreen(
     viewModel: GiftIdeaDetailViewModel,
-    onBack: () -> Unit,
+    // Null beside the history list, which stays in view instead.
+    onBack: (() -> Unit)?,
+    onDeleted: () -> Unit,
     onEditGiftIdea: (UUID) -> Unit,
     onMarkAsGiven: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.content) {
-        if (state.content == GiftIdeaDetailContent.Deleted) onBack()
+        if (state.content == GiftIdeaDetailContent.Deleted) onDeleted()
     }
     GiftIdeaDetailScreen(
         state = state,
@@ -72,7 +75,7 @@ fun GiftIdeaDetailScreen(
 @Composable
 fun GiftIdeaDetailScreen(
     state: GiftIdeaDetailUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onEdit: (GiftIdeaEntry) -> Unit,
     onMarkAsGiven: (GiftIdeaEntry) -> Unit,
     onStatusChange: (GiftIdeaStatus) -> Unit,
@@ -153,6 +156,7 @@ private fun GiftIdeaDetails(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .giftiaryReadableWidth()
             .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
         verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
     ) {

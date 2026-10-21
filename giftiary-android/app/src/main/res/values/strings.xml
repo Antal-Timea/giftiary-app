@@ -125,6 +125,8 @@
 
     <string name="gifts_title">Gifts</string>
     <string name="gifts_add">Add gift</string>
+    <string name="gifts_select_gift">Select a gift to see its details.</string>
+    <string name="gifts_select_idea">Select an idea to see its details.</string>
     <string name="gifts_filter_all">All</string>
     <string name="gifts_empty_title">No gifts yet</string>
     <string name="gifts_empty_message">Start by adding a gift you’ve given or received.</string>

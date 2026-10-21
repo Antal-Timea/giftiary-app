@@ -36,6 +36,7 @@ import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.occasions.occasionTitle
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -46,12 +47,14 @@ import java.util.UUID
 @Composable
 fun GiftDetailScreen(
     viewModel: GiftDetailViewModel,
-    onBack: () -> Unit,
+    // Null beside the history list, which stays in view instead.
+    onBack: (() -> Unit)?,
+    onDeleted: () -> Unit,
     onEditGift: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.content) {
-        if (state.content == GiftDetailContent.Deleted) onBack()
+        if (state.content == GiftDetailContent.Deleted) onDeleted()
     }
     GiftDetailScreen(
         state = state,
@@ -67,7 +70,7 @@ fun GiftDetailScreen(
 @Composable
 fun GiftDetailScreen(
     state: GiftDetailUiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onEditGift: (GiftEntry) -> Unit,
     onDeleteRequested: () -> Unit,
     onDeleteConfirmed: () -> Unit,
@@ -142,6 +145,7 @@ private fun GiftDetails(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .giftiaryReadableWidth()
             .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
         verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
     ) {

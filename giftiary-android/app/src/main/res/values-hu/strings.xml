@@ -124,6 +124,8 @@
 
     <string name="gifts_title">Ajándékok</string>
     <string name="gifts_add">Ajándék hozzáadása</string>
+    <string name="gifts_select_gift">Válassz ki egy ajándékot, hogy lásd a részleteit.</string>
+    <string name="gifts_select_idea">Válassz ki egy ötletet, hogy lásd a részleteit.</string>
     <string name="gifts_filter_all">Összes</string>
     <string name="gifts_empty_title">Még nincs ajándék</string>
     <string name="gifts_empty_message">Kezdd egy ajándékkal, amit adtál vagy kaptál.</string>

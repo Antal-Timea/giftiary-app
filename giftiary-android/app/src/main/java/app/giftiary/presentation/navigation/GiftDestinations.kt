@@ -1,7 +1,10 @@
 package app.giftiary.presentation.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.dropUnlessResumed
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -20,6 +23,7 @@ import app.giftiary.presentation.gifts.GiftEditorScreen
 import app.giftiary.presentation.gifts.GiftEditorTarget
 import app.giftiary.presentation.gifts.GiftEditorViewModel
 import app.giftiary.presentation.gifts.GiftHistoryScreen
+import java.util.UUID
 
 /** Gift history, gifts and gift ideas, including marking an idea as given. */
 internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) {
@@ -30,17 +34,19 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
             onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
             onAddGiftIdea = dropUnlessResumed { navController.navigate(AddGiftIdeaRoute()) },
             onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
+            // Beside the list on a wide window: one view model per item, kept in the history's entry.
+            giftDetail = { id, onDeleted ->
+                GiftDetail(id, navController, onBack = null, onDeleted = onDeleted, viewModelKey = "gift-$id")
+            },
+            ideaDetail = { id, onDeleted ->
+                GiftIdeaDetail(id, navController, onBack = null, onDeleted = onDeleted, viewModelKey = "idea-$id")
+            },
         )
     }
     composable<GiftDetailRoute> { entry ->
         WithUuid(entry.toRoute<GiftDetailRoute>().giftId, navController) { giftId ->
-            GiftDetailScreen(
-                viewModel = hiltViewModel<GiftDetailViewModel, GiftDetailViewModel.Factory> { factory ->
-                    factory.create(giftId)
-                },
-                onBack = navController.popBackStackUnlessPaused(),
-                onEditGift = { id -> navController.navigate(EditGiftRoute(id.toString())) },
-            )
+            val close = navController.popBackStackUnlessPaused()
+            GiftDetail(giftId, navController, onBack = close, onDeleted = close)
         }
     }
     composable<AddGiftRoute> { entry ->
@@ -71,14 +77,8 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
     }
     composable<GiftIdeaDetailRoute> { entry ->
         WithUuid(entry.toRoute<GiftIdeaDetailRoute>().giftIdeaId, navController) { giftIdeaId ->
-            GiftIdeaDetailScreen(
-                viewModel = hiltViewModel<GiftIdeaDetailViewModel, GiftIdeaDetailViewModel.Factory> { factory ->
-                    factory.create(giftIdeaId)
-                },
-                onBack = navController.popBackStackUnlessPaused(),
-                onEditGiftIdea = { id -> navController.navigate(EditGiftIdeaRoute(id.toString())) },
-                onMarkAsGiven = { id -> navController.navigate(MarkGiftIdeaGivenRoute(id.toString())) },
-            )
+            val close = navController.popBackStackUnlessPaused()
+            GiftIdeaDetail(giftIdeaId, navController, onBack = close, onDeleted = close)
         }
     }
     composable<AddGiftIdeaRoute> { entry ->
@@ -109,13 +109,63 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
                     factory.create(giftIdeaId)
                 },
                 onBack = navController.popBackStackUnlessPaused(),
-                onGiven = { giftId ->
-                    // The idea is archived now; show the gift it became instead of returning to it.
-                    navController.navigate(GiftDetailRoute(giftId.toString())) {
-                        popUpTo<GiftIdeaDetailRoute> { inclusive = true }
-                    }
-                },
+                onGiven = { giftId -> navController.openGivenGift(giftId) },
             )
+        }
+    }
+}
+
+/** A gift's detail, as its own screen or beside the history list; its actions open the same routes either way. */
+@Composable
+private fun GiftDetail(
+    giftId: UUID,
+    navController: NavHostController,
+    onBack: (() -> Unit)?,
+    onDeleted: () -> Unit,
+    viewModelKey: String? = null,
+) {
+    GiftDetailScreen(
+        viewModel = hiltViewModel<GiftDetailViewModel, GiftDetailViewModel.Factory>(key = viewModelKey) { factory ->
+            factory.create(giftId)
+        },
+        onBack = onBack,
+        onDeleted = onDeleted,
+        onEditGift = { id -> navController.navigate(EditGiftRoute(id.toString())) },
+    )
+}
+
+/** An idea's detail, as its own screen or beside the history list; its actions open the same routes either way. */
+@Composable
+private fun GiftIdeaDetail(
+    giftIdeaId: UUID,
+    navController: NavHostController,
+    onBack: (() -> Unit)?,
+    onDeleted: () -> Unit,
+    viewModelKey: String? = null,
+) {
+    GiftIdeaDetailScreen(
+        viewModel = hiltViewModel<GiftIdeaDetailViewModel, GiftIdeaDetailViewModel.Factory>(key = viewModelKey) { factory ->
+            factory.create(giftIdeaId)
+        },
+        onBack = onBack,
+        onDeleted = onDeleted,
+        onEditGiftIdea = { id -> navController.navigate(EditGiftIdeaRoute(id.toString())) },
+        onMarkAsGiven = { id -> navController.navigate(MarkGiftIdeaGivenRoute(id.toString())) },
+    )
+}
+
+/**
+ * After an idea is marked as given: the idea is archived, so show the gift it became and drop the
+ * finished steps. Opened from the idea's own screen, that screen goes too, as always; opened from
+ * beside the history list, only the marking does, and Back returns to the history.
+ */
+internal fun NavController.openGivenGift(giftId: UUID) {
+    val fromIdeaScreen = previousBackStackEntry?.destination?.hasRoute<GiftIdeaDetailRoute>() == true
+    navigate(GiftDetailRoute(giftId.toString())) {
+        if (fromIdeaScreen) {
+            popUpTo<GiftIdeaDetailRoute> { inclusive = true }
+        } else {
+            popUpTo<MarkGiftIdeaGivenRoute> { inclusive = true }
         }
     }
 }

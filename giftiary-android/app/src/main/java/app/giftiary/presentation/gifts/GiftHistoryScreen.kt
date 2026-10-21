@@ -38,6 +38,7 @@ import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.giftideas.GiftIdeaRow
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -45,6 +46,10 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
+/**
+ * [giftDetail] and [ideaDetail] show the selected item beside the list on a wide window; their
+ * `onDeleted` closes it there.
+ */
 @Composable
 fun GiftHistoryScreen(
     onBack: (() -> Unit)?,
@@ -52,17 +57,24 @@ fun GiftHistoryScreen(
     onOpenGift: (UUID) -> Unit,
     onAddGiftIdea: () -> Unit,
     onOpenGiftIdea: (UUID) -> Unit,
+    giftDetail: @Composable (id: UUID, onDeleted: () -> Unit) -> Unit,
+    ideaDetail: @Composable (id: UUID, onDeleted: () -> Unit) -> Unit,
     viewModel: GiftHistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    GiftHistoryScreen(
+    AdaptiveGiftHistoryScreen(
         state = state,
         onBack = onBack,
         onFilterChange = viewModel::onFilterChange,
         onAddGift = onAddGift,
-        onOpenGift = { onOpenGift(it.gift.id) },
+        onOpenGift = onOpenGift,
         onAddGiftIdea = onAddGiftIdea,
-        onOpenGiftIdea = { onOpenGiftIdea(it.idea.id) },
+        onOpenGiftIdea = onOpenGiftIdea,
+        onSelectGift = viewModel::onGiftSelected,
+        onSelectIdea = viewModel::onIdeaSelected,
+        onClearSelection = viewModel::onSelectionCleared,
+        giftDetail = giftDetail,
+        ideaDetail = ideaDetail,
     )
 }
 
@@ -76,8 +88,11 @@ fun GiftHistoryScreen(
     onAddGiftIdea: () -> Unit,
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     modifier: Modifier = Modifier,
+    // True beside a detail pane: rows then show which gift or idea is open there.
+    selectable: Boolean = false,
 ) {
     val colors = GiftiaryTheme.colors
+    val selection = state.selection.takeIf { selectable }
     val showsIdeas = state.filter == GiftFilter.IDEAS
     Scaffold(
         modifier = modifier,
@@ -95,7 +110,11 @@ fun GiftHistoryScreen(
             }
         },
     ) { contentPadding ->
-        Column(modifier = Modifier.padding(contentPadding)) {
+        Column(
+            modifier = Modifier
+                .padding(contentPadding)
+                .giftiaryReadableWidth(),
+        ) {
             // Always shown: even without any gifts, the ideas filter must stay reachable.
             FilterRow(selected = state.filter, onSelect = onFilterChange)
             when (val content = state.content) {
@@ -123,7 +142,12 @@ fun GiftHistoryScreen(
                     contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
                 ) {
                     items(content.ideas, key = { it.idea.id }) { entry ->
-                        GiftIdeaRow(entry = entry, onClick = { onOpenGiftIdea(entry) })
+                        GiftIdeaRow(
+                            entry = entry,
+                            onClick = { onOpenGiftIdea(entry) },
+                            selectable = selectable,
+                            selected = selection == GiftHistorySelection.Idea(entry.idea.id),
+                        )
                         HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
                     }
                 }
@@ -132,7 +156,12 @@ fun GiftHistoryScreen(
                     contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
                 ) {
                     items(content.gifts, key = { it.gift.id }) { entry ->
-                        GiftRow(entry = entry, onClick = { onOpenGift(entry) })
+                        GiftRow(
+                            entry = entry,
+                            onClick = { onOpenGift(entry) },
+                            selectable = selectable,
+                            selected = selection == GiftHistorySelection.Gift(entry.gift.id),
+                        )
                         HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
                     }
                 }
