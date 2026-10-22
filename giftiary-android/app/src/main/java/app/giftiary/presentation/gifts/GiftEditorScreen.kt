@@ -349,22 +349,20 @@ private fun GiftEditorPreview() {
 
 @Composable
 private fun GiftEditorPreviewContent(anna: Person) {
-    run {
-        GiftEditorScreen(
-            state = GiftEditorUiState(
-                isNew = true,
-                status = GiftEditorStatus.EDITING,
-                givenAt = LocalDate.of(2026, 3, 12),
-                direction = GiftDirection.RECEIVED,
-                personId = anna.id,
-                activePeople = listOf(anna),
-                peopleLoaded = true,
-                price = "12,505",
-                currencyCode = "HUF",
-                errors = setOf(GiftInputError.NAME_REQUIRED),
-                priceError = PriceError.TOO_PRECISE,
-            ),
-            actions = previewActions,
-        )
-    }
+    GiftEditorScreen(
+        state = GiftEditorUiState(
+            isNew = true,
+            status = GiftEditorStatus.EDITING,
+            givenAt = LocalDate.of(2026, 3, 12),
+            direction = GiftDirection.RECEIVED,
+            personId = anna.id,
+            activePeople = listOf(anna),
+            peopleLoaded = true,
+            price = "12,505",
+            currencyCode = "HUF",
+            errors = setOf(GiftInputError.NAME_REQUIRED),
+            priceError = PriceError.TOO_PRECISE,
+        ),
+        actions = previewActions,
+    )
 }

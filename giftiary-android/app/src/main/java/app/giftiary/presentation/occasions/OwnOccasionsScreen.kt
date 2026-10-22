@@ -72,7 +72,7 @@ fun OwnOccasionsScreen(
                     contentPadding = PaddingValues(top = GiftiarySpacing.s, bottom = GiftiaryAddFabClearance),
                 ) {
                     items(content.occasions, key = { it.id }) { occasion ->
-                        OccasionRow(occasion = occasion, onClick = { onOpenOccasion(occasion) }, clickLabel = R.string.people_open)
+                        OccasionRow(occasion = occasion, onClick = { onOpenOccasion(occasion) }, clickLabel = R.string.occasion_open)
                         HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = GiftiaryTheme.colors.divider)
                     }
                 }

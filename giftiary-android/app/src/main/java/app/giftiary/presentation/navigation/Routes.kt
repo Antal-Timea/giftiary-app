@@ -54,16 +54,12 @@ data class EditGiftRoute(val giftId: String)
 @Serializable
 data class GiftIdeaDetailRoute(val giftIdeaId: String)
 
-/** [personId] only preselects the recipient. */
 /** [personId] and [occasionId] preselect the new idea's recipient and occasion; a malformed one is ignored. */
 @Serializable
 data class AddGiftIdeaRoute(val personId: String? = null, val occasionId: String? = null)
 
 @Serializable
 data class OccasionPlanRoute(val occasionId: String)
-
-/** Coming up and Your occasions open an occasion's plan. Person detail still opens its editor. */
-internal fun occasionPlanRoute(occasionId: UUID) = OccasionPlanRoute(occasionId.toString())
 
 /** A new idea from an occasion's plan: for the occasion, and for its person if it has one. */
 internal fun addIdeaRoute(occasion: Occasion) =
@@ -119,9 +115,6 @@ internal fun routeOf(item: SyncItem): Any = when (item.type) {
     SyncItemType.WISHLIST -> WishlistDetailRoute(item.id.toString())
     SyncItemType.WISH -> WishDetailRoute(item.id.toString())
 }
-
-/** A joined list opens in place of the join screen, so back leads to where the join started. */
-internal fun joinedRoute(wishlistId: UUID) = SharedWishlistRoute(wishlistId.toString())
 
 /** A route argument as an id; null when it is malformed, which callers treat as absent. */
 internal fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()

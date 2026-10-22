@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import androidx.room.Upsert
 import app.giftiary.data.local.entity.PersonEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -47,10 +46,6 @@ interface PersonDao {
     /** Returns the number of updated rows, 0 if the person does not exist. */
     @Update
     suspend fun update(person: PersonEntity): Int
-
-    /** Writes a person regardless of whether it exists, e.g. when applying backend state. */
-    @Upsert
-    suspend fun upsert(person: PersonEntity)
 
     /** Returns the number of updated rows, 0 if the person is missing, already deleted or not owned. */
     @Query(

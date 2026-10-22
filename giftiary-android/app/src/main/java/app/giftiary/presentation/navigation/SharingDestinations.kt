@@ -48,8 +48,9 @@ internal fun NavGraphBuilder.sharingDestinations(navController: NavHostControlle
         JoinWishlistScreen(
             viewModel = hiltViewModel(),
             onBack = navController.popBackStackUnlessPaused(),
+            // The joined list opens in place of the join screen, so back leads to where the join started.
             onJoined = { wishlistId ->
-                navController.navigate(joinedRoute(wishlistId)) {
+                navController.navigate(SharedWishlistRoute(wishlistId.toString())) {
                     popUpTo<JoinWishlistRoute> { inclusive = true }
                 }
             },

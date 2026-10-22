@@ -16,11 +16,6 @@ class OccasionRoutesTest {
     private val christmas = occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 12, null, true))
 
     @Test
-    fun `an occasion opens its plan`() {
-        assertEquals(OccasionPlanRoute(christmas.id.toString()), occasionPlanRoute(christmas.id))
-    }
-
-    @Test
     fun `an idea added from a plan starts with the occasion, and with its person when it has one`() {
         val fromBirthday = addIdeaRoute(birthday)
         val fromChristmas = addIdeaRoute(christmas)

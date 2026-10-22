@@ -34,7 +34,7 @@ internal fun NavGraphBuilder.occasionDestinations(navController: NavHostControll
         OwnOccasionsScreen(
             onBack = navController.popBackStackUnlessPaused(),
             onAddOccasion = dropUnlessResumed { navController.navigate(AddOccasionRoute()) },
-            onOpenOccasion = { id -> navController.navigate(occasionPlanRoute(id)) },
+            onOpenOccasion = { id -> navController.navigate(OccasionPlanRoute(id.toString())) },
         )
     }
     composable<OccasionPlanRoute> { entry ->
