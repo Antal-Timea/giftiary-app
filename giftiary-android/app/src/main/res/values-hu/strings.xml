@@ -28,6 +28,7 @@
 
     <string name="own_occasions_title">Saját alkalmaid</string>
     <string name="occasion_open">Megnyitás</string>
+    <string name="occasion_edit">Szerkesztés</string>
     <string name="own_occasions_empty_title">Még nincs saját alkalmad</string>
     <string name="own_occasions_empty_message">Add hozzá a karácsonyt, az évfordulódat vagy más napot, amelyre ajándékot tervezel.</string>
     <string name="own_occasions_load_failed">A saját alkalmaid most nem jeleníthetők meg.</string>

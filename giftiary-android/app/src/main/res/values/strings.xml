@@ -29,6 +29,7 @@
 
     <string name="own_occasions_title">Your occasions</string>
     <string name="occasion_open">Open</string>
+    <string name="occasion_edit">Edit</string>
     <string name="own_occasions_empty_title">No occasions of your own yet</string>
     <string name="own_occasions_empty_message">Add Christmas, your anniversary or another day you plan gifts for.</string>
     <string name="own_occasions_load_failed">Your occasions cannot be shown right now.</string>

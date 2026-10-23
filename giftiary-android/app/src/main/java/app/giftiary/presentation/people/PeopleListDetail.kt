@@ -15,7 +15,6 @@ import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.theme.GiftiaryTheme
-import java.time.Instant
 import java.util.UUID
 
 /**
@@ -90,12 +89,6 @@ internal fun AdaptivePeopleScreen(
         },
     )
 }
-
-private val previewPeople = listOf(
-    Person(UUID.randomUUID(), "Anna Kovács", "Sister", null, null, Instant.EPOCH, Instant.EPOCH),
-    Person(UUID.randomUUID(), "Péter", null, null, null, Instant.EPOCH, Instant.EPOCH),
-    Person(UUID.randomUUID(), "Grandma Ilona", "Grandmother", null, null, Instant.EPOCH, Instant.EPOCH),
-)
 
 @Composable
 private fun AdaptivePeoplePreview(selected: Person?) {

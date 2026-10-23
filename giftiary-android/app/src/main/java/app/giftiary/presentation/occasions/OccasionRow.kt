@@ -20,7 +20,7 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 
 /** An occasion in a list, by its title and date; [clickLabel] says what tapping it does. */
 @Composable
-fun OccasionRow(occasion: Occasion, onClick: () -> Unit, @StringRes clickLabel: Int = R.string.people_edit) {
+fun OccasionRow(occasion: Occasion, onClick: () -> Unit, @StringRes clickLabel: Int) {
     val colors = GiftiaryTheme.colors
     Column(
         modifier = Modifier

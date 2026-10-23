@@ -169,7 +169,7 @@ private fun PersonDetailContent(
             item { NoOccasions() }
         } else {
             items(state.occasions, key = { it.id }) { occasion ->
-                OccasionRow(occasion = occasion, onClick = { onEditOccasion(occasion) })
+                OccasionRow(occasion = occasion, onClick = { onEditOccasion(occasion) }, clickLabel = R.string.occasion_edit)
                 HorizontalDivider(
                     modifier = Modifier.padding(start = GiftiarySpacing.l),
                     color = colors.divider,

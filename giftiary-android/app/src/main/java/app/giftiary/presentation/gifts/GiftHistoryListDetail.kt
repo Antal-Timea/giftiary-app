@@ -7,8 +7,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.giftiary.R
-import app.giftiary.domain.model.Gift
-import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
@@ -18,8 +16,6 @@ import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.theme.GiftiaryTheme
-import java.time.Instant
-import java.time.LocalDate
 import java.util.UUID
 
 /**
@@ -103,33 +99,6 @@ internal fun AdaptiveGiftHistoryScreen(
         },
     )
 }
-
-private val previewGifts = listOf(
-    previewGift("Birthday book", GiftDirection.GIVEN, "2026-03-12"),
-    previewGift("Headphones", GiftDirection.RECEIVED, "2025-11-04"),
-)
-
-private fun previewGift(name: String, direction: GiftDirection, date: String) = GiftEntry(
-    gift = Gift(
-        id = UUID.randomUUID(),
-        direction = direction,
-        giverPersonId = null,
-        recipientPersonId = null,
-        occasionId = null,
-        sourceGiftIdeaId = null,
-        name = name,
-        givenAt = LocalDate.parse(date),
-        price = null,
-        photoPath = null,
-        productUrl = null,
-        note = null,
-        createdAt = Instant.EPOCH,
-        updatedAt = Instant.EPOCH,
-    ),
-    giver = null,
-    recipient = null,
-    occasion = null,
-)
 
 @Composable
 private fun AdaptiveGiftHistoryPreview(selected: GiftEntry?) {

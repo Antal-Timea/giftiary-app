@@ -243,7 +243,8 @@ private fun Monogram(name: String, onSelectedRow: Boolean) {
 
 private val MONOGRAM_SIZE = 40.dp
 
-private val previewPeople = listOf(
+// Also used by the list-detail previews in PeopleListDetail.kt.
+internal val previewPeople = listOf(
     Person(UUID.randomUUID(), "Anna Kovács", "Sister", null, null, Instant.EPOCH, Instant.EPOCH),
     Person(UUID.randomUUID(), "Péter", null, null, null, Instant.EPOCH, Instant.EPOCH),
     Person(UUID.randomUUID(), "Grandma Ilona", "Grandmother", null, null, Instant.EPOCH, Instant.EPOCH),

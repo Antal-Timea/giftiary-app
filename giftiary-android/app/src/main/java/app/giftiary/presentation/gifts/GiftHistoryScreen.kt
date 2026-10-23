@@ -201,6 +201,12 @@ private fun filterLabel(filter: GiftFilter): String = when (filter) {
 
 private val previewAnna = Person(UUID.randomUUID(), "Anna Kovács", "Sister", null, null, Instant.EPOCH, Instant.EPOCH)
 
+// Also used by the list-detail previews in GiftHistoryListDetail.kt.
+internal val previewGifts = listOf(
+    previewGift("Birthday book", GiftDirection.GIVEN, "2026-03-12"),
+    previewGift("Headphones", GiftDirection.RECEIVED, "2025-11-04"),
+)
+
 private fun previewGift(name: String, direction: GiftDirection, date: String) = GiftEntry(
     gift = Gift(
         id = UUID.randomUUID(),
@@ -230,12 +236,7 @@ private fun GiftHistoryPreview() {
         GiftHistoryScreen(
             state = GiftHistoryUiState(
                 filter = GiftFilter.ALL,
-                content = GiftHistoryContent.Loaded(
-                    listOf(
-                        previewGift("Birthday book", GiftDirection.GIVEN, "2026-03-12"),
-                        previewGift("Headphones", GiftDirection.RECEIVED, "2025-11-04"),
-                    ),
-                ),
+                content = GiftHistoryContent.Loaded(previewGifts),
             ),
             onBack = {},
             onFilterChange = {},
