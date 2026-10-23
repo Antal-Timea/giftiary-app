@@ -8,6 +8,7 @@ import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.domain.repository.WishDetails
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.FakeWishlistRepository
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
 import app.giftiary.testing.MainDispatcherRule
@@ -17,9 +18,6 @@ import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -44,7 +42,7 @@ class PersonDetailViewModelTest {
         people.givenPeople(anna)
         occasions.givenOccasions(nameDay, birthday)
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PersonDetailUiState.Loaded(anna, listOf(birthday, nameDay), emptyList(), emptyList(), emptyList()), viewModel.uiState.value)
     }
@@ -53,7 +51,7 @@ class PersonDetailViewModelTest {
     fun `edits to the person and new occasions appear without reloading`() = runTest {
         people.givenPeople(anna)
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         people.updatePerson(anna.id, "Anna K.", "Sister")
         occasions.knownPersonIds += anna.id
@@ -71,7 +69,7 @@ class PersonDetailViewModelTest {
         people.givenPeople(anna)
         gifts.givenGifts(book, giftEntry(giftDetails(person = person("Béla")), person("Béla")))
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), emptyList(), listOf(book), emptyList()), viewModel.uiState.value)
     }
@@ -83,7 +81,7 @@ class PersonDetailViewModelTest {
         people.givenPeople(anna)
         ideas.givenIdeas(scarf, forSomeoneElse)
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), listOf(scarf), emptyList(), emptyList()), viewModel.uiState.value)
     }
@@ -99,7 +97,7 @@ class PersonDetailViewModelTest {
         wishlists.givenWishlists(christmas, belas, own, birthday)
         wishlists.givenWishes(wish(christmas.id, "Lamp"), wish(christmas.id, "Mug"), wish(belas.id, "Socks"), wish(own.id, "Book"))
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         val loaded = viewModel.uiState.value as PersonDetailUiState.Loaded
 
@@ -111,7 +109,7 @@ class PersonDetailViewModelTest {
         people.givenPeople(anna)
         val christmas = wishlist("Christmas", personId = anna.id).also { wishlists.givenWishlists(it) }
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         wishlists.addWish(christmas.id, WishDetails("Lamp", null, null, null))
         assertEquals(listOf(PersonWishlist(christmas, 1)), (viewModel.uiState.value as PersonDetailUiState.Loaded).wishlists)
@@ -124,14 +122,10 @@ class PersonDetailViewModelTest {
     fun `a missing or deleted person shows not found`() = runTest {
         people.givenPeople(anna)
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         people.deletePerson(anna.id)
 
         assertEquals(PersonDetailUiState.NotFound, viewModel.uiState.value)
-    }
-
-    private fun TestScope.collectState(viewModel: PersonDetailViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
     }
 }

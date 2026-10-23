@@ -13,11 +13,10 @@ import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.MutableClock
 import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -139,7 +138,7 @@ class OccasionPlanViewModelTest {
 
     private fun TestScope.collected(occasionId: UUID): OccasionPlanViewModel {
         val viewModel = OccasionPlanViewModel(occasionId, occasions, ideas, clock, ZoneOffset.UTC)
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        keepSubscribed(viewModel.uiState)
         return viewModel
     }
 

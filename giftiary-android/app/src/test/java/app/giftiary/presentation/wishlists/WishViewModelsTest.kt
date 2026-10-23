@@ -7,11 +7,9 @@ import app.giftiary.presentation.gifts.PriceError
 import app.giftiary.presentation.gifts.PriceFormat
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -125,7 +123,7 @@ class WishViewModelsTest {
     fun `a wish shows with its wishlist's name and follows edits`() = runTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
         val viewModel = WishDetailViewModel(lamp.id, repository)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(WishDetailContent.Loaded(lamp, "Birthday"), viewModel.uiState.value.content)
 
@@ -141,7 +139,7 @@ class WishViewModelsTest {
     fun `a wish deleted elsewhere, or with its wishlist, shows not found`() = runTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
         val viewModel = WishDetailViewModel(lamp.id, repository)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         repository.deleteWishlist(list.id)
 
@@ -154,7 +152,7 @@ class WishViewModelsTest {
         val mug = wish(list.id, "Mug")
         repository.givenWishes(lamp, mug)
         val viewModel = WishDetailViewModel(lamp.id, repository)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
         assertTrue(viewModel.uiState.value.actions.confirmingDelete)
@@ -171,16 +169,12 @@ class WishViewModelsTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
         repository.writeFailure = IOException("disk")
         val viewModel = WishDetailViewModel(lamp.id, repository)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
         viewModel.onDeleteConfirmed()
 
         assertTrue(viewModel.uiState.value.actions.writeFailed)
         assertTrue(viewModel.uiState.value.content is WishDetailContent.Loaded)
-    }
-
-    private fun TestScope.collect(viewModel: WishDetailViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
     }
 }

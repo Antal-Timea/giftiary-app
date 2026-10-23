@@ -9,11 +9,9 @@ import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
 import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
 import java.io.IOException
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -36,7 +34,7 @@ class GiftHistoryViewModelTest {
     fun `all filter shows every gift, newest first`() = runTest {
         repository.givenGifts(headphones, book)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(GiftHistoryContent.Loaded(listOf(book, headphones)), viewModel.uiState.value.content)
     }
@@ -45,7 +43,7 @@ class GiftHistoryViewModelTest {
     fun `given and received filters narrow the list immediately`() = runTest {
         repository.givenGifts(book, headphones)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onFilterChange(GiftFilter.GIVEN)
         assertEquals(GiftHistoryContent.Loaded(listOf(book)), viewModel.uiState.value.content)
@@ -57,7 +55,7 @@ class GiftHistoryViewModelTest {
     @Test
     fun `no gifts at all is distinguished from a filter without matches`() = runTest {
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         assertEquals(GiftHistoryContent.NoGifts, viewModel.uiState.value.content)
 
         repository.givenGifts(book)
@@ -71,7 +69,7 @@ class GiftHistoryViewModelTest {
         repository.givenGifts(book)
         ideas.givenIdeas(scarf)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(GiftHistoryContent.Loaded(listOf(book)), viewModel.uiState.value.content)
 
@@ -83,7 +81,7 @@ class GiftHistoryViewModelTest {
     fun `no ideas is its own state, even when there are gifts`() = runTest {
         repository.givenGifts(book)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onFilterChange(GiftFilter.IDEAS)
 
@@ -105,7 +103,7 @@ class GiftHistoryViewModelTest {
         repository.givenGifts(book, headphones)
         ideas.givenIdeas(scarf)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         assertNull(viewModel.uiState.value.selection)
 
         viewModel.onGiftSelected(book)
@@ -127,7 +125,7 @@ class GiftHistoryViewModelTest {
 
         val restored = viewModel(savedState)
         assertNull("nothing selected before the history loads", restored.uiState.value.selection)
-        collectState(restored)
+        keepSubscribed(restored.uiState)
 
         assertEquals(GiftHistorySelection.Gift(book.gift.id), restored.uiState.value.selection)
     }
@@ -138,7 +136,7 @@ class GiftHistoryViewModelTest {
         repository.givenGifts(book, headphones)
         ideas.givenIdeas(scarf)
         val viewModel = viewModel(savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onGiftSelected(book)
         repository.givenGifts(headphones)
@@ -157,7 +155,7 @@ class GiftHistoryViewModelTest {
         repository.givenGifts(book, headphones)
         ideas.givenIdeas(scarf)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         viewModel.onGiftSelected(headphones)
 
         viewModel.onFilterChange(GiftFilter.GIVEN)
@@ -175,7 +173,7 @@ class GiftHistoryViewModelTest {
     fun `a filter that still shows the selected gift keeps it`() = runTest {
         repository.givenGifts(book, headphones)
         val viewModel = viewModel()
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         viewModel.onGiftSelected(book)
 
         viewModel.onFilterChange(GiftFilter.GIVEN)
@@ -188,7 +186,7 @@ class GiftHistoryViewModelTest {
         val savedState = SavedStateHandle(mapOf(KEY_FILTER to GiftFilter.IDEAS, SELECTION_KEY to "idea:${scarf.idea.id}"))
         ideas.readFailure = IOException("disk")
         val viewModel = viewModel(savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(GiftHistoryContent.LoadFailed, viewModel.uiState.value.content)
         assertNull(viewModel.uiState.value.selection)
@@ -210,7 +208,7 @@ class GiftHistoryViewModelTest {
             val savedState = SavedStateHandle(mapOf(SELECTION_KEY to saved))
             val viewModel = viewModel(savedState)
             assertNull(saved, viewModel.uiState.value.selection)
-            collectState(viewModel)
+            keepSubscribed(viewModel.uiState)
 
             assertEquals(GiftHistoryContent.Loaded(listOf(book)), viewModel.uiState.value.content)
             assertNull(saved, viewModel.uiState.value.selection)
@@ -227,10 +225,6 @@ class GiftHistoryViewModelTest {
     }
 
     private fun viewModel(savedState: SavedStateHandle = SavedStateHandle()) = GiftHistoryViewModel(savedState, repository, ideas)
-
-    private fun TestScope.collectState(viewModel: GiftHistoryViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-    }
 
     private companion object {
         // The saved-state keys are part of what a restored process reads back.

@@ -24,7 +24,11 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.usecase.GiftInputError
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.theme.GiftiaryLayout
+import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.assertNear
+import app.giftiary.testing.centredStart
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -120,9 +124,6 @@ class GiftEditorLayoutTest {
 
     private val DpRect.widthDp: Dp get() = right - left
 
-    private fun assertNear(expected: Dp, actual: Dp, what: String) =
-        assertTrue("$what: expected about $expected, was $actual", (actual - expected).value in -1f..1f)
-
     private fun assertTopToBottom(texts: List<String>) {
         val tops = texts.map { if (it == save) button(it).top else label(it).top }
         assertEquals("top to bottom: $texts", tops.sorted(), tops)
@@ -139,9 +140,9 @@ class GiftEditorLayoutTest {
         showEditor(WidthClass.COMPACT)
 
         assertTopToBottom(leftColumn + rightColumn + save)
-        // The usual 24 dp margins on both sides.
-        assertNear(24.dp, button(save).left, "save start")
-        assertNear(411.dp - 48.dp, button(save).widthDp, "save width")
+        // The usual margins on both sides.
+        assertNear(GiftiarySpacing.xl, button(save).left, "save start")
+        assertNear(411.dp - GiftiarySpacing.xl * 2, button(save).widthDp, "save width")
     }
 
     @Test
@@ -149,9 +150,9 @@ class GiftEditorLayoutTest {
         showEditor(WidthClass.MEDIUM)
 
         assertTopToBottom(leftColumn + rightColumn + save)
-        // 640 dp centred in 800 dp starts at 80 dp, plus the 24 dp margin.
-        assertNear(104.dp, button(save).left, "save start")
-        assertNear(640.dp - 48.dp, button(save).widthDp, "save width")
+        // The readable measure, centred in the window, less the usual margins.
+        assertNear(centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl, button(save).left, "save start")
+        assertNear(GiftiaryLayout.readableMaxWidth - GiftiarySpacing.xl * 2, button(save).widthDp, "save width")
     }
 
     @Test
@@ -167,8 +168,8 @@ class GiftEditorLayoutTest {
         val saveButton = button(save)
         val lowestField = (leftColumn + rightColumn).maxOf { label(it).bottom }
         assertTrue("save below both columns", saveButton.top > lowestField)
-        // 1040 dp centred in 1200 dp ends at 1120 dp, less the 24 dp margin.
-        assertNear(1096.dp, saveButton.right, "save end")
+        // The wide measure, centred in the window, ends a margin before its right edge.
+        assertNear(1200.dp - centredStart(1200.dp, GiftiaryLayout.wideMaxWidth) - GiftiarySpacing.xl, saveButton.right, "save end")
         assertTrue("save at its natural width (was ${saveButton.widthDp})", saveButton.widthDp < 300.dp)
     }
 
@@ -200,8 +201,8 @@ class GiftEditorLayoutTest {
         showEditor(WidthClass.EXPANDED, editing.copy(personId = null, activePeople = emptyList()))
 
         val message = label("Gifts are given to or received from people. Add someone first.")
-        // 640 dp centred in 1200 dp starts at 280 dp, plus the 24 dp margin.
-        assertNear(304.dp, message.left, "message start")
+        // The readable measure, not the wide one, centred in the window, then the usual margin.
+        assertNear(centredStart(1200.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl, message.left, "message start")
         compose.onNodeWithText("Go to People").assertExists()
         compose.onNodeWithText(priceLabel).assertDoesNotExist()
         compose.onNodeWithText(save).assertDoesNotExist()

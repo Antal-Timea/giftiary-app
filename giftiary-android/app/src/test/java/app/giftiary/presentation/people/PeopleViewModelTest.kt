@@ -3,10 +3,8 @@ package app.giftiary.presentation.people
 import androidx.lifecycle.SavedStateHandle
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,7 +27,7 @@ class PeopleViewModelTest {
         val anna = person("Anna")
         repository.givenPeople(anna)
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.Loaded(listOf(anna)), viewModel.uiState.value.content)
 
@@ -41,7 +39,7 @@ class PeopleViewModelTest {
     @Test
     fun `no people is an empty loaded list`() = runTest {
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.Loaded(emptyList()), viewModel.uiState.value.content)
     }
@@ -50,7 +48,7 @@ class PeopleViewModelTest {
     fun `failing to observe people shows a load error`() = runTest {
         repository.peopleFlowFailure = IOException("disk")
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.LoadFailed, viewModel.uiState.value.content)
     }
@@ -60,7 +58,7 @@ class PeopleViewModelTest {
         val anna = person("Anna")
         repository.givenPeople(anna)
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested(anna)
         assertEquals(anna, viewModel.uiState.value.personPendingDeletion)
@@ -76,7 +74,7 @@ class PeopleViewModelTest {
         val anna = person("Anna")
         repository.givenPeople(anna)
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested(anna)
         viewModel.onDeleteDismissed()
@@ -91,7 +89,7 @@ class PeopleViewModelTest {
         repository.givenPeople(anna)
         repository.writeFailure = IOException("disk full")
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested(anna)
         viewModel.onDeleteConfirmed()
@@ -107,7 +105,7 @@ class PeopleViewModelTest {
         val anna = person("Anna")
         repository.givenPeople(anna, person("Béla"))
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         assertNull(viewModel.uiState.value.selectedPersonId)
 
         viewModel.onPersonSelected(anna)
@@ -125,7 +123,7 @@ class PeopleViewModelTest {
 
         val restored = PeopleViewModel(repository, savedState)
         assertNull("nothing selected before the people load", restored.uiState.value.selectedPersonId)
-        collectState(restored)
+        keepSubscribed(restored.uiState)
 
         assertEquals(anna.id, restored.uiState.value.selectedPersonId)
     }
@@ -136,7 +134,7 @@ class PeopleViewModelTest {
         savedState[SELECTED_PERSON_KEY] = annaId
         repository.peopleFlowFailure = IOException("disk")
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.LoadFailed, viewModel.uiState.value.content)
         assertNull(viewModel.uiState.value.selectedPersonId)
@@ -150,7 +148,7 @@ class PeopleViewModelTest {
         val bela = person("Béla")
         repository.givenPeople(anna, bela)
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         viewModel.onPersonSelected(anna)
 
         repository.givenPeople(bela)
@@ -166,7 +164,7 @@ class PeopleViewModelTest {
         val cili = person("Cili")
         repository.givenPeople(anna, bela, cili)
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         viewModel.onPersonSelected(anna)
 
         viewModel.onDeleteRequested(bela)
@@ -185,18 +183,13 @@ class PeopleViewModelTest {
         repository.givenPeople(anna)
         repository.writeFailure = IOException("disk full")
         val viewModel = PeopleViewModel(repository, savedState)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
         viewModel.onPersonSelected(anna)
 
         viewModel.onDeleteRequested(anna)
         viewModel.onDeleteConfirmed()
 
         assertEquals(anna.id, viewModel.uiState.value.selectedPersonId)
-    }
-
-    // uiState is shared WhileSubscribed, so a collector must be active for it to update.
-    private fun TestScope.collectState(viewModel: PeopleViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
     }
 
     private companion object {

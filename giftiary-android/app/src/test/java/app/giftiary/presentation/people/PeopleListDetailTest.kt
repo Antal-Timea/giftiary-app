@@ -23,7 +23,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.Person
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.theme.GiftiaryLayout
+import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.assertNear
+import app.giftiary.testing.centredStart
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -93,8 +97,8 @@ class PeopleListDetailTest {
 
     private fun left(text: String): Dp = compose.onNodeWithText(text, useUnmergedTree = true).getBoundsInRoot().left
 
-    private fun assertNear(expected: Dp, actual: Dp, what: String) =
-        assertTrue("$what: expected about $expected, was $actual", (actual - expected).value in -1f..1f)
+    // A row's name starts after its 16 dp padding, the 40 dp monogram and 16 dp more.
+    private val nameInset = GiftiarySpacing.l + 40.dp + GiftiarySpacing.l
 
     private val backIsIntercepted: Boolean
         get() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.hasEnabledCallbacks() }
@@ -115,8 +119,8 @@ class PeopleListDetailTest {
     fun `a medium window opens the person too, from a list at the readable width`() {
         showPeople(WidthClass.MEDIUM)
 
-        // 640 dp centred in 800 dp starts at 80 dp; then the row's 16 dp, the 40 dp monogram and 16 dp.
-        assertNear(152.dp, left("Anna"), "name start")
+        // The readable measure, centred in the window, then the row's own inset.
+        assertNear(centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + nameInset, left("Anna"), "name start")
         compose.onNodeWithText(placeholder).assertDoesNotExist()
 
         compose.onNodeWithText("Anna").performClick()
@@ -128,7 +132,7 @@ class PeopleListDetailTest {
     fun `an expanded window selects the person and shows them beside the list`() {
         showPeople(WidthClass.EXPANDED)
 
-        assertNear(72.dp, left("Anna"), "name start in the list pane")
+        assertNear(nameInset, left("Anna"), "name start in the list pane")
         assertTrue("placeholder in the detail pane", left(placeholder) > 360.dp)
 
         compose.onNodeWithText("Anna").performClick()

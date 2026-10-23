@@ -7,9 +7,7 @@ import app.giftiary.domain.model.SyncItemType
 import app.giftiary.domain.model.SyncStatus
 import app.giftiary.testing.FakeSyncStatusRepository
 import app.giftiary.testing.MainDispatcherRule
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import app.giftiary.testing.keepSubscribed
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -30,7 +28,7 @@ class SyncStatusViewModelTest {
         val viewModel = SyncStatusViewModel(repository)
         assertEquals(SyncStatusContent.Loading, viewModel.content.value)
 
-        collect(viewModel)
+        keepSubscribed(viewModel.content)
         assertEquals(SyncStatusContent.Loaded(SyncStatus(0, emptyList())), viewModel.content.value)
 
         val waiting = SyncStatus(waitingCount = 2, attention = listOf(item(AttentionKind.REFUSED)))
@@ -42,7 +40,7 @@ class SyncStatusViewModelTest {
     fun `a status that cannot be read is unavailable, never a failed save`() = runTest {
         repository.statusFlowFailure = IOException("disk")
         val viewModel = SyncStatusViewModel(repository)
-        collect(viewModel)
+        keepSubscribed(viewModel.content)
 
         assertEquals(SyncStatusContent.Unavailable, viewModel.content.value)
     }
@@ -65,16 +63,12 @@ class SyncStatusViewModelTest {
     fun `a failed dismissal leaves the conflict to be dismissed again`() = runTest {
         repository.dismissFailure = IOException("disk")
         val viewModel = SyncStatusViewModel(repository)
-        collect(viewModel)
+        keepSubscribed(viewModel.content)
 
         viewModel.onDismiss(item(AttentionKind.REPLACED_BY_OTHER_DEVICE))
 
         assertTrue(repository.dismissed.isEmpty())
         assertEquals(SyncStatusContent.Loaded(SyncStatus(0, emptyList())), viewModel.content.value)
-    }
-
-    private fun TestScope.collect(viewModel: SyncStatusViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.content.collect {} }
     }
 
     private fun item(kind: AttentionKind) =

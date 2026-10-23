@@ -4,10 +4,8 @@ import app.giftiary.testing.FakeGiftRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -31,7 +29,7 @@ class GiftDetailViewModelTest {
         repository.people[anna.id] = anna
         repository.givenGifts(book)
         val viewModel = GiftDetailViewModel(book.gift.id, repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(GiftDetailContent.Loaded(book), viewModel.uiState.value.content)
 
@@ -43,7 +41,7 @@ class GiftDetailViewModelTest {
     @Test
     fun `a missing gift shows not found`() = runTest {
         val viewModel = GiftDetailViewModel(UUID.randomUUID(), repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(GiftDetailContent.NotFound, viewModel.uiState.value.content)
     }
@@ -52,7 +50,7 @@ class GiftDetailViewModelTest {
     fun `deleting asks for confirmation and then reports the deletion`() = runTest {
         repository.givenGifts(book)
         val viewModel = GiftDetailViewModel(book.gift.id, repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
         assertTrue(viewModel.uiState.value.actions.confirmingDelete)
@@ -68,7 +66,7 @@ class GiftDetailViewModelTest {
         repository.givenGifts(book)
         repository.writeFailure = IOException("disk full")
         val viewModel = GiftDetailViewModel(book.gift.id, repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteConfirmed()
 
@@ -76,9 +74,5 @@ class GiftDetailViewModelTest {
         assertTrue(state.actions.deleteFailed)
         assertFalse(state.actions.isDeleting)
         assertEquals(GiftDetailContent.Loaded(book), state.content)
-    }
-
-    private fun TestScope.collectState(viewModel: GiftDetailViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
     }
 }

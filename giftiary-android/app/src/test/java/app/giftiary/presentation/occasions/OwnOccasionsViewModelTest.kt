@@ -4,11 +4,10 @@ import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -75,7 +74,7 @@ class OwnOccasionsViewModelTest {
 
     private fun TestScope.collected(): OwnOccasionsViewModel {
         val viewModel = OwnOccasionsViewModel(repository)
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.content.collect {} }
+        keepSubscribed(viewModel.content)
         return viewModel
     }
 

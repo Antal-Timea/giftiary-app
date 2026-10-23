@@ -3,12 +3,11 @@ package app.giftiary.presentation.wishlists
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
 import app.giftiary.testing.wishlist
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -65,7 +64,7 @@ class WishlistsViewModelTest {
         val forAnna = wishlist("Christmas", personId = anna.id)
         wishlists.givenWishlists(forAnna)
         val viewModel = WishlistsViewModel(wishlists, people)
-        collect(viewModel)
+        keepSubscribed(viewModel.content)
 
         people.givenPeople(anna.copy(name = "Anna K."))
         assertEquals("Anna K.", (viewModel.content.value as WishlistsContent.Loaded).forPeople.single().personName)
@@ -78,17 +77,13 @@ class WishlistsViewModelTest {
     fun `a failing read shows the load error`() = runTest {
         wishlists.flowFailure = IOException("disk")
         val viewModel = WishlistsViewModel(wishlists, people)
-        collect(viewModel)
+        keepSubscribed(viewModel.content)
 
         assertEquals(WishlistsContent.LoadFailed, viewModel.content.value)
     }
 
     private suspend fun TestScope.loaded(viewModel: WishlistsViewModel): WishlistsContent.Loaded {
-        collect(viewModel)
+        keepSubscribed(viewModel.content)
         return viewModel.content.first { it is WishlistsContent.Loaded } as WishlistsContent.Loaded
-    }
-
-    private fun TestScope.collect(viewModel: WishlistsViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.content.collect {} }
     }
 }

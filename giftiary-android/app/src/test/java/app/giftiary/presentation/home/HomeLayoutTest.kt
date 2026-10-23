@@ -13,7 +13,11 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.SyncStatus
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.sync.SyncStatusContent
+import app.giftiary.presentation.theme.GiftiaryLayout
+import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.assertNear
+import app.giftiary.testing.centredStart
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -68,9 +72,6 @@ class HomeLayoutTest {
 
     private fun bounds(text: String): DpRect = compose.onNodeWithText(text).getBoundsInRoot()
 
-    private fun assertNear(expected: Dp, actual: Dp, what: String) =
-        assertTrue("$what: expected about $expected, was $actual", (actual - expected).value in -1f..1f)
-
     @Test
     fun `a phone keeps one full-width column, top to bottom, with the section buttons last`() {
         showHome(width = 411.dp, widthClass = WidthClass.COMPACT, showSectionButtons = true)
@@ -79,17 +80,18 @@ class HomeLayoutTest {
         val tops = order.map { bounds(it).top }
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         // The usual side margins, not a centred measure.
-        assertNear(24.dp, bounds(tagline).left, "tagline start")
-        assertNear(24.dp, bounds(comingUp).left, "coming up start")
+        assertNear(GiftiarySpacing.xl, bounds(tagline).left, "tagline start")
+        assertNear(GiftiarySpacing.xl, bounds(comingUp).left, "coming up start")
     }
 
     @Test
     fun `a medium window shows the same column at a readable, centred width, without section buttons`() {
         showHome(width = 800.dp, widthClass = WidthClass.MEDIUM, showSectionButtons = false)
 
-        // 640 dp centred in 800 dp starts at 80 dp, plus the 24 dp margin.
-        assertNear(104.dp, bounds(tagline).left, "tagline start")
-        assertNear(104.dp, bounds(comingUp).left, "coming up start")
+        // The readable measure, centred in the window, then the usual margin.
+        val start = centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl
+        assertNear(start, bounds(tagline).left, "tagline start")
+        assertNear(start, bounds(comingUp).left, "coming up start")
         val tops = listOf(tagline, comingUp, ownOccasions, reminder, sync).map { bounds(it).top }
         assertEquals(tops.sorted(), tops)
         listOf("Gifts", "People", "Wishlists", "Settings").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
@@ -103,9 +105,10 @@ class HomeLayoutTest {
         val left = bounds(comingUp)
         val card = bounds(reminder)
         val status = bounds(sync)
-        // 1040 dp centred in 1200 dp starts at 80 dp, plus the 24 dp margin.
-        assertNear(104.dp, header.left, "header start")
-        assertNear(104.dp, left.left, "coming up start")
+        // The wide measure, centred in the window, then the usual margin.
+        val start = centredStart(1200.dp, GiftiaryLayout.wideMaxWidth) + GiftiarySpacing.xl
+        assertNear(start, header.left, "header start")
+        assertNear(start, left.left, "coming up start")
         assertTrue("both columns below the header", left.top > header.bottom && card.top > header.bottom)
         assertTrue("the reminder beside coming up, not below it", card.top < bounds(ownOccasions).bottom)
         // 3:2 columns with a 32 dp gap: the second starts about 3/5 into the 992 dp row.

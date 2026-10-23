@@ -4,10 +4,9 @@ import app.giftiary.domain.model.NotificationAccess
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.testing.FakeReminderSettingsRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.occasion
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -117,7 +116,7 @@ class ReminderCardViewModelTest {
     @Test
     fun `Settings offers reminders even before there is an occasion, with the same choice as Home`() = runTest {
         val viewModel = collected()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.settingsState.collect {} }
+        keepSubscribed(viewModel.settingsState)
 
         assertEquals(ReminderCardState.Hidden, viewModel.state.value)
         assertEquals(ReminderCardState.Off, viewModel.settingsState.value)
@@ -129,7 +128,7 @@ class ReminderCardViewModelTest {
 
     private fun TestScope.collected(): ReminderCardViewModel {
         val viewModel = ReminderCardViewModel(occasions, settings)
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.state.collect {} }
+        keepSubscribed(viewModel.state)
         return viewModel
     }
 }

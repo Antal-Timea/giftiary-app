@@ -4,12 +4,11 @@ import app.giftiary.domain.repository.WishDetails
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
 import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -78,7 +77,7 @@ class WishlistDetailViewModelTest {
         people.givenPeople(anna)
         val forAnna = wishlist("Christmas", personId = anna.id).also { wishlists.givenWishlists(it) }
         val viewModel = viewModel(forAnna.id)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         wishlists.renameWishlist(forAnna.id, "Name day")
         wishlists.addWish(forAnna.id, WishDetails("Lamp", null, null, null))
@@ -95,7 +94,7 @@ class WishlistDetailViewModelTest {
     fun `a wishlist deleted elsewhere shows not found`() = runTest {
         val own = wishlist("Birthday").also { wishlists.givenWishlists(it) }
         val viewModel = viewModel(own.id)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         wishlists.givenWishlists()
 
@@ -107,7 +106,7 @@ class WishlistDetailViewModelTest {
         val own = wishlist("Birthday").also { wishlists.givenWishlists(it) }
         wishlists.givenWishes(wish(own.id, "Lamp"), wish(own.id, "Mug"))
         val viewModel = viewModel(own.id)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
         assertTrue(viewModel.uiState.value.actions.confirmingDelete)
@@ -128,7 +127,7 @@ class WishlistDetailViewModelTest {
         val own = wishlist("Birthday").also { wishlists.givenWishlists(it) }
         wishlists.writeFailure = IOException("disk")
         val viewModel = viewModel(own.id)
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
         viewModel.onDeleteConfirmed()
@@ -142,7 +141,7 @@ class WishlistDetailViewModelTest {
     fun `a failing read shows the load error`() = runTest {
         wishlists.flowFailure = IOException("disk")
         val viewModel = viewModel(UUID.randomUUID())
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(WishlistDetailContent.LoadFailed, viewModel.uiState.value.content)
     }
@@ -150,11 +149,7 @@ class WishlistDetailViewModelTest {
     private fun viewModel(id: UUID) = WishlistDetailViewModel(id, wishlists, people)
 
     private fun TestScope.loaded(viewModel: WishlistDetailViewModel): WishlistDetailContent.Loaded {
-        collect(viewModel)
+        keepSubscribed(viewModel.uiState)
         return viewModel.uiState.value.content as WishlistDetailContent.Loaded
-    }
-
-    private fun TestScope.collect(viewModel: WishlistDetailViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
     }
 }

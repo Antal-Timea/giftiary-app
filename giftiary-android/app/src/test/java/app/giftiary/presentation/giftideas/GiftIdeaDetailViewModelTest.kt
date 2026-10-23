@@ -5,10 +5,8 @@ import app.giftiary.testing.FakeGiftIdeaRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -31,7 +29,7 @@ class GiftIdeaDetailViewModelTest {
     fun `status changes apply directly, forward and back`() = runTest {
         repository.givenIdeas(scarf)
         val viewModel = GiftIdeaDetailViewModel(scarf.idea.id, repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onStatusChange(GiftIdeaStatus.PURCHASED)
         assertEquals(GiftIdeaStatus.PURCHASED, loadedStatus(viewModel))
@@ -45,7 +43,7 @@ class GiftIdeaDetailViewModelTest {
         repository.givenIdeas(scarf)
         repository.writeFailure = IOException("disk full")
         val viewModel = GiftIdeaDetailViewModel(scarf.idea.id, repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onStatusChange(GiftIdeaStatus.PLANNED)
 
@@ -58,7 +56,7 @@ class GiftIdeaDetailViewModelTest {
     fun `deleting asks for confirmation and then reports the deletion`() = runTest {
         repository.givenIdeas(scarf)
         val viewModel = GiftIdeaDetailViewModel(scarf.idea.id, repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
         assertTrue(viewModel.uiState.value.actions.confirmingDelete)
@@ -72,15 +70,11 @@ class GiftIdeaDetailViewModelTest {
     @Test
     fun `an idea that is gone shows not found`() = runTest {
         val viewModel = GiftIdeaDetailViewModel(UUID.randomUUID(), repository)
-        collectState(viewModel)
+        keepSubscribed(viewModel.uiState)
 
         assertEquals(GiftIdeaDetailContent.NotFound, viewModel.uiState.value.content)
     }
 
     private fun loadedStatus(viewModel: GiftIdeaDetailViewModel): GiftIdeaStatus =
         (viewModel.uiState.value.content as GiftIdeaDetailContent.Loaded).entry.idea.status
-
-    private fun TestScope.collectState(viewModel: GiftIdeaDetailViewModel) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
-    }
 }

@@ -16,12 +16,9 @@ import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.MutableClock
 import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
+import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -50,7 +47,7 @@ class ComingUpViewModelTest {
         val viewModel = viewModel()
         assertEquals(ComingUpContent.Loading, viewModel.content.value)
 
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
 
         val items = (viewModel.content.value as ComingUpContent.Loaded).items
         assertEquals((11..15).toList(), items.map { it.upcoming.date.dayOfMonth })
@@ -59,7 +56,7 @@ class ComingUpViewModelTest {
     @Test
     fun `nothing coming up is an empty list, not a failure`() = runTest {
         val viewModel = viewModel()
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
 
         assertEquals(ComingUpContent.Loaded(emptyList()), viewModel.content.value)
     }
@@ -70,7 +67,7 @@ class ComingUpViewModelTest {
         val christmas = occasion(null, OccasionDetails(OccasionType.CHRISTMAS, null, 24, 5, null, true))
         repository.givenOccasions(annasBirthday, christmas)
         val viewModel = viewModel()
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
 
         assertEquals(
             listOf(annasBirthday.id, christmas.id),
@@ -85,8 +82,8 @@ class ComingUpViewModelTest {
         val comingUp = viewModel()
         val syncStatus = SyncStatusViewModel(syncRepository)
 
-        collect(comingUp.content)
-        collect(syncStatus.content)
+        keepSubscribed(comingUp.content)
+        keepSubscribed(syncStatus.content)
 
         assertEquals(ComingUpContent.Unavailable, comingUp.content.value)
         assertEquals(SyncStatusContent.Loaded(SyncStatus(waitingCount = 2, attention = emptyList())), syncStatus.content.value)
@@ -110,7 +107,7 @@ class ComingUpViewModelTest {
             ideaFor(occasion(anna.id, birthday(day = 30)), GiftIdeaStatus.PLANNED),
         )
         val viewModel = viewModel()
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
 
         assertEquals(listOf(OccasionPlan(2, 1), null), items(viewModel).map { it.plan })
     }
@@ -120,7 +117,7 @@ class ComingUpViewModelTest {
         val birthday = occasion(anna.id, birthday(day = 12))
         repository.givenOccasions(birthday)
         val viewModel = viewModel()
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
         assertEquals(null, items(viewModel).single().plan)
 
         val scarf = ideas.addGiftIdea(ideaDetails(anna).copy(occasionId = birthday.id))
@@ -138,7 +135,7 @@ class ComingUpViewModelTest {
         repository.givenOccasions(occasion(anna.id, birthday(day = 12)))
         ideas.readFailure = IOException("disk")
         val viewModel = viewModel()
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
 
         assertEquals(listOf<OccasionPlan?>(null), items(viewModel).map { it.plan })
     }
@@ -147,7 +144,7 @@ class ComingUpViewModelTest {
     fun `occasions that cannot be read are still unavailable, whatever the ideas`() = runTest {
         repository.readFailure = IOException("disk")
         val viewModel = viewModel()
-        collect(viewModel.content)
+        keepSubscribed(viewModel.content)
 
         assertEquals(ComingUpContent.Unavailable, viewModel.content.value)
     }
@@ -158,8 +155,4 @@ class ComingUpViewModelTest {
     private fun items(viewModel: ComingUpViewModel) = (viewModel.content.value as ComingUpContent.Loaded).items
 
     private fun birthday(day: Int) = OccasionDetails(OccasionType.BIRTHDAY, null, day, 5, null, true)
-
-    private fun TestScope.collect(content: StateFlow<*>) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { content.collect {} }
-    }
 }
