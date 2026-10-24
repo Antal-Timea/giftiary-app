@@ -73,16 +73,18 @@ of the same mutation running at once commit at most once.
 
 **Soft delete, never hard delete.** Deleting is `update ... set deleted_at = now()`, which bumps
 the version, so the tombstone reaches other devices. Clients have no DELETE privilege. References
-to soft-deleted rows stay valid: old gifts keep pointing at a deleted person.
+to soft-deleted rows stay valid: old gifts keep pointing at a deleted person. The one hard delete
+is account deletion (below).
 
 **Archived is not deleted.** Marking an idea as given sets `gift_ideas.archived_at` and creates a
 gift with `source_gift_idea_id`. Both are ordinary writes.
 
 **What deletes what.** Nothing between people, occasions, ideas and gifts cascades. On Android,
 deleting a person soft-deletes their occasions in the same transaction and keeps their gifts and
-ideas; the server sees those as ordinary updates. Deleting an auth user is blocked while they own
-data, because account deletion must be designed deliberately. Profiles cascade with their user,
-and `people.linked_user_id` is cleared when the linked account goes.
+ideas; the server sees those as ordinary updates. Deleting an auth user directly is blocked while
+they own data (the owner foreign keys have no `ON DELETE`); only account deletion removes the data
+first. Profiles cascade with their user. `people.linked_user_id` is not a feature yet and a check
+keeps it null, so no client can point a person at another account.
 
 Value checks mirror the Android domain: money as `bigint` minor units plus a three-letter
 uppercase currency, set together or not at all; non-blank names; occasion ranges
@@ -105,7 +107,8 @@ client role; `anon` has no access.
 
 Helper functions live in the `private` schema and are not executable by client roles. Two are
 `security definer`, both with an empty `search_path` and a single insert: the profile creation on
-sign-up, and the ledger recording, which must not be possible for clients to imitate.
+sign-up, and the ledger recording, which must not be possible for clients to imitate. A third,
+`private.delete_account`, is reachable only through `public.delete_my_account()`.
 `config.toml` sets `auto_expose_new_tables = false`, and the migrations revoke and grant every
 table explicitly anyway, because hosted projects expose new tables by default. `service_role`
 bypasses RLS but still needs table privileges, and with auto-expose off it gets none by default;
@@ -155,6 +158,21 @@ or write them directly and they are not part of Realtime. Everything goes throug
 `tests/database/09_wishlist_sharing.test.sql` covers the access matrix and
 `10_wishlist_sharing_concurrency.test.sql` the concurrent cases (dblink).
 
+## Account deletion
+
+`public.delete_my_account()` takes no argument and deletes the caller (`auth.uid()`), in one
+transaction: its reservations and memberships, every membership and reservation on its lists, its
+invites, wishes, lists, gifts, ideas, occasions, people and ledger entries, and last its
+`auth.users` row, with which its profile, identities, sessions and refresh tokens cascade. Rows are
+deleted outright, not tombstoned: the account has no device left to sync to. Any error rolls
+everything back. A token issued before the deletion stays valid until it expires but reads nothing
+and cannot recreate rows (the owner foreign keys reject it), and its refresh token is gone. Calling
+again is a no-op. Other devices of the account keep their local copy until they notice the account
+is gone.
+
+The function runs as `postgres`, which Supabase grants `DELETE` on `auth.users`; `anon` and
+`service_role` cannot execute it. `tests/database/11_account_deletion.test.sql` covers it.
+
 ## Local development
 
 Needs the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
@@ -179,4 +197,3 @@ seed data.
 - Storage. Photo columns hold storage paths, not signed URLs, following
   `users/{userId}/people/{personId}/...`, `users/{userId}/gifts/{giftId}/...` and
   `users/{userId}/gift-ideas/{giftIdeaId}/...`. Buckets and policies come with photo upload.
-- Account deletion.

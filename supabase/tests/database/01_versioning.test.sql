@@ -81,13 +81,13 @@ select is((select version from public.gifts where id = '55555555-5555-4555-8555-
 
 -- Compare-and-set is the client's where clause: there is no expected-version column to send and
 -- no sync write function in the API schema. The only functions there are the sharing and
--- reservation calls, which never write synced rows.
+-- reservation calls, which never write synced rows, and the account deletion, which removes them.
 select hasnt_column('public', 'people', 'expected_version', 'updates carry no expected-version column');
 select functions_are('public', array[
     'create_wishlist_invite', 'revoke_wishlist_invite', 'list_wishlist_access', 'remove_wishlist_member',
     'redeem_wishlist_invite', 'leave_wishlist', 'get_shared_wishlists', 'get_shared_wishlist',
-    'reserve_wish', 'release_wish'],
-    'the API schema has no sync write function, only the sharing and reservation calls');
+    'reserve_wish', 'release_wish', 'delete_my_account'],
+    'the API schema has no sync write function, only the sharing, reservation and account deletion calls');
 
 select * from finish();
 rollback;

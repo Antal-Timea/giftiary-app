@@ -56,7 +56,7 @@ select is(
 select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('authenticated', oid, 'execute')),
-    10, 'signed-in users can execute exactly the ten sharing functions');
+    11, 'signed-in users can execute exactly the ten sharing functions and the account deletion');
 select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('service_role', oid, 'execute')),
