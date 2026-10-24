@@ -8,6 +8,7 @@ import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.testing.MutableClock
+import app.giftiary.testing.blockCurrentMutation
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -179,9 +180,9 @@ class SyncOperationQueueTest {
         val second = pending(SyncEntityType.PERSON, personId)
 
         assertEquals(0, dao.markInFlight(second.id, second.mutationId))
-        assertEquals(0, dao.clearInFlight(second.id, second.mutationId))
         assertEquals(first.mutationId, pending(SyncEntityType.PERSON, personId).inFlightMutationId)
-        assertEquals(1, dao.clearInFlight(second.id, first.mutationId))
+        // Once the first mutation is settled, the newer payload can start.
+        dao.update(pending(SyncEntityType.PERSON, personId).copy(inFlightMutationId = null))
         assertEquals(1, dao.markInFlight(second.id, second.mutationId))
     }
 
@@ -210,7 +211,7 @@ class SyncOperationQueueTest {
         assertEquals(sent.copy(attemptCount = 1, lastAttemptAt = clock.instant, lastErrorCode = "NETWORK"), recorded)
 
         // Once it is no longer in flight, a late attempt or error of it changes nothing.
-        assertEquals(1, dao.clearInFlight(sent.id, sent.mutationId))
+        dao.update(pending(SyncEntityType.PERSON, personId).copy(inFlightMutationId = null))
         assertEquals(0, dao.recordAttempt(sent.id, sent.mutationId, clock.instant))
         assertEquals(0, dao.recordError(sent.id, sent.mutationId, "SERVER"))
         assertEquals(recorded.copy(inFlightMutationId = null), pending(SyncEntityType.PERSON, personId))
@@ -231,34 +232,6 @@ class SyncOperationQueueTest {
         assertNull(edited.blockedReason)
         assertNotEquals(sent.mutationId, edited.mutationId)
         assertEquals(sent.mutationId, edited.inFlightMutationId)
-    }
-
-    @Test
-    fun `a failure of the current mutation blocks it`() = runTest {
-        val personId = UUID.randomUUID()
-        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
-        val current = pending(SyncEntityType.PERSON, personId)
-
-        assertEquals(1, dao.blockCurrentMutation(current.id, current.mutationId, "rejected"))
-
-        assertEquals(current.copy(blockedReason = "rejected"), pending(SyncEntityType.PERSON, personId))
-    }
-
-    @Test
-    fun `a late failure of an older mutation never blocks the newer one`() = runTest {
-        val personId = UUID.randomUUID()
-        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
-        val sent = sendCurrentMutation(SyncEntityType.PERSON, personId)
-        // The user edits again while the first mutation's result is still on its way.
-        queue.enqueue(alice, SyncEntityType.PERSON, personId, SyncOperation.UPDATE, RemoteState.SYNCED)
-        val edited = pending(SyncEntityType.PERSON, personId)
-
-        assertEquals(0, dao.blockCurrentMutation(sent.id, sent.mutationId, "rejected"))
-        assertEquals(edited, pending(SyncEntityType.PERSON, personId))
-
-        // The newer mutation itself can still be blocked by its own failure.
-        assertEquals(1, dao.blockCurrentMutation(edited.id, edited.mutationId, "rejected"))
-        assertEquals("rejected", pending(SyncEntityType.PERSON, personId).blockedReason)
     }
 
     // ---- deleting what the backend has never seen ----

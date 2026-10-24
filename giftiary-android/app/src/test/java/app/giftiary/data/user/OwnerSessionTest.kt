@@ -264,7 +264,7 @@ class OwnerSessionTest {
 
         assertEquals(legacy, ownerOfPerson(anna))
         assertEquals(1, count("SELECT COUNT(*) FROM sync_operation WHERE ownerUserId IS NULL"))
-        assertTrue(database.syncOperationDao().getPending(alice.id, 10).isEmpty())
+        assertTrue(database.syncOperationDao().getAllForOwner(alice.id).isEmpty())
     }
 
     @Test
@@ -289,8 +289,8 @@ class OwnerSessionTest {
         val bobsPerson = people.addPerson("Csilla", null)
 
         val queue = database.syncOperationDao()
-        assertEquals(listOf(alicesPerson.id), queue.getPending(alice.id, 10).map { it.entityId })
-        assertEquals(listOf(bobsPerson.id), queue.getPending(bob.id, 10).map { it.entityId })
+        assertEquals(listOf(alicesPerson.id), queue.getAllForOwner(alice.id).map { it.entityId })
+        assertEquals(listOf(bobsPerson.id), queue.getAllForOwner(bob.id).map { it.entityId })
         // The data from before accounts stays where it was, open to nobody.
         assertEquals(legacy, ownerOfPerson(anna))
 

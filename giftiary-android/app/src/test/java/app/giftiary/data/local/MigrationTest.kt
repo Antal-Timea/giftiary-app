@@ -113,7 +113,7 @@ class MigrationTest {
                 assertEquals(expected.copy(mutationId = actual.mutationId), actual)
             }
             // Unowned operations are invisible to every owner.
-            assertEquals(emptyList<SyncOperationEntity>(), dao.getPending(UUID.randomUUID(), limit = 10))
+            assertEquals(emptyList<SyncOperationEntity>(), dao.getAllForOwner(UUID.randomUUID()))
         }
     }
 
@@ -187,8 +187,8 @@ class MigrationTest {
         withRoom { room ->
             val dao = room.syncOperationDao()
             // Each owner still reads their own operations, oldest first; the unowned one by nobody.
-            assertEquals(listOf(operations[0].id, operations[3].id), dao.getPending(alice, limit = 10).map { it.id })
-            assertEquals(listOf(operations[1].id), dao.getPending(bob, limit = 10).map { it.id })
+            assertEquals(listOf(operations[0].id, operations[3].id), dao.getAllForOwner(alice).map { it.id })
+            assertEquals(listOf(operations[1].id), dao.getAllForOwner(bob).map { it.id })
             operations.forEach { expected ->
                 val actual = dao.findForEntity(expected.entityType, expected.entityId)!!
                 assertEquals(expected.copy(mutationId = actual.mutationId), actual)

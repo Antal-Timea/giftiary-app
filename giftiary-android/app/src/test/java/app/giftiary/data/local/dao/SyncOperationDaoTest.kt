@@ -49,7 +49,7 @@ class SyncOperationDaoTest {
         val duplicate = runCatching { dao.insert(operation(SyncEntityType.PERSON, personId, SyncOperation.DELETE)) }
 
         assertTrue(duplicate.exceptionOrNull() is SQLiteConstraintException)
-        assertEquals(listOf(create), dao.getPending(alice, limit = 10))
+        assertEquals(listOf(create), dao.getAllForOwner(alice))
     }
 
     @Test
@@ -65,21 +65,6 @@ class SyncOperationDaoTest {
     }
 
     @Test
-    fun `pending operations are returned oldest first up to the limit`() = runTest {
-        val (older, newer, newest) = listOf("2026-05-01", "2026-05-02", "2026-05-03").map { day ->
-            operation(
-                entityType = SyncEntityType.GIFT,
-                entityId = UUID.randomUUID(),
-                operation = SyncOperation.CREATE,
-                createdAt = Instant.parse("${day}T00:00:00Z"),
-            )
-        }
-        listOf(newer, newest, older).forEach { dao.insert(it) }
-
-        assertEquals(listOf(older, newer), dao.getPending(alice, limit = 2))
-    }
-
-    @Test
     fun `pending operations are read per owner and unowned ones by nobody`() = runTest {
         val alicesOlder = operation(
             SyncEntityType.PERSON, UUID.randomUUID(), SyncOperation.CREATE, Instant.parse("2026-05-01T00:00:00Z"),
@@ -91,8 +76,8 @@ class SyncOperationDaoTest {
         val unowned = operation(SyncEntityType.OCCASION, UUID.randomUUID(), SyncOperation.CREATE, owner = null)
         listOf(alicesNewer, unowned, bobs, alicesOlder).forEach { dao.insert(it) }
 
-        assertEquals(listOf(alicesOlder, alicesNewer), dao.getPending(alice, limit = 10))
-        assertEquals(listOf(bobs), dao.getPending(bob, limit = 10))
+        assertEquals(listOf(alicesOlder, alicesNewer), dao.getAllForOwner(alice))
+        assertEquals(listOf(bobs), dao.getAllForOwner(bob))
         assertEquals(unowned, dao.findForEntity(SyncEntityType.OCCASION, unowned.entityId))
     }
 

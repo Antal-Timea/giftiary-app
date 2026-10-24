@@ -24,6 +24,7 @@ import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.repository.WishDetails
 import app.giftiary.testing.FakeActiveOwner
 import app.giftiary.testing.MutableClock
+import app.giftiary.testing.blockCurrentMutation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch

@@ -33,6 +33,7 @@ import app.giftiary.domain.repository.GiftIdeaDetails
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.testing.FakeActiveOwner
 import app.giftiary.testing.MutableClock
+import app.giftiary.testing.blockCurrentMutation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first

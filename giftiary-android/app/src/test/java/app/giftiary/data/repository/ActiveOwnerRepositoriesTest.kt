@@ -164,8 +164,8 @@ class ActiveOwnerRepositoriesTest {
         assertEquals(alice, ownerOf("person", anna.id))
         assertEquals(bob, ownerOf("person", bela.id))
         val queue = database.syncOperationDao()
-        assertEquals(listOf(anna.id), queue.getPending(alice, limit = 10).map { it.entityId })
-        assertEquals(listOf(bela.id), queue.getPending(bob, limit = 10).map { it.entityId })
+        assertEquals(listOf(anna.id), queue.getAllForOwner(alice).map { it.entityId })
+        assertEquals(listOf(bela.id), queue.getAllForOwner(bob).map { it.entityId })
         assertEquals(SyncEntityType.PERSON, queue.findForEntity(SyncEntityType.PERSON, bela.id)?.entityType)
     }
 

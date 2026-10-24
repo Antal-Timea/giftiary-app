@@ -25,6 +25,7 @@ import app.giftiary.domain.repository.OwnerSessionState
 import app.giftiary.testing.FakeActiveOwner
 import app.giftiary.testing.FakeSyncScheduler
 import app.giftiary.testing.MutableClock
+import app.giftiary.testing.blockCurrentMutation
 import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.MemoryCodeVerifierCache

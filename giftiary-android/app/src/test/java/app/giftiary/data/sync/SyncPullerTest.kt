@@ -33,6 +33,7 @@ import app.giftiary.domain.repository.GiftDetails
 import app.giftiary.domain.repository.WishDetails
 import app.giftiary.testing.FakeActiveOwner
 import app.giftiary.testing.MutableClock
+import app.giftiary.testing.blockCurrentMutation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async

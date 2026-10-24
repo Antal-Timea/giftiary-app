@@ -424,7 +424,7 @@ class PersonRepositoryImplTest {
         assertNull(syncDao.findForEntity(SyncEntityType.GIFT, givenToAnna.id))
         assertEquals(SyncOperation.CREATE, syncDao.findForEntity(SyncEntityType.GIFT, fromAnna.id)?.operation)
         assertNull(syncDao.findForEntity(SyncEntityType.GIFT_IDEA, scarfForAnna.id))
-        val pending = syncDao.getPending(ownerUserId, limit = 100)
+        val pending = syncDao.getAllForOwner(ownerUserId)
         assertTrue(
             pending.none { it.operation == SyncOperation.DELETE && it.entityType in setOf(SyncEntityType.GIFT, SyncEntityType.GIFT_IDEA) },
         )
@@ -454,7 +454,7 @@ class PersonRepositoryImplTest {
     }
 
     private suspend fun pendingMutationIds(): Map<UUID, UUID> =
-        syncDao.getPending(ownerUserId, limit = 100).associate { it.entityId to it.mutationId }
+        syncDao.getAllForOwner(ownerUserId).associate { it.entityId to it.mutationId }
 
     private fun pendingDelete(entityId: UUID, entityType: SyncEntityType) = SyncOperationEntity(
         id = UUID.randomUUID(),
