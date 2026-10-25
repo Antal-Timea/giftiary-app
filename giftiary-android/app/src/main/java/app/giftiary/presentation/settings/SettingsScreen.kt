@@ -6,16 +6,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,8 +31,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.domain.repository.AccountDeletionFailure
 import app.giftiary.domain.repository.ProfileFailure
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiarySecondaryButton
@@ -64,6 +71,9 @@ fun SettingsScreen(
             onRetry = viewModel::load,
             onSignOut = onSignOut,
             onMessageShown = viewModel::onMessageShown,
+            onDeleteAccount = viewModel::onDeleteAccount,
+            onDeleteAccountDismiss = viewModel::onDeleteAccountDismiss,
+            onDeleteAccountConfirm = viewModel::onDeleteAccountConfirm,
         ),
     )
 }
@@ -75,6 +85,9 @@ class SettingsActions(
     val onRetry: () -> Unit,
     val onSignOut: () -> Unit,
     val onMessageShown: () -> Unit,
+    val onDeleteAccount: () -> Unit,
+    val onDeleteAccountDismiss: () -> Unit,
+    val onDeleteAccountConfirm: () -> Unit,
 )
 
 @Composable
@@ -133,8 +146,68 @@ private fun SettingsContent(
                 onClick = actions.onSignOut,
                 modifier = Modifier.fillMaxWidth(),
             )
+            TextButton(
+                onClick = actions.onDeleteAccount,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText),
+            ) {
+                Text(stringResource(R.string.settings_delete_account))
+            }
         }
     }
+    state.deleteDialog?.let { DeleteAccountConfirmation(it, actions) }
+}
+
+@Composable
+private fun DeleteAccountConfirmation(dialog: DeleteAccountDialog, actions: SettingsActions) {
+    val colors = GiftiaryTheme.colors
+    AlertDialog(
+        onDismissRequest = actions.onDeleteAccountDismiss,
+        // Neither back nor a tap outside may abandon a deletion that is running.
+        properties = DialogProperties(dismissOnBackPress = !dialog.deleting, dismissOnClickOutside = !dialog.deleting),
+        title = { Text(stringResource(R.string.settings_delete_account_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.m)) {
+                Text(stringResource(R.string.settings_delete_account_message))
+                if (dialog.failure != null) {
+                    Text(
+                        text = stringResource(
+                            when (dialog.failure) {
+                                AccountDeletionFailure.NETWORK -> R.string.sharing_network_error
+                                AccountDeletionFailure.SERVER -> R.string.sharing_server_error
+                            },
+                        ),
+                        color = colors.primaryActionText,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = actions.onDeleteAccountConfirm,
+                enabled = !dialog.deleting,
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+            ) {
+                if (dialog.deleting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = colors.primaryAction, strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.settings_delete_account))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = actions.onDeleteAccountDismiss,
+                enabled = !dialog.deleting,
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
+            ) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+        containerColor = colors.surfaceElevated,
+        titleContentColor = colors.textPrimary,
+        textContentColor = colors.textSecondary,
+    )
 }
 
 @Composable
@@ -203,7 +276,7 @@ private fun SettingsPreview() {
             email = "anna@example.com",
             reminderState = ReminderCardState.Off,
             reminderActions = ReminderCardActions({}, {}, {}, {}),
-            actions = SettingsActions({}, {}, {}, {}, {}, {}),
+            actions = SettingsActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

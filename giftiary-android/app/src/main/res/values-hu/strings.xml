@@ -452,6 +452,13 @@
     <string name="settings_display_name_hint">Azok látják, akikkel kívánságlistát osztasz meg. Ha üresen hagyod, nem jelenik meg név.</string>
     <string name="settings_save_name">Név mentése</string>
     <string name="settings_name_saved">Név elmentve</string>
+    <string name="settings_delete_account">Fiók törlése</string>
+    <string name="settings_delete_account_title">Törlöd a fiókodat?</string>
+    <string name="settings_delete_account_message">A Giftiary-fiókod és minden benne lévő adat véglegesen törlődik: a személyek, alkalmak, ajándékötletek, ajándékok és kívánságlisták. Akikkel kívánságlistát osztottál meg, elvesztik a hozzáférést, a más listákon tett foglalásaid pedig megszűnnek. Ez nem vonható vissza.</string>
+    <string name="account_deletion_finishing">A fiókod törlése folyamatban…</string>
+    <string name="account_deletion_not_finished">A fiókodat még nem sikerült eltávolítani erről az eszközről.</string>
+    <string name="account_deleted_title">Fiók törölve</string>
+    <string name="account_deleted_message">A Giftiary-fiókodat és az adatait töröltük.</string>
     <string name="wishlist_access_name_prompt">Add meg a neved, hogy a meghívottak tudják, kinek a listája ez.</string>
     <string name="wishlist_access_name_prompt_later">Most nem</string>
     <string name="wishlist_access_name_prompt_add">Név megadása</string>

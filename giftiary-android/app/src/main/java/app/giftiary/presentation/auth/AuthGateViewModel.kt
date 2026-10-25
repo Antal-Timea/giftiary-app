@@ -1,12 +1,17 @@
 package app.giftiary.presentation.auth
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import app.giftiary.data.auth.PasswordRecovery
 import app.giftiary.data.auth.RecoveryState
+import app.giftiary.domain.repository.AccountDeletion
+import app.giftiary.domain.repository.AccountDeletionState
 import app.giftiary.domain.repository.AccountSession
 import app.giftiary.domain.repository.OwnerSessionState
+import app.giftiary.presentation.sharing.PendingWishlistJoin
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Decides between the auth flow and the app, which opens only for [OwnerSessionState.Ready]. */
@@ -14,6 +19,8 @@ import javax.inject.Inject
 class AuthGateViewModel @Inject constructor(
     private val session: AccountSession,
     private val recovery: PasswordRecovery,
+    private val deletion: AccountDeletion,
+    pendingJoin: PendingWishlistJoin,
 ) : ViewModel() {
 
     val state: StateFlow<OwnerSessionState> = session.state
@@ -25,5 +32,19 @@ class AuthGateViewModel @Inject constructor(
 
     fun onPasswordChangedShown() = recovery.onPasswordChangedShown()
 
+    /** A deletion being finished, or just finished, covers everything but a password recovery. */
+    val deletionState: StateFlow<AccountDeletionState> = deletion.state
+
     fun signOut() = session.signOut()
+
+    init {
+        // An invite opened for the deleted account must not be redeemed by whoever signs in next.
+        viewModelScope.launch {
+            deletion.state.collect { if (it == AccountDeletionState.Deleted) pendingJoin.take() }
+        }
+    }
+
+    fun retryDeletion() = deletion.retry()
+
+    fun onAccountDeletedShown() = deletion.onDeletedShown()
 }

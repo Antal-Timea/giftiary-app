@@ -5,17 +5,28 @@ import app.giftiary.data.auth.RecoveryLink
 import app.giftiary.data.auth.RecoveryState
 import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.model.AuthUser
+import app.giftiary.domain.repository.AccountDeletionState
 import app.giftiary.domain.repository.AccountSession
 import app.giftiary.domain.repository.OwnerSessionState
+import app.giftiary.domain.model.InviteToken
+import app.giftiary.presentation.sharing.PendingJoin
+import app.giftiary.presentation.sharing.PendingWishlistJoin
+import app.giftiary.testing.FakeAccountDeletion
 import app.giftiary.testing.FakeAuthRepository
+import app.giftiary.testing.MainDispatcherRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Rule
 import org.junit.Test
 import java.util.UUID
 
 class AuthGateViewModelTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     private val alice = AuthUser(UUID.randomUUID(), "alice@example.com")
     private val bob = AuthUser(UUID.randomUUID(), "bob@example.com")
@@ -31,7 +42,9 @@ class AuthGateViewModelTest {
     private val session = FakeAccountSession()
     private val auth = FakeAuthRepository().apply { state.value = AuthState.SignedOut }
     private val recovery = PasswordRecovery(auth, CoroutineScope(Dispatchers.Unconfined))
-    private val viewModel = AuthGateViewModel(session, recovery)
+    private val deletion = FakeAccountDeletion()
+    private val pendingJoin = PendingWishlistJoin()
+    private val viewModel by lazy { AuthGateViewModel(session, recovery, deletion, pendingJoin) }
 
     @Test
     fun `a password recovery under way is what the gate shows`() {
@@ -92,5 +105,25 @@ class AuthGateViewModelTest {
         viewModel.signOut()
 
         assertEquals(1, session.signOuts)
+    }
+
+    @Test
+    fun `a finished deletion forgets a waiting invite, so the next account does not redeem it`() {
+        val token = InviteToken.of("a".repeat(43))!!
+        pendingJoin.offer(PendingJoin.Invite(token))
+        viewModel.deletionState
+
+        deletion.state.value = AccountDeletionState.Deleted
+
+        assertNull(pendingJoin.take())
+        viewModel.onAccountDeletedShown()
+        assertEquals(AccountDeletionState.Idle, viewModel.deletionState.value)
+    }
+
+    @Test
+    fun `retrying an unfinished deletion goes to the deletion`() {
+        viewModel.retryDeletion()
+
+        assertEquals(1, deletion.retryCalls)
     }
 }

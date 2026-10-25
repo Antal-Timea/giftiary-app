@@ -31,6 +31,14 @@ class ReminderPreferences @Inject constructor(
         preferences.edit(commit = true) { putString(lastDigestKey(owner), date.toString()) }
     }
 
+    /** For an account that no longer exists: nothing of it is kept for a return. */
+    fun forget(owner: UUID) {
+        preferences.edit(commit = true) {
+            remove(enabledKey(owner))
+            remove(lastDigestKey(owner))
+        }
+    }
+
     private fun enabledKey(owner: UUID) = "enabled.$owner"
 
     private fun lastDigestKey(owner: UUID) = "lastDigest.$owner"

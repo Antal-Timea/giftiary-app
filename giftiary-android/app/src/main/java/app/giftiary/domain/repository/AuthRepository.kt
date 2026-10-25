@@ -36,6 +36,9 @@ interface AuthRepository {
 
     suspend fun signOut()
 
+    /** Forgets the session on this device without asking the server, e.g. once the account is deleted. */
+    suspend fun clearLocalSession()
+
     /**
      * Sends a password recovery email for [email]. Succeeds alike whether or not an account exists.
      *

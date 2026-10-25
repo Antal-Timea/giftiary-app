@@ -14,8 +14,10 @@ import app.giftiary.data.sync.FullSyncRequester
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.data.sync.SyncScheduler
 import app.giftiary.data.sync.WorkManagerSyncScheduler
+import app.giftiary.data.user.AccountDeleter
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.data.user.OwnerSession
+import app.giftiary.domain.repository.AccountDeletion
 import app.giftiary.domain.repository.AccountSession
 import app.giftiary.domain.repository.GiftIdeaRepository
 import app.giftiary.domain.repository.GiftRepository
@@ -60,6 +62,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindAccountSession(impl: OwnerSession): AccountSession
+
+    @Binds
+    abstract fun bindAccountDeletion(impl: AccountDeleter): AccountDeletion
 
     @Binds
     abstract fun bindSyncRequester(impl: ForegroundSyncCoordinator): SyncRequester

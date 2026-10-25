@@ -6,6 +6,7 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="app.giftiary_preferences.xml" />
+        <exclude domain="sharedpref" path="giftiary_account_deletion.xml" />
         <exclude domain="database" path="giftiary.db" />
         <exclude domain="database" path="giftiary.db-wal" />
         <exclude domain="database" path="giftiary.db-shm" />
@@ -13,6 +14,7 @@
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="app.giftiary_preferences.xml" />
+        <exclude domain="sharedpref" path="giftiary_account_deletion.xml" />
         <exclude domain="database" path="giftiary.db" />
         <exclude domain="database" path="giftiary.db-wal" />
         <exclude domain="database" path="giftiary.db-shm" />

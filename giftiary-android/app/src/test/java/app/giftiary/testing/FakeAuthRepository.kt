@@ -89,6 +89,17 @@ class FakeAuthRepository : AuthRepository {
         state.value = AuthState.SignedOut
     }
 
+    var clearLocalSessionCalls = 0
+
+    /** Runs as the local session is cleared, e.g. to see what had happened by then. */
+    var onClearLocalSession: () -> Unit = {}
+
+    override suspend fun clearLocalSession() {
+        clearLocalSessionCalls++
+        onClearLocalSession()
+        state.value = AuthState.SignedOut
+    }
+
     // Password recovery: each call fails with its own error when set, and may be held by [gate].
 
     var resetFailure: AuthError? = null

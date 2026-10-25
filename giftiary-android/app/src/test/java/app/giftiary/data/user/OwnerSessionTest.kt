@@ -85,7 +85,7 @@ class OwnerSessionTest {
     /** Starts a session whose every owner and state change is recorded, in order. */
     private fun TestScope.startSession(): Recorded {
         val scope = CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
-        val session = OwnerSession(auth, scheduler, ReminderSignOut(reminders, notifier), recoveryGate, scope)
+        val session = OwnerSession(auth, scheduler, ReminderSignOut(reminders, notifier), recoveryGate, AccountDeletionMarker(context), scope)
         val recorded = Recorded(session)
         scope.launch {
             session.ownerId.collect {
@@ -297,6 +297,42 @@ class OwnerSessionTest {
         session.signOut()
         assertEquals(emptyList<UUID>(), people.observePeople().first().map { it.id })
         assertTrue(runCatching { people.addPerson("Dóra", null) }.exceptionOrNull() is NoActiveOwnerException)
+    }
+
+    // ---- account deletion ----
+
+    @Test
+    fun `an account whose deletion an earlier process left unfinished never opens, another one does`() = runTest {
+        AccountDeletionMarker(context).set(alice.id)
+        auth.state.value = AuthState.SignedIn(alice)
+        val recorded = startSession()
+
+        // The SDK reloading the session reports the same account again.
+        auth.state.value = AuthState.Restoring
+        auth.state.value = AuthState.SignedIn(alice)
+
+        assertTrue("Alice was never opened", recorded.owners.all { it == null })
+        assertEquals(OwnerSessionState.Restoring, recorded.session.state.value)
+
+        auth.state.value = AuthState.SignedIn(bob)
+        recorded.session.awaitState(OwnerSessionState.Ready(bob))
+    }
+
+    @Test
+    fun `a deleted account is closed at once and not opened again by its session`() = runTest {
+        auth.state.value = AuthState.SignedIn(alice)
+        val recorded = startSession()
+        recorded.session.awaitState(OwnerSessionState.Ready(alice))
+
+        recorded.session.closeDeletedAccount(alice.id)
+        assertNull(recorded.session.ownerId.value)
+        auth.state.value = AuthState.Restoring
+        auth.state.value = AuthState.SignedIn(alice)
+
+        assertNull(recorded.session.ownerId.value)
+        assertEquals(OwnerSessionState.Restoring, recorded.session.state.value)
+        auth.state.value = AuthState.SignedOut
+        recorded.session.awaitState(OwnerSessionState.SignedOut)
     }
 
     // ---- data ----

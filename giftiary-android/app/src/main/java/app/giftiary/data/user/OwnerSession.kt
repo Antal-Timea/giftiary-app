@@ -25,7 +25,7 @@ import javax.inject.Singleton
  *
  * Every change of account closes the previous one first, so the owner is never set while the
  * state still names another account, and the same account reported again keeps its data open
- * untouched.
+ * untouched. An account being deleted is never opened again (see [AccountDeleter]).
  */
 @Singleton
 class OwnerSession @Inject constructor(
@@ -33,6 +33,7 @@ class OwnerSession @Inject constructor(
     private val syncScheduler: SyncScheduler,
     private val reminderSignOut: ReminderSignOut,
     private val recoveryGate: RecoveryGate,
+    deletionMarker: AccountDeletionMarker,
     @ApplicationScope private val scope: CoroutineScope,
 ) : ActiveOwner, AccountSession {
 
@@ -46,6 +47,10 @@ class OwnerSession @Inject constructor(
     private val lock = Any()
     private var latestAuth: AuthState = AuthState.Restoring
     private var started = false
+
+    // A deletion left unfinished by an earlier process keeps its account closed from the start.
+    // Never cleared: the account no longer exists, so it cannot sign in again in this process.
+    private var deletedOwner: UUID? = deletionMarker.owner()
 
     /** Called once from the Application; later calls do nothing. */
     fun start() {
@@ -87,6 +92,17 @@ class OwnerSession @Inject constructor(
         }
     }
 
+    /**
+     * Closes [owner]'s data at once if it is open, and keeps it closed whatever the auth state says,
+     * so nothing of a deleted account is shown or synced while it is removed from this device.
+     */
+    fun closeDeletedAccount(owner: UUID) = synchronized(lock) {
+        deletedOwner = owner
+        if (_ownerId.value == owner || (_state.value as? OwnerSessionState.Ready)?.user?.id == owner) {
+            closeLocked(OwnerSessionState.Restoring)
+        }
+    }
+
     private fun onAuthState(auth: AuthState) = synchronized(lock) {
         latestAuth = auth
         onAuthStateLocked(auth)
@@ -99,8 +115,9 @@ class OwnerSession @Inject constructor(
             is AuthState.SignedIn -> {
                 // A session that only exists to set a new password opens nothing: no data, no
                 // sync, no reminders, until the recovery is done or given up. Read now, not as
-                // last seen, so a sign-in from the exchange itself already finds it closed.
-                if (recoveryGate.isActive.value) {
+                // last seen, so a sign-in from the exchange itself already finds it closed. The
+                // session of a deleted account, until it is cleared, opens nothing either.
+                if (recoveryGate.isActive.value || auth.user.id == deletedOwner) {
                     val closed = _state.value == OwnerSessionState.Restoring && _ownerId.value == null
                     if (!closed) closeLocked(OwnerSessionState.Restoring)
                     return

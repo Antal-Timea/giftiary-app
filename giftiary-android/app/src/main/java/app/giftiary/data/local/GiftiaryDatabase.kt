@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import app.giftiary.data.local.converter.EnumConverters
 import app.giftiary.data.local.converter.TimeConverters
 import app.giftiary.data.local.converter.UuidConverter
+import app.giftiary.data.local.dao.AccountDataDao
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
 import app.giftiary.data.local.dao.OccasionDao
@@ -55,6 +56,8 @@ abstract class GiftiaryDatabase : RoomDatabase() {
     abstract fun wishlistDao(): WishlistDao
 
     abstract fun wishDao(): WishDao
+
+    abstract fun accountDataDao(): AccountDataDao
 
     companion object {
         const val NAME = "giftiary.db"

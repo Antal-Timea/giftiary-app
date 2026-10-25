@@ -80,6 +80,10 @@ class SupabaseAuthRepository @Inject constructor(
         }
     }
 
+    override suspend fun clearLocalSession() {
+        auth.clearSession()
+    }
+
     override suspend fun requestPasswordReset(email: String) = asAuthFailure {
         auth.resetPasswordForEmail(email, AUTH_RECOVERY_URL)
     }

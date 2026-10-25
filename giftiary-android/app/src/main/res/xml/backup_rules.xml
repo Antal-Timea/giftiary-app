@@ -12,6 +12,11 @@
     -->
     <exclude domain="sharedpref" path="app.giftiary_preferences.xml" />
     <!--
+        An account deletion still to be finished on this device. Restored elsewhere it would refer
+        to an account that is already gone.
+    -->
+    <exclude domain="sharedpref" path="giftiary_account_deletion.xml" />
+    <!--
         The account's data lives on the server; a new device gets it by signing in and syncing.
         Restoring the local database would also restore its sync queue, mutation ids and owner
         rows to a device and session they were not written for, a path that is never tested.

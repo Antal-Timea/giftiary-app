@@ -29,6 +29,8 @@ class BackupRulesTest {
         "database" to "${GiftiaryDatabase.NAME}-wal",
         "database" to "${GiftiaryDatabase.NAME}-shm",
         "database" to "${GiftiaryDatabase.NAME}-journal",
+        // An account deletion still to be finished on this device.
+        "sharedpref" to "giftiary_account_deletion.xml",
     )
 
     @Test

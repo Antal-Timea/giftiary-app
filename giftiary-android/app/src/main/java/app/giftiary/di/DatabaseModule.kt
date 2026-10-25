@@ -7,6 +7,7 @@ import app.giftiary.data.local.MIGRATION_1_2
 import app.giftiary.data.local.MIGRATION_2_3
 import app.giftiary.data.local.MIGRATION_3_4
 import app.giftiary.data.local.MIGRATION_4_5
+import app.giftiary.data.local.dao.AccountDataDao
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
 import app.giftiary.data.local.dao.OccasionDao
@@ -56,4 +57,7 @@ object DatabaseModule {
 
     @Provides
     fun provideWishDao(database: GiftiaryDatabase): WishDao = database.wishDao()
+
+    @Provides
+    fun provideAccountDataDao(database: GiftiaryDatabase): AccountDataDao = database.accountDataDao()
 }

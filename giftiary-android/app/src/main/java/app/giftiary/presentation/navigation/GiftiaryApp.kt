@@ -7,8 +7,11 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.data.auth.RecoveryState
+import app.giftiary.domain.repository.AccountDeletionState
 import app.giftiary.domain.repository.OwnerSessionState
+import app.giftiary.presentation.auth.AccountDeletedScreen
 import app.giftiary.presentation.auth.AuthGateViewModel
+import app.giftiary.presentation.auth.FinishingAccountDeletionScreen
 import app.giftiary.presentation.auth.PasswordChangedScreen
 import app.giftiary.presentation.auth.RecoveryScreen
 import app.giftiary.presentation.auth.StartupScreen
@@ -22,6 +25,7 @@ fun GiftiaryApp(modifier: Modifier = Modifier, viewModel: AuthGateViewModel = hi
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recovery by viewModel.recoveryState.collectAsStateWithLifecycle()
     val passwordChanged by viewModel.passwordChanged.collectAsStateWithLifecycle()
+    val deletion by viewModel.deletionState.collectAsStateWithLifecycle()
     if (recovery != RecoveryState.Idle) {
         RecoveryScreen(viewModel = hiltViewModel(), modifier = modifier)
         return
@@ -29,6 +33,21 @@ fun GiftiaryApp(modifier: Modifier = Modifier, viewModel: AuthGateViewModel = hi
     if (passwordChanged) {
         PasswordChangedScreen(onContinue = viewModel::onPasswordChangedShown, modifier = modifier)
         return
+    }
+    when (val current = deletion) {
+        AccountDeletionState.Idle -> Unit
+        AccountDeletionState.Finishing -> {
+            FinishingAccountDeletionScreen(failure = null, onRetry = {}, modifier = modifier)
+            return
+        }
+        is AccountDeletionState.FinishFailed -> {
+            FinishingAccountDeletionScreen(failure = current.failure, onRetry = viewModel::retryDeletion, modifier = modifier)
+            return
+        }
+        AccountDeletionState.Deleted -> {
+            AccountDeletedScreen(onContinue = viewModel::onAccountDeletedShown, modifier = modifier)
+            return
+        }
     }
     when (val current = state) {
         OwnerSessionState.Restoring -> StartupScreen(modifier)
