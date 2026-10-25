@@ -55,18 +55,44 @@ this. `[VERIFY: wording and legal basis, with legal review]`
 
 ### Device backups
 
-The app's Android backup rules leave out the sign-in session and the local database. Data reaches a new device by signing in and syncing; edits not yet synced stay on the old
-device.
+The app's Android backup rules leave out the sign-in session, the local database and the marker of
+an unfinished account deletion. Reminder settings are backed up. Data reaches a new device by
+signing in and syncing; edits not yet synced stay on the old device.
+
+### Deleting data and accounts
+
+- **Deleting a record** (a person, gift, list, ...) in the app hides it everywhere, but the
+  backend keeps it as a deleted row ("tombstone") so the user's other devices learn of the deletion,
+  together with a log of applied changes (the sync ledger). Both are kept until the account is
+  deleted; no automatic purge exists. Expired wishlist invites are kept the same way.
+- **Signing out** hides the account's data on that device but keeps it there, for when the same
+  account signs in again. It is not deletion.
+- **Deleting the account** (Settings → Delete account, after a confirmation):
+  - on the backend, in one transaction: the account's people, occasions, gift ideas, gifts,
+    wishlists, wishes, invites and change log; its memberships and reservations on other users'
+    lists, and every membership and reservation on its own lists; its profile; and its sign-in
+    account (Supabase Auth user with its sessions and linked Google or Facebook identities). The
+    rows are deleted outright, not kept as tombstones;
+  - on the device used for deleting: the account's data, its reminder settings and its pending
+    reminders are removed, and the device is signed out. If the app stops part way, it finishes on
+    the next start.
+- **Other devices** of the deleted account are not cleared automatically: they keep their local
+  copy until they are signed out (which happens once their session can no longer be renewed).
+  The policy must not say that deletion removes data from all devices.
+- **Backups of the backend:** whether and how long hosted backups or point-in-time recovery keep
+  deleted data is `[VERIFY: hosted backup/PITR retention]`. The policy must not claim immediate
+  removal from backups.
 
 ## 2. Items that need a decision or verification before publication
 
 - `[VERIFY]` Legal basis for each processing purpose.
-- `[VERIFY]` Retention: how long account data, synced data and soft-deleted records are kept.
-  The database keeps deleted rows as tombstones for sync, and keeps the sync ledger; no automatic
-  purge exists today.
-- `[VERIFY]` Account and data deletion: there is **no in-app account deletion yet**. State how
-  users request deletion today, and check the current Google Play requirements (see
-  `docs/release-checklist.md`, Gate B).
+- `[VERIFY]` Retention wording: the facts are in "Deleting data and accounts" above (tombstones and
+  ledger until account deletion, no automatic purge, hosted backup retention unknown). The final
+  retention statement is the owner's decision.
+- `[VERIFY]` Account deletion outside the app: a public web page (required by Google Play, and by
+  Meta if Facebook sign-in ships) describing the in-app path and a request route for people
+  without the app, e.g. a contact address: `[VERIFY: URL and contact]`. It must describe the same
+  process as this policy.
 - `[VERIFY]` Hosting region and international transfers.
 - `[VERIFY]` Processor terms and subprocessors.
 - `[VERIFY]` Age requirements / target audience.
