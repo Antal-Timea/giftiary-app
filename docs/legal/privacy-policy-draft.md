@@ -64,7 +64,8 @@ signing in and syncing; edits not yet synced stay on the old device.
 - **Deleting a record** (a person, gift, list, ...) in the app hides it everywhere, but the
   backend keeps it as a deleted row ("tombstone") so the user's other devices learn of the deletion,
   together with a log of applied changes (the sync ledger). Both are kept until the account is
-  deleted; no automatic purge exists. Expired wishlist invites are kept the same way.
+  deleted; no automatic purge exists. Expired and revoked wishlist invites also stay as rows (with
+  their expiry and revocation time) until the account is deleted.
 - **Signing out** hides the account's data on that device but keeps it there, for when the same
   account signs in again. It is not deletion.
 - **Deleting the account** (Settings → Delete account, after a confirmation):
@@ -76,9 +77,10 @@ signing in and syncing; edits not yet synced stay on the old device.
   - on the device used for deleting: the account's data, its reminder settings and its pending
     reminders are removed, and the device is signed out. If the app stops part way, it finishes on
     the next start.
-- **Other devices** of the deleted account are not cleared automatically: they keep their local
-  copy until they are signed out (which happens once their session can no longer be renewed).
-  The policy must not say that deletion removes data from all devices.
+- **Other devices** of the deleted account are not cleared: their local database keeps the
+  account's data. Once such a device's session is refused it is signed out, so the data is no
+  longer shown in the app, but signing out does not delete it. Removing it automatically is a
+  planned follow-up. The policy must not say that deletion removes data from all devices.
 - **Backups of the backend:** whether and how long hosted backups or point-in-time recovery keep
   deleted data is `[VERIFY: hosted backup/PITR retention]`. The policy must not claim immediate
   removal from backups.

@@ -111,7 +111,7 @@ device (notification permission) and one older device.
 | S18 | Owner deletes | A deletes a reserved wish, then the list | It disappears for guests; then the list is unavailable |
 | S19 | No network | Airplane mode during reserve and during join | Retry message, nothing assumed; correct after reconnecting |
 | S20 | Email clients | Open confirmation and recovery mails in Gmail (with Chrome) and one other client | The link reaches the app (possibly after an "Open with Giftiary" prompt) |
-| S21 | Account deletion (**authorised, destructive**) | Only with a throwaway account D created for this row, and only with the owner's explicit go-ahead for that hosted deletion. D has data and a list shared with B. D: Settings → Delete account → confirm | "Account deleted", then the sign-in screen; D's data is gone from P1; D can no longer sign in; B no longer has D's list. A second device of D keeps its local data until it is signed out (known limitation) |
+| S21 | Account deletion (**authorised, destructive**) | Only with a throwaway account D created for this row, and only with the owner's explicit go-ahead for that hosted deletion. D has data and a list shared with B. D: Settings → Delete account → confirm | "Account deleted", then the sign-in screen; D's data is gone from P1; D can no longer sign in; B no longer has D's list. Known limitation: a second device of D is not purged; once its session is refused it shows the sign-in screen, but D's rows stay in its local database |
 
 #### Sign-in providers (only those enabled for this build)
 
@@ -139,8 +139,9 @@ Record the device, Android version, build and result of each row.
 - Open recovery links on the phone that asked for them.
 - An invite link may not be clickable in some messengers: paste the whole message into
   Wishlists → Shared with you → Join.
-- Settings → Delete account deletes the account and its data at once and cannot be undone. Data
-  on the account's other devices stays there until they are signed out.
+- Settings → Delete account deletes the account and its data at once and cannot be undone. Only
+  the device it is done on is cleared; the account's other devices keep their local copy (no longer
+  reachable in the app once they are signed out).
 
 ## Gate B: Play-distributed closed test
 
@@ -170,8 +171,8 @@ All of Gate A passed on the build to upload, then:
 
 ## Before a broader beta (not for the first closed test)
 
-- Removing a deleted account's data from its **other** devices (today they keep it until signed
-  out).
+- Removing a deleted account's data from its **other** devices (today those devices are not
+  purged: they end up signed out, but the rows stay in their local database).
 - **Human Code / Simplification Audit.** Goal: simplification, not fewer lines. Look for
   unnecessary abstraction, wrappers and indirection, state or gate machinery heavier than its
   invariant needs, defensive branches for impossible cases, duplicated layers (e.g. parallel
