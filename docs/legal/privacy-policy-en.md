@@ -130,8 +130,8 @@ We do not sell your data or share it with third parties for advertising or marke
 
 - **Supabase** (Supabase, Inc.): authentication (user accounts, sign-in, handling Google and Facebook sign-in) and database. Our project runs in a data centre in the European Union, in Frankfurt (eu-central-1). Supabase may use further subprocessors (for example a cloud infrastructure provider). Privacy policy: https://supabase.com/privacy
 - **Resend**: delivery of confirmation and password-reset emails, as the authentication system's custom SMTP provider. Privacy policy: https://resend.com/legal/privacy-policy
-- **Porkbun**: forwarding emails sent to support@giftiary.app to our mailbox.
-- **Google**: receiving and storing your enquiries (Gmail mailbox), and distributing the app on Google Play.
+- **Porkbun**: the mailbox provider for support@giftiary.app, receiving and storing the privacy and support enquiries sent to that address.
+- **Google**: distributing the app on Google Play.
 
 **Independent controllers:** if you sign in with Google or Facebook, Google or Meta handles that sign-in under its own privacy policy (https://policies.google.com/privacy, https://www.facebook.com/privacy/policy). Android backup and Google Play are operated by Google under its own terms.
 

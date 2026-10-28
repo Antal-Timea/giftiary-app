@@ -130,8 +130,8 @@ Adataidat nem adjuk el, és nem adjuk át harmadik félnek reklám- vagy marketi
 
 - **Supabase** (Supabase, Inc.) – hitelesítés (felhasználói fiókok, bejelentkezés, Google- és Facebook-bejelentkezés kezelése) és adatbázis. A projektünk az Európai Unióban, Frankfurtban (eu-central-1) található adatközpontban fut. A Supabase további alvállalkozókat (például felhőinfrastruktúra-szolgáltatót) vehet igénybe. Adatvédelmi tájékoztatója: https://supabase.com/privacy
 - **Resend** – a megerősítő és jelszó-visszaállító e-mailek kézbesítése (a hitelesítési rendszer egyéni SMTP-szolgáltatójaként). Adatvédelmi tájékoztatója: https://resend.com/legal/privacy-policy
-- **Porkbun** – a support@giftiary.app címre küldött levelek továbbítása a postafiókunkba.
-- **Google** – a megkereséseid fogadása és tárolása (Gmail-postafiók), az alkalmazás terjesztése a Google Playen.
+- **Porkbun** – a support@giftiary.app postafiók szolgáltatója: az erre a címre küldött adatvédelmi és támogatási megkeresések fogadása és tárolása.
+- **Google** – az alkalmazás terjesztése a Google Playen.
 
 **Önálló adatkezelők:** ha Google- vagy Facebook-fiókkal jelentkezel be, a bejelentkezést a Google, illetve a Meta a saját adatkezelési szabályai szerint kezeli (https://policies.google.com/privacy, https://www.facebook.com/privacy/policy). Az Android biztonsági mentését és a Google Play-t a Google a saját feltételei szerint üzemelteti.
 
