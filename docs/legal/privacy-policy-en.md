@@ -7,7 +7,7 @@ This policy explains how the Giftiary Android app and its service handle persona
 ## 1. Controller and contact
 
 - **Controller:** Tímea Antal
-- **Email (including privacy matters):** giftiary.owner.tests@example.com
+- **Email (including privacy matters):** support@giftiary.app
 - **Website:** https://giftiary.app
 
 Giftiary is operated by a private individual. No data protection officer is required. Please send any privacy question or request to the email address above.
@@ -130,7 +130,8 @@ We do not sell your data or share it with third parties for advertising or marke
 
 - **Supabase** (Supabase, Inc.): authentication (user accounts, sign-in, handling Google and Facebook sign-in) and database. Our project runs in a data centre in the European Union, in Frankfurt (eu-central-1). Supabase may use further subprocessors (for example a cloud infrastructure provider). Privacy policy: https://supabase.com/privacy
 - **Resend**: delivery of confirmation and password-reset emails, as the authentication system's custom SMTP provider. Privacy policy: https://resend.com/legal/privacy-policy
-- **Google**: receiving your email enquiries (Gmail account), and distributing the app on Google Play.
+- **Porkbun**: forwarding emails sent to support@giftiary.app to our mailbox.
+- **Google**: receiving and storing your enquiries (Gmail mailbox), and distributing the app on Google Play.
 
 **Independent controllers:** if you sign in with Google or Facebook, Google or Meta handles that sign-in under its own privacy policy (https://policies.google.com/privacy, https://www.facebook.com/privacy/policy). Android backup and Google Play are operated by Google under its own terms.
 
@@ -138,7 +139,7 @@ We may disclose data to authorities where the law requires it.
 
 ## 10. Transfers outside the EU
 
-Our server is located in the EU (Frankfurt). Our providers and their subprocessors may still process certain data outside the EU, in particular providers based in the United States, such as Supabase, Resend and Google (for example for operations, support or email delivery). Such transfers rely on the GDPR safeguards set out in their data processing agreements. Examples are the European Commission's standard contractual clauses or an adequacy decision, such as the EU–US Data Privacy Framework where the provider participates in it.
+Our server is located in the EU (Frankfurt). Our providers and their subprocessors may still process certain data outside the EU, in particular providers based in the United States, such as Supabase, Resend, Porkbun and Google (for example for operations, support or email delivery). Such transfers rely on the GDPR safeguards set out in their data processing agreements. Examples are the European Commission's standard contractual clauses or an adequacy decision, such as the EU–US Data Privacy Framework where the provider participates in it.
 
 ## 11. Retention
 
@@ -173,7 +174,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 - **On the account's other devices**, the data is **not deleted automatically**. Those devices will eventually be signed out, so the data is no longer available through the app in the normal way, but it may remain in their local database. You can remove it there by clearing the app's data or uninstalling the app.
 - For backups, see section 11.
 
-**If you cannot access the app:** contact us at giftiary.owner.tests@example.com. We will help determine the appropriate secure way to delete your account. Never send us your password, verification codes or other sign-in credentials.
+**If you cannot access the app:** contact us at support@giftiary.app. We will help determine the appropriate secure way to delete your account. Never send us your password, verification codes or other sign-in credentials.
 
 Account deletion steps and details: https://giftiary.app/account-deletion/
 
@@ -188,7 +189,7 @@ Under the GDPR you have the right to:
 - **data portability** (to receive your data in a machine-readable format);
 - **object** to processing based on legitimate interest.
 
-Send your request to giftiary.owner.tests@example.com. We answer without undue delay, and within one month at the latest. Before acting on a request, we may check that the account really belongs to you.
+Send your request to support@giftiary.app. We answer without undue delay, and within one month at the latest. Before acting on a request, we may check that the account really belongs to you.
 
 You can lodge a complaint with the Hungarian National Authority for Data Protection and Freedom of Information (NAIH, 1055 Budapest, Falk Miksa utca 9–11, https://naih.hu), with the supervisory authority of your place of residence in the EU, or go to court.
 
@@ -215,8 +216,8 @@ Giftiary is currently intended for adults and is not directed to children. If yo
 
 ## 17. Changes to this policy
 
-If Giftiary or its processing changes, we update this policy and the effective date above. The current version is always published at https://giftiary.app.
+If Giftiary or its processing changes, we update this policy and the effective date above. The current version is always published at https://giftiary.app/privacy/.
 
 ## 18. Contact
 
-Tímea Antal – giftiary.owner.tests@example.com – https://giftiary.app
+Tímea Antal – support@giftiary.app – https://giftiary.app

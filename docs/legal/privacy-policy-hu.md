@@ -7,7 +7,7 @@ Ez a tájékoztató azt írja le, hogyan kezeli a Giftiary Android-alkalmazás �
 ## 1. Az adatkezelő és elérhetősége
 
 - **Adatkezelő:** Antal Tímea
-- **E-mail (adatvédelmi ügyekben is):** giftiary.owner.tests@example.com
+- **E-mail (adatvédelmi ügyekben is):** support@giftiary.app
 - **Weboldal:** https://giftiary.app
 
 A Giftiary egy magánszemély által üzemeltetett alkalmazás. Adatvédelmi tisztviselő kijelölésére nincs szükség. Minden adatvédelmi kérdéssel és kéréssel a fenti e-mail-címen lehet fordulni hozzánk.
@@ -130,7 +130,8 @@ Adataidat nem adjuk el, és nem adjuk át harmadik félnek reklám- vagy marketi
 
 - **Supabase** (Supabase, Inc.) – hitelesítés (felhasználói fiókok, bejelentkezés, Google- és Facebook-bejelentkezés kezelése) és adatbázis. A projektünk az Európai Unióban, Frankfurtban (eu-central-1) található adatközpontban fut. A Supabase további alvállalkozókat (például felhőinfrastruktúra-szolgáltatót) vehet igénybe. Adatvédelmi tájékoztatója: https://supabase.com/privacy
 - **Resend** – a megerősítő és jelszó-visszaállító e-mailek kézbesítése (a hitelesítési rendszer egyéni SMTP-szolgáltatójaként). Adatvédelmi tájékoztatója: https://resend.com/legal/privacy-policy
-- **Google** – az e-mailes megkereséseid fogadása (Gmail-fiók), az alkalmazás terjesztése a Google Playen.
+- **Porkbun** – a support@giftiary.app címre küldött levelek továbbítása a postafiókunkba.
+- **Google** – a megkereséseid fogadása és tárolása (Gmail-postafiók), az alkalmazás terjesztése a Google Playen.
 
 **Önálló adatkezelők:** ha Google- vagy Facebook-fiókkal jelentkezel be, a bejelentkezést a Google, illetve a Meta a saját adatkezelési szabályai szerint kezeli (https://policies.google.com/privacy, https://www.facebook.com/privacy/policy). Az Android biztonsági mentését és a Google Play-t a Google a saját feltételei szerint üzemelteti.
 
@@ -138,7 +139,7 @@ Ha jogszabály kötelez rá, az adatokat hatóságnak is átadhatjuk.
 
 ## 10. Adattovábbítás az EU-n kívülre
 
-A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alvállalkozóik – különösen az Egyesült Államokban székhellyel rendelkező szolgáltatók, mint a Supabase, a Resend és a Google – bizonyos adatokat az EU-n kívül is kezelhetnek (például üzemeltetés, támogatás vagy e-mail-kézbesítés során). Ilyen esetben az adattovábbítás az adatfeldolgozási szerződéseikben rögzített, a GDPR szerinti garanciákon alapul (például az Európai Bizottság általános szerződési feltételein vagy megfelelőségi határozatán, így az EU–USA adatvédelmi kereten, ha az adott szolgáltató csatlakozott hozzá).
+A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alvállalkozóik – különösen az Egyesült Államokban székhellyel rendelkező szolgáltatók, mint a Supabase, a Resend, a Porkbun és a Google – bizonyos adatokat az EU-n kívül is kezelhetnek (például üzemeltetés, támogatás vagy e-mail-kézbesítés során). Ilyen esetben az adattovábbítás az adatfeldolgozási szerződéseikben rögzített, a GDPR szerinti garanciákon alapul (például az Európai Bizottság általános szerződési feltételein vagy megfelelőségi határozatán, így az EU–USA adatvédelmi kereten, ha az adott szolgáltató csatlakozott hozzá).
 
 ## 11. Megőrzési idő
 
@@ -173,7 +174,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 - **A fiók többi eszközén** az adatok **nem törlődnek automatikusan**. Ezek az eszközök idővel kijelentkeznek, így az adatok a szokásos módon már nem érhetők el az alkalmazásban, de a helyi adatbázisukban megmaradhatnak. Ezeken az eszközökön az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
 - A biztonsági mentésekre a 11. pont vonatkozik.
 
-**Ha nem férsz hozzá az alkalmazáshoz:** vedd fel velünk a kapcsolatot a giftiary.owner.tests@example.com címen. Segítünk meghatározni a fiók biztonságos törlésének megfelelő módját. Jelszót, ellenőrző kódot vagy más bejelentkezési adatot soha ne küldj nekünk.
+**Ha nem férsz hozzá az alkalmazáshoz:** vedd fel velünk a kapcsolatot a support@giftiary.app címen. Segítünk meghatározni a fiók biztonságos törlésének megfelelő módját. Jelszót, ellenőrző kódot vagy más bejelentkezési adatot soha ne küldj nekünk.
 
 A fióktörlés lépései és részletei: https://giftiary.app/account-deletion/
 
@@ -188,7 +189,7 @@ A GDPR alapján jogosult vagy:
 - **adathordozhatóságot** kérni (az adataidat géppel olvasható formában megkapni);
 - **tiltakozni** a jogos érdeken alapuló adatkezelés ellen.
 
-Kérésedet a giftiary.owner.tests@example.com címre küldheted. Indokolatlan késedelem nélkül, legkésőbb egy hónapon belül válaszolunk. A kérés teljesítése előtt ellenőrizhetjük, hogy a fiók valóban hozzád tartozik.
+Kérésedet a support@giftiary.app címre küldheted. Indokolatlan késedelem nélkül, legkésőbb egy hónapon belül válaszolunk. A kérés teljesítése előtt ellenőrizhetjük, hogy a fiók valóban hozzád tartozik.
 
 Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (NAIH, 1055 Budapest, Falk Miksa utca 9–11., https://naih.hu), vagy a lakóhelyed szerinti uniós felügyeleti hatóságnál, illetve bírósághoz fordulhatsz.
 
@@ -215,8 +216,8 @@ A Giftiary jelenleg felnőtteknek készült, és nem gyermekeknek szól. Ha úgy
 
 ## 17. A tájékoztató módosítása
 
-Ha a Giftiary működése vagy az adatkezelés változik, frissítjük ezt a tájékoztatót, és a fenti hatálybalépési dátumot módosítjuk. A mindenkor hatályos változatot a https://giftiary.app oldalon tesszük közzé.
+Ha a Giftiary működése vagy az adatkezelés változik, frissítjük ezt a tájékoztatót, és a fenti hatálybalépési dátumot módosítjuk. A mindenkor hatályos változatot a https://giftiary.app/privacy/ oldalon tesszük közzé.
 
 ## 18. Kapcsolat
 
-Antal Tímea – giftiary.owner.tests@example.com – https://giftiary.app
+Antal Tímea – support@giftiary.app – https://giftiary.app
