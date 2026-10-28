@@ -1,6 +1,6 @@
 # Giftiary – Privacy Policy
 
-**Effective date:** [OWNER: date of publication, e.g. November … 2026]
+**Effective date:** 28 October 2026
 
 This policy explains how the Giftiary Android app and its service handle personal data. A Hungarian version with the same content is also available.
 
@@ -173,7 +173,9 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 - **On the account's other devices**, the data is **not deleted automatically**. Those devices will eventually be signed out, so the data is no longer available through the app in the normal way, but it may remain in their local database. You can remove it there by clearing the app's data or uninstalling the app.
 - For backups, see section 11.
 
-**If you cannot access the app:** email giftiary.owner.tests@example.com from the email address of your account, and we will delete your account. Information on how to delete your account is also available at https://giftiary.app. [OWNER: exact URL of the account deletion page]
+**If you cannot access the app:** contact us at giftiary.owner.tests@example.com. We will help determine the appropriate secure way to delete your account. Never send us your password, verification codes or other sign-in credentials.
+
+Account deletion steps and details: https://giftiary.app/account-deletion/
 
 ## 13. Your rights
 

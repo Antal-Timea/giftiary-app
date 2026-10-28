@@ -1,6 +1,6 @@
 # Giftiary – Adatkezelési tájékoztató
 
-**Hatályos:** [OWNER: a közzététel napja, pl. 2026. november …]
+**Hatályos:** 2026. október 28.
 
 Ez a tájékoztató azt írja le, hogyan kezeli a Giftiary Android-alkalmazás és a hozzá tartozó szolgáltatás a személyes adatokat. Az angol nyelvű változat tartalmilag megegyezik ezzel a szöveggel.
 
@@ -173,7 +173,9 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 - **A fiók többi eszközén** az adatok **nem törlődnek automatikusan**. Ezek az eszközök idővel kijelentkeznek, így az adatok a szokásos módon már nem érhetők el az alkalmazásban, de a helyi adatbázisukban megmaradhatnak. Ezeken az eszközökön az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
 - A biztonsági mentésekre a 11. pont vonatkozik.
 
-**Ha nem férsz hozzá az alkalmazáshoz:** írj a giftiary.owner.tests@example.com címre a fiókodhoz tartozó e-mail-címről, és töröljük a fiókodat. A törlés módjáról a https://giftiary.app oldalon is tájékoztatást adunk. [OWNER: a fióktörlési oldal pontos URL-je]
+**Ha nem férsz hozzá az alkalmazáshoz:** vedd fel velünk a kapcsolatot a giftiary.owner.tests@example.com címen. Segítünk meghatározni a fiók biztonságos törlésének megfelelő módját. Jelszót, ellenőrző kódot vagy más bejelentkezési adatot soha ne küldj nekünk.
+
+A fióktörlés lépései és részletei: https://giftiary.app/account-deletion/
 
 ## 13. Jogaid
 
