@@ -1,5 +1,8 @@
 # Giftiary privacy policy: working draft
 
+> **Superseded for publication (2026-10-28):** the final texts are `docs/legal/privacy-policy-hu.md`
+> and `docs/legal/privacy-policy-en.md`. This draft remains as the evidence collection behind them.
+
 > **Status: draft, not a legal document.** It collects what the app is observed to do, from the
 > repository, so that a person with the right expertise can write the real policy. Every
 > `[VERIFY]` item must be confirmed or replaced by the owner (and legal review where needed)
