@@ -453,6 +453,10 @@
     <string name="settings_display_name_hint">Shown to the people you share wishlists with. Leave it empty to show no name.</string>
     <string name="settings_save_name">Save name</string>
     <string name="settings_name_saved">Name saved</string>
+    <string name="settings_legal">Legal</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <!-- The published policy; the page holds both languages, the anchor picks this one. -->
+    <string name="settings_privacy_policy_url">https://giftiary.app/privacy/#en</string>
     <string name="settings_delete_account">Delete account</string>
     <string name="settings_delete_account_title">Delete your account?</string>
     <string name="settings_delete_account_message">Your Giftiary account and everything in it are deleted for good: people, occasions, gift ideas, gifts and wishlists. People you shared a wishlist with lose access to it, and your reservations on other lists are released. This can’t be undone.</string>

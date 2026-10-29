@@ -452,6 +452,9 @@
     <string name="settings_display_name_hint">Azok látják, akikkel kívánságlistát osztasz meg. Ha üresen hagyod, nem jelenik meg név.</string>
     <string name="settings_save_name">Név mentése</string>
     <string name="settings_name_saved">Név elmentve</string>
+    <string name="settings_legal">Jogi információk</string>
+    <string name="settings_privacy_policy">Adatkezelési tájékoztató</string>
+    <string name="settings_privacy_policy_url">https://giftiary.app/privacy/#hu</string>
     <string name="settings_delete_account">Fiók törlése</string>
     <string name="settings_delete_account_title">Törlöd a fiókodat?</string>
     <string name="settings_delete_account_message">A Giftiary-fiókod és minden benne lévő adat véglegesen törlődik: a személyek, alkalmak, ajándékötletek, ajándékok és kívánságlisták. Akikkel kívánságlistát osztottál meg, elvesztik a hozzáférést, a más listákon tett foglalásaid pedig megszűnnek. Ez nem vonható vissza.</string>
