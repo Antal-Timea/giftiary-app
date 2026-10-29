@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -133,6 +134,8 @@ private fun SettingsContent(
                 Heading(stringResource(R.string.settings_reminders))
                 ReminderCard(state = reminderState, actions = reminderActions)
             }
+            Heading(stringResource(R.string.settings_legal))
+            PrivacyPolicyLink()
             Heading(stringResource(R.string.settings_account))
             if (email != null) {
                 Text(
@@ -156,6 +159,21 @@ private fun SettingsContent(
         }
     }
     state.deleteDialog?.let { DeleteAccountConfirmation(it, actions) }
+}
+
+/** Opens the published privacy policy in the browser, in the app's language. */
+@Composable
+internal fun PrivacyPolicyLink(modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
+    val url = stringResource(R.string.settings_privacy_policy_url)
+    TextButton(
+        // Without a browser there is nothing to open it in; that is not an app error.
+        onClick = { runCatching { uriHandler.openUri(url) } },
+        modifier = modifier,
+        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText),
+    ) {
+        Text(stringResource(R.string.settings_privacy_policy))
+    }
 }
 
 @Composable
