@@ -63,7 +63,7 @@ class AppSectionsTest {
             AddPersonRoute::class, EditPersonRoute::class,
             AddOccasionRoute::class, EditOccasionRoute::class,
             AddGiftRoute::class, EditGiftRoute::class,
-            AddGiftIdeaRoute::class, EditGiftIdeaRoute::class, MarkGiftIdeaGivenRoute::class,
+            AddGiftIdeaRoute::class, EditGiftIdeaRoute::class,
             AddWishlistRoute::class, EditWishlistRoute::class, AddWishRoute::class, EditWishRoute::class,
             WishlistAccessRoute::class, JoinWishlistRoute::class,
             SyncAttentionRoute::class, SettingsRoute::class,
@@ -75,12 +75,14 @@ class AppSectionsTest {
     }
 
     @Test
-    fun `the four roots and the screens browsed from them show the unit, Person detail included`() {
+    fun `the four roots and the screens browsed from them show the unit, Person detail and Mark as given included`() {
         listOf(
             HomeRoute::class, PeopleRoute::class, GiftHistoryRoute::class, WishlistsRoute::class,
             PersonDetailRoute::class, GiftDetailRoute::class, GiftIdeaDetailRoute::class,
-            WishlistDetailRoute::class, SharedWishlistRoute::class,
+            MarkGiftIdeaGivenRoute::class, WishlistDetailRoute::class, SharedWishlistRoute::class,
         ).forEach { assertTrue("$it shows the unit", it in routesWithNavigationBar) }
+        // With the Gifts tab selected, as drawn.
+        assertEquals(AppSection.GIFTS, routeSections[MarkGiftIdeaGivenRoute::class])
     }
 
     @Test
