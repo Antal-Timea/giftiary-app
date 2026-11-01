@@ -154,6 +154,15 @@
     <string name="gift_product_url">Termék linkje</string>
     <string name="gift_product_url_optional">Termék linkje (nem kötelező)</string>
     <string name="gift_note">Megjegyzés</string>
+    <string name="gift_photo">Fotó</string>
+    <string name="gift_photo_add">Fotó hozzáadása</string>
+    <string name="gift_photo_replace">Fotó cseréje</string>
+    <string name="gift_photo_remove">Fotó eltávolítása</string>
+    <string name="gift_photo_description">Az ajándék fotója</string>
+    <string name="gift_photo_unreadable">Ezt a képet nem sikerült megnyitni. Próbálj egy másikat.</string>
+    <string name="gift_photo_unavailable">A fotó most nem érhető el.</string>
+    <string name="gift_photo_pending">Ezen az eszközön mentve, feltöltésre vár</string>
+    <string name="gift_photo_unavailable_on_save">A fotó már nincs ezen az eszközön. Add hozzá újra.</string>
     <string name="gift_note_optional">Megjegyzés (nem kötelező)</string>
     <string name="gift_delete">Ajándék törlése</string>
     <string name="gift_delete_dialog_title">Törlöd: %1$s?</string>

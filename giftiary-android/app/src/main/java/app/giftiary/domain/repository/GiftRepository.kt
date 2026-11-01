@@ -61,6 +61,8 @@ data class GiftDetails(
     val price: Money?,
     val productUrl: String?,
     val note: String?,
+    /** The gift's photo ([GiftPhotoRepository.importPhoto]); null for none. Replaces any earlier one. */
+    val photoPath: String? = null,
 )
 
 /**

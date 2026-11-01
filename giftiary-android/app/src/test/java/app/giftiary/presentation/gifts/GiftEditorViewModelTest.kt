@@ -3,10 +3,12 @@ package app.giftiary.presentation.gifts
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.OccasionType
+import app.giftiary.domain.repository.GiftPhotoUnavailableException
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.repository.PersonNotFoundException
 import app.giftiary.domain.usecase.GiftInputError
 import app.giftiary.domain.usecase.SaveGiftUseCase
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeGiftRepository
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.testing.FakePersonRepository
@@ -40,6 +42,7 @@ class GiftEditorViewModelTest {
     private val anna = person("Anna")
     private val bela = person("Béla")
     private val people = FakePersonRepository().apply { givenPeople(anna, bela) }
+    private val photos = FakeGiftPhotoRepository()
     private val occasions = FakeOccasionRepository()
     private val gifts = FakeGiftRepository().apply {
         people[anna.id] = anna
@@ -67,7 +70,7 @@ class GiftEditorViewModelTest {
     }
 
     private fun viewModel(target: GiftEditorTarget = GiftEditorTarget.New()) =
-        GiftEditorViewModel(target, people, occasions, gifts, SaveGiftUseCase(gifts), clock)
+        GiftEditorViewModel(target, people, occasions, gifts, SaveGiftUseCase(gifts), photos, clock)
 
     @Test
     fun `a new gift starts as given today in the default currency`() {
@@ -312,5 +315,81 @@ class GiftEditorViewModelTest {
 
         assertEquals(GiftEditorStatus.EDITING, viewModel.uiState.value.status)
         assertEquals(listOf(null, annasBirthday), viewModel.uiState.value.occasionOptions)
+    }
+
+    // ---- photo ----
+
+    @Test
+    fun `a picked photo is shown and saved with the gift`() = runTest {
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onNameChange("Book")
+
+        viewModel.onPhotoPicked("content://picked/1")
+
+        val state = viewModel.uiState.value
+        val path = state.photoPath!!
+        assertFalse(state.photoBusy)
+        assertEquals("content://picked/1", state.photo!!.bytes.decodeToString())
+        viewModel.save()
+        assertEquals(path, gifts.lastSaved!!.photoPath)
+    }
+
+    @Test
+    fun `a gift without a photo is saved without one`() = runTest {
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onNameChange("Book")
+
+        viewModel.save()
+
+        assertNull(gifts.lastSaved!!.photoPath)
+        assertTrue(photos.imported.isEmpty())
+    }
+
+    @Test
+    fun `an existing photo is loaded, and can be replaced or removed`() = runTest {
+        val path = photos.importPhoto("content://old")
+        val entry = giftEntry(giftDetails(person = anna).copy(photoPath = path), anna)
+        gifts.givenGifts(entry)
+        val viewModel = viewModel(GiftEditorTarget.Existing(entry.gift.id))
+        assertEquals("content://old", viewModel.uiState.value.photo!!.bytes.decodeToString())
+
+        viewModel.onPhotoPicked("content://new")
+        val replacement = viewModel.uiState.value.photoPath
+        assertTrue(replacement != path)
+        viewModel.onPhotoRemoved()
+        assertNull(viewModel.uiState.value.photo)
+
+        viewModel.save()
+        assertNull(gifts.lastSaved!!.photoPath)
+    }
+
+    @Test
+    fun `an unreadable pick keeps the previous photo and says so`() = runTest {
+        photos.unreadable += "content://broken"
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onPhotoPicked("content://fine")
+        val kept = viewModel.uiState.value.photoPath
+
+        viewModel.onPhotoPicked("content://broken")
+
+        assertEquals(GiftPhotoError.UNREADABLE, viewModel.uiState.value.photoError)
+        assertEquals(kept, viewModel.uiState.value.photoPath)
+        viewModel.onPhotoErrorShown()
+        assertNull(viewModel.uiState.value.photoError)
+    }
+
+    @Test
+    fun `a photo gone from the device when saving is dropped and reported`() = runTest {
+        gifts.writeFailure = GiftPhotoUnavailableException()
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onNameChange("Book")
+        viewModel.onPhotoPicked("content://picked")
+
+        viewModel.save()
+
+        val state = viewModel.uiState.value
+        assertEquals(GiftWriteError.PHOTO_UNAVAILABLE, state.writeError)
+        assertNull(state.photoPath)
+        assertEquals(GiftEditorStatus.EDITING, state.status)
     }
 }

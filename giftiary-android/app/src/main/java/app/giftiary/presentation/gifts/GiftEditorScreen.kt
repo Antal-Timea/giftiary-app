@@ -82,6 +82,9 @@ fun GiftEditorScreen(
             onNoteChange = viewModel::onNoteChange,
             onSave = viewModel::save,
             onWriteErrorShown = viewModel::onWriteErrorShown,
+            onPhotoPicked = viewModel::onPhotoPicked,
+            onPhotoRemoved = viewModel::onPhotoRemoved,
+            onPhotoErrorShown = viewModel::onPhotoErrorShown,
         ),
     )
 }
@@ -100,6 +103,9 @@ class GiftEditorActions(
     val onNoteChange: (String) -> Unit,
     val onSave: () -> Unit,
     val onWriteErrorShown: () -> Unit,
+    val onPhotoPicked: (String) -> Unit = {},
+    val onPhotoRemoved: () -> Unit = {},
+    val onPhotoErrorShown: () -> Unit = {},
 )
 
 @Composable
@@ -116,6 +122,7 @@ fun GiftEditorScreen(
                 GiftWriteError.FAILED -> R.string.gift_write_failed
                 GiftWriteError.PERSON_UNAVAILABLE -> R.string.gift_person_unavailable
                 GiftWriteError.OCCASION_UNAVAILABLE -> R.string.gift_occasion_unavailable
+                GiftWriteError.PHOTO_UNAVAILABLE -> R.string.gift_photo_unavailable_on_save
             },
         )
     }
@@ -123,6 +130,13 @@ fun GiftEditorScreen(
         if (writeErrorMessage != null) {
             snackbarHostState.showSnackbar(writeErrorMessage)
             actions.onWriteErrorShown()
+        }
+    }
+    val photoErrorMessage = state.photoError?.let { stringResource(R.string.gift_photo_unreadable) }
+    LaunchedEffect(photoErrorMessage) {
+        if (photoErrorMessage != null) {
+            snackbarHostState.showSnackbar(photoErrorMessage)
+            actions.onPhotoErrorShown()
         }
     }
 
@@ -229,6 +243,15 @@ private fun GiftForm(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 singleLine = false,
                 minLines = 3,
+            )
+            GiftPhotoField(
+                hasPhoto = state.photoPath != null,
+                photo = state.photo,
+                busy = state.photoBusy,
+                enabled = canEdit,
+                onPick = actions.onPhotoPicked,
+                onRemove = actions.onPhotoRemoved,
+                modifier = Modifier.fillMaxWidth(),
             )
     }
     // A lone message and button stay one column even on a wide window.

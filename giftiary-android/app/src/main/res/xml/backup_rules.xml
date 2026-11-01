@@ -16,6 +16,8 @@
         to an account that is already gone.
     -->
     <exclude domain="sharedpref" path="giftiary_account_deletion.xml" />
+    <!-- Gift photos belong with the database: they reach a new device by syncing. -->
+    <exclude domain="file" path="gift-photos/" />
     <!--
         The account's data lives on the server; a new device gets it by signing in and syncing.
         Restoring the local database would also restore its sync queue, mutation ids and owner

@@ -73,6 +73,10 @@ interface GiftDao {
     @Query("SELECT * FROM gift WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): GiftEntity?
 
+    /** Every photo the owner's gifts name, deleted gifts included. */
+    @Query("SELECT photoPath FROM gift WHERE ownerUserId = :ownerUserId AND photoPath IS NOT NULL")
+    suspend fun getPhotoPaths(ownerUserId: UUID): List<String>
+
     /** Whichever account's row has [id]; for sync, which must tell another account's row from none. */
     @Query("SELECT * FROM gift WHERE id = :id")
     suspend fun findByIdForAnyOwner(id: UUID): GiftEntity?

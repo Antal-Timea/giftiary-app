@@ -4,6 +4,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.logging.LogLevel
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.storage.resumable.MemoryResumableCache
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -30,6 +32,11 @@ class AccountBoundClients(
             httpEngine = engine
             accessToken = { account.accessToken }
             install(Postgrest)
+            install(Storage) {
+                // Photos are small single-request uploads. The default cache of resumable upload
+                // URLs would be a settings file of its own, created on first use of a bucket.
+                resumable { cache = MemoryResumableCache() }
+            }
         }
         try {
             return block(client)

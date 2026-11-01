@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.giftiary.data.local.GiftiaryDatabase
 import app.giftiary.data.local.SyncOperationQueue
 import app.giftiary.data.local.entity.SyncEntityType
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -68,6 +69,7 @@ class ActiveOwnerRepositoriesTest {
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock,
             SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(),

@@ -10,6 +10,7 @@ import app.giftiary.data.local.entity.RemoteState
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -77,6 +78,7 @@ class GiftIdeaRepositoryImplTest {
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock,
             SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         people = PersonRepositoryImpl(
             database, database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock, SyncRequester {},

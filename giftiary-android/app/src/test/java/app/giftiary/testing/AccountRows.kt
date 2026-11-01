@@ -5,6 +5,8 @@ import app.giftiary.data.local.entity.GiftEntity
 import app.giftiary.data.local.entity.GiftIdeaEntity
 import app.giftiary.data.local.entity.OccasionEntity
 import app.giftiary.data.local.entity.PersonEntity
+import app.giftiary.data.local.entity.PhotoTransferEntity
+import app.giftiary.data.local.entity.PhotoTransferKind
 import app.giftiary.data.local.entity.RemoteState
 import app.giftiary.data.local.entity.SyncConflictEntity
 import app.giftiary.data.local.entity.SyncEntityType
@@ -22,12 +24,12 @@ import java.util.UUID
 private val NOW: Instant = Instant.parse("2026-10-25T12:00:00Z")
 
 /** Every table the app keeps, so a test can see that none is left out. */
-val ACCOUNT_TABLES = listOf("person", "occasion", "gift_idea", "gift", "wishlist", "wish", "sync_operation", "sync_conflict")
+val ACCOUNT_TABLES = listOf("person", "occasion", "gift_idea", "gift", "wishlist", "wish", "sync_operation", "sync_conflict", "photo_transfer")
 
 /**
  * One row of [owner] in every table, linked the way the app links them (an idea for a person's
  * birthday, the gift it became, a list for the person with a wish), each with a pending create,
- * and one conflict.
+ * one conflict and one pending photo upload.
  */
 suspend fun GiftiaryDatabase.seedAccount(owner: UUID) {
     val person = PersonEntity(UUID.randomUUID(), owner, "Anna", null, null, null, 1, RemoteState.SYNCED, NOW, NOW, null)
@@ -54,6 +56,7 @@ suspend fun GiftiaryDatabase.seedAccount(owner: UUID) {
     syncConflictDao().insert(
         SyncConflictEntity(UUID.randomUUID(), owner, SyncEntityType.PERSON, person.id, UUID.randomUUID(), 1, 2, "{}", NOW, null),
     )
+    photoTransferDao().put(PhotoTransferEntity("$owner/${UUID.randomUUID()}.jpg", owner, gift.id, PhotoTransferKind.UPLOAD, NOW, 0, null))
 }
 
 fun pendingCreate(owner: UUID?, type: SyncEntityType, entityId: UUID) = SyncOperationEntity(

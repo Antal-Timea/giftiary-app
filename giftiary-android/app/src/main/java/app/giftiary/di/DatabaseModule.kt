@@ -7,11 +7,13 @@ import app.giftiary.data.local.MIGRATION_1_2
 import app.giftiary.data.local.MIGRATION_2_3
 import app.giftiary.data.local.MIGRATION_3_4
 import app.giftiary.data.local.MIGRATION_4_5
+import app.giftiary.data.local.MIGRATION_5_6
 import app.giftiary.data.local.dao.AccountDataDao
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
 import app.giftiary.data.local.dao.OccasionDao
 import app.giftiary.data.local.dao.PersonDao
+import app.giftiary.data.local.dao.PhotoTransferDao
 import app.giftiary.data.local.dao.SyncConflictDao
 import app.giftiary.data.local.dao.SyncOperationDao
 import app.giftiary.data.local.dao.WishDao
@@ -31,7 +33,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GiftiaryDatabase =
         Room.databaseBuilder(context, GiftiaryDatabase::class.java, GiftiaryDatabase.NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
 
     @Provides
@@ -60,4 +62,7 @@ object DatabaseModule {
 
     @Provides
     fun provideAccountDataDao(database: GiftiaryDatabase): AccountDataDao = database.accountDataDao()
+
+    @Provides
+    fun providePhotoTransferDao(database: GiftiaryDatabase): PhotoTransferDao = database.photoTransferDao()
 }

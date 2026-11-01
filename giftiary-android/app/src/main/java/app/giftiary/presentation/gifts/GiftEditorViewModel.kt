@@ -9,6 +9,8 @@ import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftNotFoundException
+import app.giftiary.domain.repository.GiftPhotoRepository
+import app.giftiary.domain.repository.GiftPhotoUnavailableException
 import app.giftiary.domain.repository.GiftRepository
 import app.giftiary.domain.repository.OccasionNotFoundException
 import app.giftiary.domain.repository.OccasionRepository
@@ -53,6 +55,7 @@ class GiftEditorViewModel @AssistedInject constructor(
     private val occasionRepository: OccasionRepository,
     private val giftRepository: GiftRepository,
     private val saveGift: SaveGiftUseCase,
+    private val photos: GiftPhotoRepository,
     clock: Clock,
 ) : ViewModel() {
 
@@ -125,6 +128,32 @@ class GiftEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(writeError = null) }
     }
 
+    /** [source]: the content URI the photo picker returned. */
+    fun onPhotoPicked(source: String) {
+        if (_uiState.value.photoBusy) return
+        _uiState.update { it.copy(photoBusy = true, photoError = null) }
+        viewModelScope.launch {
+            try {
+                // Stored on this device at once; the gift takes it only when saved.
+                val path = photos.importPhoto(source)
+                val bytes = photos.loadPhoto(path)
+                _uiState.update { it.copy(photoBusy = false, photoPath = path, photo = bytes?.let(::LoadedPhoto)) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(photoBusy = false, photoError = GiftPhotoError.UNREADABLE) }
+            }
+        }
+    }
+
+    fun onPhotoRemoved() {
+        _uiState.update { it.copy(photoPath = null, photo = null, photoError = null) }
+    }
+
+    fun onPhotoErrorShown() {
+        _uiState.update { it.copy(photoError = null) }
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.status != GiftEditorStatus.EDITING || state.isBusy) return
@@ -160,6 +189,8 @@ class GiftEditorViewModel @AssistedInject constructor(
                 _uiState.update { it.copy(isBusy = false, writeError = GiftWriteError.PERSON_UNAVAILABLE) }
             } catch (_: OccasionNotFoundException) {
                 _uiState.update { it.copy(isBusy = false, writeError = GiftWriteError.OCCASION_UNAVAILABLE) }
+            } catch (_: GiftPhotoUnavailableException) {
+                _uiState.update { it.copy(isBusy = false, photoPath = null, photo = null, writeError = GiftWriteError.PHOTO_UNAVAILABLE) }
             } catch (_: Exception) {
                 _uiState.update { it.copy(isBusy = false, writeError = GiftWriteError.FAILED) }
             }
@@ -171,6 +202,11 @@ class GiftEditorViewModel @AssistedInject constructor(
             try {
                 val entry = giftRepository.getGift(id)
                 _uiState.update { if (entry == null) it.copy(status = GiftEditorStatus.NOT_FOUND) else it.loaded(entry) }
+                entry?.gift?.photoPath?.let { path ->
+                    val bytes = photos.loadPhoto(path)
+                    // Only if the user has not picked or removed a photo meanwhile.
+                    _uiState.update { if (it.photoPath == path) it.copy(photo = bytes?.let(::LoadedPhoto)) else it }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -251,6 +287,7 @@ class GiftEditorViewModel @AssistedInject constructor(
                 currencyCode = gift.price?.currencyCode ?: DefaultCurrency.CODE,
                 productUrl = gift.productUrl.orEmpty(),
                 note = gift.note.orEmpty(),
+                photoPath = gift.photoPath,
             )
         }
 
@@ -266,6 +303,7 @@ class GiftEditorViewModel @AssistedInject constructor(
                 price = price,
                 productUrl = productUrl,
                 note = note,
+                photoPath = photoPath,
             )
         }
     }
@@ -304,6 +342,13 @@ data class GiftEditorUiState(
     /** A save is in progress; further saves are ignored. */
     val isBusy: Boolean = false,
     val writeError: GiftWriteError? = null,
+    /** The photo the gift will be saved with; null for none. */
+    val photoPath: String? = null,
+    /** Its image, once read; null while loading or if it is not available now. */
+    val photo: LoadedPhoto? = null,
+    /** A picked image is being prepared. */
+    val photoBusy: Boolean = false,
+    val photoError: GiftPhotoError? = null,
 ) {
     /** Active people, plus the gift's original person while it stays selected, even if deleted. */
     val personOptions: List<Person>
@@ -331,6 +376,11 @@ enum class GiftEditorStatus {
     CLOSED,
 }
 
+enum class GiftPhotoError {
+    /** The picked file could not be read as an image. */
+    UNREADABLE,
+}
+
 enum class GiftWriteError {
     FAILED,
 
@@ -339,4 +389,7 @@ enum class GiftWriteError {
 
     /** The chosen occasion was deleted meanwhile or no longer fits the person. */
     OCCASION_UNAVAILABLE,
+
+    /** The picked photo is no longer on this device; pick it again. */
+    PHOTO_UNAVAILABLE,
 }

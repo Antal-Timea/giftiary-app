@@ -115,6 +115,7 @@ fun GiftDetailScreen(
             GiftDetailContent.LoadFailed -> MessageContent(stringResource(R.string.gift_load_failed), contentModifier)
             is GiftDetailContent.Loaded -> GiftDetails(
                 entry = state.content.entry,
+                photo = state.photo,
                 deleteEnabled = !state.actions.isDeleting,
                 onDeleteRequested = onDeleteRequested,
                 modifier = contentModifier,
@@ -136,6 +137,7 @@ fun GiftDetailScreen(
 @Composable
 private fun GiftDetails(
     entry: GiftEntry,
+    photo: GiftDetailPhoto?,
     deleteEnabled: Boolean,
     onDeleteRequested: () -> Unit,
     modifier: Modifier = Modifier,
@@ -150,6 +152,7 @@ private fun GiftDetails(
         verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
     ) {
         GiftDirectionTag(gift.direction)
+        photo?.let { GiftPhotoView(photo = it.photo, loading = it.loading, uploadPending = it.uploadPending) }
         giftPeople(entry)?.let { DetailField(label = giftPersonLabel(gift.direction), value = it) }
         DetailField(label = stringResource(R.string.gift_date), value = giftDate(gift.givenAt))
         entry.occasion?.let { DetailField(label = stringResource(R.string.gift_occasion), value = occasionTitle(it)) }

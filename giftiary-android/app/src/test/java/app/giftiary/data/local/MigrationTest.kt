@@ -364,6 +364,27 @@ class MigrationTest {
         }
     }
 
+    // ---- v5 to v6: pending photo transfers ----
+
+    @Test
+    fun `v5 to v6 adds the photo transfer table and keeps every value of every row`() = runTest {
+        val before = helper.createDatabase(DB_NAME, 5).use { db ->
+            insertFullGraph(db, wishOwners = true)
+            ALL_TABLES.associateWith { rows(db, "SELECT * FROM `$it` ORDER BY id") }
+        }
+
+        helper.runMigrationsAndValidate(DB_NAME, 6, true, MIGRATION_5_6).use { db ->
+            ALL_TABLES.forEach { table ->
+                assertEquals("rows of $table", before.getValue(table), rows(db, "SELECT * FROM `$table` ORDER BY id"))
+            }
+            assertEquals(0, db.query("SELECT COUNT(*) FROM photo_transfer").use { it.moveToFirst(); it.getInt(0) })
+            assertEquals(
+                mapOf("index_photo_transfer_ownerUserId_createdAt" to (listOf("ownerUserId", "createdAt") to false)),
+                indexes(db, "photo_transfer"),
+            )
+        }
+    }
+
     private fun assertNoDeferredForeignKeys(db: SupportSQLiteDatabase) {
         REBUILT_TABLES.forEach { table ->
             val sql = db.query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table)).use {
@@ -374,8 +395,12 @@ class MigrationTest {
         }
     }
 
-    /** Two accounts, every table, and every kind of row and reference the app writes. */
-    private fun insertFullGraph(db: SupportSQLiteDatabase) {
+    /**
+     * Two accounts, every table, and every kind of row and reference the app writes. From v5 on a
+     * wish carries its owner, so [wishOwners] adds it.
+     */
+    private fun insertFullGraph(db: SupportSQLiteDatabase, wishOwners: Boolean = false) {
+        fun ownerOf(wish: UUID) = if (wishOwners) mapOf("ownerUserId" to WISH_OWNERS.getValue(wish.toString())) else emptyMap()
         insert(db, "person", person(PERSON_A, alice, version = 3, remoteState = "SYNCED"))
         insert(db, "person", person(PERSON_GONE, alice, version = 2, remoteState = "SYNCED", deletedAt = 1_700_000_100_000))
         insert(db, "person", person(PERSON_B, bob))
@@ -397,6 +422,7 @@ class MigrationTest {
             gift(GIFT_FROM_IDEA, alice, "GIVEN", giver = null, recipient = PERSON_A) + mapOf(
                 "occasionId" to OCCASION_A.toString(), "sourceGiftIdeaId" to IDEA_GIVEN.toString(),
                 "priceAmountMinor" to 11990L, "priceCurrencyCode" to "HUF", "version" to 1L, "remoteState" to "SYNCED",
+                "photoPath" to "$alice/d0000000-0000-4000-8000-000000000001.jpg",
             ),
         )
         insert(db, "gift", gift(GIFT_RECEIVED, bob, "RECEIVED", giver = PERSON_B, recipient = null) + mapOf("note" to "Thanks"))
@@ -406,8 +432,8 @@ class MigrationTest {
         )
         insert(db, "wishlist", wishlist(WISHLIST_A, alice, PERSON_A))
         insert(db, "wishlist", wishlist(WISHLIST_OWN, bob, null))
-        insert(db, "wish", wish(WISH_A, WISHLIST_A) + mapOf("estimatedPriceAmountMinor" to 5000L, "estimatedPriceCurrencyCode" to "EUR"))
-        insert(db, "wish", wish(WISH_OWN, WISHLIST_OWN) + mapOf("deletedAt" to 1_700_000_500_000L))
+        insert(db, "wish", wish(WISH_A, WISHLIST_A) + ownerOf(WISH_A) + mapOf("estimatedPriceAmountMinor" to 5000L, "estimatedPriceCurrencyCode" to "EUR"))
+        insert(db, "wish", wish(WISH_OWN, WISHLIST_OWN) + ownerOf(WISH_OWN) + mapOf("deletedAt" to 1_700_000_500_000L))
         // Pending; blocked with an attempt; in flight with a newer change queued and its attempts; unowned.
         insert(db, "sync_operation", operation(1, bob, "PERSON", PERSON_B, "CREATE"))
         insert(
@@ -548,7 +574,7 @@ class MigrationTest {
 
     private suspend fun withRoom(block: suspend (GiftiaryDatabase) -> Unit) {
         val room = Room.databaseBuilder(context, GiftiaryDatabase::class.java, DB_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
         try {
             block(room)

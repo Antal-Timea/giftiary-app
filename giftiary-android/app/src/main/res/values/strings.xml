@@ -155,6 +155,15 @@
     <string name="gift_product_url">Product link</string>
     <string name="gift_product_url_optional">Product link (optional)</string>
     <string name="gift_note">Note</string>
+    <string name="gift_photo">Photo</string>
+    <string name="gift_photo_add">Add photo</string>
+    <string name="gift_photo_replace">Replace photo</string>
+    <string name="gift_photo_remove">Remove photo</string>
+    <string name="gift_photo_description">Photo of the gift</string>
+    <string name="gift_photo_unreadable">This image couldn’t be opened. Try another one.</string>
+    <string name="gift_photo_unavailable">The photo isn’t available right now.</string>
+    <string name="gift_photo_pending">Saved on this device, waiting to upload</string>
+    <string name="gift_photo_unavailable_on_save">The photo is no longer on this device. Add it again.</string>
     <string name="gift_note_optional">Note (optional)</string>
     <string name="gift_delete">Delete gift</string>
     <string name="gift_delete_dialog_title">Delete %1$s?</string>

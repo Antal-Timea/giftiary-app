@@ -11,6 +11,7 @@ import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
 import app.giftiary.data.local.dao.OccasionDao
 import app.giftiary.data.local.dao.PersonDao
+import app.giftiary.data.local.dao.PhotoTransferDao
 import app.giftiary.data.local.dao.SyncConflictDao
 import app.giftiary.data.local.dao.SyncOperationDao
 import app.giftiary.data.local.dao.WishDao
@@ -19,6 +20,7 @@ import app.giftiary.data.local.entity.GiftEntity
 import app.giftiary.data.local.entity.GiftIdeaEntity
 import app.giftiary.data.local.entity.OccasionEntity
 import app.giftiary.data.local.entity.PersonEntity
+import app.giftiary.data.local.entity.PhotoTransferEntity
 import app.giftiary.data.local.entity.SyncConflictEntity
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.data.local.entity.WishEntity
@@ -34,8 +36,9 @@ import app.giftiary.data.local.entity.WishlistEntity
         WishEntity::class,
         SyncOperationEntity::class,
         SyncConflictEntity::class,
+        PhotoTransferEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(UuidConverter::class, TimeConverters::class, EnumConverters::class)
@@ -58,6 +61,8 @@ abstract class GiftiaryDatabase : RoomDatabase() {
     abstract fun wishDao(): WishDao
 
     abstract fun accountDataDao(): AccountDataDao
+
+    abstract fun photoTransferDao(): PhotoTransferDao
 
     companion object {
         const val NAME = "giftiary.db"

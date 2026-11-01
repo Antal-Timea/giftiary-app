@@ -274,3 +274,18 @@ private val IMMEDIATE_FOREIGN_KEY_TABLES = listOf(
         indexedColumns = listOf("wishlistId"),
     ),
 )
+
+/** v6 adds the local-only queue of gift photo uploads and deletions; nothing existing changes. */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Room's v6 definitions, copied verbatim.
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `photo_transfer` (`path` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, " +
+                "`giftId` TEXT NOT NULL, `kind` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `attemptCount` INTEGER NOT NULL, " +
+                "`lastErrorCode` TEXT, PRIMARY KEY(`path`))",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_photo_transfer_ownerUserId_createdAt` ON `photo_transfer` (`ownerUserId`, `createdAt`)",
+        )
+    }
+}

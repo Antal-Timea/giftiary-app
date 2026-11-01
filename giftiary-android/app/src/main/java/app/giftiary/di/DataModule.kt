@@ -4,6 +4,7 @@ import app.giftiary.data.reminders.ReminderScheduler
 import app.giftiary.data.reminders.ReminderSettingsRepositoryImpl
 import app.giftiary.data.reminders.WorkManagerReminderScheduler
 import app.giftiary.data.repository.GiftIdeaRepositoryImpl
+import app.giftiary.data.photos.GiftPhotoRepositoryImpl
 import app.giftiary.data.repository.GiftRepositoryImpl
 import app.giftiary.data.repository.OccasionRepositoryImpl
 import app.giftiary.data.repository.PersonRepositoryImpl
@@ -20,6 +21,7 @@ import app.giftiary.data.user.OwnerSession
 import app.giftiary.domain.repository.AccountDeletion
 import app.giftiary.domain.repository.AccountSession
 import app.giftiary.domain.repository.GiftIdeaRepository
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.GiftRepository
 import app.giftiary.domain.repository.OccasionRepository
 import app.giftiary.domain.repository.PersonRepository
@@ -44,6 +46,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindGiftRepository(impl: GiftRepositoryImpl): GiftRepository
+
+    @Binds
+    abstract fun bindGiftPhotoRepository(impl: GiftPhotoRepositoryImpl): GiftPhotoRepository
 
     @Binds
     abstract fun bindGiftIdeaRepository(impl: GiftIdeaRepositoryImpl): GiftIdeaRepository

@@ -2,6 +2,7 @@ package app.giftiary.data.user
 
 import android.util.Log
 import app.giftiary.data.local.dao.AccountDataDao
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.reminders.ReminderNotifier
 import app.giftiary.data.reminders.ReminderPreferences
 import app.giftiary.data.reminders.ReminderSignOut
@@ -39,7 +40,8 @@ import javax.inject.Singleton
  * server may have done is always finished, by the next start if the app stops in between.
  *
  * Finishing on this device: the account is closed (and stays closed), its sync and reminders stop,
- * its reminder choices and rows are deleted, and its session is forgotten without the network.
+ * its reminder choices, rows and photo files are deleted, and its session is forgotten without the
+ * network.
  */
 @Singleton
 class AccountDeleter @Inject constructor(
@@ -52,6 +54,7 @@ class AccountDeleter @Inject constructor(
     private val reminderSignOut: ReminderSignOut,
     private val reminderPreferences: ReminderPreferences,
     private val reminderNotifier: ReminderNotifier,
+    private val photoFiles: GiftPhotoFiles,
     @ApplicationScope private val scope: CoroutineScope,
 ) : AccountDeletion {
 
@@ -157,6 +160,7 @@ class AccountDeleter @Inject constructor(
             }
             reminderPreferences.forget(owner)
             accountData.purge(owner)
+            photoFiles.deleteAll(owner)
             if (!otherAccount) authRepository.clearLocalSession()
         } catch (e: CancellationException) {
             throw e
