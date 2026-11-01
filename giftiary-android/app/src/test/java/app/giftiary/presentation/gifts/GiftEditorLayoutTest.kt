@@ -40,9 +40,10 @@ import org.robolectric.annotation.Config
 import java.time.LocalDate
 
 /** Where the gift form puts its fields at each width class, measured on the laid-out editor. */
+// Tall enough for the whole phone form, labels above fields, to fit without scrolling.
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "w1280dp-h1100dp")
+@Config(sdk = [34], qualifiers = "w1280dp-h1400dp")
 class GiftEditorLayoutTest {
 
     @get:Rule

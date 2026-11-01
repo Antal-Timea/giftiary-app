@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -20,9 +19,9 @@ import app.giftiary.R
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.repository.GiftEntry
+import app.giftiary.presentation.components.directionColor
 import app.giftiary.presentation.occasions.OccasionDateFormatter
 import app.giftiary.presentation.theme.GiftiarySpacing
-import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.LocalDate
 
 @Composable
@@ -75,13 +74,6 @@ fun priceErrorText(error: PriceError, currencyCode: String): String = when (erro
     PriceError.INVALID -> stringResource(R.string.gift_error_price_invalid)
     PriceError.NEGATIVE -> stringResource(R.string.gift_error_price_negative)
     PriceError.TOO_PRECISE -> stringResource(R.string.gift_error_price_too_precise, currencyCode)
-}
-
-@Composable
-@ReadOnlyComposable
-fun directionColor(direction: GiftDirection): Color = when (direction) {
-    GiftDirection.GIVEN -> GiftiaryTheme.colors.directionGiven
-    GiftDirection.RECEIVED -> GiftiaryTheme.colors.directionReceived
 }
 
 /** Direction as icon plus text in its semantic color, so it never relies on color alone. */

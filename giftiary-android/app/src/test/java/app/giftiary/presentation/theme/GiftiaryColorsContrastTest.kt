@@ -24,6 +24,12 @@ class GiftiaryColorsContrastTest {
                 "textPrimary on background" to (colors.textPrimary to colors.background),
                 "textPrimary on surfaceElevated" to (colors.textPrimary to colors.surfaceElevated),
                 "textPrimary on surfaceContext" to (colors.textPrimary to colors.surfaceContext),
+                "textLabel on surfaceContext" to (colors.textLabel to colors.surfaceContext),
+                "textPrimary on surfaceAlt" to (colors.textPrimary to colors.surfaceAlt),
+                "selected chip text on selected" to (colors.background to colors.selected),
+                "navigationUnselected on navigationSurface" to (colors.navigationUnselected to colors.navigationSurface),
+                "directionGiven on background" to (colors.directionGiven to colors.background),
+                "directionReceived on background" to (colors.directionReceived to colors.background),
                 "textSecondary on background" to (colors.textSecondary to colors.background),
                 "textSecondary on surfaceElevated" to (colors.textSecondary to colors.surfaceElevated),
                 "textMuted on background" to (colors.textMuted to colors.background),
@@ -41,6 +47,14 @@ class GiftiaryColorsContrastTest {
         forEachTheme { colors ->
             assertContrast("primaryAction on background", colors.primaryAction to colors.background, minimum = 3.0)
             assertContrast("inputFocused on inputSurface", colors.inputFocused to colors.inputSurface, minimum = 3.0)
+        }
+    }
+
+    @Test
+    fun `metadata text stays legible though below normal-text contrast`() {
+        // DS-01 allows textTertiary only for non-essential metadata at 11.5sp and up.
+        forEachTheme { colors ->
+            assertContrast("textTertiary on background", colors.textTertiary to colors.background, minimum = 3.5)
         }
     }
 

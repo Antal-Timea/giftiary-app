@@ -477,4 +477,18 @@
     <string name="wishlist_access_name_prompt">Add meg a neved, hogy a meghívottak tudják, kinek a listája ez.</string>
     <string name="wishlist_access_name_prompt_later">Most nem</string>
     <string name="wishlist_access_name_prompt_add">Név megadása</string>
+    <!-- Design-system foundation: search, status registers, bottom navigation. -->
+    <string name="search_clear">Keresés törlése</string>
+    <string name="status_offline">Nincs kapcsolat</string>
+    <plurals name="status_changes_waiting">
+        <item quantity="one">%1$d változás szinkronizálásra vár</item>
+        <item quantity="other">%1$d változás szinkronizálásra vár</item>
+    </plurals>
+    <string name="status_waiting_to_sync">Szinkronizálásra vár</string>
+    <string name="status_saved_on_device">Elmentve ezen az eszközön</string>
+    <string name="status_refresh_failed">Nem sikerült frissíteni</string>
+    <string name="status_showing_saved">A mentett adatok látszanak</string>
+    <string name="status_try_again">Próbáld újra</string>
+    <string name="nav_lists">Listák</string>
+    <string name="nav_global_add">Ajándék, ötlet, kívánság vagy személy hozzáadása</string>
 </resources>
