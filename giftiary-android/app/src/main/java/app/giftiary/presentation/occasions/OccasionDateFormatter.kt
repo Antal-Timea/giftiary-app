@@ -20,10 +20,15 @@ object OccasionDateFormatter {
             formatter(FULL_DATE_SKELETON, locale).format(LocalDate.of(year, month, day))
         }
 
+    /** The short form of a yearly date for dense rows: "Oct 12", "okt. 12.". */
+    fun formatShort(day: Int, month: Int, locale: Locale): String =
+        formatter(SHORT_MONTH_DAY_SKELETON, locale).format(MonthDay.of(month, day))
+
     // ICU picks the locale's preferred pattern for these fields, including order and punctuation.
     private fun formatter(skeleton: String, locale: Locale): DateTimeFormatter =
         DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
 
     private const val MONTH_DAY_SKELETON = "MMMMd"
+    private const val SHORT_MONTH_DAY_SKELETON = "MMMd"
     private const val FULL_DATE_SKELETON = "yMMMMd"
 }

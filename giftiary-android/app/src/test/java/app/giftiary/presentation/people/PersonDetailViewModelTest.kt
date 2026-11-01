@@ -3,6 +3,7 @@ package app.giftiary.presentation.people
 import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.testing.FakeGiftIdeaRepository
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeGiftRepository
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.domain.repository.WishDetails
@@ -20,8 +21,10 @@ import app.giftiary.testing.occasion
 import app.giftiary.testing.person
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.io.IOException
 
 class PersonDetailViewModelTest {
 
@@ -33,6 +36,7 @@ class PersonDetailViewModelTest {
     private val gifts = FakeGiftRepository()
     private val ideas = FakeGiftIdeaRepository()
     private val wishlists = FakeWishlistRepository()
+    private val photos = FakeGiftPhotoRepository()
     private val anna = person("Anna", relationship = "Sister")
 
     @Test
@@ -41,7 +45,7 @@ class PersonDetailViewModelTest {
         val birthday = occasion(anna.id, OccasionDetails(OccasionType.BIRTHDAY, null, 12, 3, null, true))
         people.givenPeople(anna)
         occasions.givenOccasions(nameDay, birthday)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PersonDetailUiState.Loaded(anna, listOf(birthday, nameDay), emptyList(), emptyList(), emptyList()), viewModel.uiState.value)
@@ -50,7 +54,7 @@ class PersonDetailViewModelTest {
     @Test
     fun `edits to the person and new occasions appear without reloading`() = runTest {
         people.givenPeople(anna)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         people.updatePerson(anna.id, "Anna K.", "Sister")
@@ -68,7 +72,7 @@ class PersonDetailViewModelTest {
         val book = giftEntry(giftDetails(person = anna), anna)
         people.givenPeople(anna)
         gifts.givenGifts(book, giftEntry(giftDetails(person = person("Béla")), person("Béla")))
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), emptyList(), listOf(book), emptyList()), viewModel.uiState.value)
@@ -80,7 +84,7 @@ class PersonDetailViewModelTest {
         val forSomeoneElse = person("Béla").let { bela -> ideaEntry(ideaDetails(bela), bela) }
         people.givenPeople(anna)
         ideas.givenIdeas(scarf, forSomeoneElse)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PersonDetailUiState.Loaded(anna, emptyList(), listOf(scarf), emptyList(), emptyList()), viewModel.uiState.value)
@@ -96,7 +100,7 @@ class PersonDetailViewModelTest {
         val own = wishlist("Mine")
         wishlists.givenWishlists(christmas, belas, own, birthday)
         wishlists.givenWishes(wish(christmas.id, "Lamp"), wish(christmas.id, "Mug"), wish(belas.id, "Socks"), wish(own.id, "Book"))
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         val loaded = viewModel.uiState.value as PersonDetailUiState.Loaded
@@ -108,7 +112,7 @@ class PersonDetailViewModelTest {
     fun `new wishes and deleted wishlists show without reloading`() = runTest {
         people.givenPeople(anna)
         val christmas = wishlist("Christmas", personId = anna.id).also { wishlists.givenWishlists(it) }
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         wishlists.addWish(christmas.id, WishDetails("Lamp", null, null, null))
@@ -121,11 +125,67 @@ class PersonDetailViewModelTest {
     @Test
     fun `a missing or deleted person shows not found`() = runTest {
         people.givenPeople(anna)
-        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
         people.deletePerson(anna.id)
 
         assertEquals(PersonDetailUiState.NotFound, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `deleting the person waits for confirmation, then reports it done`() = runTest {
+        people.givenPeople(anna)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
+        keepSubscribed(viewModel.uiState)
+
+        viewModel.onDeleteRequested()
+        assertEquals(PersonDeletion(confirming = true), viewModel.deletion.value)
+        assertEquals(listOf(anna), people.currentPeople)
+
+        viewModel.onDeleteConfirmed()
+        assertEquals(PersonDeletion(deleted = true), viewModel.deletion.value)
+        assertEquals(emptyList<Any>(), people.currentPeople)
+    }
+
+    @Test
+    fun `dismissing the confirmation keeps the person`() = runTest {
+        people.givenPeople(anna)
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteDismissed()
+
+        assertEquals(PersonDeletion(), viewModel.deletion.value)
+        assertEquals(listOf(anna), people.currentPeople)
+    }
+
+    @Test
+    fun `a failed deletion is reported once and keeps the person`() = runTest {
+        people.givenPeople(anna)
+        people.writeFailure = IOException("disk full")
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+        assertEquals(PersonDeletion(failed = true), viewModel.deletion.value)
+        assertEquals(listOf(anna), people.currentPeople)
+
+        viewModel.onDeleteErrorShown()
+        assertEquals(PersonDeletion(), viewModel.deletion.value)
+    }
+
+    @Test
+    fun `the photos of the person's gifts are offered by path, those that cannot be read are left out`() = runTest {
+        photos.stored["a/photo.jpg"] = byteArrayOf(1, 2)
+        val withPhoto = giftEntry(giftDetails(person = anna, name = "Lamp").copy(photoPath = "a/photo.jpg"), anna)
+        val missingPhoto = giftEntry(giftDetails(person = anna, name = "Scarf").copy(photoPath = "a/gone.jpg"), anna)
+        people.givenPeople(anna)
+        gifts.givenGifts(withPhoto, missingPhoto, giftEntry(giftDetails(person = anna, name = "Book"), anna))
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
+        keepSubscribed(viewModel.giftPhotos)
+
+        assertEquals(setOf("a/photo.jpg"), viewModel.giftPhotos.value.keys)
+        assertTrue(byteArrayOf(1, 2).contentEquals(viewModel.giftPhotos.value.getValue("a/photo.jpg").bytes))
     }
 }

@@ -1,7 +1,14 @@
 <resources>
     <string name="app_name" translatable="false">Giftiary</string>
     <string name="nav_home">Home</string>
-    <string name="home_tagline">Remember · Plan · Share</string>
+    <string name="home_title">Who are we making happy next?</string>
+    <string name="home_date_pattern">EEEE, d MMMM</string>
+    <string name="home_script">Small gifts,
+big stories</string>
+    <string name="home_recent_gifts">Recent gifts</string>
+    <string name="home_recent_gifts_subtitle">The latest gifts you gave and received</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_recent_gifts_empty">Gifts you give and receive will be remembered here.</string>
 
     <string name="coming_up_title">Coming up</string>
     <string name="coming_up_today">Today</string>
@@ -14,6 +21,11 @@
     <plurals name="coming_up_empty">
         <item quantity="one">Nothing coming up in the next %1$d day</item>
         <item quantity="other">Nothing coming up in the next %1$d days</item>
+    </plurals>
+    <string name="coming_up_no_ideas">No ideas yet</string>
+    <plurals name="coming_up_days_unit">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
     </plurals>
     <string name="coming_up_unavailable">Upcoming occasions cannot be shown right now.</string>
 
@@ -62,7 +74,7 @@
     <string name="people_add">Add person</string>
     <string name="people_edit">Edit</string>
     <string name="people_empty_title">No people yet</string>
-    <string name="people_empty_message">Add the people you give gifts to, so you can remember what you gave and plan what comes next.</string>
+    <string name="people_empty_message">Add someone important to start remembering gifts, ideas and occasions.</string>
     <string name="people_load_failed">People could not be loaded.</string>
     <string name="people_delete">Delete %1$s</string>
     <string name="people_delete_dialog_title">Delete %1$s?</string>
@@ -82,6 +94,15 @@
     <string name="person_editor_load_failed">This person could not be loaded.</string>
 
     <string name="people_open">Open</string>
+    <string name="people_subtitle">The people behind your gift memories.</string>
+    <string name="people_search_hint">Search people…</string>
+    <string name="people_all">All people</string>
+    <string name="people_no_results_title">No people found for “%1$s”</string>
+    <string name="people_no_results_message">Try another name.</string>
+    <plurals name="people_no_results_count">
+        <item quantity="one">%1$d person is still here — only this search came up empty.</item>
+        <item quantity="other">%1$d people are still here — only this search came up empty.</item>
+    </plurals>
     <string name="people_select_person">Select a person to see their occasions, ideas and gifts.</string>
 
     <string name="person_detail_occasions">Occasions</string>
@@ -138,6 +159,8 @@
     <string name="gift_direction_received">Received</string>
     <string name="gift_recipient">Recipient</string>
     <string name="gift_giver">From</string>
+    <string name="gift_given_to">Given to %1$s</string>
+    <string name="gift_received_from">Received from %1$s</string>
     <string name="gift_between_people">%1$s → %2$s</string>
     <string name="gift_open">Open</string>
     <string name="gift_edit">Edit</string>
@@ -189,9 +212,16 @@
     <string name="gift_person_unavailable">That person is no longer available. Choose someone else.</string>
     <string name="gift_occasion_unavailable">That occasion is no longer available. Choose another one.</string>
 
-    <string name="person_detail_gifts">Gifts</string>
     <string name="person_detail_add_gift">Add gift</string>
     <string name="person_detail_no_gifts">No gifts recorded yet.</string>
+    <string name="person_detail_history">History with %1$s</string>
+    <plurals name="person_detail_history_count">
+        <item quantity="one">%1$d gift shared together</item>
+        <item quantity="other">%1$d gifts shared together</item>
+    </plurals>
+    <string name="person_detail_edit">Edit %1$s</string>
+    <string name="person_detail_plan_gift">Plan gift</string>
+    <string name="person_detail_gift_ideas_subtitle">Future possibilities, not yet given</string>
     <string name="gifts_filter_ideas">Ideas</string>
     <string name="gift_ideas_add">Add gift idea</string>
     <string name="gift_ideas_empty_title">No gift ideas yet</string>
@@ -226,7 +256,7 @@
     <string name="gift_idea_date_given">Date given</string>
     <string name="gift_idea_final_price_optional">Final price (optional)</string>
     <string name="person_detail_gift_ideas">Gift ideas</string>
-    <string name="person_detail_add_gift_idea">Add gift idea</string>
+    <string name="person_detail_add_gift_idea">Add idea</string>
     <string name="person_detail_no_gift_ideas">No gift ideas yet.</string>
     <string name="auth_email">Email</string>
     <string name="auth_password">Password</string>

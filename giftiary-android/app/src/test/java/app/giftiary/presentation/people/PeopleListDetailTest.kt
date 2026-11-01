@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.Person
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.theme.GiftiaryLayout
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -72,15 +73,12 @@ class PeopleListDetailTest {
                 Box(Modifier.width(widthOf(widthClass)).fillMaxHeight()) {
                     AdaptivePeopleScreen(
                         state = state,
-                        onBack = null,
+                        comingUp = ComingUpContent.Loaded(emptyList()),
+                        onQueryChange = {},
                         onAddPerson = {},
                         onOpenPerson = { opened += it },
                         onSelectPerson = { state = state.copy(selectedPersonId = it.id) },
                         onClearSelection = { state = state.copy(selectedPersonId = null) },
-                        onDeleteRequested = {},
-                        onDeleteConfirmed = {},
-                        onDeleteDismissed = {},
-                        onDeleteErrorShown = {},
                         personDetail = { id -> Text("Detail of " + listOf(anna, bela).first { it.id == id }.name) },
                         widthClass = widthClass,
                     )
@@ -97,8 +95,8 @@ class PeopleListDetailTest {
 
     private fun left(text: String): Dp = compose.onNodeWithText(text, useUnmergedTree = true).getBoundsInRoot().left
 
-    // A row's name starts after its 16 dp padding, the 40 dp monogram and 16 dp more.
-    private val nameInset = GiftiarySpacing.l + 40.dp + GiftiarySpacing.l
+    // A row's name starts after the 22 dp gutter, the 48 dp avatar and the row's 14 dp gap.
+    private val nameInset = GiftiarySpacing.browseGutter + 48.dp + 14.dp
 
     private val backIsIntercepted: Boolean
         get() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.hasEnabledCallbacks() }
@@ -210,12 +208,17 @@ class PeopleListDetailTest {
                     onEditPerson = {},
                     onAddOccasion = {},
                     onEditOccasion = {},
+                    onPlanGift = {},
                     onAddGift = {},
                     onOpenGift = {},
                     onAddGiftIdea = {},
                     onOpenGiftIdea = {},
                     onAddWishlist = {},
                     onOpenWishlist = {},
+                    onDeleteRequested = {},
+                    onDeleteConfirmed = {},
+                    onDeleteDismissed = {},
+                    onDeleteErrorShown = {},
                 )
             }
         }

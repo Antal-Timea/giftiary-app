@@ -8,19 +8,27 @@ import app.giftiary.domain.model.Wishlist
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.GiftIdeaRepository
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.GiftRepository
 import app.giftiary.domain.repository.OccasionRepository
 import app.giftiary.domain.repository.PersonRepository
 import app.giftiary.domain.repository.WishlistRepository
+import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.photosOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
@@ -30,13 +38,22 @@ import java.util.UUID
  */
 @HiltViewModel(assistedFactory = PersonDetailViewModel.Factory::class)
 class PersonDetailViewModel @AssistedInject constructor(
-    @Assisted personId: UUID,
-    personRepository: PersonRepository,
+    @Assisted private val personId: UUID,
+    private val personRepository: PersonRepository,
     occasionRepository: OccasionRepository,
     giftRepository: GiftRepository,
     giftIdeaRepository: GiftIdeaRepository,
     wishlistRepository: WishlistRepository,
+    photos: GiftPhotoRepository,
 ) : ViewModel() {
+
+    private val deletionState = MutableStateFlow(PersonDeletion())
+    val deletion: StateFlow<PersonDeletion> = deletionState.asStateFlow()
+
+    /** The photos of the person's gifts, by path, as they are read; the history shows fallbacks until then. */
+    val giftPhotos: StateFlow<Map<String, LoadedPhoto>> = photos.photosOf(giftRepository.observeGiftsForPerson(personId))
+        .catch { emit(emptyMap()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
 
     private val wishlists = combine(wishlistRepository.observeWishlists(), wishlistRepository.observeWishCounts()) { lists, counts ->
         lists.filter { it.personId == personId }.map { PersonWishlist(it, wishCount = counts[it.id] ?: 0) }
@@ -58,6 +75,32 @@ class PersonDetailViewModel @AssistedInject constructor(
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
                 initialValue = PersonDetailUiState.Loading,
             )
+
+    fun onDeleteRequested() {
+        deletionState.update { it.copy(confirming = true) }
+    }
+
+    fun onDeleteDismissed() {
+        deletionState.update { it.copy(confirming = false) }
+    }
+
+    fun onDeleteConfirmed() {
+        deletionState.update { it.copy(confirming = false) }
+        viewModelScope.launch {
+            try {
+                personRepository.deletePerson(personId)
+                deletionState.update { it.copy(deleted = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                deletionState.update { it.copy(failed = true) }
+            }
+        }
+    }
+
+    fun onDeleteErrorShown() {
+        deletionState.update { it.copy(failed = false) }
+    }
 
     @AssistedFactory
     interface Factory {
@@ -85,3 +128,6 @@ sealed interface PersonDetailUiState {
 }
 
 data class PersonWishlist(val wishlist: Wishlist, val wishCount: Int)
+
+/** Deleting the person from their detail: asked first; [deleted] once it is stored, so the screen can close. */
+data class PersonDeletion(val confirming: Boolean = false, val failed: Boolean = false, val deleted: Boolean = false)

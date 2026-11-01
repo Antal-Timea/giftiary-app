@@ -14,6 +14,8 @@ import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.home.ComingUpContent
+import app.giftiary.presentation.navigation.hasNavigationRail
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.util.UUID
 
@@ -24,15 +26,12 @@ import java.util.UUID
 @Composable
 internal fun AdaptivePeopleScreen(
     state: PeopleUiState,
-    onBack: (() -> Unit)?,
+    comingUp: ComingUpContent,
+    onQueryChange: (String) -> Unit,
     onAddPerson: () -> Unit,
     onOpenPerson: (UUID) -> Unit,
     onSelectPerson: (Person) -> Unit,
     onClearSelection: () -> Unit,
-    onDeleteRequested: (Person) -> Unit,
-    onDeleteConfirmed: () -> Unit,
-    onDeleteDismissed: () -> Unit,
-    onDeleteErrorShown: () -> Unit,
     personDetail: @Composable (UUID) -> Unit,
     widthClass: WidthClass = LocalWidthClass.current,
 ) {
@@ -50,13 +49,11 @@ internal fun AdaptivePeopleScreen(
         }
         PeopleScreen(
             state = state,
-            onBack = onBack,
+            comingUp = comingUp,
+            onQueryChange = onQueryChange,
             onAddPerson = onAddPerson,
             onOpenPerson = { onOpenPerson(it.id) },
-            onDeleteRequested = onDeleteRequested,
-            onDeleteConfirmed = onDeleteConfirmed,
-            onDeleteDismissed = onDeleteDismissed,
-            onDeleteErrorShown = onDeleteErrorShown,
+            showAddButton = widthClass.hasNavigationRail,
         )
         return
     }
@@ -67,15 +64,13 @@ internal fun AdaptivePeopleScreen(
         list = { paneModifier ->
             PeopleScreen(
                 state = state,
-                onBack = onBack,
+                comingUp = comingUp,
+                onQueryChange = onQueryChange,
                 onAddPerson = onAddPerson,
                 onOpenPerson = onSelectPerson,
-                onDeleteRequested = onDeleteRequested,
-                onDeleteConfirmed = onDeleteConfirmed,
-                onDeleteDismissed = onDeleteDismissed,
-                onDeleteErrorShown = onDeleteErrorShown,
                 modifier = paneModifier,
                 selectable = true,
+                showAddButton = widthClass.hasNavigationRail,
             )
         },
         detail = {
@@ -96,15 +91,12 @@ private fun AdaptivePeoplePreview(selected: Person?) {
         ProvideWidthClass {
             AdaptivePeopleScreen(
                 state = PeopleUiState(content = PeopleContent.Loaded(previewPeople), selectedPersonId = selected?.id),
-                onBack = null,
+                comingUp = ComingUpContent.Loaded(emptyList()),
+                onQueryChange = {},
                 onAddPerson = {},
                 onOpenPerson = {},
                 onSelectPerson = {},
                 onClearSelection = {},
-                onDeleteRequested = {},
-                onDeleteConfirmed = {},
-                onDeleteDismissed = {},
-                onDeleteErrorShown = {},
                 personDetail = { id ->
                     PersonDetailScreen(
                         state = PersonDetailUiState.Loaded(
@@ -118,12 +110,17 @@ private fun AdaptivePeoplePreview(selected: Person?) {
                         onEditPerson = {},
                         onAddOccasion = {},
                         onEditOccasion = {},
+                        onPlanGift = {},
                         onAddGift = {},
                         onOpenGift = {},
                         onAddGiftIdea = {},
                         onOpenGiftIdea = {},
                         onAddWishlist = {},
                         onOpenWishlist = {},
+                        onDeleteRequested = {},
+                        onDeleteConfirmed = {},
+                        onDeleteDismissed = {},
+                        onDeleteErrorShown = {},
                     )
                 },
             )

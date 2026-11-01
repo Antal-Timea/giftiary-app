@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hero script heart. Stroke drawn from the approved design system; tinted where used. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M12,20s-7,-4.35 -9.5,-8.5C0.7,8 2.4,4.5 6,4.5c2,0 3.5,1.2 6,4 2.5,-2.8 4,-4 6,-4 3.6,0 5.3,3.5 3.5,7C19,15.65 12,20 12,20z"
+        android:strokeWidth="1.8"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

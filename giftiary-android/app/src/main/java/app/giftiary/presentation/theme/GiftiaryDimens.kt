@@ -73,6 +73,9 @@ object GiftiaryShapes {
 
     val giftThumbnail = RoundedCornerShape(14.dp)
     val wishThumbnail = RoundedCornerShape(16.dp)
+
+    /** The tall photo cards of recent gifts and a person's history. */
+    val photoCard = RoundedCornerShape(18.dp)
 }
 
 // Material components pick these slots: text fields and snackbars use extraSmall, FABs large,

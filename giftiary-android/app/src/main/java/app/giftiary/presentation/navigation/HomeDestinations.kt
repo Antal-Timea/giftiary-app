@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.home.ComingUpViewModel
 import app.giftiary.presentation.home.HomeScreen
+import app.giftiary.presentation.home.RecentGiftsViewModel
 import app.giftiary.presentation.home.ReminderCardViewModel
 import app.giftiary.presentation.home.rememberReminderCardActions
 import app.giftiary.presentation.settings.SettingsScreen
@@ -23,12 +24,16 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
         val comingUp by hiltViewModel<ComingUpViewModel>().content.collectAsStateWithLifecycle()
         val reminders = hiltViewModel<ReminderCardViewModel>()
         val reminderCard by reminders.state.collectAsStateWithLifecycle()
+        val recentGifts by hiltViewModel<RecentGiftsViewModel>().content.collectAsStateWithLifecycle()
         HomeScreen(
             syncStatus = syncStatus,
             comingUp = comingUp,
             reminderCard = reminderCard,
             reminderActions = rememberReminderCardActions(reminders),
             onOpenComingUp = { occasionId -> navController.navigate(OccasionPlanRoute(occasionId.toString())) },
+            recentGifts = recentGifts,
+            onOpenGift = { giftId -> navController.navigate(GiftDetailRoute(giftId.toString())) },
+            onOpenAllGifts = dropUnlessResumed { navController.navigateToSection(AppSection.GIFTS) },
             onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
             onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
             onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },

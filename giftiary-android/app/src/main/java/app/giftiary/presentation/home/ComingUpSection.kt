@@ -1,20 +1,30 @@
 package app.giftiary.presentation.home
 
 import android.content.res.Resources
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -23,28 +33,43 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.model.OccasionPlan
 import app.giftiary.domain.usecase.ObserveUpcomingOccasionsUseCase
+import app.giftiary.presentation.components.GiftiaryAvatar
+import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.occasions.occasionTitle
-import app.giftiary.presentation.occasions.occurrenceDate
+import app.giftiary.presentation.occasions.occasionShortDayMonth
+import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import java.util.UUID
 
+/**
+ * The aqua "Coming up" band of Home and People. [showRelationship] adds each person's relationship
+ * to the occasion line, as People does; [footer] closes the band, e.g. with Home's link to the
+ * user's own occasions.
+ */
 @Composable
-fun ComingUpSection(
+fun ComingUpBand(
     content: ComingUpContent,
-    onOpen: (occasionId: UUID) -> Unit,
+    onOpen: (ComingUpItem) -> Unit,
     modifier: Modifier = Modifier,
+    showRelationship: Boolean = false,
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     // Until the local read answers there is nothing honest to show, and it answers at once.
     if (content == ComingUpContent.Loading) return
     val colors = GiftiaryTheme.colors
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.surfaceContext, GiftiaryShapes.band)
+            .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = 18.dp, bottom = GiftiarySpacing.m),
+        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
+    ) {
         Text(
             text = stringResource(R.string.coming_up_title),
-            modifier = Modifier
-                .padding(bottom = GiftiarySpacing.s)
-                .semantics { heading() },
-            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+            style = GiftiaryType.sectionTitle,
             color = colors.textPrimary,
         )
         when (content) {
@@ -55,50 +80,124 @@ fun ComingUpSection(
                 Message(pluralStringResource(R.plurals.coming_up_empty, days, days))
             } else {
                 content.items.forEachIndexed { index, item ->
-                    if (index > 0) HorizontalDivider(color = colors.divider)
-                    ComingUpRow(item = item, onClick = { onOpen(item.occasionId) })
+                    if (index > 0) GiftiaryDivider()
+                    ComingUpRow(item = item, showRelationship = showRelationship, onClick = { onOpen(item) })
                 }
             }
+        }
+        footer?.invoke(this)
+    }
+}
+
+@Composable
+private fun ComingUpRow(item: ComingUpItem, showRelationship: Boolean, onClick: () -> Unit) {
+    val colors = GiftiaryTheme.colors
+    val upcoming = item.upcoming
+    val occasion = occasionTitle(upcoming.occasion)
+    // "Husband · Birthday Oct 12 · turns 41", as the board sets it: the occasion and its day read as one.
+    val date = occasionShortDayMonth(upcoming.date.dayOfMonth, upcoming.date.monthValue)
+    val details = listOfNotNull(
+        upcoming.person?.relationship?.takeIf { showRelationship && it.isNotBlank() },
+        if (upcoming.person != null) "$occasion $date" else date,
+        upcoming.turningAge?.let { stringResource(R.string.coming_up_turns, it) },
+    ).joinToString(" · ")
+    val bought = item.plan?.bought ?: 0
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clickable(onClickLabel = stringResource(R.string.people_open), onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(vertical = GiftiarySpacing.s),
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Teal once something for the occasion is bought, coral while it is not; the words say which.
+        Spacer(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(if (bought > 0) colors.directionReceived else colors.primaryAction, RoundedCornerShape(2.dp)),
+        )
+        GiftiaryAvatar(name = upcoming.person?.name ?: occasion, size = 40.dp, onContext = true)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = upcoming.person?.name ?: occasion, style = GiftiaryType.actionLarge, color = colors.textPrimary)
+            Text(
+                text = details,
+                modifier = Modifier.padding(top = 1.dp),
+                style = GiftiaryType.label.copy(fontWeight = GiftiaryType.body.fontWeight),
+                color = colors.textLabel,
+            )
+            PlanLine(item.plan, modifier = Modifier.padding(top = 5.dp))
+        }
+        DaysCountdown(upcoming.daysUntil)
+        Icon(
+            painter = painterResource(R.drawable.ic_chevron_right),
+            contentDescription = null,
+            modifier = Modifier.size(15.dp),
+            tint = colors.textLabel,
+        )
+    }
+}
+
+/**
+ * "3 ideas  ✓ 1 bought", or the coral "No ideas yet". What is still missing is never claimed: the
+ * app only knows the ideas and what of them is bought.
+ */
+@Composable
+fun PlanLine(plan: OccasionPlan?, modifier: Modifier = Modifier) {
+    val colors = GiftiaryTheme.colors
+    val ideas = plan?.ideas ?: 0
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (ideas == 0) {
+            PlanStatus(R.drawable.ic_plan_open, stringResource(R.string.coming_up_no_ideas), colors.primaryAction)
+            return@Row
+        }
+        Text(
+            text = pluralStringResource(R.plurals.coming_up_ideas, ideas, ideas),
+            style = GiftiaryType.metadata.copy(fontWeight = GiftiaryType.contentTitle.fontWeight),
+            color = colors.textLabel,
+        )
+        val bought = plan?.bought ?: 0
+        if (bought > 0) {
+            PlanStatus(R.drawable.ic_check, pluralStringResource(R.plurals.coming_up_bought, bought, bought), colors.directionReceived)
         }
     }
 }
 
 @Composable
-private fun ComingUpRow(item: ComingUpItem, onClick: () -> Unit) {
+private fun PlanStatus(@DrawableRes icon: Int, text: String, color: Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(10.dp), tint = color)
+        Text(text = text, style = GiftiaryType.metadata.copy(fontWeight = GiftiaryType.rowTitle.fontWeight), color = color)
+    }
+}
+
+/** The big Lora day count with its unit underneath; "Today" alone when it is today. */
+@Composable
+fun DaysCountdown(days: Int, modifier: Modifier = Modifier, large: Boolean = false) {
     val colors = GiftiaryTheme.colors
-    val upcoming = item.upcoming
-    val occasion = occasionTitle(upcoming.occasion)
-    val details = listOfNotNull(
-        occasion.takeIf { upcoming.person != null },
-        occurrenceDate(upcoming.date),
-        upcoming.turningAge?.let { stringResource(R.string.coming_up_turns, it) },
-        occasionPlanText(LocalResources.current, item.plan),
-    ).joinToString(" · ")
-    val openLabel = stringResource(R.string.people_open)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClickLabel = openLabel, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(vertical = GiftiarySpacing.m),
-        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs)) {
-            Text(
-                text = upcoming.person?.name ?: occasion,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-            )
-            Text(text = details, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
+        if (days == 0) {
+            Text(text = stringResource(R.string.coming_up_today), style = GiftiaryType.sectionTitle, color = colors.textPrimary)
+            return@Column
         }
         Text(
-            text = daysUntilText(upcoming.daysUntil),
-            style = MaterialTheme.typography.labelLarge,
-            color = if (upcoming.daysUntil == 0) colors.textPrimary else colors.textSecondary,
+            text = days.toString(),
+            style = if (large) GiftiaryType.number.copy(fontSize = GiftiaryType.number.fontSize * LARGE_NUMBER_SCALE) else GiftiaryType.number,
+            color = colors.textPrimary,
+        )
+        Text(
+            text = pluralStringResource(R.plurals.coming_up_days_unit, days).uppercase(),
+            modifier = Modifier.padding(top = 2.dp),
+            style = GiftiaryType.numberUnit,
+            color = colors.textLabel,
         )
     }
 }
+
+// 34sp on Person detail's occasion card against the 23sp of a row.
+private const val LARGE_NUMBER_SCALE = 34f / 23f
 
 /** "Today", "Tomorrow" or "In N days". */
 @Composable
@@ -113,8 +212,8 @@ private fun Message(text: String) {
     Text(
         text = text,
         modifier = Modifier.padding(vertical = GiftiarySpacing.s),
-        style = MaterialTheme.typography.bodyMedium,
-        color = GiftiaryTheme.colors.textSecondary,
+        style = GiftiaryType.bodySmall,
+        color = GiftiaryTheme.colors.textLabel,
     )
 }
 

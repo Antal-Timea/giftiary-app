@@ -8,9 +8,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -22,7 +24,9 @@ import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.home.HomeScreen
 import app.giftiary.presentation.home.ReminderCardActions
+import app.giftiary.presentation.home.RecentGiftsContent
 import app.giftiary.presentation.home.ReminderCardState
+import app.giftiary.presentation.people.PeopleContent
 import app.giftiary.presentation.people.PeopleScreen
 import app.giftiary.presentation.people.PeopleUiState
 import app.giftiary.presentation.sync.SyncStatusContent
@@ -144,6 +148,9 @@ class AdaptiveNavigationTest {
                     onOpenComingUp = {},
                     reminderCard = ReminderCardState.Hidden,
                     reminderActions = ReminderCardActions({}, {}, {}, {}),
+                    recentGifts = RecentGiftsContent.Loaded(emptyList()),
+                    onOpenGift = {},
+                    onOpenAllGifts = {},
                     onOpenOwnOccasions = {},
                     onOpenSyncAttention = {},
                     onOpenSettings = {},
@@ -151,37 +158,36 @@ class AdaptiveNavigationTest {
                 )
             }
         }
-        compose.onNodeWithText("Settings").assertExists()
+        compose.onNodeWithContentDescription("Settings").assertExists()
         listOf("Gifts", "People", "Wishlists").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
 
         showSettings = false
         compose.waitForIdle()
 
-        compose.onNodeWithText("Settings").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
     }
 
     @Test
-    fun `a section's list shows a back arrow only when it is given one`() {
-        var onBack: (() -> Unit)? by mutableStateOf({})
+    fun `People leaves adding to the navigation bar on a phone and keeps its own add button beside the rail`() {
+        var showAddButton by mutableStateOf(false)
         compose.setContent {
             GiftiaryTheme {
                 PeopleScreen(
-                    state = PeopleUiState(),
-                    onBack = onBack,
+                    state = PeopleUiState(content = PeopleContent.Loaded(emptyList())),
+                    comingUp = ComingUpContent.Loaded(emptyList()),
+                    onQueryChange = {},
                     onAddPerson = {},
                     onOpenPerson = {},
-                    onDeleteRequested = {},
-                    onDeleteConfirmed = {},
-                    onDeleteDismissed = {},
-                    onDeleteErrorShown = {},
+                    showAddButton = showAddButton,
                 )
             }
         }
-        compose.onNodeWithContentDescription("Back").assertExists()
+        // Only the empty state's own invitation, no floating button.
+        compose.onAllNodesWithText("Add person").assertCountEquals(1)
 
-        onBack = null
+        showAddButton = true
         compose.waitForIdle()
 
-        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
+        compose.onAllNodesWithText("Add person").assertCountEquals(2)
     }
 }
