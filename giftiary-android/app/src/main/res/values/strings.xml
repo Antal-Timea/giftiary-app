@@ -2,7 +2,6 @@
     <string name="app_name" translatable="false">Giftiary</string>
     <string name="nav_home">Home</string>
     <string name="home_tagline">Remember · Plan · Share</string>
-    <string name="home_open_people">People</string>
 
     <string name="coming_up_title">Coming up</string>
     <string name="coming_up_today">Today</string>
@@ -123,7 +122,6 @@
     <string name="occasion_error_not_a_leap_year">%1$d is not a leap year, so it has no 29 February</string>
     <string name="occasion_error_invalid_year">Enter a valid year</string>
     <string name="occasion_error_year_required">A one-time occasion needs a year</string>
-    <string name="home_open_gifts">Gifts</string>
 
     <string name="gifts_title">Gifts</string>
     <string name="gifts_add">Add gift</string>
@@ -295,7 +293,6 @@
     <string name="sync_item_unnamed">Unnamed item</string>
 
     <!-- Wishlists -->
-    <string name="home_open_wishlists">Wishlists</string>
     <string name="wishlists_title">Wishlists</string>
     <string name="wishlists_add">New wishlist</string>
     <string name="wishlist_open">Open</string>
@@ -493,4 +490,21 @@
     <string name="status_try_again">Try again</string>
     <string name="nav_lists">Lists</string>
     <string name="nav_global_add">Add a gift, idea, wishlist item or person</string>
+    <string name="quick_add_title">Add something</string>
+    <string name="quick_add_subtitle">What would you like to remember or plan?</string>
+    <string name="quick_add_remember">Remember</string>
+    <string name="quick_add_plan">Plan</string>
+    <string name="quick_add_organize">Organize</string>
+    <string name="quick_add_gift_given">Gift I gave</string>
+    <string name="quick_add_gift_given_description">Remember something you gave</string>
+    <string name="quick_add_gift_received">Gift I received</string>
+    <string name="quick_add_gift_received_description">Remember something you received</string>
+    <string name="quick_add_gift_idea">Gift idea</string>
+    <string name="quick_add_gift_idea_description">Save an idea for someone</string>
+    <string name="quick_add_wish">Wishlist item</string>
+    <string name="quick_add_wish_description">Add something you’d like</string>
+    <string name="quick_add_person">Person</string>
+    <string name="quick_add_person_description">Add someone important</string>
+    <string name="quick_add_list">List</string>
+    <string name="quick_add_list_description">Create a wishlist</string>
 </resources>

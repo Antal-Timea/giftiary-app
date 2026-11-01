@@ -18,7 +18,8 @@ import java.util.UUID
 internal fun NavGraphBuilder.peopleDestinations(navController: NavHostController) {
     composable<PeopleRoute> {
         PeopleScreen(
-            onBack = navController.sectionRootBack(),
+            // The navigation bar or rail leads away from a section root; it has no back arrow.
+            onBack = null,
             onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
             onOpenPerson = { personId -> navController.navigate(PersonDetailRoute(personId.toString())) },
             // Beside the list on a wide window: one view model per person, kept in People's entry.

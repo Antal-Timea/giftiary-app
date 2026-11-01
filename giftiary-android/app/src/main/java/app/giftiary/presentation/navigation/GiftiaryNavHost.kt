@@ -3,6 +3,9 @@ package app.giftiary.presentation.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,12 +31,15 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             }
         }
     }
-    // Outside the NavHost, so the rail stays put while destinations change beside it.
+    // Outside the NavHost, so the rail and the bar stay put while destinations change beside them.
     val backStackEntry by navController.currentBackStackEntryAsState()
+    var quickAddOpen by rememberSaveable { mutableStateOf(false) }
     AdaptiveNavigationFrame(
         selected = backStackEntry?.destination?.section(),
         onSelect = navController::navigateToSection,
         modifier = modifier,
+        showBar = backStackEntry?.destination?.showsNavigationBar() == true,
+        onAdd = { quickAddOpen = true },
     ) {
         NavHost(
             navController = navController,
@@ -47,9 +53,18 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             sharingDestinations(navController)
         }
     }
+    if (quickAddOpen) {
+        QuickAddSheet(
+            onDismiss = { quickAddOpen = false },
+            onAction = { action ->
+                quickAddOpen = false
+                navController.openQuickAdd(action)
+            },
+        )
+    }
 }
 
-/** A section's own list: its back arrow is dropped when the rail is there to leave it. */
+/** Settings: a back arrow on phones, where it is opened from Home; none beside the rail, which leads away. */
 @Composable
 internal fun NavHostController.sectionRootBack(): (() -> Unit)? {
     val back = popBackStackUnlessPaused()

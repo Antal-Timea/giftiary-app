@@ -58,6 +58,32 @@ class AppSectionsTest {
     }
 
     @Test
+    fun `every signed-in route either shows the phone navigation unit or is a task, account or system screen`() {
+        val hidden = setOf(
+            AddPersonRoute::class, EditPersonRoute::class,
+            AddOccasionRoute::class, EditOccasionRoute::class,
+            AddGiftRoute::class, EditGiftRoute::class,
+            AddGiftIdeaRoute::class, EditGiftIdeaRoute::class, MarkGiftIdeaGivenRoute::class,
+            AddWishlistRoute::class, EditWishlistRoute::class, AddWishRoute::class, EditWishRoute::class,
+            WishlistAccessRoute::class, JoinWishlistRoute::class,
+            SyncAttentionRoute::class, SettingsRoute::class,
+        )
+        val shown = routesWithNavigationBar
+
+        assertEquals("a route is both shown and hidden", emptySet<Any>(), shown intersect hidden)
+        assertEquals(compiledRoutes - authRoutes, (shown + hidden).map { it.simpleName!! }.toSet())
+    }
+
+    @Test
+    fun `the four roots and the screens browsed from them show the unit, Person detail included`() {
+        listOf(
+            HomeRoute::class, PeopleRoute::class, GiftHistoryRoute::class, WishlistsRoute::class,
+            PersonDetailRoute::class, GiftDetailRoute::class, GiftIdeaDetailRoute::class,
+            WishlistDetailRoute::class, SharedWishlistRoute::class,
+        ).forEach { assertTrue("$it shows the unit", it in routesWithNavigationBar) }
+    }
+
+    @Test
     fun `a section is opened single-top, keeping and restoring the other sections' stacks`() {
         val options = sectionNavOptions(startDestinationId = 42)
 

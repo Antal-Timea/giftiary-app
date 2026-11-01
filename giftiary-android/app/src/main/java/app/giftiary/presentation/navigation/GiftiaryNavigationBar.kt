@@ -197,10 +197,10 @@ private enum class BarItem(
     val selectedIcon: ImageVector by lazy { strokedIcon(paths, dots, strokeWidth = 2.2f) }
 }
 
-private val PlusIcon: ImageVector by lazy { strokedIcon(listOf("M12,5v14M5,12h14"), emptyList(), strokeWidth = 2.5f) }
+internal val PlusIcon: ImageVector by lazy { strokedIcon(listOf("M12,5v14M5,12h14"), emptyList(), strokeWidth = 2.5f) }
 
 // Drawn in black and tinted by Icon.
-private fun strokedIcon(paths: List<String>, dots: List<String>, strokeWidth: Float): ImageVector =
+internal fun strokedIcon(paths: List<String>, dots: List<String>, strokeWidth: Float): ImageVector =
     ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f).apply {
         paths.forEach { path ->
             addPath(

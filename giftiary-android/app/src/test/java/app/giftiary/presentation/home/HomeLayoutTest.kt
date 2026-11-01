@@ -44,7 +44,7 @@ class HomeLayoutTest {
     private fun showHome(
         width: Dp,
         widthClass: WidthClass,
-        showSectionButtons: Boolean,
+        showSettingsLink: Boolean,
         reminderCard: ReminderCardState = ReminderCardState.Off,
     ) {
         compose.setContent {
@@ -56,13 +56,10 @@ class HomeLayoutTest {
                         onOpenComingUp = {},
                         reminderCard = reminderCard,
                         reminderActions = ReminderCardActions({}, {}, {}, {}),
-                        onOpenGifts = {},
-                        onOpenPeople = {},
-                        onOpenWishlists = {},
                         onOpenOwnOccasions = {},
                         onOpenSyncAttention = {},
                         onOpenSettings = {},
-                        showSectionButtons = showSectionButtons,
+                        showSettingsLink = showSettingsLink,
                         widthClass = widthClass,
                     )
                 }
@@ -73,10 +70,10 @@ class HomeLayoutTest {
     private fun bounds(text: String): DpRect = compose.onNodeWithText(text).getBoundsInRoot()
 
     @Test
-    fun `a phone keeps one full-width column, top to bottom, with the section buttons last`() {
-        showHome(width = 411.dp, widthClass = WidthClass.COMPACT, showSectionButtons = true)
+    fun `a phone keeps one full-width column, top to bottom, with the Settings link last`() {
+        showHome(width = 411.dp, widthClass = WidthClass.COMPACT, showSettingsLink = true)
 
-        val order = listOf(tagline, comingUp, ownOccasions, reminder, sync, "Gifts", "People", "Wishlists", "Settings")
+        val order = listOf(tagline, comingUp, ownOccasions, reminder, sync, "Settings")
         val tops = order.map { bounds(it).top }
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         // The usual side margins, not a centred measure.
@@ -85,8 +82,8 @@ class HomeLayoutTest {
     }
 
     @Test
-    fun `a medium window shows the same column at a readable, centred width, without section buttons`() {
-        showHome(width = 800.dp, widthClass = WidthClass.MEDIUM, showSectionButtons = false)
+    fun `a medium window shows the same column at a readable, centred width, without the Settings link`() {
+        showHome(width = 800.dp, widthClass = WidthClass.MEDIUM, showSettingsLink = false)
 
         // The readable measure, centred in the window, then the usual margin.
         val start = centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl
@@ -94,12 +91,12 @@ class HomeLayoutTest {
         assertNear(start, bounds(comingUp).left, "coming up start")
         val tops = listOf(tagline, comingUp, ownOccasions, reminder, sync).map { bounds(it).top }
         assertEquals(tops.sorted(), tops)
-        listOf("Gifts", "People", "Wishlists", "Settings").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        compose.onNodeWithText("Settings").assertDoesNotExist()
     }
 
     @Test
     fun `an expanded window puts coming up and the reminder and sync status side by side under the header`() {
-        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSectionButtons = false)
+        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSettingsLink = false)
 
         val header = bounds(tagline)
         val left = bounds(comingUp)
@@ -114,12 +111,12 @@ class HomeLayoutTest {
         // 3:2 columns with a 32 dp gap: the second starts about 3/5 into the 992 dp row.
         assertTrue("reminder in the second column (was ${card.left})", card.left > left.left + 550.dp)
         assertTrue("sync status in the second column, under the reminder", status.left > left.left + 550.dp && status.top > card.bottom)
-        listOf("Gifts", "People", "Wishlists", "Settings").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        compose.onNodeWithText("Settings").assertDoesNotExist()
     }
 
     @Test
     fun `without a reminder card the sync status heads the second column`() {
-        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSectionButtons = false, reminderCard = ReminderCardState.Hidden)
+        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSettingsLink = false, reminderCard = ReminderCardState.Hidden)
 
         compose.onNodeWithText(reminder).assertDoesNotExist()
         val status = bounds(sync)

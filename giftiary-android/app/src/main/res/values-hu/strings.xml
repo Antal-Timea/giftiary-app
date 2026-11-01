@@ -1,7 +1,6 @@
 <resources>
     <string name="nav_home">Kezdőlap</string>
     <string name="home_tagline">Emlékezz · Tervezz · Oszd meg</string>
-    <string name="home_open_people">Emberek</string>
 
     <string name="coming_up_title">Hamarosan</string>
     <string name="coming_up_today">Ma</string>
@@ -122,7 +121,6 @@
     <string name="occasion_error_not_a_leap_year">%1$d nem szökőév, így nincs február 29.</string>
     <string name="occasion_error_invalid_year">Adj meg érvényes évet</string>
     <string name="occasion_error_year_required">Egyszeri alkalomhoz add meg az évet</string>
-    <string name="home_open_gifts">Ajándékok</string>
 
     <string name="gifts_title">Ajándékok</string>
     <string name="gifts_add">Ajándék hozzáadása</string>
@@ -294,7 +292,6 @@
     <string name="sync_item_unnamed">Névtelen elem</string>
 
     <!-- Wishlists -->
-    <string name="home_open_wishlists">Kívánságlisták</string>
     <string name="wishlists_title">Kívánságlisták</string>
     <string name="wishlists_add">Új kívánságlista</string>
     <string name="wishlist_open">Megnyitás</string>
@@ -491,4 +488,21 @@
     <string name="status_try_again">Próbáld újra</string>
     <string name="nav_lists">Listák</string>
     <string name="nav_global_add">Ajándék, ötlet, kívánság vagy személy hozzáadása</string>
+    <string name="quick_add_title">Új hozzáadása</string>
+    <string name="quick_add_subtitle">Mit szeretnél megjegyezni vagy megtervezni?</string>
+    <string name="quick_add_remember">Emlékezz</string>
+    <string name="quick_add_plan">Tervezz</string>
+    <string name="quick_add_organize">Rendszerezz</string>
+    <string name="quick_add_gift_given">Ajándék, amit adtam</string>
+    <string name="quick_add_gift_given_description">Jegyezd fel, mit adtál</string>
+    <string name="quick_add_gift_received">Ajándék, amit kaptam</string>
+    <string name="quick_add_gift_received_description">Jegyezd fel, mit kaptál</string>
+    <string name="quick_add_gift_idea">Ajándékötlet</string>
+    <string name="quick_add_gift_idea_description">Ments el egy ötletet valakinek</string>
+    <string name="quick_add_wish">Kívánság</string>
+    <string name="quick_add_wish_description">Adj hozzá valamit, amire vágysz</string>
+    <string name="quick_add_person">Személy</string>
+    <string name="quick_add_person_description">Adj hozzá valakit, aki fontos</string>
+    <string name="quick_add_list">Lista</string>
+    <string name="quick_add_list_description">Hozz létre egy kívánságlistát</string>
 </resources>

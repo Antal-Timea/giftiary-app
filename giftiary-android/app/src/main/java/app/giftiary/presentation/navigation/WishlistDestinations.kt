@@ -22,7 +22,8 @@ import app.giftiary.presentation.wishlists.WishlistsScreen
 internal fun NavGraphBuilder.wishlistDestinations(navController: NavHostController) {
     composable<WishlistsRoute> {
         WishlistsScreen(
-            onBack = navController.sectionRootBack(),
+            // The navigation bar or rail leads away from a section root; it has no back arrow.
+            onBack = null,
             onAddWishlist = dropUnlessResumed { navController.navigate(AddWishlistRoute()) },
             onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
             onOpenShared = dropUnlessResumed { navController.navigate(SharedWishlistsRoute) },
