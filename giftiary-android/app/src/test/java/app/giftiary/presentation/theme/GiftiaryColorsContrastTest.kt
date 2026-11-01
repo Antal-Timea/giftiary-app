@@ -2,6 +2,8 @@ package app.giftiary.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.max
@@ -47,7 +49,14 @@ class GiftiaryColorsContrastTest {
         forEachTheme { colors ->
             assertContrast("primaryAction on background", colors.primaryAction to colors.background, minimum = 3.0)
             assertContrast("inputFocused on inputSurface", colors.inputFocused to colors.inputSurface, minimum = 3.0)
+            assertContrast("caret on inputSurface", colors.caret to colors.inputSurface, minimum = 3.0)
         }
+    }
+
+    @Test
+    fun `the light caret is the action coral, not the teal of the focus border`() {
+        assertEquals(LightGiftiaryColors.primaryAction, LightGiftiaryColors.caret)
+        assertNotEquals(LightGiftiaryColors.inputFocused, LightGiftiaryColors.caret)
     }
 
     @Test

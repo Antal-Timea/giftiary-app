@@ -110,7 +110,7 @@ internal fun GiftiaryInput(
         enabled = enabled,
         readOnly = readOnly,
         textStyle = textStyle.copy(color = if (enabled) GiftiaryTheme.colors.textPrimary else GiftiaryTheme.colors.textMuted),
-        cursorBrush = SolidColor(if (isError) GiftiaryTheme.colors.error else GiftiaryTheme.colors.inputFocused),
+        cursorBrush = SolidColor(if (isError) GiftiaryTheme.colors.error else GiftiaryTheme.colors.caret),
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         singleLine = singleLine,
@@ -184,7 +184,7 @@ internal fun giftiaryTextFieldColors(strongBorder: Boolean = false): TextFieldCo
         unfocusedContainerColor = colors.inputSurface,
         disabledContainerColor = colors.inputSurface,
         errorContainerColor = colors.inputSurface,
-        cursorColor = colors.inputFocused,
+        cursorColor = colors.caret,
         errorCursorColor = colors.error,
         selectionColors = TextSelectionColors(
             handleColor = colors.inputFocused,
