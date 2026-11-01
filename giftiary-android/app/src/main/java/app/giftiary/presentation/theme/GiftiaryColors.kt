@@ -59,6 +59,8 @@ data class GiftiaryColors(
     val borderStrong: Color,
     val divider: Color,
     val inputFocused: Color,
+    /** The text caret of a focused field; light keeps it coral against the teal focus border (DS-03). */
+    val caret: Color,
     val error: Color,
 
     val skeleton: Color,
@@ -107,6 +109,7 @@ internal val DarkGiftiaryColors = GiftiaryColors(
     borderStrong = Color(0xFF404E49),
     divider = Color(0xFF2D3835),
     inputFocused = Color(0xFFF2EDE1),
+    caret = Color(0xFFF2EDE1),
     error = Color(0xFFFFB4AB),
 
     skeleton = Color(0xFF283431),
@@ -156,6 +159,7 @@ internal val LightGiftiaryColors = GiftiaryColors(
     borderStrong = Color(0x3817423E), // teal at 0.22
     divider = Color(0x1A17423E), // teal at 0.10
     inputFocused = Color(0xFF17423E),
+    caret = Color(0xFFD6285A),
     // Giftiary has no danger red: a field error is a coral border with a teal sentence.
     error = Color(0xFFD6285A),
 
