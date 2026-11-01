@@ -83,6 +83,10 @@ fun GiftEditorScreen(
             onSave = viewModel::save,
             onWriteErrorShown = viewModel::onWriteErrorShown,
             onPhotoPicked = viewModel::onPhotoPicked,
+            onNewCaptureTarget = viewModel::newCaptureTarget,
+            onPhotoCaptured = viewModel::onPhotoCaptured,
+            onCaptureCancelled = viewModel::onCaptureCancelled,
+            onCameraUnavailable = viewModel::onCameraUnavailable,
             onPhotoRemoved = viewModel::onPhotoRemoved,
             onPhotoErrorShown = viewModel::onPhotoErrorShown,
         ),
@@ -104,6 +108,10 @@ class GiftEditorActions(
     val onSave: () -> Unit,
     val onWriteErrorShown: () -> Unit,
     val onPhotoPicked: (String) -> Unit = {},
+    val onNewCaptureTarget: () -> String? = { null },
+    val onPhotoCaptured: (String) -> Unit = {},
+    val onCaptureCancelled: (String) -> Unit = {},
+    val onCameraUnavailable: (String) -> Unit = {},
     val onPhotoRemoved: () -> Unit = {},
     val onPhotoErrorShown: () -> Unit = {},
 )
@@ -132,7 +140,14 @@ fun GiftEditorScreen(
             actions.onWriteErrorShown()
         }
     }
-    val photoErrorMessage = state.photoError?.let { stringResource(R.string.gift_photo_unreadable) }
+    val photoErrorMessage = state.photoError?.let {
+        stringResource(
+            when (it) {
+                GiftPhotoError.UNREADABLE -> R.string.gift_photo_unreadable
+                GiftPhotoError.CAMERA_UNAVAILABLE -> R.string.gift_photo_camera_unavailable
+            },
+        )
+    }
     LaunchedEffect(photoErrorMessage) {
         if (photoErrorMessage != null) {
             snackbarHostState.showSnackbar(photoErrorMessage)
@@ -250,6 +265,12 @@ private fun GiftForm(
                 busy = state.photoBusy,
                 enabled = canEdit,
                 onPick = actions.onPhotoPicked,
+                camera = GiftPhotoCamera(
+                    newTarget = actions.onNewCaptureTarget,
+                    onCaptured = actions.onPhotoCaptured,
+                    onCancelled = actions.onCaptureCancelled,
+                    onUnavailable = actions.onCameraUnavailable,
+                ),
                 onRemove = actions.onPhotoRemoved,
                 modifier = Modifier.fillMaxWidth(),
             )

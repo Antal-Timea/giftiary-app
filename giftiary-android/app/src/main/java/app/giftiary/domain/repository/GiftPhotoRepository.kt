@@ -18,6 +18,23 @@ interface GiftPhotoRepository {
     suspend fun importPhoto(source: String): String
 
     /**
+     * A content URI the system camera app can write a new photo into. Pass it to [importCapture]
+     * once the camera returned a photo, or to [discardCapture] if it did not.
+     */
+    fun newCaptureTarget(): String
+
+    /**
+     * Like [importPhoto] for a photo the camera wrote into [target]; the capture file is deleted
+     * whether or not it could be read.
+     *
+     * @throws GiftPhotoUnreadableException if the image cannot be read.
+     */
+    suspend fun importCapture(target: String): String
+
+    /** Deletes the capture file of a camera that returned no photo. */
+    suspend fun discardCapture(target: String)
+
+    /**
      * The photo's JPEG bytes: from this device, or downloaded once and kept. Null if it is not
      * available now, e.g. offline on a device that has not seen it yet.
      */

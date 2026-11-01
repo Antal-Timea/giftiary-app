@@ -25,6 +25,27 @@ class FakeGiftPhotoRepository : GiftPhotoRepository {
         return path
     }
 
+    /** Capture targets handed out and not yet imported or discarded. */
+    val openCaptures = mutableSetOf<String>()
+    val discarded = mutableListOf<String>()
+    private var nextCapture = 0
+
+    override fun newCaptureTarget(): String = "content://app.giftiary.photos/camera/${++nextCapture}.jpg".also { openCaptures += it }
+
+    /** What the camera wrote into a target; a target without an entry is read as unreadable. */
+    val captured = mutableMapOf<String, String>()
+
+    override suspend fun importCapture(target: String): String {
+        openCaptures -= target
+        val content = captured[target] ?: throw GiftPhotoUnreadableException()
+        return importPhoto(content)
+    }
+
+    override suspend fun discardCapture(target: String) {
+        openCaptures -= target
+        discarded += target
+    }
+
     override suspend fun loadPhoto(path: String): ByteArray? = stored[path]
 
     override fun observeUploadPending(path: String): Flow<Boolean> = pendingUploads.map { path in it }

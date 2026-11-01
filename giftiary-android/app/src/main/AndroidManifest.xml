@@ -66,6 +66,17 @@
                     android:scheme="giftiary" />
             </intent-filter>
         </activity>
+
+        <!-- Lets the system camera app write a new gift photo into this app's cache (CameraCaptures). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.photos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/camera_paths" />
+        </provider>
     </application>
 
 </manifest>
