@@ -48,6 +48,7 @@ import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.components.directionColor
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.components.giftiaryWideWidth
 import app.giftiary.presentation.occasions.occasionTitle

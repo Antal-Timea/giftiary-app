@@ -2,17 +2,14 @@ package app.giftiary.presentation.people
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -41,13 +37,13 @@ import app.giftiary.R
 import app.giftiary.domain.model.Person
 import app.giftiary.presentation.components.GiftiaryAddFab
 import app.giftiary.presentation.components.GiftiaryAddFabClearance
+import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
-import app.giftiary.presentation.theme.Lora
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.Instant
 import java.util.UUID
@@ -190,7 +186,8 @@ private fun PersonRow(
             .padding(start = GiftiarySpacing.l, end = GiftiarySpacing.xs, top = GiftiarySpacing.m, bottom = GiftiarySpacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Monogram(name = person.name, onSelectedRow = selected)
+        // The selected row is already aqua; the avatar takes the in-band fill so it stays visible.
+        GiftiaryAvatar(name = person.name, size = MONOGRAM_SIZE, onContext = selected)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -217,27 +214,6 @@ private fun PersonRow(
                 tint = colors.textMuted,
             )
         }
-    }
-}
-
-/** Decorative initial; the name next to it already carries the meaning. */
-@Composable
-private fun Monogram(name: String, onSelectedRow: Boolean) {
-    val initial = name.substring(0, name.offsetByCodePoints(0, 1)).uppercase()
-    val colors = GiftiaryTheme.colors
-    Box(
-        modifier = Modifier
-            .size(MONOGRAM_SIZE)
-            // The selected row is already surfaceContext; the quieter tone keeps the circle visible.
-            .background(if (onSelectedRow) colors.surfaceContextQuiet else colors.surfaceContext, CircleShape)
-            .clearAndSetSemantics {},
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = initial,
-            style = MaterialTheme.typography.titleLarge.copy(fontFamily = Lora),
-            color = GiftiaryTheme.colors.textPrimary,
-        )
     }
 }
 

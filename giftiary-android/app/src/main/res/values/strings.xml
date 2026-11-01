@@ -479,4 +479,18 @@
     <string name="wishlist_access_name_prompt">Add your name so the people you invite know whose list this is.</string>
     <string name="wishlist_access_name_prompt_later">Not now</string>
     <string name="wishlist_access_name_prompt_add">Add name</string>
+    <!-- Design-system foundation: search, status registers, bottom navigation. -->
+    <string name="search_clear">Clear search</string>
+    <string name="status_offline">Offline</string>
+    <plurals name="status_changes_waiting">
+        <item quantity="one">%1$d change waiting to sync</item>
+        <item quantity="other">%1$d changes waiting to sync</item>
+    </plurals>
+    <string name="status_waiting_to_sync">Waiting to sync</string>
+    <string name="status_saved_on_device">Saved on this device</string>
+    <string name="status_refresh_failed">Couldn’t refresh</string>
+    <string name="status_showing_saved">Showing saved data</string>
+    <string name="status_try_again">Try again</string>
+    <string name="nav_lists">Lists</string>
+    <string name="nav_global_add">Add a gift, idea, wishlist item or person</string>
 </resources>

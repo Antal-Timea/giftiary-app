@@ -9,8 +9,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -27,7 +25,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import app.giftiary.R
 import app.giftiary.presentation.occasions.OccasionDateFormatter
-import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiaryTheme
 import java.time.Instant
 import java.time.LocalDate
@@ -51,14 +48,13 @@ fun GiftiaryDateField(
     LaunchedEffect(interactionSource, enabled) {
         interactionSource.interactions.collect { if (it is PressInteraction.Release && enabled) picking = true }
     }
-    OutlinedTextField(
+    GiftiaryInput(
         value = OccasionDateFormatter.format(date.dayOfMonth, date.monthValue, date.year, LocalConfiguration.current.locales[0]),
         onValueChange = {},
+        label = label,
         modifier = modifier,
         enabled = enabled,
         readOnly = true,
-        textStyle = MaterialTheme.typography.bodyLarge,
-        label = { Text(label) },
         trailingIcon = {
             IconButton(onClick = { picking = true }, enabled = enabled) {
                 Icon(
@@ -67,9 +63,6 @@ fun GiftiaryDateField(
                 )
             }
         },
-        singleLine = true,
-        shape = GiftiaryShapes.input,
-        colors = giftiaryTextFieldColors(),
         interactionSource = interactionSource,
     )
 
