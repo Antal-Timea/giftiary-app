@@ -3,17 +3,23 @@ package app.giftiary.presentation.gifts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.repository.GiftEntry
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.GiftRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -24,6 +30,7 @@ import java.util.UUID
 class GiftDetailViewModel @AssistedInject constructor(
     @Assisted private val giftId: UUID,
     private val repository: GiftRepository,
+    private val photos: GiftPhotoRepository,
 ) : ViewModel() {
 
     private val actions = MutableStateFlow(GiftDetailActions())
@@ -34,10 +41,28 @@ class GiftDetailViewModel @AssistedInject constructor(
         }
         .catch { emit(GiftDetailContent.LoadFailed) }
 
+    // Read once per photo: from this device, or downloaded the first time it is shown here.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val photo = repository.observeGift(giftId)
+        .map { it?.gift?.photoPath }
+        .distinctUntilChanged()
+        .flatMapLatest { path ->
+            if (path == null) {
+                flowOf(null)
+            } else {
+                val loaded = flow {
+                    emit(GiftDetailPhoto(photo = null, loading = true))
+                    emit(GiftDetailPhoto(photo = photos.loadPhoto(path)?.let(::LoadedPhoto), loading = false))
+                }
+                combine(loaded, photos.observeUploadPending(path)) { photo, pending -> photo.copy(uploadPending = pending) }
+            }
+        }
+        .catch { emit(null) }
+
     val uiState: StateFlow<GiftDetailUiState> =
-        combine(gift, actions) { content, actions ->
+        combine(gift, actions, photo) { content, actions, photo ->
             // Once deleted, the gift is gone from Room too; keep reporting the deletion, not "not found".
-            GiftDetailUiState(content = if (actions.deleted) GiftDetailContent.Deleted else content, actions = actions)
+            GiftDetailUiState(content = if (actions.deleted) GiftDetailContent.Deleted else content, actions = actions, photo = photo)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -84,6 +109,14 @@ class GiftDetailViewModel @AssistedInject constructor(
 data class GiftDetailUiState(
     val content: GiftDetailContent = GiftDetailContent.Loading,
     val actions: GiftDetailActions = GiftDetailActions(),
+    /** Null for a gift without a photo. */
+    val photo: GiftDetailPhoto? = null,
+)
+
+data class GiftDetailPhoto(
+    val photo: LoadedPhoto?,
+    val loading: Boolean,
+    val uploadPending: Boolean = false,
 )
 
 data class GiftDetailActions(

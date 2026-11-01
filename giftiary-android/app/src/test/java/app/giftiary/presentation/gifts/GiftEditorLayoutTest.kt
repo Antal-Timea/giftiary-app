@@ -42,7 +42,7 @@ import java.time.LocalDate
 /** Where the gift form puts its fields at each width class, measured on the laid-out editor. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "w1280dp-h900dp")
+@Config(sdk = [34], qualifiers = "w1280dp-h1100dp")
 class GiftEditorLayoutTest {
 
     @get:Rule
@@ -73,9 +73,10 @@ class GiftEditorLayoutTest {
     private val priceLabel = "Price (optional)"
     private val linkLabel = "Product link (optional)"
     private val noteLabel = "Note (optional)"
+    private val photoLabel = "Photo"
     private val save = "Save"
     private val leftColumn = listOf(directionLabel, personLabel, nameLabel, occasionLabel, dateLabel)
-    private val rightColumn = listOf(priceLabel, linkLabel, noteLabel)
+    private val rightColumn = listOf(priceLabel, linkLabel, noteLabel, photoLabel)
 
     private var state by mutableStateOf(editing)
     private var widthClass by mutableStateOf(WidthClass.COMPACT)
@@ -179,7 +180,7 @@ class GiftEditorLayoutTest {
         showEditor(WidthClass.EXPANDED, height = 360.dp)
 
         compose.onNodeWithText(save).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(noteLabel, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(photoLabel, useUnmergedTree = true).performScrollTo().assertIsDisplayed()
     }
 
     @Test

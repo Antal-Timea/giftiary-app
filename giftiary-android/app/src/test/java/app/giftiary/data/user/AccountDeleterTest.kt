@@ -7,6 +7,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.giftiary.data.local.GiftiaryDatabase
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.reminders.DeviceNotificationAccess
 import app.giftiary.data.reminders.ReminderNotifier
 import app.giftiary.data.reminders.ReminderPreferences
@@ -96,16 +97,23 @@ class AccountDeleterTest {
         val reminderSignOut = ReminderSignOut(reminderScheduler, notifier)
         val session = OwnerSession(auth, syncScheduler, reminderSignOut, FakeRecoveryGate(), marker, scope)
         val deleter = AccountDeleter(
-            session, auth, remote, marker, database.accountDataDao(), syncScheduler, reminderSignOut, reminderPreferences, notifier, scope,
+            session, auth, remote, marker, database.accountDataDao(), syncScheduler, reminderSignOut, reminderPreferences, notifier,
+            photoFiles, scope,
         )
         session.start()
         deleter.start()
         return session to deleter
     }
 
+    private val photoFiles by lazy { GiftPhotoFiles(context) }
+    private val alicesPhoto by lazy { photoFiles.newPath(alice.id) }
+    private val bobsPhoto by lazy { photoFiles.newPath(bob.id) }
+
     private suspend fun seedAliceAndBob() {
         database.seedAccount(alice.id)
         database.seedAccount(bob.id)
+        photoFiles.write(alicesPhoto, byteArrayOf(1))
+        photoFiles.write(bobsPhoto, byteArrayOf(2))
         reminderPreferences.setEnabled(alice.id, true)
         reminderPreferences.setLastDigest(alice.id, LocalDate.of(2026, 10, 20))
         reminderPreferences.setEnabled(bob.id, true)
@@ -156,6 +164,7 @@ class AccountDeleterTest {
         assertFalse(reminderPreferences.isEnabled(alice.id))
         assertNull(reminderPreferences.lastDigest(alice.id))
         assertEquals(noRows, database.rowsOf(alice.id))
+        assertFalse("Alice's photos are gone from this device", photoFiles.exists(alicesPhoto))
         assertEquals(1, auth.clearLocalSessionCalls)
         assertEquals("no network sign-out is needed", 0, auth.signOutCalls)
         assertNull(marker.owner())
@@ -164,6 +173,7 @@ class AccountDeleterTest {
         // Another account on this device keeps everything.
         assertEquals(everyTable, database.rowsOf(bob.id))
         assertTrue(reminderPreferences.isEnabled(bob.id))
+        assertTrue(photoFiles.exists(bobsPhoto))
     }
 
     @Test

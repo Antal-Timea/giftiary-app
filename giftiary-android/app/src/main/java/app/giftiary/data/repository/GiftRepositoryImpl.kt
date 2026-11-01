@@ -6,12 +6,16 @@ import app.giftiary.data.local.SyncOperationQueue
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.OccasionDao
 import app.giftiary.data.local.dao.PersonDao
+import app.giftiary.data.local.dao.PhotoTransferDao
 import app.giftiary.data.local.entity.GiftEntity
 import app.giftiary.data.local.entity.OccasionEntity
+import app.giftiary.data.local.entity.PhotoTransferEntity
+import app.giftiary.data.local.entity.PhotoTransferKind
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.mapper.toDomain
 import app.giftiary.data.local.mapper.toNewEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.data.user.scoped
@@ -19,6 +23,7 @@ import app.giftiary.domain.model.Gift
 import app.giftiary.domain.repository.GiftDetails
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftNotFoundException
+import app.giftiary.domain.repository.GiftPhotoUnavailableException
 import app.giftiary.domain.repository.GiftRepository
 import app.giftiary.domain.repository.OccasionNotFoundException
 import app.giftiary.domain.repository.PersonNotFoundException
@@ -40,6 +45,8 @@ class GiftRepositoryImpl @Inject constructor(
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
     private val syncRequester: SyncRequester,
+    private val photoTransfers: PhotoTransferDao,
+    private val photoFiles: GiftPhotoFiles,
 ) : GiftRepository {
 
     override fun observeGifts(): Flow<List<GiftEntry>> = activeOwner.scoped(emptyList()) { ownerUserId ->
@@ -70,7 +77,7 @@ class GiftRepositoryImpl @Inject constructor(
             name = details.name,
             givenAt = details.givenAt,
             price = details.price,
-            photoPath = null,
+            photoPath = details.photoPath,
             productUrl = details.productUrl,
             note = details.note,
             createdAt = now,
@@ -82,6 +89,7 @@ class GiftRepositoryImpl @Inject constructor(
             details.recipientPersonId?.let { requireActivePerson(it, ownerUserId) }
             details.occasionId?.let { requireAssignableOccasion(it, ownerUserId, details) }
             giftDao.insert(entity)
+            changePhoto(ownerUserId, entity.id, old = null, new = details.photoPath)
             syncQueue.enqueue(
                 entity.ownerUserId,
                 SyncEntityType.GIFT,
@@ -96,6 +104,7 @@ class GiftRepositoryImpl @Inject constructor(
 
     override suspend fun updateGift(id: UUID, details: GiftDetails) {
         val ownerUserId = activeOwner.requireOwnerId()
+        var replaced: String? = null
         database.withTransaction {
             // Only rows found through the owner-scoped lookup are ever written back.
             val existing = giftDao.findActiveById(id, ownerUserId) ?: throw GiftNotFoundException(id)
@@ -112,24 +121,54 @@ class GiftRepositoryImpl @Inject constructor(
                 priceCurrencyCode = details.price?.currencyCode,
                 productUrl = details.productUrl,
                 note = details.note,
+                photoPath = details.photoPath,
             )
             if (updated == existing) return@withTransaction
 
             giftDao.update(updated.copy(updatedAt = now()))
+            replaced = changePhoto(ownerUserId, id, old = existing.photoPath, new = details.photoPath)
             syncQueue.enqueue(existing.ownerUserId, SyncEntityType.GIFT, id, SyncOperation.UPDATE, existing.remoteState)
         }
+        replaced?.let(photoFiles::delete)
         syncRequester.requestSync()
     }
 
     override suspend fun deleteGift(id: UUID) {
         val ownerUserId = activeOwner.requireOwnerId()
+        var removed: String? = null
         database.withTransaction {
             val existing = giftDao.findActiveById(id, ownerUserId) ?: return@withTransaction
 
+            // The tombstone names no photo, and the photo's object goes once it is pushed.
+            if (existing.photoPath != null) giftDao.update(existing.copy(photoPath = null))
+            removed = changePhoto(ownerUserId, id, old = existing.photoPath, new = null)
             giftDao.softDelete(id, ownerUserId, deletedAt = now())
             syncQueue.enqueue(existing.ownerUserId, SyncEntityType.GIFT, id, SyncOperation.DELETE, existing.remoteState)
         }
+        removed?.let(photoFiles::delete)
         syncRequester.requestSync()
+    }
+
+    /**
+     * Queues the Storage work a photo change needs, inside the gift's write transaction: the new
+     * photo's upload, and the old one's removal (or, if it was never uploaded, nothing to remove).
+     * Returns the old photo's path, whose file the caller deletes once the transaction committed.
+     */
+    private suspend fun changePhoto(ownerUserId: UUID, giftId: UUID, old: String?, new: String?): String? {
+        if (old == new) return null
+        val now = now()
+        if (new != null) {
+            // Only a photo imported for this account, still on this device, can be attached.
+            if (GiftPhotoFiles.ownerOf(new) != ownerUserId || !photoFiles.exists(new)) throw GiftPhotoUnavailableException()
+            photoTransfers.put(PhotoTransferEntity(new, ownerUserId, giftId, PhotoTransferKind.UPLOAD, now, 0, null))
+        }
+        if (old == null) return null
+        if (photoTransfers.find(old, ownerUserId)?.kind == PhotoTransferKind.UPLOAD) {
+            photoTransfers.delete(old, ownerUserId)
+        } else {
+            photoTransfers.put(PhotoTransferEntity(old, ownerUserId, giftId, PhotoTransferKind.DELETE, now, 0, null))
+        }
+        return old
     }
 
     /**

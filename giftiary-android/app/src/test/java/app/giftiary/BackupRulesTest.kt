@@ -31,6 +31,8 @@ class BackupRulesTest {
         "database" to "${GiftiaryDatabase.NAME}-journal",
         // An account deletion still to be finished on this device.
         "sharedpref" to "giftiary_account_deletion.xml",
+        // Gift photos, which belong with the database.
+        "file" to "gift-photos/",
     )
 
     @Test

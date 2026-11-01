@@ -11,6 +11,7 @@ import app.giftiary.data.local.entity.SyncConflictEntity
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.repository.GiftIdeaRepositoryImpl
 import app.giftiary.data.repository.GiftRepositoryImpl
 import app.giftiary.data.repository.OccasionRepositoryImpl
@@ -79,6 +80,7 @@ class SyncReconcilerTest {
         )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, owner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         reconciler = SyncReconciler(
             database, database.syncOperationDao(), database.personDao(), database.occasionDao(), database.giftIdeaDao(),

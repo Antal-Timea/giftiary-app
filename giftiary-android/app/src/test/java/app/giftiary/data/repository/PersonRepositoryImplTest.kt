@@ -9,6 +9,7 @@ import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.data.local.mapper.toNewEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -85,6 +86,7 @@ class PersonRepositoryImplTest {
             activeOwner = activeOwner,
             clock = clock,
             SyncRequester {},
+            photoTransfers = database.photoTransferDao(), photoFiles = GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         giftIdeaRepository = GiftIdeaRepositoryImpl(
             database = database,

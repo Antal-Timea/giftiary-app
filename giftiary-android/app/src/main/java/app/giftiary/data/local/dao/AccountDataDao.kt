@@ -24,6 +24,7 @@ abstract class AccountDataDao {
         deletePeople(owner)
         deleteSyncOperations(owner)
         deleteSyncConflicts(owner)
+        deletePhotoTransfers(owner)
     }
 
     @Query("DELETE FROM gift WHERE ownerUserId = :owner")
@@ -49,4 +50,7 @@ abstract class AccountDataDao {
 
     @Query("DELETE FROM sync_conflict WHERE ownerUserId = :owner")
     protected abstract suspend fun deleteSyncConflicts(owner: UUID)
+
+    @Query("DELETE FROM photo_transfer WHERE ownerUserId = :owner")
+    protected abstract suspend fun deletePhotoTransfers(owner: UUID)
 }

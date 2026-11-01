@@ -31,6 +31,7 @@ import app.giftiary.presentation.giftideas.GiftIdeaDetailUiState
 import app.giftiary.presentation.giftideas.GiftIdeaDetailViewModel
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.FakeGiftIdeaRepository
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeGiftRepository
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
@@ -316,7 +317,7 @@ class GiftHistoryListDetailTest {
     fun `deleting a gift or an idea reports it through onDeleted, not Back`() {
         val giftRepository = FakeGiftRepository().apply { givenGifts(book) }
         val ideaRepository = FakeGiftIdeaRepository().apply { givenIdeas(scarf) }
-        val giftViewModel = GiftDetailViewModel(book.gift.id, giftRepository)
+        val giftViewModel = GiftDetailViewModel(book.gift.id, giftRepository, FakeGiftPhotoRepository())
         val ideaViewModel = GiftIdeaDetailViewModel(scarf.idea.id, ideaRepository)
         var backs = 0
         val deleted = mutableListOf<String>()

@@ -8,6 +8,7 @@ import app.giftiary.data.local.entity.RemoteState
 import app.giftiary.data.local.entity.SyncConflictEntity
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.sync.BlockReason
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.AttentionItem
@@ -73,7 +74,7 @@ class SyncStatusRepositoryImplTest {
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner,
             clock, SyncRequester {},
         )
-        gifts = GiftRepositoryImpl(database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {})
+        gifts = GiftRepositoryImpl(database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {}, database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()))
         wishlists = WishlistRepositoryImpl(
             database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
         )

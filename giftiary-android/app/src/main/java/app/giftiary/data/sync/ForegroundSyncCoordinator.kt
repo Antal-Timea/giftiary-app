@@ -1,6 +1,9 @@
 package app.giftiary.data.sync
 
 import android.util.Log
+import app.giftiary.data.local.entity.PhotoTransferKind
+import app.giftiary.data.photos.GiftPhotoSync
+import app.giftiary.data.photos.PhotoTransferResult
 import app.giftiary.data.remote.RemoteAccount
 import app.giftiary.data.remote.RemoteAccounts
 import app.giftiary.data.remote.RemoteException
@@ -55,6 +58,7 @@ class ForegroundSyncCoordinator @Inject constructor(
     private val runner: SyncRunner,
     private val puller: SyncPuller,
     private val scheduler: SyncScheduler,
+    private val photos: GiftPhotoSync,
     @ApplicationScope private val scope: CoroutineScope,
 ) : SyncRequester, FullSyncRequester {
 
@@ -147,12 +151,19 @@ class ForegroundSyncCoordinator @Inject constructor(
         // A drain is one account's: one run's result never decides a run for another. An account
         // opened meanwhile gets its own drain, from the request its opening made.
         val owner = activeOwner.ownerId.value ?: return DrainOutcome.NO_OWNER
+        // Photos before rows: the runner holds back a gift whose photo is not uploaded yet.
+        val uploads = photoStep(owner, PhotoTransferKind.UPLOAD) { photos.upload(it) } ?: return DrainOutcome.SESSION_UNUSABLE
         val lastRun = when (val push = push(owner)) {
             is PushPhase.Stopped -> return push.outcome
             is PushPhase.Finished -> push.lastRun
         }
+        // Objects of replaced or removed photos, once the rows no longer naming them are pushed.
+        // A refused token here is left to the next drain, like work the push left.
+        val deletions = photoStep(owner, PhotoTransferKind.DELETE) { photos.deleteUnused(it) }
+        photos.pruneLocal(owner)
+        val photoFailures = uploads.transientFailures + (deletions?.transientFailures ?: 0)
         return pull(owner) ?: when {
-            lastRun.transientFailures > 0 -> DrainOutcome.TRANSIENT
+            lastRun.transientFailures > 0 || photoFailures > 0 -> DrainOutcome.TRANSIENT
             lastRun.deferred -> DrainOutcome.DEFERRED
             else -> DrainOutcome.DONE
         }
@@ -241,6 +252,18 @@ class ForegroundSyncCoordinator @Inject constructor(
                 }
             }
         }
+    }
+
+    /** A photo step as [owner], or null if there is no usable session for it. */
+    /** Captures a token only when there is photo work, so a drain without any reads no more tokens. */
+    private suspend fun photoStep(
+        owner: UUID,
+        kind: PhotoTransferKind,
+        step: suspend (RemoteAccount) -> PhotoTransferResult,
+    ): PhotoTransferResult? {
+        if (!photos.hasPending(owner, kind)) return PhotoTransferResult(0, sessionRefused = false)
+        val account = capture(owner) ?: return null
+        return step(account).takeUnless { it.sessionRefused }
     }
 
     private fun capture(owner: UUID): RemoteAccount? = try {

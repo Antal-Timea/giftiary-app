@@ -16,7 +16,7 @@ Giftiary is operated by a private individual. No data protection officer is requ
 
 - Giftiary helps you remember, plan and share gifts. You can record people, occasions, gift ideas, gifts and wishlists.
 - Your data is first stored on your device and then synced to our server under your account, so that you can use it on more than one device.
-- We do **not** use analytics, advertising, tracking or advertising identifiers, and we do **not** collect location, contacts, photos or files from your device. There are no payments in the app.
+- We do **not** use analytics, advertising, tracking or advertising identifiers, and we do **not** collect location, contacts or files from your device. We process a photo only if you attach one to a gift. There are no payments in the app.
 - We do not sell your data or share it for advertising.
 - You can delete your account in the app at any time (Settings → Delete account).
 
@@ -51,8 +51,9 @@ If you already have a Giftiary account with the same verified email address, the
 - **Occasions:** type (e.g. birthday, name day, anniversary, Christmas, custom), day, month, optionally year, and a title for custom occasions.
 - **Gift ideas and gifts:** name, direction (given or received), who gave or received it, occasion, price or estimated price, product link, note, status.
 - **Wishlists and wishes:** list name, wish name, note, estimated price, product link.
+- **Gift photo (optional):** at most one image per gift, which you choose with the system photo picker. Before it is stored we resize it (at most 1600 pixels on the longer side), convert it to JPEG and remove its metadata (for example location and device data).
 
-You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar).
+You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar). The photo picker gives the app only the one image you choose; we have no access to your other photos.
 
 ### 3.5. Sharing data
 
@@ -73,11 +74,12 @@ We send emails from no-reply@giftiary.app to confirm your registration and to re
 ### 3.8. Data stored on your device
 
 - A local copy of your data in the app's own database, so the app works offline.
+- Local copies of your gift photos in the app's own storage.
 - Your sign-in session (while you are signed in).
 - Your reminder setting (on/off) and the day of the last reminder, per account.
 - A temporary marker if an account deletion has not finished on the device yet.
 
-Android backup (if enabled on your device) does **not** include the session, the local database or the deletion marker; it does include the reminder settings. Backup is performed by Google under its own terms, according to your device settings.
+Android backup (if enabled on your device) does **not** include the session, the local database, gift photos or the deletion marker; it does include the reminder settings. Backup is performed by Google under its own terms, according to your device settings.
 
 ### 3.9. If you contact us
 
@@ -111,6 +113,8 @@ Please record only what you need for your own personal gift planning. If someone
 
 Giftiary works offline: changes are saved on your device first and, when you are online, synced to the server over an encrypted (HTTPS) connection. On the server, every account can access only its own data; database-level access control enforces this.
 
+Gift photos are also saved on your device first and uploaded to a private file storage when you are online; the gift syncs with its photo only after the photo is uploaded. In the storage, every account can access only its own folder, photos have no public link, and your other devices download them from there when needed.
+
 ## 7. Wishlist sharing, invites and reservations
 
 - You can share your own wishlist with an invite link. You pass the link on yourself, in any way you choose (for example in a messaging app). Anyone who receives the link can join the list while the invite is valid (currently 7 days), after signing in. You can revoke an invite at any time.
@@ -118,7 +122,7 @@ Giftiary works offline: changes are saved on your device first and, when you are
 - **The list owner sees:** the members' display names and when they joined, and the open invites.
 - **Reservations:** for each wish, members see only whether it is available, reserved by them or reserved by someone else. They do not see who reserved it. **The list owner sees nothing about reservations**, so the surprise is kept.
 - The owner can remove a member, and a member can leave; the member's reservations then no longer count.
-- Sharing gives access to that wishlist only. Your people, occasions, gift ideas, gifts and other lists do not become visible.
+- Sharing gives access to that wishlist only. Your people, occasions, gift ideas, gifts (and their photos) and other lists do not become visible.
 
 ## 8. Reminders and notifications
 
@@ -128,7 +132,7 @@ If you turn reminders on, the app builds the notification about upcoming occasio
 
 We do not sell your data or share it with third parties for advertising or marketing. We use the following providers to run the service:
 
-- **Supabase** (Supabase, Inc.): authentication (user accounts, sign-in, handling Google and Facebook sign-in) and database. Our project runs in a data centre in the European Union, in Frankfurt (eu-central-1). Supabase may use further subprocessors (for example a cloud infrastructure provider). Privacy policy: https://supabase.com/privacy
+- **Supabase** (Supabase, Inc.): authentication (user accounts, sign-in, handling Google and Facebook sign-in), database and file storage (gift photos). Our project runs in a data centre in the European Union, in Frankfurt (eu-central-1). Supabase may use further subprocessors (for example a cloud infrastructure provider). Privacy policy: https://supabase.com/privacy
 - **Resend**: delivery of confirmation and password-reset emails, as the authentication system's custom SMTP provider. Privacy policy: https://resend.com/legal/privacy-policy
 - **Porkbun**: the mailbox provider for support@giftiary.app, receiving and storing the privacy and support enquiries sent to that address.
 - **Google**: distributing the app on Google Play.
@@ -148,6 +152,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   - If you delete an item in the app (for example a person or a gift), it disappears from all views.
   - On the server it is kept, marked as deleted, so that your other devices learn of the deletion; the sync change log is kept too.
   - Both are kept until the account is deleted; there is currently no automatic permanent deletion.
+- **Gift photos:** if you replace or remove a photo, or delete the gift, the photo is deleted from the file storage once the change has synced, and its local copies are deleted too (on your other devices at their next sync). Photos are not kept marked as deleted.
 - **Expired and revoked invites:** kept as rows (with their expiry and revocation time) until the account is deleted.
 - **Signing out:**
   - Signing out is not deletion. On the device, the account's data stays stored but hidden, so that you can reach it again when you sign back in with the same account.
@@ -162,16 +167,17 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 
 **What happens:**
 
-- **On the server**, in a single step, the following are permanently deleted:
+- **On the server**, first all of the account's gift photos are deleted from the file storage; then, in a single step, the following are permanently deleted:
   - all of your account's people, occasions, gift ideas, gifts, wishlists and wishes;
   - your invites and the sync change log;
   - your profile (display name);
   - your memberships and reservations on other people's lists, and every membership and reservation on your own lists;
   - finally the user account itself, together with its sign-in sessions and linked Google/Facebook identities.
 
-  This data is not kept marked as deleted; it is actually removed.
-- **On the device you delete from:** the app removes the account's local data, reminder settings and pending reminders, then signs you out. If the app stops part way, it finishes on its next start.
+  This data is not kept marked as deleted; it is actually removed. If deleting the account fails after the photos were deleted, some photos may already be gone; the account deletion can then be tried again.
+- **On the device you delete from:** the app removes the account's local data and photos, reminder settings and pending reminders, then signs you out. If the app stops part way, it finishes on its next start.
 - **On the account's other devices**, the data is **not deleted automatically**. Those devices will eventually be signed out, so the data is no longer available through the app in the normal way, but it may remain in their local database. You can remove it there by clearing the app's data or uninstalling the app.
+- If another of your devices uploads a photo while the account is being deleted, that photo may remain in the file storage. Once the account is gone nobody can access it, and we delete it during maintenance.
 - For backups, see section 11.
 
 **If you cannot access the app:** contact us at support@giftiary.app. We will help determine the appropriate secure way to delete your account. Never send us your password, verification codes or other sign-in credentials.
@@ -198,8 +204,9 @@ You can lodge a complaint with the Hungarian National Authority for Data Protect
 - The connection between the app and the server is encrypted (HTTPS).
 - Every account can access only its own data; database-level access control enforces this.
 - Passwords and invite codes are stored only in an irreversible (hashed) form.
+- Gift photos are in a private file storage: every account can access only its own folder, and there are no public links.
 - The owner of a shared list does not receive reservations, not even through the server.
-- Android backup does not include the sign-in session or the local database.
+- Android backup does not include the sign-in session, the local database or gift photos.
 
 No system can guarantee complete security, but we protect your data with reasonable measures.
 
@@ -210,7 +217,7 @@ Giftiary is currently intended for adults and is not directed to children. If yo
 ## 16. What we do not do
 
 - We do not use analytics, advertising or crash-reporting tools, and we do not track your activity in other apps or on websites.
-- We do not request access to location, contacts, camera, photos or files.
+- We do not request access to location, contacts, camera, photos or files; a gift photo is made only from the image you choose.
 - We do not process payment data.
 - We do not sell your data.
 

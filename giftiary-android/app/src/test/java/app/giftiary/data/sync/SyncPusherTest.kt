@@ -10,9 +10,10 @@ import app.giftiary.data.local.entity.SyncConflictEntity
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.remote.RemoteAccount
-import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.data.remote.RemoteException
+import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.data.remote.RemoteTestData.token
 import app.giftiary.data.remote.dto.RemoteGift
 import app.giftiary.data.remote.dto.RemoteGiftFields
@@ -93,6 +94,7 @@ class SyncPusherTest {
         )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         backend = FakeBackend(database)
         val reconciler = SyncReconciler(

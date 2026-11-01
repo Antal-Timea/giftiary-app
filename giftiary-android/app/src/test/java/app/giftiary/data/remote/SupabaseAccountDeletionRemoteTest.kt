@@ -32,6 +32,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
+import java.util.UUID
 
 /** The deletion RPC against a fake PostgREST: what is sent, and how refusals are read. */
 @OptIn(SupabaseInternal::class)
@@ -39,10 +40,20 @@ import java.io.IOException
 class SupabaseAccountDeletionRemoteTest {
 
     private val requests = mutableListOf<HttpRequestData>()
+    // The photo folder lists as empty unless a test fills it; only the RPC's answer varies.
+    private var folder = mutableListOf<String>()
     private var answer: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData = { respond("", HttpStatusCode.NoContent) }
     private val engine = MockEngine { request ->
         requests += request
-        answer(request)
+        when {
+            request.url.encodedPath.startsWith("/storage/v1/object/list/") ->
+                respond(folder.joinToString(prefix = "[", postfix = "]", transform = ::listed), HttpStatusCode.OK, JSON_HEADERS)
+            request.url.encodedPath.startsWith("/storage/v1/object/") -> {
+                folder.clear()
+                respond("[]", HttpStatusCode.OK, JSON_HEADERS)
+            }
+            else -> answer(request)
+        }
     }
 
     private val auth: Auth = createSupabaseClient(URL, PUBLISHABLE_KEY) {
@@ -54,7 +65,8 @@ class SupabaseAccountDeletionRemoteTest {
             alwaysAutoRefresh = false
         }
     }.auth
-    private val remote = SupabaseAccountDeletionRemote(AccountBoundClients(URL, PUBLISHABLE_KEY, engine), RemoteAccounts(auth))
+    private val clients = AccountBoundClients(URL, PUBLISHABLE_KEY, engine)
+    private val remote = SupabaseAccountDeletionRemote(clients, RemoteAccounts(auth), SupabaseGiftPhotoRemote(clients))
 
     @Before
     fun signIn() = runTest {
@@ -74,11 +86,50 @@ class SupabaseAccountDeletionRemoteTest {
     fun `the account is deleted by its own token, naming nobody`() = runTest {
         remote.deleteAccount(alice)
 
-        val request = requests.single()
+        val request = requests.last()
         assertEquals("/rest/v1/rpc/delete_my_account", request.url.encodedPath)
         assertEquals("POST", request.method.value)
         assertEquals(JsonObject(emptyMap()), Json.parseToJsonElement((request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()))
         assertEquals("Bearer ${token(alice)}", request.headers[HttpHeaders.Authorization])
+    }
+
+    @Test
+    fun `the account's photo folder is emptied before the account is deleted`() = runTest {
+        folder += listOf("10000000-0000-4000-8000-000000000001.jpg", "10000000-0000-4000-8000-000000000002.jpg")
+
+        remote.deleteAccount(alice)
+
+        val paths = requests.map { "${it.method.value} ${it.url.encodedPath}" }
+        assertEquals(
+            listOf(
+                "POST /storage/v1/object/list/gift-photos",
+                "DELETE /storage/v1/object/gift-photos",
+                "POST /rest/v1/rpc/delete_my_account",
+            ),
+            paths,
+        )
+        val deleted = Json.parseToJsonElement((requests[1].body as OutgoingContent.ByteArrayContent).bytes().decodeToString())
+        assertEquals(
+            Json.parseToJsonElement(
+                """{"prefixes":["$alice/10000000-0000-4000-8000-000000000001.jpg","$alice/10000000-0000-4000-8000-000000000002.jpg"]}""",
+            ),
+            deleted,
+        )
+        assertEquals("Bearer ${token(alice)}", requests[0].headers[HttpHeaders.Authorization])
+    }
+
+    @Test
+    fun `a failure to empty the photo folder deletes nothing else`() = runTest {
+        val storageDown = MockEngine { request ->
+            requests += request
+            if (request.url.encodedPath.startsWith("/storage/")) throw IOException("offline") else respond("", HttpStatusCode.NoContent)
+        }
+        val failing = AccountBoundClients(URL, PUBLISHABLE_KEY, storageDown)
+        val deletion = SupabaseAccountDeletionRemote(failing, RemoteAccounts(auth), SupabaseGiftPhotoRemote(failing))
+
+        assertFailure(RemoteFailure.NETWORK) { deletion.deleteAccount(alice) }
+        assertTrue(requests.none { it.url.encodedPath.startsWith("/rest/") })
+        storageDown.close()
     }
 
     @Test
@@ -107,6 +158,10 @@ class SupabaseAccountDeletionRemoteTest {
         assertTrue("expected $expected but got $failure", failure is RemoteException)
         assertEquals(expected, (failure as RemoteException).failure)
     }
+
+    /** An object as Storage lists it. */
+    private fun listed(name: String) =
+        """{"name":"$name","id":"${UUID.randomUUID()}","updated_at":null,"created_at":null,"last_accessed_at":null,"metadata":{}}"""
 
     private fun MockRequestHandleScope.respondError(code: String, status: HttpStatusCode) =
         respond("""{"code":"$code","message":"refused","details":null,"hint":null}""", status, JSON_HEADERS)

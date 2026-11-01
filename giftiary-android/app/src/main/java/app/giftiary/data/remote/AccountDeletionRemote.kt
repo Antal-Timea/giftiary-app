@@ -9,8 +9,9 @@ import javax.inject.Inject
 interface AccountDeletionRemote {
 
     /**
-     * Deletes [owner]'s account and all its data on the server, as [owner] itself. Deleting an
-     * account that is already gone succeeds, so a retry after a lost answer is safe.
+     * Deletes [owner]'s account and all its data on the server, its gift photos included, as
+     * [owner] itself. Deleting an account that is already gone succeeds, so a retry after a lost
+     * answer is safe.
      *
      * @throws RemoteException
      */
@@ -20,10 +21,17 @@ interface AccountDeletionRemote {
 class SupabaseAccountDeletionRemote @Inject constructor(
     private val clients: AccountBoundClients,
     private val accounts: RemoteAccounts,
+    private val photos: GiftPhotoRemote,
 ) : AccountDeletionRemote {
 
+    // The account's photos first: Storage objects can only be removed through the Storage API,
+    // never by the database function, and after the account is gone nobody could reach them. If
+    // this fails the account and its rows stay, though some photos may already be gone, and the
+    // whole deletion is tried again.
     // No argument: the server deletes whoever the token belongs to, and nobody else.
     override suspend fun deleteAccount(owner: UUID) {
-        clients.call(accounts.capture(owner)) { client -> client.postgrest.rpc("delete_my_account", JsonObject(emptyMap())) }
+        val account = accounts.capture(owner)
+        photos.deleteAll(account)
+        clients.call(account) { client -> client.postgrest.rpc("delete_my_account", JsonObject(emptyMap())) }
     }
 }

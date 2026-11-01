@@ -10,6 +10,8 @@ import app.giftiary.data.local.entity.SyncConflictEntity
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
+import app.giftiary.data.photos.GiftPhotoSync
 import app.giftiary.data.remote.RemoteAccount
 import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.data.remote.RemoteTestData.token
@@ -34,6 +36,7 @@ import app.giftiary.domain.repository.GiftIdeaDetails
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.repository.WishDetails
 import app.giftiary.testing.FakeActiveOwner
+import app.giftiary.testing.FakeGiftPhotoRemote
 import app.giftiary.testing.MutableClock
 import app.giftiary.testing.blockCurrentMutation
 import kotlinx.coroutines.CancellationException
@@ -93,6 +96,7 @@ class SyncRunnerTest {
         )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         wishlists = WishlistRepositoryImpl(
             database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
@@ -1015,6 +1019,10 @@ class SyncRunnerTest {
         SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),
         newPusher(),
         activeOwner,
+        GiftPhotoSync(
+            database.photoTransferDao(), database.giftDao(), database.syncOperationDao(),
+            GiftPhotoFiles(ApplicationProvider.getApplicationContext()), FakeGiftPhotoRemote(), clock,
+        ),
     )
 
     /** Each person gets a later createdAt than the one before, so their push order is known. */

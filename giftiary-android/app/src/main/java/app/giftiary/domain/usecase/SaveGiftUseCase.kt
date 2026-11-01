@@ -50,6 +50,7 @@ class SaveGiftUseCase @Inject constructor(
                 price = input.price,
                 productUrl = input.productUrl.trimToNull(),
                 note = input.note.trimToNull(),
+                photoPath = input.photoPath,
             ),
         )
         return SaveGiftResult.Saved
@@ -69,6 +70,7 @@ data class GiftInput(
     val price: Money?,
     val productUrl: String?,
     val note: String?,
+    val photoPath: String? = null,
 )
 
 sealed interface SaveGiftResult {

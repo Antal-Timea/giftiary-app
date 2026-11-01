@@ -2,27 +2,34 @@ package app.giftiary.data.sync
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.giftiary.data.auth.BackgroundSessionResult
 import app.giftiary.data.local.GiftiaryDatabase
 import app.giftiary.data.local.SyncOperationQueue
-import app.giftiary.data.auth.BackgroundSessionResult
 import app.giftiary.data.local.SyncReconciler
 import app.giftiary.data.local.entity.RemoteState
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
+import app.giftiary.data.photos.GiftPhotoSync
 import app.giftiary.data.remote.RemoteAccount
 import app.giftiary.data.remote.RemoteAccounts
 import app.giftiary.data.remote.RemoteException
 import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.data.remote.RemoteTestData.token
+import app.giftiary.data.remote.dto.RemoteGiftFields
 import app.giftiary.data.remote.dto.RemotePersonFields
 import app.giftiary.data.remote.toRemoteFields
+import app.giftiary.data.repository.GiftRepositoryImpl
 import app.giftiary.data.repository.PersonRepositoryImpl
 import app.giftiary.data.sync.FakeBackend.Behavior
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.domain.model.AuthUser
+import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Person
+import app.giftiary.domain.repository.GiftDetails
 import app.giftiary.domain.repository.OwnerSessionState
 import app.giftiary.testing.FakeActiveOwner
+import app.giftiary.testing.FakeGiftPhotoRemote
 import app.giftiary.testing.FakeSyncScheduler
 import app.giftiary.testing.MutableClock
 import app.giftiary.testing.blockCurrentMutation
@@ -35,18 +42,19 @@ import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
+import kotlin.concurrent.thread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -65,9 +73,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowLog
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.CyclicBarrier
-import kotlin.concurrent.thread
 
 /**
  * Foreground orchestration with real Room, [SyncRunner], [SyncPusher] and supabase-kt [Auth], and
@@ -98,6 +106,8 @@ class ForegroundSyncCoordinatorTest {
         }
     }.auth
     private lateinit var database: GiftiaryDatabase
+    private val photoRemote = FakeGiftPhotoRemote()
+    private lateinit var photoSync: GiftPhotoSync
     private lateinit var backend: FakeBackend
     private lateinit var runner: SyncRunner
     private lateinit var puller: SyncPuller
@@ -120,11 +130,16 @@ class ForegroundSyncCoordinatorTest {
             activeOwner, clock, SyncRequester {},
         )
         backend = FakeBackend(database)
+        photoSync = GiftPhotoSync(
+            database.photoTransferDao(), database.giftDao(), database.syncOperationDao(),
+            GiftPhotoFiles(ApplicationProvider.getApplicationContext()), photoRemote, clock,
+        )
         runner = SyncRunner(
             database.syncOperationDao(),
             SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),
             newPusher(),
             activeOwner,
+            photoSync,
         )
         puller = SyncPuller(
             database, backend, database.syncOperationDao(), database.personDao(), database.occasionDao(),
@@ -253,12 +268,12 @@ class ForegroundSyncCoordinatorTest {
     fun `a request made before start waits for the consumer`() = test {
         // An open account whose opening was never reported, and no session: neither the owner nor
         // the token collector can ask for sync, and a drain shows only as a failed capture.
-        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, appScope)
+        val quiet = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, photoSync, appScope)
         quiet.start()
         advanceUntilIdle()
         assertTrue("starting alone asks for nothing", logs().isEmpty())
 
-        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, appScope)
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, photoSync, appScope)
         coordinator.requestSync()
         advanceUntilIdle()
         assertTrue("nothing drains before start", logs().isEmpty())
@@ -918,7 +933,7 @@ class ForegroundSyncCoordinatorTest {
     @Test
     fun `a push request after a full sync request, both before start, still pulls`() = test {
         // Only these requests can start a drain: the owner's opening is never reported.
-        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, appScope)
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(auth), runner, puller, scheduler, photoSync, appScope)
         importSession(alice)
         activeOwner.ownerId.value = alice
         val bela = remotePerson("Béla")
@@ -1027,7 +1042,7 @@ class ForegroundSyncCoordinatorTest {
     @Test
     fun `an account opening right after the old account's token was read for its pull gets its own pull`() = test {
         // Owner changes are not reported, so the only request for Bob's full sync is the one below.
-        val coordinator = ForegroundSyncCoordinator(WatchedOwner(activeOwner.ownerId), RemoteAccounts(tokenAuth), runner, puller, scheduler, appScope)
+        val coordinator = ForegroundSyncCoordinator(WatchedOwner(activeOwner.ownerId), RemoteAccounts(tokenAuth), runner, puller, scheduler, photoSync, appScope)
         importSession(alice)
         activeOwner.ownerId.value = alice
         coordinator.start()
@@ -1078,7 +1093,7 @@ class ForegroundSyncCoordinatorTest {
     @Test
     fun `an account opening between the owner check and taking the full sync request gets it back`() = test {
         val owner = WatchedOwner(activeOwner.ownerId)
-        val coordinator = ForegroundSyncCoordinator(owner, RemoteAccounts(tokenAuth), runner, puller, scheduler, appScope)
+        val coordinator = ForegroundSyncCoordinator(owner, RemoteAccounts(tokenAuth), runner, puller, scheduler, photoSync, appScope)
         importSession(alice)
         activeOwner.ownerId.value = alice
         coordinator.start()
@@ -1325,6 +1340,39 @@ class ForegroundSyncCoordinatorTest {
     }
 
     @Test
+    fun `a gift's photo is uploaded before its row, offline it makes the drain transient, and a replaced one goes last`() = test {
+        val coordinator = startIdle(owner = alice)
+        val files = GiftPhotoFiles(ApplicationProvider.getApplicationContext())
+        val gifts = GiftRepositoryImpl(
+            database, database.giftDao(), database.personDao(), database.occasionDao(), SyncOperationQueue(database.syncOperationDao(), clock),
+            activeOwner, clock, SyncRequester {}, database.photoTransferDao(), files,
+        )
+        val anna = addPerson("Anna", alice)
+        fun newPhoto() = files.newPath(alice).also { files.write(it, byteArrayOf(1, 2, 3)) }
+        fun details(photoPath: String) =
+            GiftDetails(GiftDirection.GIVEN, null, anna.id, null, "Book", LocalDate.of(2026, 5, 12), null, null, null, photoPath)
+        fun remotePhotoOf(id: UUID) = (backend.rows[id]?.fields as RemoteGiftFields?)?.photoPath
+        val old = newPhoto()
+        val gift = gifts.addGift(details(old))
+
+        photoRemote.failure = RemoteFailure.NETWORK
+        assertEquals(DrainOutcome.TRANSIENT, coordinator.syncAndAwait(full = false))
+        assertNotNull("the person still went", backend.rows[anna.id])
+        assertNull(backend.rows[gift.id])
+
+        photoRemote.failure = null
+        assertEquals(DrainOutcome.DONE, coordinator.syncAndAwait(full = false))
+        assertEquals(old, remotePhotoOf(gift.id))
+
+        val new = newPhoto()
+        gifts.updateGift(gift.id, details(new))
+        assertEquals(DrainOutcome.DONE, coordinator.syncAndAwait(full = false))
+        assertEquals(new, remotePhotoOf(gift.id))
+        assertEquals(listOf("upload $old", "upload $old", "upload $new", "delete $old"), photoRemote.calls.toList())
+        assertEquals(setOf(new), photoRemote.objects.keys.toSet())
+    }
+
+    @Test
     fun `a drain that ran out of pushes leaves the rest deferred, not failed`() = test {
         val coordinator = startIdle(owner = alice)
         repeat(2 * SyncRunner.MAX_PUSHES + 1) { addPerson("Person $it", alice) }
@@ -1343,7 +1391,7 @@ class ForegroundSyncCoordinatorTest {
         // no collector either: in this new process only the job asks for a drain.
         sessionOverride = session(alice)
         activeOwner.ownerId.value = alice
-        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(tokenAuth), runner, puller, scheduler, appScope)
+        val coordinator = ForegroundSyncCoordinator(UnreportedOwner(alice), RemoteAccounts(tokenAuth), runner, puller, scheduler, photoSync, appScope)
         coordinator.start()
         advanceUntilIdle()
         assertTrue(runs().isEmpty())
@@ -1394,7 +1442,7 @@ class ForegroundSyncCoordinatorTest {
     }
 
     private fun newCoordinator(scope: CoroutineScope) =
-        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(tokenAuth), runner, puller, scheduler, scope)
+        ForegroundSyncCoordinator(activeOwner, RemoteAccounts(tokenAuth), runner, puller, scheduler, photoSync, scope)
 
     // Every token the coordinator captures is read through here: a test may replace the session,
     // or act at the exact moment a token is read.

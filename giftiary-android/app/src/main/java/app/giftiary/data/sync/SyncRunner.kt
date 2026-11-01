@@ -3,6 +3,7 @@ package app.giftiary.data.sync
 import app.giftiary.data.local.dao.SyncOperationDao
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoSync
 import app.giftiary.data.remote.RemoteAccount
 import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.data.user.ActiveOwner
@@ -26,7 +27,7 @@ import javax.inject.Singleton
  * - An operation is pushed only once every parent its entity references is known remotely, so a
  *   child never waits on the network for a parent the backend may not have. A blocked conflict
  *   sends nothing, so it does not wait. A parent settled earlier in the run lets its children
- *   through in the same run.
+ *   through in the same run. A gift likewise waits until its photo is uploaded.
  * - Each operation is pushed at most once per run, and at most [MAX_PUSHES] in all. A newer change
  *   left by a settled mutation waits for the next run, so continued editing cannot keep a run going.
  * - A failure only holds back its own operation and its children; only a failure of the session,
@@ -42,6 +43,7 @@ class SyncRunner @Inject constructor(
     private val dependencies: SyncDependencies,
     private val pusher: SyncPusher,
     private val activeOwner: ActiveOwner,
+    private val photos: GiftPhotoSync,
 ) {
 
     private val running = Mutex()
@@ -69,6 +71,8 @@ class SyncRunner @Inject constructor(
                 ) {
                     continue
                 }
+                // Like a parent: the row may not name a photo the backend does not have yet.
+                if (operation.entityType == SyncEntityType.GIFT && photos.isUploadPending(owner, operation.entityId)) continue
 
                 progress.pushed++
                 when (val outcome = pusher.push(account, operation.id)) {
