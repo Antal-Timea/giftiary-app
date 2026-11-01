@@ -217,7 +217,7 @@ private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
 }
 
 @Composable
-private fun rememberDecoded(photo: LoadedPhoto): ImageBitmap? =
+internal fun rememberDecoded(photo: LoadedPhoto): ImageBitmap? =
     remember(photo) { BitmapFactory.decodeByteArray(photo.bytes, 0, photo.bytes.size)?.asImageBitmap() }
 
 internal val PHOTO_MAX_HEIGHT = 360.dp

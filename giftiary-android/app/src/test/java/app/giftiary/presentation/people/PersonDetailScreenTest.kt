@@ -1,0 +1,175 @@
+package app.giftiary.presentation.people
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import app.giftiary.domain.model.GiftDirection
+import app.giftiary.domain.model.Occasion
+import app.giftiary.domain.model.OccasionType
+import app.giftiary.domain.repository.GiftEntry
+import app.giftiary.domain.repository.GiftIdeaEntry
+import app.giftiary.domain.repository.OccasionDetails
+import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.giftDetails
+import app.giftiary.testing.giftEntry
+import app.giftiary.testing.ideaDetails
+import app.giftiary.testing.ideaEntry
+import app.giftiary.testing.occasion
+import app.giftiary.testing.person
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.time.LocalDate
+
+/** The phone Person detail: its no-photo hero, the next occasion, its sections and what each action opens. */
+// SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], qualifiers = "w390dp-h3000dp")
+class PersonDetailScreenTest {
+
+    @get:Rule
+    val compose = createComposeRule()
+
+    private val peter = person("Peter", relationship = "Husband")
+    private val today = LocalDate.of(2026, 9, 20)
+    private val birthday = occasion(peter.id, OccasionDetails(OccasionType.BIRTHDAY, null, 12, 10, 1985, true))
+    private val nameDay = occasion(peter.id, OccasionDetails(OccasionType.NAME_DAY, null, 29, 6, null, true))
+    private val actions = mutableListOf<String>()
+    private var deletion by mutableStateOf(PersonDeletion())
+
+    private fun showDetail(state: PersonDetailUiState.Loaded) {
+        compose.setContent {
+            GiftiaryTheme {
+                PersonDetailScreen(
+                    state = state,
+                    onBack = { actions += "back" },
+                    onEditPerson = { actions += "edit ${it.name}" },
+                    onAddOccasion = { actions += "add occasion" },
+                    onEditOccasion = { actions += "edit occasion ${it.type}" },
+                    onPlanGift = { actions += "plan ${it.type}" },
+                    onAddGift = { actions += "add gift" },
+                    onOpenGift = { actions += "gift ${it.gift.name}" },
+                    onAddGiftIdea = { actions += "add idea" },
+                    onOpenGiftIdea = { actions += "idea ${it.idea.name}" },
+                    onAddWishlist = { actions += "add wishlist" },
+                    onOpenWishlist = { actions += "wishlist" },
+                    onDeleteRequested = { deletion = PersonDeletion(confirming = true) },
+                    onDeleteConfirmed = { actions += "deleted" },
+                    onDeleteDismissed = { deletion = PersonDeletion() },
+                    onDeleteErrorShown = {},
+                    deletion = deletion,
+                    today = today,
+                )
+            }
+        }
+    }
+
+    private fun loaded(
+        occasions: List<Occasion> = listOf(birthday, nameDay),
+        ideas: List<GiftIdeaEntry> = emptyList(),
+        gifts: List<GiftEntry> = emptyList(),
+    ) = PersonDetailUiState.Loaded(peter, occasions, ideas, gifts, emptyList())
+
+    @Test
+    fun `without a photo the hero carries the monogram, the name and relationship, with back and edit`() {
+        showDetail(loaded())
+
+        // The monogram is decorative (see FoundationComponentsTest); the name is what is read out.
+        compose.onNodeWithText("Peter").assertExists()
+        compose.onNodeWithText("Husband").assertExists()
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithContentDescription("Edit Peter").performClick()
+        assertEquals(listOf("back", "edit Peter"), actions)
+    }
+
+    @Test
+    fun `the next occasion leads the page with its countdown and plan, and Plan gift opens it`() {
+        val idea = ideaEntry(ideaDetails(peter, name = "Earbuds").copy(occasionId = birthday.id), peter)
+        showDetail(loaded(ideas = listOf(idea)))
+
+        compose.onNodeWithText("Birthday · October 12").assertExists()
+        compose.onNodeWithText("22").assertExists()
+        compose.onNodeWithText("1 idea").assertExists()
+
+        compose.onNodeWithText("Plan gift").performClick()
+        assertEquals(listOf("plan BIRTHDAY"), actions)
+    }
+
+    @Test
+    fun `with no occasions there is no occasion card, and adding one stays at hand`() {
+        showDetail(loaded(occasions = emptyList()))
+
+        compose.onNodeWithText("Plan gift").assertDoesNotExist()
+        compose.onNodeWithText("No occasions yet").assertExists()
+        compose.onNodeWithText("Add occasion").performClick()
+        assertEquals(listOf("add occasion"), actions)
+    }
+
+    @Test
+    fun `ideas, occasions and wishlists keep their rows and add actions`() {
+        val idea = ideaEntry(ideaDetails(peter, name = "Hiking poles"), peter)
+        showDetail(loaded(ideas = listOf(idea)))
+
+        compose.onNodeWithText("Future possibilities, not yet given").assertExists()
+        compose.onNodeWithText("Hiking poles").performClick()
+        compose.onNodeWithText("Add idea").performClick()
+        compose.onNodeWithText("Name day").performScrollTo().performClick()
+        compose.onNodeWithText("Add wishlist").performScrollTo().performClick()
+
+        assertEquals(listOf("idea Hiking poles", "add idea", "edit occasion NAME_DAY", "add wishlist"), actions)
+    }
+
+    @Test
+    fun `the history groups the gifts by year and occasion, newest first, as memory cards`() {
+        val headphones = giftEntry(giftDetails(person = peter, name = "Headphones", givenAt = LocalDate.of(2026, 3, 1)), peter)
+        val tickets = giftEntry(giftDetails(GiftDirection.RECEIVED, peter, "Concert tickets", LocalDate.of(2026, 2, 1)), peter)
+        val shoes = giftEntry(giftDetails(person = peter, name = "Running shoes", givenAt = LocalDate.of(2025, 12, 24)), peter)
+        showDetail(loaded(gifts = listOf(shoes, tickets, headphones)))
+
+        compose.onNodeWithText("History with Peter").performScrollTo()
+        compose.onNodeWithText("3 gifts shared together").assertExists()
+        compose.onNodeWithText("2026").assertExists()
+        compose.onNodeWithText("2025").assertExists()
+        compose.onAllNodesWithText("Given to Peter", useUnmergedTree = true).assertCountEquals(2)
+        compose.onAllNodesWithText("Received from Peter", useUnmergedTree = true).assertCountEquals(1)
+
+        compose.onNodeWithText("Concert tickets").performScrollTo().performClick()
+        compose.onNodeWithText("Add gift").performScrollTo().performClick()
+        assertEquals(listOf("gift Concert tickets", "add gift"), actions)
+    }
+
+    @Test
+    fun `deleting the person asks first`() {
+        showDetail(loaded())
+
+        compose.onNodeWithText("Delete Peter").performScrollTo().performClick()
+        compose.onNodeWithText("Delete Peter?").assertExists()
+        compose.onNodeWithText("Delete").performClick()
+
+        assertEquals(listOf("deleted"), actions)
+    }
+
+    @Test
+    fun `the next occasion is the soonest still ahead, and history groups are newest first`() {
+        assertEquals(birthday, nextOccasion(listOf(nameDay, birthday), today)?.first)
+        assertEquals(nameDay, nextOccasion(listOf(nameDay, birthday), LocalDate.of(2026, 10, 13))?.first)
+
+        val a = giftEntry(giftDetails(person = peter, name = "A", givenAt = LocalDate.of(2025, 5, 1)), peter)
+        val b = giftEntry(giftDetails(person = peter, name = "B", givenAt = LocalDate.of(2026, 5, 1)), peter)
+        val c = giftEntry(giftDetails(person = peter, name = "C", givenAt = LocalDate.of(2026, 1, 1)), peter)
+        val groups = historyGroups(listOf(a, b, c))
+        assertEquals(listOf(2026, 2025), groups.map { it.year })
+        assertEquals(listOf("B", "C"), groups.first().gifts.map { it.gift.name })
+    }
+}

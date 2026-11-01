@@ -35,6 +35,17 @@ fun occasionTitle(occasion: Occasion): String =
 fun occasionDate(occasion: Occasion): String =
     OccasionDateFormatter.format(occasion.day, occasion.month, occasion.year, currentLocale())
 
+/** The day and month an occasion returns on each year, e.g. "October 12": a birth year is not repeated. */
+@Composable
+@ReadOnlyComposable
+fun occasionDayMonth(occasion: Occasion): String =
+    OccasionDateFormatter.format(occasion.day, occasion.month, year = null, currentLocale())
+
+/** [occasionDayMonth] with the short month, for rows that must stay on one line: "Oct 12". */
+@Composable
+@ReadOnlyComposable
+fun occasionShortDayMonth(day: Int, month: Int): String = OccasionDateFormatter.formatShort(day, month, currentLocale())
+
 /** The day an occasion falls on next; the year is left out, as it is clear from how soon it is. */
 @Composable
 @ReadOnlyComposable

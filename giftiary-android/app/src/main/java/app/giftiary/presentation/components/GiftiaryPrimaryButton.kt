@@ -69,6 +69,7 @@ fun GiftiaryPillButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     leadingIcon: Painter? = null,
+    trailingIcon: Painter? = null,
 ) {
     CoralButton(
         onClick = onClick,
@@ -84,6 +85,10 @@ fun GiftiaryPillButton(
             Spacer(Modifier.width(GiftiarySpacing.s))
         }
         Text(text = text, style = GiftiaryType.action)
+        if (trailingIcon != null) {
+            Spacer(Modifier.width(GiftiarySpacing.s))
+            Icon(painter = trailingIcon, contentDescription = null, modifier = Modifier.size(13.dp))
+        }
     }
 }
 

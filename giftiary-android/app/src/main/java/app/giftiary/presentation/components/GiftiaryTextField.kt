@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -118,11 +119,12 @@ internal fun GiftiaryInput(
         visualTransformation = visualTransformation,
         interactionSource = interactionSource,
     ) { innerTextField ->
-        Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
+        // Column drops the minimum width, so each level fills explicitly; else the field shrinks to its text.
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
             if (label != null) {
                 Text(text = label, style = GiftiaryType.label, color = GiftiaryTheme.colors.textLabel)
             }
-            Box(Modifier.heightIn(min = if (singleLine) 48.dp else 64.dp), propagateMinConstraints = true) {
+            Box(Modifier.fillMaxWidth().heightIn(min = if (singleLine) 48.dp else 64.dp), propagateMinConstraints = true) {
                 OutlinedTextFieldDefaults.DecorationBox(
                     value = value,
                     innerTextField = innerTextField,

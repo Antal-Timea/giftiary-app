@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
@@ -35,11 +36,12 @@ class HomeLayoutTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val tagline = "Remember · Plan · Share"
+    private val title = "Who are we making happy next?"
     private val comingUp = "Coming up"
     private val ownOccasions = "Your occasions"
     private val reminder = "Get a reminder on the day of an occasion and a week before."
     private val sync = "No changes waiting to sync"
+    private val recentGifts = "Recent gifts"
 
     private fun showHome(
         width: Dp,
@@ -56,6 +58,9 @@ class HomeLayoutTest {
                         onOpenComingUp = {},
                         reminderCard = reminderCard,
                         reminderActions = ReminderCardActions({}, {}, {}, {}),
+                        recentGifts = RecentGiftsContent.Loaded(emptyList()),
+                        onOpenGift = {},
+                        onOpenAllGifts = {},
                         onOpenOwnOccasions = {},
                         onOpenSyncAttention = {},
                         onOpenSettings = {},
@@ -70,48 +75,50 @@ class HomeLayoutTest {
     private fun bounds(text: String): DpRect = compose.onNodeWithText(text).getBoundsInRoot()
 
     @Test
-    fun `a phone keeps one full-width column, top to bottom, with the Settings link last`() {
+    fun `a phone shows the hero, sync status, coming up, the reminder and recent gifts, top to bottom`() {
         showHome(width = 411.dp, widthClass = WidthClass.COMPACT, showSettingsLink = true)
 
-        val order = listOf(tagline, comingUp, ownOccasions, reminder, sync, "Settings")
+        val order = listOf(title, sync, comingUp, ownOccasions, reminder, recentGifts)
         val tops = order.map { bounds(it).top }
         assertEquals("top to bottom: $order", tops.sorted(), tops)
-        // The usual side margins, not a centred measure.
-        assertNear(GiftiarySpacing.xl, bounds(tagline).left, "tagline start")
-        assertNear(GiftiarySpacing.xl, bounds(comingUp).left, "coming up start")
+        // The hero and the band run edge to edge; their text keeps the browse gutter.
+        assertNear(GiftiarySpacing.browseGutter, bounds(comingUp).left, "coming up start")
+        assertNear(GiftiarySpacing.browseGutter, bounds(recentGifts).left, "recent gifts start")
+        // Settings, where the board's profile avatar sits, inside the hero.
+        val settings = compose.onNodeWithContentDescription("Settings").getBoundsInRoot()
+        assertTrue("settings in the hero", settings.bottom < bounds(title).bottom && settings.right > 300.dp)
     }
 
     @Test
     fun `a medium window shows the same column at a readable, centred width, without the Settings link`() {
         showHome(width = 800.dp, widthClass = WidthClass.MEDIUM, showSettingsLink = false)
 
-        // The readable measure, centred in the window, then the usual margin.
-        val start = centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl
-        assertNear(start, bounds(tagline).left, "tagline start")
+        val start = centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.browseGutter
         assertNear(start, bounds(comingUp).left, "coming up start")
-        val tops = listOf(tagline, comingUp, ownOccasions, reminder, sync).map { bounds(it).top }
+        assertNear(start, bounds(recentGifts).left, "recent gifts start")
+        val tops = listOf(title, sync, comingUp, ownOccasions, reminder, recentGifts).map { bounds(it).top }
         assertEquals(tops.sorted(), tops)
-        compose.onNodeWithText("Settings").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
     }
 
     @Test
-    fun `an expanded window puts coming up and the reminder and sync status side by side under the header`() {
+    fun `an expanded window puts coming up and the reminder, sync status and recent gifts side by side under the header`() {
         showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSettingsLink = false)
 
-        val header = bounds(tagline)
+        val header = bounds(title)
         val left = bounds(comingUp)
         val card = bounds(reminder)
         val status = bounds(sync)
-        // The wide measure, centred in the window, then the usual margin.
+        val recent = bounds(recentGifts)
         val start = centredStart(1200.dp, GiftiaryLayout.wideMaxWidth) + GiftiarySpacing.xl
         assertNear(start, header.left, "header start")
-        assertNear(start, left.left, "coming up start")
         assertTrue("both columns below the header", left.top > header.bottom && card.top > header.bottom)
         assertTrue("the reminder beside coming up, not below it", card.top < bounds(ownOccasions).bottom)
         // 3:2 columns with a 32 dp gap: the second starts about 3/5 into the 992 dp row.
         assertTrue("reminder in the second column (was ${card.left})", card.left > left.left + 550.dp)
-        assertTrue("sync status in the second column, under the reminder", status.left > left.left + 550.dp && status.top > card.bottom)
-        compose.onNodeWithText("Settings").assertDoesNotExist()
+        assertTrue("sync status under the reminder", status.left > left.left + 550.dp && status.top > card.bottom)
+        assertTrue("recent gifts under the sync status", recent.left > left.left + 550.dp && recent.top > status.bottom)
+        compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
     }
 
     @Test
@@ -121,6 +128,5 @@ class HomeLayoutTest {
         compose.onNodeWithText(reminder).assertDoesNotExist()
         val status = bounds(sync)
         assertTrue("sync status in the second column", status.left > bounds(comingUp).left + 550.dp)
-        assertNear(bounds(comingUp).top, status.top, "sync status level with coming up")
     }
 }

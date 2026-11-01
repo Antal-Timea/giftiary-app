@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.presentation.theme.GiftiaryShapes
@@ -87,16 +88,22 @@ fun GiftiarySupportButton(
     }
 }
 
-/** Cancel, Try again, Undo, Go back: the quietest action, still a 48dp target. */
+/**
+ * Cancel, Try again, Undo, Go back: the quietest action, still a 48dp target. [underline] marks
+ * one standing alone in body text, such as a state's "Clear search".
+ */
 @Composable
-fun GiftiaryTextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun GiftiaryTextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, underline: Boolean = false) {
     TextButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
         contentPadding = PaddingValues(horizontal = GiftiarySpacing.xs),
     ) {
-        Text(text = text, style = GiftiaryType.actionSmall)
+        Text(
+            text = text,
+            style = if (underline) GiftiaryType.actionSmall.copy(textDecoration = TextDecoration.Underline) else GiftiaryType.actionSmall,
+        )
     }
 }
 

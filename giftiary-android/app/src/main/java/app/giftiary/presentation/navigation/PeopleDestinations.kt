@@ -18,8 +18,6 @@ import java.util.UUID
 internal fun NavGraphBuilder.peopleDestinations(navController: NavHostController) {
     composable<PeopleRoute> {
         PeopleScreen(
-            // The navigation bar or rail leads away from a section root; it has no back arrow.
-            onBack = null,
             onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
             onOpenPerson = { personId -> navController.navigate(PersonDetailRoute(personId.toString())) },
             // Beside the list on a wide window: one view model per person, kept in People's entry.
@@ -67,11 +65,14 @@ private fun PersonDetail(
         onEditPerson = { id -> navController.navigate(EditPersonRoute(id.toString())) },
         onAddOccasion = { id -> navController.navigate(AddOccasionRoute(id.toString())) },
         onEditOccasion = { id -> navController.navigate(EditOccasionRoute(id.toString())) },
+        onPlanGift = { id -> navController.navigate(OccasionPlanRoute(id.toString())) },
         onAddGift = { id -> navController.navigate(AddGiftRoute(personId = id.toString())) },
         onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
         onAddGiftIdea = { id -> navController.navigate(AddGiftIdeaRoute(personId = id.toString())) },
         onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
         onAddWishlist = { id -> navController.navigate(AddWishlistRoute(personId = id.toString())) },
         onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
+        // Beside the list, People forgets a selected person who is gone; on its own the screen closes.
+        onDeleted = onBack ?: {},
     )
 }
