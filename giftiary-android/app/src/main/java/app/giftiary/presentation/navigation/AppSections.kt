@@ -68,7 +68,8 @@ internal fun NavDestination.section(): AppSection? =
 /**
  * The routes that show the phone navigation unit (DS-04): the four section roots and the screens
  * browsed from them. Task flows, Settings, sharing and system screens hide it, so a form is never
- * left half-done by a tap on the bar.
+ * left half-done by a tap on the bar. Mark as given is the exception the approved board draws: a
+ * short confirmation over the idea, with the bar behind it.
  */
 internal val routesWithNavigationBar: Set<KClass<*>> = setOf(
     HomeRoute::class,
@@ -79,6 +80,7 @@ internal val routesWithNavigationBar: Set<KClass<*>> = setOf(
     GiftHistoryRoute::class,
     GiftDetailRoute::class,
     GiftIdeaDetailRoute::class,
+    MarkGiftIdeaGivenRoute::class,
     WishlistsRoute::class,
     WishlistDetailRoute::class,
     WishDetailRoute::class,
