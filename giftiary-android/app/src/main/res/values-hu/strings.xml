@@ -158,6 +158,9 @@
     <string name="gift_photo_add">Fotó hozzáadása</string>
     <string name="gift_photo_replace">Fotó cseréje</string>
     <string name="gift_photo_remove">Fotó eltávolítása</string>
+    <string name="gift_photo_take">Fénykép készítése</string>
+    <string name="gift_photo_choose">Galériából választás</string>
+    <string name="gift_photo_camera_unavailable">Nincs elérhető kameraalkalmazás a fénykép elkészítéséhez.</string>
     <string name="gift_photo_description">Az ajándék fotója</string>
     <string name="gift_photo_unreadable">Ezt a képet nem sikerült megnyitni. Próbálj egy másikat.</string>
     <string name="gift_photo_unavailable">A fotó most nem érhető el.</string>

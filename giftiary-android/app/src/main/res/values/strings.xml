@@ -159,6 +159,9 @@
     <string name="gift_photo_add">Add photo</string>
     <string name="gift_photo_replace">Replace photo</string>
     <string name="gift_photo_remove">Remove photo</string>
+    <string name="gift_photo_take">Take photo</string>
+    <string name="gift_photo_choose">Choose from gallery</string>
+    <string name="gift_photo_camera_unavailable">No camera app is available to take the photo.</string>
     <string name="gift_photo_description">Photo of the gift</string>
     <string name="gift_photo_unreadable">This image couldn’t be opened. Try another one.</string>
     <string name="gift_photo_unavailable">The photo isn’t available right now.</string>

@@ -51,9 +51,9 @@ If you already have a Giftiary account with the same verified email address, the
 - **Occasions:** type (e.g. birthday, name day, anniversary, Christmas, custom), day, month, optionally year, and a title for custom occasions.
 - **Gift ideas and gifts:** name, direction (given or received), who gave or received it, occasion, price or estimated price, product link, note, status.
 - **Wishlists and wishes:** list name, wish name, note, estimated price, product link.
-- **Gift photo (optional):** at most one image per gift, which you choose with the system photo picker. Before it is stored we resize it (at most 1600 pixels on the longer side), convert it to JPEG and remove its metadata (for example location and device data).
+- **Gift photo (optional):** at most one image per gift, which you choose with the system photo picker or take with your device's camera app. Before it is stored we resize it (at most 1600 pixels on the longer side), convert it to JPEG and remove its metadata (for example location and device data).
 
-You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar). The photo picker gives the app only the one image you choose; we have no access to your other photos.
+You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar). The photo picker gives the app only the one image you choose; we have no access to your other photos. If you take a new photo, your camera app hands it only to Giftiary, which processes it as above and deletes the camera's original right away; it is not saved to your gallery by us.
 
 ### 3.5. Sharing data
 
@@ -217,7 +217,7 @@ Giftiary is currently intended for adults and is not directed to children. If yo
 ## 16. What we do not do
 
 - We do not use analytics, advertising or crash-reporting tools, and we do not track your activity in other apps or on websites.
-- We do not request access to location, contacts, camera, photos or files; a gift photo is made only from the image you choose.
+- We do not request access to location, contacts, camera, photos or files; a gift photo is made only from the image you choose or take with your camera app.
 - We do not process payment data.
 - We do not sell your data.
 

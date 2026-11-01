@@ -51,9 +51,9 @@ Ha ugyanazzal az igazolt e-mail-címmel már van Giftiary-fiókod, a hitelesít�
 - **Alkalmak:** típus (pl. születésnap, névnap, évforduló, karácsony, egyéni), nap, hónap, opcionálisan év, egyéni alkalomnál cím.
 - **Ajándékötletek és ajándékok:** megnevezés, irány (adott vagy kapott ajándék), ki adta vagy kapta, alkalom, ár vagy becsült ár, termékhivatkozás, megjegyzés, állapot.
 - **Kívánságlisták és kívánságok:** a lista neve, a kívánság neve, megjegyzés, becsült ár, termékhivatkozás.
-- **Ajándékfotó (választható):** ajándékonként legfeljebb egy kép, amelyet te választasz ki a rendszer fotóválasztójával. Mentés előtt kicsinyítjük (a hosszabb oldal legfeljebb 1600 képpont), JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait (például a helyadatot és az eszköz adatait).
+- **Ajándékfotó (választható):** ajándékonként legfeljebb egy kép, amelyet te választasz ki a rendszer fotóválasztójával, vagy a készüléked kameraalkalmazásával készítesz. Mentés előtt kicsinyítjük (a hosszabb oldal legfeljebb 1600 képpont), JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait (például a helyadatot és az eszköz adatait).
 
-Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá.
+Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá. Ha új fényképet készítesz, a kameraalkalmazás csak a Giftiarynek adja át, amely a fentiek szerint feldolgozza, a kamera eredeti felvételét pedig azonnal törli; a galériádba mi nem mentjük.
 
 ### 3.5. Megosztási adatok
 
@@ -217,7 +217,7 @@ A Giftiary jelenleg felnőtteknek készült, és nem gyermekeknek szól. Ha úgy
 ## 16. Amit nem csinálunk
 
 - Nem használunk analitikai, reklám- vagy hibajelentő eszközt, és nem követjük a tevékenységedet más alkalmazásokban vagy weboldalakon.
-- Nem kérünk hozzáférést helyadathoz, névjegyekhez, kamerához, fényképekhez vagy fájlokhoz; ajándékfotót csak az általad kiválasztott képből készítünk.
+- Nem kérünk hozzáférést helyadathoz, névjegyekhez, kamerához, fényképekhez vagy fájlokhoz; ajándékfotót csak az általad kiválasztott vagy a kameraalkalmazással készített képből készítünk.
 - Nem kezelünk fizetési adatot.
 - Nem adjuk el az adataidat.
 

@@ -392,4 +392,79 @@ class GiftEditorViewModelTest {
         assertNull(state.photoPath)
         assertEquals(GiftEditorStatus.EDITING, state.status)
     }
+
+    // ---- camera ----
+
+    @Test
+    fun `a photo taken with the camera is imported, shown and saved, and its capture is consumed`() = runTest {
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onNameChange("Book")
+        val target = viewModel.newCaptureTarget()!!
+        photos.captured[target] = "camera shot"
+
+        viewModel.onPhotoCaptured(target)
+
+        val state = viewModel.uiState.value
+        assertEquals("camera shot", state.photo!!.bytes.decodeToString())
+        assertTrue(photos.openCaptures.isEmpty())
+        viewModel.save()
+        assertEquals(state.photoPath, gifts.lastSaved!!.photoPath)
+    }
+
+    @Test
+    fun `a cancelled camera discards its capture and keeps the photo there was`() = runTest {
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onPhotoPicked("content://picked")
+        val kept = viewModel.uiState.value.photoPath
+
+        val target = viewModel.newCaptureTarget()!!
+        viewModel.onCaptureCancelled(target)
+
+        assertEquals(listOf(target), photos.discarded)
+        assertTrue(photos.openCaptures.isEmpty())
+        assertEquals(kept, viewModel.uiState.value.photoPath)
+        assertNull(viewModel.uiState.value.photoError)
+    }
+
+    @Test
+    fun `a camera photo that cannot be read says so and keeps the photo there was`() = runTest {
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        viewModel.onPhotoPicked("content://picked")
+        val kept = viewModel.uiState.value.photoPath
+
+        val target = viewModel.newCaptureTarget()!!
+        viewModel.onPhotoCaptured(target)
+
+        assertEquals(GiftPhotoError.UNREADABLE, viewModel.uiState.value.photoError)
+        assertEquals(kept, viewModel.uiState.value.photoPath)
+        assertTrue(photos.openCaptures.isEmpty())
+    }
+
+    @Test
+    fun `without a camera app the capture is discarded and the user is told`() = runTest {
+        val viewModel = viewModel(GiftEditorTarget.New(personId = anna.id))
+        val target = viewModel.newCaptureTarget()!!
+
+        viewModel.onCameraUnavailable(target)
+
+        assertEquals(GiftPhotoError.CAMERA_UNAVAILABLE, viewModel.uiState.value.photoError)
+        assertEquals(listOf(target), photos.discarded)
+    }
+
+    @Test
+    fun `an existing photo can be replaced with one taken with the camera`() = runTest {
+        val old = photos.importPhoto("content://old")
+        val entry = giftEntry(giftDetails(person = anna).copy(photoPath = old), anna)
+        gifts.givenGifts(entry)
+        val viewModel = viewModel(GiftEditorTarget.Existing(entry.gift.id))
+        val target = viewModel.newCaptureTarget()!!
+        photos.captured[target] = "new shot"
+
+        viewModel.onPhotoCaptured(target)
+        viewModel.save()
+
+        val saved = gifts.lastSaved!!.photoPath!!
+        assertTrue(saved != old)
+        assertEquals("new shot", photos.stored.getValue(saved).decodeToString())
+    }
 }

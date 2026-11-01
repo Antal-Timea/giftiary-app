@@ -131,11 +131,43 @@ class GiftEditorViewModel @AssistedInject constructor(
     /** [source]: the content URI the photo picker returned. */
     fun onPhotoPicked(source: String) {
         if (_uiState.value.photoBusy) return
+        importPhoto { photos.importPhoto(source) }
+    }
+
+    /** Where the camera app is to write a new photo; null if there is nowhere, which is reported. */
+    fun newCaptureTarget(): String? = try {
+        photos.newCaptureTarget()
+    } catch (e: Exception) {
+        _uiState.update { it.copy(photoError = GiftPhotoError.CAMERA_UNAVAILABLE) }
+        null
+    }
+
+    /** The camera app wrote a photo into [target] (from [newCaptureTarget]). */
+    fun onPhotoCaptured(target: String) {
+        if (_uiState.value.photoBusy) {
+            onCaptureCancelled(target)
+            return
+        }
+        importPhoto { photos.importCapture(target) }
+    }
+
+    /** The camera app returned without a photo. */
+    fun onCaptureCancelled(target: String) {
+        viewModelScope.launch { photos.discardCapture(target) }
+    }
+
+    /** No camera app could be opened for [target]. */
+    fun onCameraUnavailable(target: String) {
+        onCaptureCancelled(target)
+        _uiState.update { it.copy(photoError = GiftPhotoError.CAMERA_UNAVAILABLE) }
+    }
+
+    private fun importPhoto(import: suspend () -> String) {
         _uiState.update { it.copy(photoBusy = true, photoError = null) }
         viewModelScope.launch {
             try {
                 // Stored on this device at once; the gift takes it only when saved.
-                val path = photos.importPhoto(source)
+                val path = import()
                 val bytes = photos.loadPhoto(path)
                 _uiState.update { it.copy(photoBusy = false, photoPath = path, photo = bytes?.let(::LoadedPhoto)) }
             } catch (e: CancellationException) {
@@ -377,8 +409,11 @@ enum class GiftEditorStatus {
 }
 
 enum class GiftPhotoError {
-    /** The picked file could not be read as an image. */
+    /** The picked or captured file could not be read as an image. */
     UNREADABLE,
+
+    /** No camera app could take the photo. */
+    CAMERA_UNAVAILABLE,
 }
 
 enum class GiftWriteError {
