@@ -17,6 +17,24 @@ Claude's design canvas "Gifty — Visual Direction Exploration". They are now in
 **`docs/design/approved/`**: rendered PNGs, the verbatim `.dc.html` sources, and the canvas assets. The
 README there lists every board and the approval evidence for it.
 
+**Final status (R1 resolved by the owner, 2026-11-01).** The owner explicitly confirmed that the
+`APPROVED - ` artboards are the **final approved visual source of truth** and removed the stale "draft,
+pending" suffixes on the canvas.
+
+The snapshot was refreshed from canvas version `1793555139-e39c`:
+- every approved source and asset is byte-identical to the first recovery;
+- only the titles changed.
+
+**Open before the navigation shell (R2):**
+- The approved Person detail draws the bar without the wave and the global +.
+- DS-04 says the bar, wave and + "are one unit and never appear apart", and lists Person detail as a
+  pushed destination.
+- **The owner must choose:**
+  - (a) Person detail uses the standard unit, as DS-04 says;
+  - (b) Person detail is a documented exception with the bar only.
+- The full evidence is in the README's R2.
+- This audit does not choose.
+
 **Where this section and §1–§8 disagree, this section wins.** Below:
 - "**Visible**" means the fact can be seen in an approved artboard; the file is named.
 - "**Inference**" marks this audit's proposal for functionality the approved boards do not cover. It
@@ -86,7 +104,8 @@ README there lists every board and the approval evidence for it.
 | ID | Status |
 |---|---|
 | A1 | **Resolved:** approved screens in `docs/design/approved/` |
-| A2 | **Resolved:** bar hidden in task flows, Profile, Settings and Share; shown on root and pushed detail screens (DS-04). Person detail drawn without wave and + is open as README R2 |
+| A2 | **Resolved:** bar hidden in task flows, Profile, Settings and Share; shown on root and pushed detail screens (DS-04). Person detail drawn without wave and + is open as README R2 (owner choice (a) or (b)) |
+| R1 | **Resolved by explicit owner confirmation:** `APPROVED - ` = final approved visual source of truth |
 | A3 | **Resolved (phone):** Home avatar → Profile → Settings. Tablet: no approved design |
 | A4 | **Resolved as design fact:** no Ideas chip in approved history. Whether to keep the existing tab is a product decision (inference) |
 | A5 | **Resolved:** Caveat 500, one line, on photography only (needs a font resource) |
