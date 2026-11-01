@@ -10,6 +10,106 @@ navigation-shell change and no data or domain change, except search, which can f
 
 ---
 
+## 0. Update: approved designs recovered (2026-11-01)
+
+The approved designs have been found and committed. They are the 39 artboards marked `APPROVED - ` on
+Claude's design canvas "Gifty — Visual Direction Exploration". They are now in
+**`docs/design/approved/`**: rendered PNGs, the verbatim `.dc.html` sources, and the canvas assets. The
+README there lists every board and the approval evidence for it.
+
+**Where this section and §1–§8 disagree, this section wins.** Below:
+- "**Visible**" means the fact can be seen in an approved artboard; the file is named.
+- "**Inference**" marks this audit's proposal for functionality the approved boards do not cover. It
+  is not an approved design fact.
+
+### 0.1 Facts verified from the approved pixels
+
+| Topic | What the approved artboards show (Visible) | Source file(s) |
+|---|---|---|
+| Bottom navigation | Four destinations: **Home, People, Gifts, Lists**, with stroked icons (house, people, gift, list). The selected item is filled dark teal `#17423E` with a 700 label; unselected items are `#547370` with a 600 label at 10.5. The ivory bar has a 28 px top radius and tucks under a 52 dp aqua `#BFEAE3` **wave**. | `phone-home`, `ds-04-navigation-content` |
+| Central + / Quick Add | A 58 dp coral `#D6285A` circle with a 3 px ivory ring, centred on the wave, half above the bar. "Never a fifth destination"; it always opens the **Quick Add bottom sheet**: Remember (Gift I gave, Gift I received), Plan (Gift idea, Wishlist item), Organize (Person, List). | `phone-quick-add-sheet`, `ds-03`, `ds-04` |
+| Where the bar shows | **Root** screens (Home, People, Gifts, Lists) have the bar and no back arrow. **Pushed** screens show the bar *with* the wave and + (Gift detail, Gift idea detail, Wishlist detail owner and guest, Mark as given): "navigation may stay or go depending on depth". Their back control is a 48 dp aqua circle. **Task flows** hide the bar: Add gift, Add gift idea, Add/Edit person, Add/Edit wish, Create list, Sign in. Also no bar on Profile, Settings, Share & Invite, onboarding and the error state. | `ds-04`, each phone board |
+| Profile / Settings entry | The "T" avatar top right of the Home hero is labelled "Your profile". Profile (avatar, name, email, Edit profile, stats, **Settings**, Sign out) leads to Settings. | `phone-home`, `phone-profile`, `phone-settings` |
+| Home hero | **Editorial photograph** (hands holding a gift stack) on warm yellow `#E3A73A`, with a 32 dp bottom radius. Text: "GIFTY" wordmark, Lora "Who are we making happy next?", the date, and a **Caveat** handwriting line "Small gifts, big stories ♡". | `phone-home`, `ds-06` |
+| Coming up | Aqua `#BFEAE3` band, radius 32 at full bleed. Each row has a 3 dp coral (nothing planned) or teal (planned) marker, a monogram, the name, "Birthday · date", the idea count, a plan status with an icon, a Lora day count with "DAYS", and a chevron. Also on People, above "All people". | `phone-home`, `phone-people` |
+| Recent gifts | "Recent gifts / Your memory collection" with "See all", and **photo cards** of the gifts. | `phone-home` |
+| People | Lora 28 title with a standfirst, search field, Coming-up band, then "All people" rows: a 48 dp **photo avatar** or aqua monogram, name, "relationship · next birthday", a chevron, and indented hairline dividers. | `phone-people`, empty and no-results states |
+| Person detail | Full-bleed **photo hero** with the name and relationship in white, plus back and edit circles. Aqua occasion card with a coral pill "Plan gift". "Gift ideas" rows with icon tiles and "+ Add idea". "History with Peter" on parchment, with a year and occasion overline and a two-column grid of **photo cards** with direction lines. | `phone-person-detail` |
+| Gift history | Lora title, standfirst, search, and chips **All** (dark filled) / **→ Given** (coral outline) / **← Received** (teal outline). Lora year headings, caps month overlines, rows with a 52 dp **photo thumbnail** or an aqua gift-glyph tile, and "direction · person · occasion" in direction colour. **There is no Ideas chip.** | `phone-gift-history` |
+| Gift detail | **The gift photo is a full-bleed hero** with "→ Given to Peter" and a Lora title on it, plus back and overflow circles. Then a person row, an aqua info block (date, price) and the note in Caveat. The bar and + are present. | `phone-gift-detail`, `phone-state-gift-pending-sync` |
+| Add gift | Aqua back circle, "GIFTY" wordmark, Lora 36 "Add a gift", standfirst. Three numbered steps: direction pills (selection teal/aqua, **not** coral); person search plus monogram chips plus a dashed coral "New"; gift name. Then coral "Save gift →" and an aqua "Add more details (optional)" stacked **vertically**. The expanded form adds Occasion, Date, Price + currency, a **Photo** tile (84 dp dashed square), and Notes, with Save at the end. | `phone-add-gift-quick`, `phone-add-gift-details` |
+| Typography | Lora 700 for display 36, screen title 28, sheet title 23, editorial section 22. Lora 600 at 17 for section titles. Public Sans for everything functional, from 15 down to 10.5. Caveat 500 for one handwriting line on photography only. No italics. | `ds-02` |
+| Colours (light) | Background `#FBF7EE`, parchment `#F4EEDF`, field white, text `#17423E` / `#47615D` / `#2C5852` / `#6E837D`, placeholder `#7C948F`, aqua `#4FD6C2` (tints 0.14–0.35), aqua band `#BFEAE3`, aqua pale `#DDF5F0`, coral `#D6285A`, yellow `#E3A73A`, received teal `#0F5F56`, nav muted `#547370`. | `ds-01` |
+| Spacing | 4 / 8 / 12 / 16 / 20 / 22 / 24 / 26 / 32. The gutter is 22 on browse screens and 24 on task screens. | `ds-02` |
+| Shape | Fields have radius 16; the primary button 18; pills 999; the Coming-up band 32 (24 inset); hero bottoms 32; row thumbnails 14 (gift) and 16 (wish). Content stays **uncontained**: rows, whitespace and hairlines, with "no card in sight". | `ds-02`, `ds-03`, `ds-04` |
+| Imagery | **Photography, not illustration**, at three levels: editorial heroes; supporting cut-outs at 0.26–0.50 opacity on creation, sign-in and profile screens; none on utility screens. | `ds-06`, `source/assets/` |
+| States | Offline: "Offline · 2 changes waiting to sync" line above content. Pending sync: "Waiting to sync · Saved on this device". Refresh failed: "Couldn't refresh · Showing saved data · Try again" above cached content. Plus a skeleton Home, People empty and no-results states, and a generic error with Try again and Go back. | `phone-state-*`, `ds-05` |
+| Sharing | Lists shows "Your lists" (privacy stated in words, e.g. "Only you") and "Shared with you". The wishlist owner sees "Shared with family · Manage" and no reservation state. A guest sees "I'll get this" / "You're getting this · Undo" / "Reserved". Share & Invite: people with access and "Share with someone", with the note "gift reservations stay hidden from the list's owner". | `phone-lists`, `phone-wishlist-owner`, `phone-wishlist-guest`, `phone-share-invite` |
+| Auth / account | Sign in has "Continue with Google", email and password, "Forgot password?", Sign in, and "Create account". There are three onboarding chapters (Remember, Plan, Share). Settings has Language, Appearance, Notifications (occasion reminders, gift planning reminders), Privacy, "Your data", About, Sign out and **Delete account**. | `phone-sign-in`, `phone-onboarding-*`, `phone-settings` |
+
+### 0.2 Corrections to §1–§8
+
+- **§1:** The approved phone screens are no longer missing. The tablet zip is the canvas's row 16,
+  which is **not approved** (a "proposed large-screen layout"); it is a proposal, not an authority.
+- **§3, §5:** "Palette MATCH" was wrong for the **light** theme. The code's light tokens differ from
+  the approved values:
+
+  | Token | Code | Approved |
+  |---|---|---|
+  | background | `#F7F2E8` | `#FBF7EE` |
+  | textPrimary | `#143A34` | `#17423E` |
+  | primaryAction | `#C8234F` | `#D6285A` |
+  | surfaceContext | `#E4EEEA` | `#BFEAE3` |
+  | received | `#1A7A6D` | `#0F5F56` |
+  | nav unselected | `#586E69` | `#547370` |
+
+  Treat the light palette as **MAJOR (restyle tokens)**. The dark palette matches CLAUDE.md §31, but no
+  dark board is approved (see R3 in the README).
+- **§5 radii:** The approved values are field 16, primary button 18, pills, and the large aqua and hero
+  32. The current 8 / 10 / 12 are structurally too small.
+- **§5 cards:** The approved system is **not card-based**. It uses rows, whitespace and hairlines, with
+  surfaces only where the content changes kind: the aqua band, the info block, parchment history, and
+  sheets. The `GiftiaryCard` component proposed in §5 should be read as just these specific surfaces,
+  not as a general card.
+- **§3.4:** The Ideas chip has no approved place in Gift history; ideas live on Person detail and Gift
+  idea detail. Keeping it is a product decision: **inference**.
+- **§4:** The bar is shown on pushed detail screens and hidden only in task flows and on
+  Profile, Settings and Share. This reverses the earlier proposal. The Quick Add sheet's entries are as
+  drawn; it has **no Occasion entry**.
+- **§5 direction toggle:** Selection is teal/aqua; coral is only for creation. The coral outline on
+  the "Given" chip in history is a filter, not a selected state.
+- **§3.5:** "Save gift" and "Add more details" are stacked vertically on phone. Side by side is only
+  in the unapproved tablet proposal.
+
+### 0.3 Earlier ambiguities
+
+| ID | Status |
+|---|---|
+| A1 | **Resolved:** approved screens in `docs/design/approved/` |
+| A2 | **Resolved:** bar hidden in task flows, Profile, Settings and Share; shown on root and pushed detail screens (DS-04). Person detail drawn without wave and + is open as README R2 |
+| A3 | **Resolved (phone):** Home avatar → Profile → Settings. Tablet: no approved design |
+| A4 | **Resolved as design fact:** no Ideas chip in approved history. Whether to keep the existing tab is a product decision (inference) |
+| A5 | **Resolved:** Caveat 500, one line, on photography only (needs a font resource) |
+| A6 | **Partly resolved:** Quick Add is a bottom sheet (approved). The photo-source choice has no approved design |
+| A7 | **Resolved, changed:** imagery is photography, not illustration; the approved assets are in `source/assets/`. Licensing is open as README R4 |
+| A8 | **Resolved:** Recent gifts, history rows and Gift detail use the gift's photo; without one, an aqua gift-glyph tile (DS-04) |
+| A9 | Open (tooling decision) |
+| A10 | **Resolved for light** (DS-01 values above). Dark theme: no approved boards (README R3) |
+
+### 0.4 Newer functionality and its approved reference
+
+| Feature | Approved visual reference? |
+|---|---|
+| Gift photos | **Yes, for display and slot:** Photo tile in Add gift details, Gift detail hero, history thumbnails, Recent gifts cards. **No** for the camera / gallery choice and the photo-chosen state. |
+| Offline / pending-sync | **Yes:** Home offline line, Gift detail pending-sync line, refresh-failed line. **No** for the SyncAttention screen. |
+| Wishlist sharing / reservations | **Yes:** Lists, owner and guest wishlist, Share & Invite. **No** for invite acceptance (the join link) or wish detail. |
+| Provider auth | **Google: yes** (Sign in). **Facebook: no.** |
+| Account deletion / privacy | **Partly:** Settings rows "Privacy", "Your data" and "Delete account". **No** for the confirmation, progress and done screens. |
+| Reminders | Settings toggles **yes**. The Home reminder card: **no**. |
+| Own occasions / occasion plan | **No** approved screens. |
+
+---
+
 ## 1. Design sources
 
 | Source | Where | Authority | Notes |
@@ -267,6 +367,9 @@ Ship only after phases 1–5 at least. **Do not ship the current UI first.**
 ---
 
 ## 8. Open ambiguities
+
+Superseded: see §0.3 for the current status of A1–A10, and the README in `docs/design/approved/` for
+R1–R4.
 
 - **A1:** The approved phone screens are not in the repo. Commit them, with the tablet zip, to `docs/design/`.
 - **A2:** Should the bottom bar be hidden on detail and editor screens? The proposal is to hide it.
