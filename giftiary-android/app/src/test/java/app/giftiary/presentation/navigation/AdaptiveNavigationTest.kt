@@ -80,6 +80,46 @@ class AdaptiveNavigationTest {
     }
 
     @Test
+    fun `phones show the bar only where the route asks for it, and wide windows never`() {
+        var showBar by mutableStateOf(true)
+        var added = 0
+        compose.setContent {
+            GiftiaryTheme {
+                Box(Modifier.width(width).fillMaxHeight()) {
+                    ProvideWidthClass {
+                        AdaptiveNavigationFrame(
+                            selected = AppSection.PEOPLE,
+                            onSelect = { selections += it },
+                            showBar = showBar,
+                            onAdd = { added++ },
+                        ) {
+                            Text("content")
+                        }
+                    }
+                }
+            }
+        }
+        val add = "Add a gift, idea, wishlist item or person"
+
+        compose.onNodeWithText("Lists").assertExists()
+        compose.onNodeWithText("People").assertIsSelected()
+        compose.onNodeWithContentDescription(add).performClick()
+        assertEquals(1, added)
+        assertEquals(emptyList<AppSection>(), selections)
+
+        showBar = false
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(add).assertDoesNotExist()
+        compose.onNodeWithText("content").assertExists()
+
+        showBar = true
+        width = 900.dp
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(add).assertDoesNotExist()
+        compose.onNodeWithTag(NAVIGATION_RAIL_TAG).assertExists()
+    }
+
+    @Test
     fun `the rail marks the current section and opens the one tapped`() {
         width = 1000.dp
         showFrame(selected = AppSection.PEOPLE)
@@ -94,8 +134,8 @@ class AdaptiveNavigationTest {
     }
 
     @Test
-    fun `phones keep Home's section buttons, which the rail replaces on wide windows`() {
-        var showButtons by mutableStateOf(true)
+    fun `Home's section buttons are gone, and phones keep a Settings link, which the rail replaces on wide windows`() {
+        var showSettings by mutableStateOf(true)
         compose.setContent {
             GiftiaryTheme {
                 HomeScreen(
@@ -104,26 +144,24 @@ class AdaptiveNavigationTest {
                     onOpenComingUp = {},
                     reminderCard = ReminderCardState.Hidden,
                     reminderActions = ReminderCardActions({}, {}, {}, {}),
-                    onOpenGifts = {},
-                    onOpenPeople = {},
-                    onOpenWishlists = {},
                     onOpenOwnOccasions = {},
                     onOpenSyncAttention = {},
                     onOpenSettings = {},
-                    showSectionButtons = showButtons,
+                    showSettingsLink = showSettings,
                 )
             }
         }
-        listOf("Gifts", "People", "Wishlists", "Settings").forEach { compose.onNodeWithText(it).assertExists() }
+        compose.onNodeWithText("Settings").assertExists()
+        listOf("Gifts", "People", "Wishlists").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
 
-        showButtons = false
+        showSettings = false
         compose.waitForIdle()
 
-        listOf("Gifts", "People", "Wishlists", "Settings").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        compose.onNodeWithText("Settings").assertDoesNotExist()
     }
 
     @Test
-    fun `a section's list has a back arrow on phones and none beside the rail`() {
+    fun `a section's list shows a back arrow only when it is given one`() {
         var onBack: (() -> Unit)? by mutableStateOf({})
         compose.setContent {
             GiftiaryTheme {

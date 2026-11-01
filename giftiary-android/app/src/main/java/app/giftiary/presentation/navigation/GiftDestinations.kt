@@ -29,7 +29,8 @@ import java.util.UUID
 internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) {
     composable<GiftHistoryRoute> {
         GiftHistoryScreen(
-            onBack = navController.sectionRootBack(),
+            // The navigation bar or rail leads away from a section root; it has no back arrow.
+            onBack = null,
             onAddGift = dropUnlessResumed { navController.navigate(AddGiftRoute()) },
             onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
             onAddGiftIdea = dropUnlessResumed { navController.navigate(AddGiftIdeaRoute()) },

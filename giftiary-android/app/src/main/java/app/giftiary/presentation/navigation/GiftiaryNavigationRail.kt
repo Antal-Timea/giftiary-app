@@ -1,9 +1,13 @@
 package app.giftiary.presentation.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -22,19 +26,35 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 
 internal const val NAVIGATION_RAIL_TAG = "navigation_rail"
 
-/** [content] alone on a phone; on a wide window with the navigation rail beside it. */
+/**
+ * [content] with the app's navigation: on a phone the bottom navigation unit, where [showBar]; on a
+ * wide window the navigation rail beside it. The content keeps its place in the composition either
+ * way, so a resize or a route without the bar never resets it.
+ */
 @Composable
 internal fun AdaptiveNavigationFrame(
     selected: AppSection?,
     onSelect: (AppSection) -> Unit,
     modifier: Modifier = Modifier,
+    showBar: Boolean = false,
+    onAdd: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
+    val hasRail = LocalWidthClass.current.hasNavigationRail
+    val hasBar = showBar && !hasRail
     Row(modifier) {
-        if (LocalWidthClass.current.hasNavigationRail) {
+        if (hasRail) {
             GiftiaryNavigationRail(selected = selected, onSelect = onSelect)
         }
-        Box(Modifier.weight(1f)) { content() }
+        Column(Modifier.weight(1f)) {
+            // The bar keeps clear of the system navigation bar itself; screens above it must not too.
+            Box(Modifier.weight(1f).then(if (hasBar) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier)) {
+                content()
+            }
+            if (hasBar) {
+                GiftiaryNavigationBar(selected = selected, onSelect = onSelect, onAdd = onAdd)
+            }
+        }
     }
 }
 

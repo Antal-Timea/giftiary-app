@@ -12,7 +12,7 @@ import app.giftiary.R
 import app.giftiary.presentation.components.WidthClass
 import kotlin.reflect.KClass
 
-/** The parts of the app the navigation rail leads to on wide windows. */
+/** The parts of the app the navigation rail leads to on wide windows, and the phone bar to all but Settings. */
 enum class AppSection(@StringRes val label: Int, @DrawableRes val icon: Int, val root: Any) {
     HOME(R.string.nav_home, R.drawable.ic_nav_home, HomeRoute),
     PEOPLE(R.string.people_title, R.drawable.ic_nav_people, PeopleRoute),
@@ -21,7 +21,7 @@ enum class AppSection(@StringRes val label: Int, @DrawableRes val icon: Int, val
     SETTINGS(R.string.settings_title, R.drawable.ic_nav_settings, SettingsRoute),
 }
 
-/** Wide windows navigate by the rail; phones keep Home's buttons and back arrows. */
+/** Wide windows navigate by the rail; phones by the bottom navigation unit where a route shows it. */
 val WidthClass.hasNavigationRail: Boolean get() = this != WidthClass.COMPACT
 
 /**
@@ -64,6 +64,31 @@ internal val routeSections: Map<KClass<*>, AppSection> = mapOf(
 @Suppress("UNCHECKED_CAST")
 internal fun NavDestination.section(): AppSection? =
     routeSections.entries.firstOrNull { (route, _) -> hasRoute(route as KClass<Any>) }?.value
+
+/**
+ * The routes that show the phone navigation unit (DS-04): the four section roots and the screens
+ * browsed from them. Task flows, Settings, sharing and system screens hide it, so a form is never
+ * left half-done by a tap on the bar.
+ */
+internal val routesWithNavigationBar: Set<KClass<*>> = setOf(
+    HomeRoute::class,
+    OwnOccasionsRoute::class,
+    OccasionPlanRoute::class,
+    PeopleRoute::class,
+    PersonDetailRoute::class,
+    GiftHistoryRoute::class,
+    GiftDetailRoute::class,
+    GiftIdeaDetailRoute::class,
+    WishlistsRoute::class,
+    WishlistDetailRoute::class,
+    WishDetailRoute::class,
+    SharedWishlistsRoute::class,
+    SharedWishlistRoute::class,
+)
+
+@Suppress("UNCHECKED_CAST")
+internal fun NavDestination.showsNavigationBar(): Boolean =
+    routesWithNavigationBar.any { route -> hasRoute(route as KClass<Any>) }
 
 /**
  * The usual top-level navigation: one stack per section, kept while another section is open and

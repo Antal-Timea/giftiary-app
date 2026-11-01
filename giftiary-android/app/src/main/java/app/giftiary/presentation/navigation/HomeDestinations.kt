@@ -29,13 +29,10 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
             reminderCard = reminderCard,
             reminderActions = rememberReminderCardActions(reminders),
             onOpenComingUp = { occasionId -> navController.navigate(OccasionPlanRoute(occasionId.toString())) },
-            onOpenGifts = dropUnlessResumed { navController.navigate(GiftHistoryRoute) },
-            onOpenPeople = dropUnlessResumed { navController.navigate(PeopleRoute) },
-            onOpenWishlists = dropUnlessResumed { navController.navigate(WishlistsRoute) },
             onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
             onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
             onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
-            showSectionButtons = !LocalWidthClass.current.hasNavigationRail,
+            showSettingsLink = !LocalWidthClass.current.hasNavigationRail,
         )
     }
     composable<SyncAttentionRoute> {

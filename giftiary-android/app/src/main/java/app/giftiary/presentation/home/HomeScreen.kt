@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -31,8 +30,6 @@ import app.giftiary.domain.model.SyncStatus
 import app.giftiary.domain.model.UpcomingOccasion
 import app.giftiary.domain.model.turningAge
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
-import app.giftiary.presentation.components.GiftiaryPrimaryButton
-import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
@@ -53,15 +50,12 @@ fun HomeScreen(
     onOpenComingUp: (occasionId: UUID) -> Unit,
     reminderCard: ReminderCardState,
     reminderActions: ReminderCardActions,
-    onOpenGifts: () -> Unit,
-    onOpenPeople: () -> Unit,
-    onOpenWishlists: () -> Unit,
     onOpenOwnOccasions: () -> Unit,
     onOpenSyncAttention: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    // Off when the navigation rail leads to the same places.
-    showSectionButtons: Boolean = true,
+    // Off when the navigation rail leads to Settings.
+    showSettingsLink: Boolean = true,
     widthClass: WidthClass = LocalWidthClass.current,
 ) {
     val comingUpPart: @Composable () -> Unit = {
@@ -105,8 +99,7 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(GiftiarySpacing.l))
             SyncStatusLine(content = syncStatus, onOpenAttention = onOpenSyncAttention)
-            if (!showSectionButtons) return@Column
-            SectionButtons(onOpenGifts, onOpenPeople, onOpenWishlists, onOpenSettings)
+            if (showSettingsLink) SettingsLink(onOpenSettings)
         }
     }
 }
@@ -183,36 +176,15 @@ private fun OwnOccasionsLink(onClick: () -> Unit) {
     }
 }
 
-/** Where there is no rail, Home is the way to the app's sections. */
+/**
+ * The phone's way to Settings, and with it the profile and sign-out: the navigation bar leads to
+ * the four sections only.
+ */
 @Composable
-private fun ColumnScope.SectionButtons(
-    onOpenGifts: () -> Unit,
-    onOpenPeople: () -> Unit,
-    onOpenWishlists: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    Spacer(Modifier.height(GiftiarySpacing.l))
-    GiftiaryPrimaryButton(
-        text = stringResource(R.string.home_open_gifts),
-        onClick = onOpenGifts,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(GiftiarySpacing.m))
-    GiftiarySecondaryButton(
-        text = stringResource(R.string.home_open_people),
-        onClick = onOpenPeople,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Spacer(Modifier.height(GiftiarySpacing.m))
-    GiftiarySecondaryButton(
-        text = stringResource(R.string.home_open_wishlists),
-        onClick = onOpenWishlists,
-        modifier = Modifier.fillMaxWidth(),
-    )
+private fun ColumnScope.SettingsLink(onClick: () -> Unit) {
     Spacer(Modifier.height(GiftiarySpacing.s))
-    // Sign-out lives in Settings now, with the profile and reminders.
     TextButton(
-        onClick = onOpenSettings,
+        onClick = onClick,
         modifier = Modifier.align(Alignment.CenterHorizontally),
         colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textSecondary),
     ) {
@@ -245,13 +217,10 @@ private fun HomePreviewContent() {
         onOpenComingUp = {},
         reminderCard = ReminderCardState.Off,
         reminderActions = ReminderCardActions({}, {}, {}, {}),
-        onOpenGifts = {},
-        onOpenPeople = {},
-        onOpenWishlists = {},
         onOpenOwnOccasions = {},
         onOpenSyncAttention = {},
         onOpenSettings = {},
-        showSectionButtons = LocalWidthClass.current == WidthClass.COMPACT,
+        showSettingsLink = LocalWidthClass.current == WidthClass.COMPACT,
     )
 }
 
