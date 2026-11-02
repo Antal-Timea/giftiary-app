@@ -97,9 +97,6 @@ data class EditWishRoute(val wishId: String)
 data class WishlistAccessRoute(val wishlistId: String)
 
 @Serializable
-data object SharedWishlistsRoute
-
-@Serializable
 data class SharedWishlistRoute(val wishlistId: String)
 
 /** Takes an opened join link from memory when it opens; a token is never a route argument. */

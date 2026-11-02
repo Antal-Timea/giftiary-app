@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -25,8 +26,12 @@ class WishlistsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val content: StateFlow<WishlistsContent> =
-        combine(wishlistRepository.observeWishlists(), personRepository.observePeople()) { wishlists, people ->
-            wishlistsContent(wishlists, people)
+        combine(
+            wishlistRepository.observeWishlists(),
+            wishlistRepository.observeWishCounts(),
+            personRepository.observePeople(),
+        ) { wishlists, wishCounts, people ->
+            wishlistsContent(wishlists, wishCounts, people)
         }
             .catch { emit(WishlistsContent.LoadFailed) }
             .stateIn(
@@ -38,12 +43,13 @@ class WishlistsViewModel @Inject constructor(
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
 
-        fun wishlistsContent(wishlists: List<Wishlist>, people: List<Person>): WishlistsContent {
+        fun wishlistsContent(wishlists: List<Wishlist>, wishCounts: Map<UUID, Int>, people: List<Person>): WishlistsContent {
             val names = people.associate { it.id to it.name }
             val (own, forPeople) = wishlists.partition { it.personId == null }
             return WishlistsContent.Loaded(
                 own = own,
                 forPeople = forPeople.map { WishlistOfPerson(it, it.personId?.let(names::get)) },
+                wishCounts = wishCounts,
             )
         }
     }
@@ -55,9 +61,15 @@ sealed interface WishlistsContent {
 
     data object LoadFailed : WishlistsContent
 
-    /** Both groups keep the repository's order, by name. */
-    data class Loaded(val own: List<Wishlist>, val forPeople: List<WishlistOfPerson>) : WishlistsContent {
+    /** Both groups keep the repository's order, by name. A wishlist without wishes has no [wishCounts] entry. */
+    data class Loaded(
+        val own: List<Wishlist>,
+        val forPeople: List<WishlistOfPerson>,
+        val wishCounts: Map<UUID, Int> = emptyMap(),
+    ) : WishlistsContent {
         val isEmpty: Boolean get() = own.isEmpty() && forPeople.isEmpty()
+
+        fun wishCount(wishlist: Wishlist): Int = wishCounts[wishlist.id] ?: 0
     }
 }
 

@@ -12,6 +12,7 @@ import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.data.local.entity.WishEntity
 import app.giftiary.data.local.entity.WishlistEntity
+import app.giftiary.data.sync.BlockReason
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Wishlist
@@ -32,6 +33,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -474,6 +476,30 @@ class WishlistRepositoryImplTest {
         syncDao.findForEntity(type, entityId)
             ?.also { assertEquals("an operation has its entity's owner", ownerUserId, it.ownerUserId) }
             ?.operation
+
+    @Test
+    fun `a wishlist waits to sync while it or one of its wishes, even a deleted one, is queued`() = runTest {
+        val wishlist = repository.addWishlist(null, "Mine")
+        val other = repository.addWishlist(null, "Other")
+        assertTrue(repository.observeWaitingToSync(wishlist.id).first())
+
+        markSynced(SyncEntityType.WISHLIST, wishlist.id)
+        markSynced(SyncEntityType.WISHLIST, other.id)
+        assertFalse(repository.observeWaitingToSync(wishlist.id).first())
+
+        val wish = repository.addWish(wishlist.id, lamp)
+        repository.addWish(other.id, lamp)
+        assertTrue(repository.observeWaitingToSync(wishlist.id).first())
+        markSynced(SyncEntityType.WISH, wish.id)
+        assertFalse(repository.observeWaitingToSync(wishlist.id).first())
+
+        repository.deleteWish(wish.id)
+        assertTrue("the deletion still has to reach the server", repository.observeWaitingToSync(wishlist.id).first())
+
+        val operation = syncDao.findForEntity(SyncEntityType.WISH, wish.id)!!
+        syncDao.update(operation.copy(blockedReason = BlockReason.REJECTED.name))
+        assertFalse("a blocked change needs attention instead", repository.observeWaitingToSync(wishlist.id).first())
+    }
 
     private suspend fun markSynced(type: SyncEntityType, id: UUID) {
         when (type) {

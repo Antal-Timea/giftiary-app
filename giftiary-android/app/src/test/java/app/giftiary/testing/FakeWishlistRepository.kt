@@ -56,6 +56,11 @@ class FakeWishlistRepository : WishlistRepository {
         list.groupingBy { it.wishlistId }.eachCount()
     }
 
+    /** Wishlists with a change waiting to sync. */
+    val waitingToSync = MutableStateFlow<Set<UUID>>(emptySet())
+
+    override fun observeWaitingToSync(wishlistId: UUID): Flow<Boolean> = waitingToSync.map { wishlistId in it }
+
     override fun observeWishlist(id: UUID): Flow<Wishlist?> = wishlists.map { list ->
         flowFailure?.let { throw it }
         list.find { it.id == id }

@@ -14,14 +14,6 @@ import java.time.format.FormatStyle
 @Composable
 internal fun memberName(displayName: String?): String = displayName ?: stringResource(R.string.sharing_member_fallback)
 
-@Composable
-internal fun sharedWishlistOwnerText(ownerDisplayName: String?): String =
-    if (ownerDisplayName != null) {
-        stringResource(R.string.shared_wishlist_from, ownerDisplayName)
-    } else {
-        stringResource(R.string.shared_wishlist_from_fallback)
-    }
-
 /** For a failure that trying again may fix; an unavailable answer has its own wording per screen. */
 @Composable
 internal fun retryableFailureText(failure: SharingFailure): String = when (failure) {

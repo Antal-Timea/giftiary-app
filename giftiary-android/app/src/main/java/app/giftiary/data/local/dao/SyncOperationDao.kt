@@ -51,6 +51,27 @@ interface SyncOperationDao {
     fun observeWaiting(ownerUserId: UUID, entityType: SyncEntityType, entityId: UUID): Flow<Boolean>
 
     /**
+     * [observeWaiting] for a wishlist together with its wishes, deleted ones included: a removed
+     * wish is a change of the list still to be uploaded.
+     */
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM sync_operation
+            WHERE ownerUserId = :ownerUserId
+                AND (blockedReason IS NULL OR blockedReason = 'REMOTE_NEWER')
+                AND (
+                    (entityType = 'WISHLIST' AND entityId = :wishlistId)
+                    OR (entityType = 'WISH' AND entityId IN (
+                        SELECT id FROM wish WHERE ownerUserId = :ownerUserId AND wishlistId = :wishlistId
+                    ))
+                )
+        )
+        """,
+    )
+    fun observeWishlistWaiting(ownerUserId: UUID, wishlistId: UUID): Flow<Boolean>
+
+    /**
      * The owner's whole queue, blocked operations included, oldest first. Unbounded on purpose:
      * the runner orders by dependencies, which a window of the queue could cut apart.
      */

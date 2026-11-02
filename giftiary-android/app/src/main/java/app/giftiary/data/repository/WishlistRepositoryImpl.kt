@@ -55,6 +55,9 @@ class WishlistRepositoryImpl @Inject constructor(
             wishDao.observeActiveCounts(ownerUserId).map { counts -> counts.associate { it.wishlistId to it.count } }
         }
 
+    override fun observeWaitingToSync(wishlistId: UUID): Flow<Boolean> =
+        activeOwner.scoped(false) { ownerUserId -> database.syncOperationDao().observeWishlistWaiting(ownerUserId, wishlistId) }
+
     override fun observeWishlist(id: UUID): Flow<Wishlist?> =
         activeOwner.scoped(null) { ownerUserId -> wishlistDao.observeActiveById(id, ownerUserId).map { it?.toDomain() } }
 

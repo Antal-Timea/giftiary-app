@@ -335,8 +335,6 @@ big stories</string>
     <string name="wishlists_load_failed">Your wishlists could not be loaded.</string>
     <string name="wishlists_empty_title">No wishlists yet</string>
     <string name="wishlists_empty_message">Collect wishes for yourself or for the people you care about.</string>
-    <string name="wishlists_section_own">Your wishlists</string>
-    <string name="wishlists_section_people">For your people</string>
     <string name="wishlist_for_me">Your wishlist</string>
     <string name="wishlist_for_person">For %1$s</string>
     <string name="wishlist_person_removed">Person removed</string>
@@ -353,7 +351,6 @@ big stories</string>
     <string name="wishlist_person_unavailable">This person is no longer available. Choose someone else.</string>
     <string name="wishlist_not_found">This wishlist no longer exists.</string>
     <string name="wishlist_load_failed">The wishlist could not be loaded.</string>
-    <string name="wishlist_rename">Rename</string>
     <string name="wishlist_wishes">Wishes</string>
     <string name="wishes_empty">No wishes yet. Add the first thing on this list.</string>
     <string name="wishlist_delete">Delete wishlist</string>
@@ -422,14 +419,9 @@ big stories</string>
     <string name="sharing_network_error">Couldn’t reach Giftiary. Check your connection and try again.</string>
     <string name="sharing_server_error">Something went wrong. Please try again.</string>
     <string name="sharing_retry">Try again</string>
-    <string name="wishlists_open_shared">Shared with you</string>
     <string name="shared_wishlists_title">Shared with you</string>
     <string name="shared_wishlists_join">Join</string>
-    <string name="shared_wishlists_empty_title">Nothing shared yet</string>
     <string name="shared_wishlists_empty_message">When someone invites you to their wishlist, open their link or paste it here.</string>
-    <string name="shared_wishlists_join_with_link">Join with an invite link</string>
-    <string name="shared_wishlist_from">From %1$s</string>
-    <string name="shared_wishlist_from_fallback">From a Giftiary member</string>
     <string name="shared_wishlist_unavailable">This wishlist isn’t available.</string>
     <string name="shared_wishlist_no_wishes">No wishes on this list yet.</string>
     <string name="shared_wishlist_leave">Leave this wishlist</string>
@@ -437,12 +429,8 @@ big stories</string>
     <string name="shared_wishlist_leave_dialog_message">You will no longer see this wishlist. You can join again with a new invite.</string>
     <string name="shared_wishlist_leave_confirm">Leave</string>
     <string name="shared_wish_available">Available</string>
-    <string name="shared_wish_reserved_by_you">Reserved by you</string>
     <string name="shared_wish_reserved">Reserved</string>
-    <string name="shared_wish_reserve">Reserve</string>
-    <string name="shared_wish_reserve_description">Reserve %1$s</string>
     <string name="shared_wish_release">Release</string>
-    <string name="shared_wish_release_description">Release %1$s</string>
     <string name="shared_wish_release_dialog_title">Release %1$s?</string>
     <string name="shared_wish_release_dialog_message">Someone else on this list may reserve it then.</string>
     <string name="shared_wish_taken">Someone else reserved this first.</string>
@@ -542,4 +530,26 @@ big stories</string>
     <string name="quick_add_person_description">Add someone important</string>
     <string name="quick_add_list">List</string>
     <string name="quick_add_list_description">Create a wishlist</string>
+    <!-- Lists and wishlists, redesigned -->
+    <string name="lists_title">Lists</string>
+    <string name="lists_subtitle">Wish, plan and share with the people you love.</string>
+    <string name="lists_section_yours">Your lists</string>
+    <string name="lists_only_you">Only you</string>
+    <string name="lists_shared_subtitle">Lists people have shared with you.</string>
+    <string name="lists_join_description">Join a wishlist with an invite link</string>
+    <string name="wishlist_more">Options for %1$s</string>
+    <string name="wishlist_edit">Edit list</string>
+    <string name="wishlist_sharing_invited_only">Seen only by people you invite</string>
+    <string name="wishlist_sharing_manage">Manage</string>
+    <string name="wishlist_sharing_manage_description">Manage sharing</string>
+    <string name="wish_add_description">Add a wish to this wishlist</string>
+    <string name="wish_price_estimate">~%1$s</string>
+    <string name="wish_view_link">View link</string>
+    <string name="wish_more">Options for %1$s</string>
+    <string name="wish_edit">Edit wish</string>
+    <string name="shared_wish_get">I’ll get this</string>
+    <string name="shared_wish_get_description">I’ll get %1$s</string>
+    <string name="shared_wish_getting">You’re getting this</string>
+    <string name="shared_wish_undo">Undo</string>
+    <string name="shared_wish_undo_description">Undo: you’re no longer getting %1$s</string>
 </resources>

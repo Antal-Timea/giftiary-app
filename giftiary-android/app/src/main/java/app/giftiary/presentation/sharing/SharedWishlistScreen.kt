@@ -1,20 +1,27 @@
 package app.giftiary.presentation.sharing
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -26,9 +33,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -39,14 +50,20 @@ import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.GiftiaryAvatar
+import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
-import app.giftiary.presentation.components.GiftiaryTopBar
 import app.giftiary.presentation.components.LoadingContent
-import app.giftiary.presentation.components.SectionHeading
-import app.giftiary.presentation.gifts.ProductLink
-import app.giftiary.presentation.gifts.giftPrice
+import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
+import app.giftiary.presentation.wishlists.OptionsMenu
+import app.giftiary.presentation.wishlists.WishDivider
+import app.giftiary.presentation.wishlists.WishRowContent
+import app.giftiary.presentation.wishlists.WishlistHeader
+import app.giftiary.presentation.wishlists.trimVertical
 import java.util.UUID
 
 @Composable
@@ -128,22 +145,28 @@ fun SharedWishlistScreen(
             actions.onReservationMessageShown()
         }
     }
-    val onBack = actions.onBack
-    val onRetry = actions.onRetry
     val loaded = (state.content as? OnlineContent.Loaded)?.value
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = loaded?.name.orEmpty(), onBack = onBack) },
+        contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
-        val contentModifier = Modifier.padding(contentPadding)
+        val contentModifier = Modifier
+            .padding(contentPadding)
+            .windowInsetsPadding(WindowInsets.statusBars)
         when (val content = state.content) {
-            OnlineContent.Loading -> LoadingContent(contentModifier)
-            is OnlineContent.Failed -> if (content.failure == SharingFailure.UNAVAILABLE) {
-                // The same whether the list was deleted, access was withdrawn or it never existed.
-                FailureContent(stringResource(R.string.shared_wishlist_unavailable), onRetry = null, modifier = contentModifier)
-            } else {
-                FailureContent(retryableFailureText(content.failure), onRetry, contentModifier)
+            OnlineContent.Loading -> Column(contentModifier.fillMaxSize()) {
+                BackOnly(actions.onBack)
+                LoadingContent()
+            }
+            is OnlineContent.Failed -> Column(contentModifier.fillMaxSize()) {
+                BackOnly(actions.onBack)
+                if (content.failure == SharingFailure.UNAVAILABLE) {
+                    // The same whether the list was deleted, access was withdrawn or it never existed.
+                    FailureContent(stringResource(R.string.shared_wishlist_unavailable), onRetry = null)
+                } else {
+                    FailureContent(retryableFailureText(content.failure), actions.onRetry)
+                }
             }
             is OnlineContent.Loaded -> SharedWishes(
                 wishlist = content.value,
@@ -178,6 +201,16 @@ fun SharedWishlistScreen(
     }
 }
 
+/** Before the list is known there is no header yet, but back is always there. */
+@Composable
+private fun BackOnly(onBack: () -> Unit) {
+    GiftiaryBackButton(
+        onClick = onBack,
+        modifier = Modifier.padding(start = GiftiarySpacing.browseGutter, top = GiftiarySpacing.fieldGroup),
+    )
+}
+
+/** No owner controls: a guest sees the wishes and, for each, only their own reservation choice. */
 @Composable
 private fun SharedWishes(
     wishlist: SharedWishlist,
@@ -188,109 +221,169 @@ private fun SharedWishes(
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = GiftiarySpacing.xxl)) {
+    val owner = memberName(wishlist.ownerDisplayName)
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .giftiaryReadableWidth(),
+        contentPadding = PaddingValues(bottom = GiftiarySpacing.xxl),
+    ) {
         item {
-            if (isRefreshing) LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = colors.primaryAction)
-            Text(
-                text = sharedWishlistOwnerText(wishlist.ownerDisplayName),
-                modifier = Modifier.padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.textSecondary,
+            WishlistHeader(
+                title = wishlist.name,
+                meta = listOf(owner, wishCount(wishlist.wishes.size)).joinToString(" · "),
+                onBack = actions.onBack,
+                leading = { GiftiaryAvatar(name = owner, size = 56.dp) },
+                options = {
+                    OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
+                        Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true)
+                    }
+                },
             )
         }
-        item { SectionHeading(stringResource(R.string.wishlist_wishes)) }
-        if (wishlist.wishes.isEmpty()) item { ListNote(stringResource(R.string.shared_wishlist_no_wishes)) }
-        items(wishlist.wishes, key = { it.id }) { wish ->
-            SharedWishRow(
-                wish = wish,
-                busy = wish.id in inFlight,
-                onReserve = { actions.onReserve(wish.id) },
-                onRelease = { actions.onReleaseRequested(wish.id) },
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
-        }
-        item {
-            // Quiet, as deleting is on the user's own lists.
-            TextButton(
-                onClick = actions.onLeaveRequested,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = GiftiarySpacing.l),
-                enabled = !isLeaving,
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
-            ) {
-                Text(stringResource(R.string.shared_wishlist_leave))
+        if (isRefreshing) {
+            item {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.s),
+                    color = colors.primaryAction,
+                    trackColor = colors.divider,
+                )
             }
         }
+        item {
+            Text(
+                text = stringResource(R.string.wishlist_wishes),
+                modifier = Modifier
+                    .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = GiftiarySpacing.fieldGroup)
+                    .semantics { heading() },
+                style = GiftiaryType.sectionTitle,
+                color = colors.textPrimary,
+            )
+        }
+        if (wishlist.wishes.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.shared_wishlist_no_wishes),
+                    modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.s),
+                    style = GiftiaryType.bodySmall,
+                    color = colors.textSecondary,
+                )
+            }
+        }
+        itemsIndexed(wishlist.wishes, key = { _, wish -> wish.id }) { index, wish ->
+            if (index > 0) WishDivider()
+            WishRowContent(
+                name = wish.name,
+                note = wish.note,
+                price = wish.estimatedPrice,
+                productUrl = wish.productUrl,
+                below = {
+                    Reservation(
+                        wishName = wish.name,
+                        presentation = reservationPresentation(wish.reservation),
+                        busy = wish.id in inFlight,
+                        onReserve = { actions.onReserve(wish.id) },
+                        onRelease = { actions.onReleaseRequested(wish.id) },
+                    )
+                },
+            )
+        }
     }
 }
 
 @Composable
-private fun SharedWishRow(wish: SharedWish, busy: Boolean, onReserve: () -> Unit, onRelease: () -> Unit) {
-    val colors = GiftiaryTheme.colors
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs),
-    ) {
-        Text(text = wish.name, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
-        val summary = listOfNotNull(wish.estimatedPrice?.let { giftPrice(it) }, wish.note).joinToString(separator = " · ")
-        if (summary.isNotEmpty()) {
-            Text(text = summary, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-        }
-        // Someone else's link: only web links are offered for opening.
-        wish.productUrl?.takeIf { it.isWebLink() }?.let { ProductLink(it) }
-        ReservationLine(wish.name, reservationPresentation(wish.reservation), busy, onReserve, onRelease)
+private fun wishCount(count: Int): String =
+    if (count == 0) {
+        stringResource(R.string.person_detail_wishlist_no_wishes)
+    } else {
+        pluralStringResource(R.plurals.person_detail_wish_count, count, count)
     }
-}
 
 /**
- * The reservation as text, never colour alone, and the one action it allows. While the server
- * decides, the last state it reported stays and the action waits.
+ * The reservation in words, never colour alone, and the one action it allows. While the server
+ * decides, the last state it reported stays and its action waits. Someone else's reservation is
+ * only "Reserved": no action and nothing about who.
  */
 @Composable
-private fun ReservationLine(
+private fun Reservation(
     wishName: String,
     presentation: ReservationPresentation,
     busy: Boolean,
     onReserve: () -> Unit,
     onRelease: () -> Unit,
 ) {
-    val label = presentation.label ?: return
     val colors = GiftiaryTheme.colors
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(
-                when (label) {
-                    ReservationLabel.AVAILABLE -> R.string.shared_wish_available
-                    ReservationLabel.RESERVED_BY_YOU -> R.string.shared_wish_reserved_by_you
-                    ReservationLabel.RESERVED -> R.string.shared_wish_reserved
-                },
-            ),
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.labelLarge,
-            color = if (label == ReservationLabel.RESERVED_BY_YOU) colors.primaryActionText else colors.textSecondary,
-        )
-        val action = presentation.action ?: return@Row
-        val reserve = action == ReservationAction.RESERVE
-        val text = stringResource(if (reserve) R.string.shared_wish_reserve else R.string.shared_wish_release)
-        val description = stringResource(
-            if (reserve) R.string.shared_wish_reserve_description else R.string.shared_wish_release_description,
-            wishName,
-        )
-        if (busy) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryAction, strokeWidth = 2.dp)
+    when (presentation.label ?: return) {
+        ReservationLabel.AVAILABLE -> Row(verticalAlignment = Alignment.CenterVertically) {
+            val description = stringResource(R.string.shared_wish_get_description, wishName)
+            val available = stringResource(R.string.shared_wish_available)
+            TextButton(
+                onClick = onReserve,
+                enabled = !busy,
+                modifier = Modifier
+                    .trimVertical(7.dp)
+                    .heightIn(min = 48.dp)
+                    .offset(x = -GiftiarySpacing.s)
+                    .semantics {
+                        contentDescription = description
+                        stateDescription = available
+                    },
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryAction),
+                contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
+            ) {
+                Icon(painterResource(R.drawable.ic_gift_reserve), contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.shared_wish_get), style = GiftiaryType.actionSmall)
+            }
+            if (busy) ReservationProgress()
         }
-        TextButton(
-            onClick = if (reserve) onReserve else onRelease,
-            enabled = !busy,
-            modifier = Modifier.semantics { contentDescription = description },
-            colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+        ReservationLabel.RESERVED_BY_YOU -> Row(
+            modifier = Modifier.padding(top = GiftiarySpacing.s),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text)
+            Row(
+                modifier = Modifier
+                    .background(colors.supportSurface, GiftiaryShapes.pill)
+                    .padding(horizontal = 14.dp, vertical = GiftiarySpacing.s),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(painterResource(R.drawable.ic_check), contentDescription = null, modifier = Modifier.size(12.dp), tint = colors.textPrimary)
+                Text(stringResource(R.string.shared_wish_getting), style = GiftiaryType.label, color = colors.textPrimary)
+            }
+            if (presentation.action == ReservationAction.RELEASE) {
+                val description = stringResource(R.string.shared_wish_undo_description, wishName)
+                TextButton(
+                    onClick = onRelease,
+                    enabled = !busy,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = description },
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.textLabel),
+                    contentPadding = PaddingValues(horizontal = GiftiarySpacing.xs),
+                ) {
+                    Text(stringResource(R.string.shared_wish_undo), style = GiftiaryType.label.copy(fontWeight = GiftiaryType.contentTitle.fontWeight))
+                }
+            }
+            if (busy) ReservationProgress()
+        }
+        ReservationLabel.RESERVED -> Row(
+            modifier = Modifier.padding(top = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(R.drawable.ic_reserved), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textLabel)
+            Text(stringResource(R.string.shared_wish_reserved), style = GiftiaryType.label, color = colors.textLabel)
         }
     }
+}
+
+@Composable
+private fun ReservationProgress() {
+    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = GiftiaryTheme.colors.primaryAction, strokeWidth = 2.dp)
 }
 
 @Composable
@@ -300,8 +393,6 @@ private fun reservationMessageText(message: ReservationMessage): String = when (
     ReservationMessage.NETWORK -> stringResource(R.string.sharing_network_error)
     ReservationMessage.SERVER -> stringResource(R.string.sharing_server_error)
 }
-
-private fun String.isWebLink(): Boolean = startsWith("https://", ignoreCase = true) || startsWith("http://", ignoreCase = true)
 
 @PreviewLightDark
 @Composable
@@ -316,7 +407,8 @@ private fun SharedWishlistPreview() {
                         ownerDisplayName = null,
                         wishes = listOf(
                             SharedWish(UUID.randomUUID(), "Brass lamp", "The small one", Money(12990, "HUF"), "https://example.com/lamp", ReservationState.AVAILABLE),
-                            SharedWish(UUID.randomUUID(), "Wool socks", null, null, null, ReservationState.RESERVED_BY_OTHER),
+                            SharedWish(UUID.randomUUID(), "Wool socks", null, null, null, ReservationState.RESERVED_BY_ME),
+                            SharedWish(UUID.randomUUID(), "Tea set", null, null, null, ReservationState.RESERVED_BY_OTHER),
                         ),
                     ),
                 ),

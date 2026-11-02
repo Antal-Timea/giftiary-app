@@ -9,11 +9,10 @@ import androidx.navigation.toRoute
 import app.giftiary.presentation.sharing.JoinWishlistScreen
 import app.giftiary.presentation.sharing.SharedWishlistScreen
 import app.giftiary.presentation.sharing.SharedWishlistViewModel
-import app.giftiary.presentation.sharing.SharedWishlistsScreen
 import app.giftiary.presentation.sharing.WishlistAccessScreen
 import app.giftiary.presentation.sharing.WishlistAccessViewModel
 
-/** Sharing: an owner's access screen, wishlists shared with the user, and joining one. */
+/** Sharing: an owner's access screen, a wishlist shared with the user, and joining one. */
 internal fun NavGraphBuilder.sharingDestinations(navController: NavHostController) {
     composable<WishlistAccessRoute> { entry ->
         WithUuid(entry.toRoute<WishlistAccessRoute>().wishlistId, navController) { wishlistId ->
@@ -25,14 +24,6 @@ internal fun NavGraphBuilder.sharingDestinations(navController: NavHostControlle
                 onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
             )
         }
-    }
-    composable<SharedWishlistsRoute> {
-        SharedWishlistsScreen(
-            viewModel = hiltViewModel(),
-            onBack = navController.popBackStackUnlessPaused(),
-            onJoin = dropUnlessResumed { navController.navigate(JoinWishlistRoute) },
-            onOpenWishlist = { id -> navController.navigate(SharedWishlistRoute(id.toString())) },
-        )
     }
     composable<SharedWishlistRoute> { entry ->
         WithUuid(entry.toRoute<SharedWishlistRoute>().wishlistId, navController) { wishlistId ->

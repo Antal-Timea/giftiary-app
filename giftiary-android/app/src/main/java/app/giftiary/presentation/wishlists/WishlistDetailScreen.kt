@@ -1,19 +1,26 @@
 package app.giftiary.presentation.wishlists
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -23,10 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,17 +45,17 @@ import app.giftiary.R
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Wish
 import app.giftiary.domain.model.Wishlist
-import app.giftiary.presentation.components.GiftiaryAddFab
-import app.giftiary.presentation.components.GiftiaryAddFabClearance
+import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.ListRow
+import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
-import app.giftiary.presentation.components.SectionHeading
-import app.giftiary.presentation.gifts.giftPrice
+import app.giftiary.presentation.components.PendingSyncStatus
+import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import java.time.Instant
 import java.util.UUID
 
@@ -52,10 +63,11 @@ import java.util.UUID
 fun WishlistDetailScreen(
     viewModel: WishlistDetailViewModel,
     onBack: () -> Unit,
-    onRename: (UUID) -> Unit,
+    onEditList: (UUID) -> Unit,
     onOpenPerson: (UUID) -> Unit,
     onAddWish: (UUID) -> Unit,
     onOpenWish: (UUID) -> Unit,
+    onEditWish: (UUID) -> Unit,
     onShare: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -66,10 +78,11 @@ fun WishlistDetailScreen(
         state = state,
         actions = WishlistDetailScreenActions(
             onBack = onBack,
-            onRename = onRename,
+            onEditList = onEditList,
             onOpenPerson = onOpenPerson,
             onAddWish = onAddWish,
             onOpenWish = onOpenWish,
+            onEditWish = onEditWish,
             onShare = onShare,
             onDeleteRequested = viewModel::onDeleteRequested,
             onDeleteConfirmed = viewModel::onDeleteConfirmed,
@@ -82,10 +95,11 @@ fun WishlistDetailScreen(
 /** Groups the screen's callbacks so its signature stays readable. */
 class WishlistDetailScreenActions(
     val onBack: () -> Unit,
-    val onRename: (UUID) -> Unit,
+    val onEditList: (UUID) -> Unit,
     val onOpenPerson: (UUID) -> Unit,
     val onAddWish: (UUID) -> Unit,
     val onOpenWish: (UUID) -> Unit,
+    val onEditWish: (UUID) -> Unit,
     val onShare: (UUID) -> Unit,
     val onDeleteRequested: () -> Unit,
     val onDeleteConfirmed: () -> Unit,
@@ -93,6 +107,7 @@ class WishlistDetailScreenActions(
     val onWriteErrorShown: () -> Unit,
 )
 
+/** The owner's own view of a list: its identity, sharing, and the wishes with their actions. */
 @Composable
 fun WishlistDetailScreen(
     state: WishlistDetailUiState,
@@ -111,42 +126,19 @@ fun WishlistDetailScreen(
     val loaded = state.content as? WishlistDetailContent.Loaded
     Scaffold(
         modifier = modifier,
-        topBar = {
-            GiftiaryTopBar(
-                title = loaded?.wishlist?.name.orEmpty(),
-                onBack = actions.onBack,
-                actions = {
-                    if (loaded != null && loaded.canShare) {
-                        TextButton(
-                            onClick = { actions.onShare(loaded.wishlist.id) },
-                            colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
-                        ) {
-                            Text(stringResource(R.string.wishlist_share))
-                        }
-                    }
-                    if (loaded != null) {
-                        TextButton(
-                            onClick = { actions.onRename(loaded.wishlist.id) },
-                            colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
-                        ) {
-                            Text(stringResource(R.string.wishlist_rename))
-                        }
-                    }
-                },
-            )
-        },
-        floatingActionButton = {
-            if (loaded != null) GiftiaryAddFab(text = stringResource(R.string.wish_add), onClick = { actions.onAddWish(loaded.wishlist.id) })
-        },
+        contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
-        val contentModifier = Modifier.padding(contentPadding)
+        val contentModifier = Modifier
+            .padding(contentPadding)
+            .windowInsetsPadding(WindowInsets.statusBars)
         when (val content = state.content) {
             WishlistDetailContent.Loading, WishlistDetailContent.Deleted -> LoadingContent(contentModifier)
             WishlistDetailContent.NotFound -> MessageContent(stringResource(R.string.wishlist_not_found), contentModifier)
             WishlistDetailContent.LoadFailed -> MessageContent(stringResource(R.string.wishlist_load_failed), contentModifier)
             is WishlistDetailContent.Loaded -> WishlistContents(
                 content = content,
+                waitingToSync = state.waitingToSync,
                 busy = state.actions.isBusy,
                 actions = actions,
                 modifier = contentModifier,
@@ -173,83 +165,184 @@ fun WishlistDetailScreen(
 @Composable
 private fun WishlistContents(
     content: WishlistDetailContent.Loaded,
+    waitingToSync: Boolean,
     busy: Boolean,
     actions: WishlistDetailScreenActions,
     modifier: Modifier = Modifier,
 ) {
-    val colors = GiftiaryTheme.colors
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = GiftiaryAddFabClearance)) {
+    val wishlist = content.wishlist
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .giftiaryReadableWidth(),
+        contentPadding = PaddingValues(bottom = GiftiarySpacing.xxl),
+    ) {
         item {
             val personId = content.openablePersonId
-            Text(
-                text = wishlistOwnerText(content.owner),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        // Only an active person can be opened; a deleted one is only named.
-                        if (personId != null) {
-                            Modifier.clickable(onClickLabel = stringResource(R.string.people_open)) { actions.onOpenPerson(personId) }
-                        } else {
-                            Modifier
-                        },
-                    )
-                    .heightIn(min = 48.dp)
-                    .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (personId != null) colors.primaryActionText else colors.textSecondary,
+            val owner = content.owner
+            WishlistHeader(
+                title = wishlist.name,
+                meta = listOf(ownerName(owner), wishCount(content.wishes.size)).joinToString(" · "),
+                onBack = actions.onBack,
+                leading = {
+                    if (owner is WishlistOwner.Person) GiftiaryAvatar(name = owner.name, size = 56.dp) else ListCover(wishlist.name, size = 56.dp)
+                },
+                // Only an active person can be opened; a deleted one is only named.
+                onMetaClick = personId?.let { { actions.onOpenPerson(it) } },
+                metaClickLabel = stringResource(R.string.people_open),
+                options = {
+                    OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
+                        Option(stringResource(R.string.wishlist_edit), R.drawable.ic_edit, { actions.onEditList(wishlist.id) })
+                        if (content.canShare) Option(stringResource(R.string.wishlist_share), R.drawable.ic_people, { actions.onShare(wishlist.id) })
+                        Option(stringResource(R.string.wishlist_delete), R.drawable.ic_delete, actions.onDeleteRequested, enabled = !busy, quiet = true)
+                    }
+                },
+                below = {
+                    if (content.canShare) SharingLine(onManage = { actions.onShare(wishlist.id) })
+                },
             )
         }
-        item { SectionHeading(stringResource(R.string.wishlist_wishes)) }
+        if (waitingToSync) {
+            item { PendingSyncStatus(modifier = Modifier.padding(start = GiftiarySpacing.browseGutter, top = GiftiarySpacing.l)) }
+        }
+        item { WishesHeading(onAddWish = { actions.onAddWish(wishlist.id) }) }
         if (content.wishes.isEmpty()) {
             item {
                 Text(
                     text = stringResource(R.string.wishes_empty),
-                    modifier = Modifier.padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.textSecondary,
+                    modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.s),
+                    style = GiftiaryType.bodySmall,
+                    color = GiftiaryTheme.colors.textSecondary,
                 )
             }
         }
-        items(content.wishes, key = { it.id }) { wish ->
-            ListRow(
-                title = wish.name,
-                detail = wishSummary(wish),
-                onClickLabel = stringResource(R.string.wish_open),
-                onClick = { actions.onOpenWish(wish.id) },
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
-        }
-        item {
-            // Deliberately quiet: deleting should not compete with adding wishes.
-            TextButton(
-                onClick = actions.onDeleteRequested,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = GiftiarySpacing.l),
-                enabled = !busy,
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
-            ) {
-                Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = null)
-                Spacer(Modifier.width(GiftiarySpacing.s))
-                Text(stringResource(R.string.wishlist_delete))
-            }
+        itemsIndexed(content.wishes, key = { _, wish -> wish.id }) { index, wish ->
+            if (index > 0) WishDivider()
+            OwnerWishRow(wish = wish, onOpen = { actions.onOpenWish(wish.id) }, onEdit = { actions.onEditWish(wish.id) })
         }
     }
 }
 
-/** The price and the note, whichever the wish has, on one line. */
 @Composable
-private fun wishSummary(wish: Wish): String? =
-    listOfNotNull(wish.estimatedPrice?.let { giftPrice(it) }, wish.note)
-        .joinToString(separator = " · ")
-        .ifEmpty { null }
+private fun ownerName(owner: WishlistOwner): String = when (owner) {
+    is WishlistOwner.Person -> owner.name
+    else -> wishlistOwnerText(owner)
+}
+
+@Composable
+private fun wishCount(count: Int): String =
+    if (count == 0) {
+        stringResource(R.string.person_detail_wishlist_no_wishes)
+    } else {
+        pluralStringResource(R.plurals.person_detail_wish_count, count, count)
+    }
+
+/**
+ * Who has joined is only known online, on the sharing screen, so this line states the rule rather
+ * than a list of people it could get wrong offline.
+ */
+@Composable
+private fun SharingLine(onManage: () -> Unit) {
+    val colors = GiftiaryTheme.colors
+    val manageDescription = stringResource(R.string.wishlist_sharing_manage_description)
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .background(colors.supportSurface, GiftiaryShapes.pill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(painterResource(R.drawable.ic_people), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textPrimary)
+        }
+        Spacer(Modifier.width(GiftiarySpacing.s))
+        Text(
+            text = stringResource(R.string.wishlist_sharing_invited_only),
+            modifier = Modifier.weight(1f),
+            style = GiftiaryType.label,
+            color = colors.textLabel,
+        )
+        TextButton(
+            onClick = onManage,
+            modifier = Modifier
+                .trimVertical(12.dp)
+                .heightIn(min = 48.dp)
+                .offset(x = GiftiarySpacing.s)
+                .semantics { contentDescription = manageDescription },
+            colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
+            contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
+        ) {
+            Text(stringResource(R.string.wishlist_sharing_manage), style = GiftiaryType.label)
+        }
+    }
+}
+
+@Composable
+private fun WishesHeading(onAddWish: () -> Unit) {
+    val colors = GiftiaryTheme.colors
+    val addDescription = stringResource(R.string.wish_add_description)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.m, top = GiftiarySpacing.fieldGroup),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.wishlist_wishes),
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() },
+            style = GiftiaryType.sectionTitle,
+            color = colors.textPrimary,
+        )
+        TextButton(
+            onClick = onAddWish,
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .semantics { contentDescription = addDescription },
+            colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryAction),
+            contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
+        ) {
+            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(13.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.wish_add), style = GiftiaryType.label.copy(fontWeight = GiftiaryType.contentTitle.fontWeight))
+        }
+    }
+}
+
+@Composable
+private fun OwnerWishRow(wish: Wish, onOpen: () -> Unit, onEdit: () -> Unit) {
+    WishRowContent(
+        name = wish.name,
+        note = wish.note,
+        price = wish.estimatedPrice,
+        productUrl = wish.productUrl,
+        modifier = Modifier.clickable(onClickLabel = stringResource(R.string.wish_open), onClick = onOpen),
+        trailing = {
+            OptionsMenu(
+                R.drawable.ic_more_vertical,
+                stringResource(R.string.wish_more, wish.name),
+                modifier = Modifier.offset(x = 14.dp, y = (-11).dp),
+            ) {
+                Option(stringResource(R.string.wish_edit), R.drawable.ic_edit, onEdit)
+            }
+        },
+    )
+}
+
+@Composable
+internal fun WishDivider() {
+    GiftiaryDivider(
+        modifier = Modifier.padding(end = GiftiarySpacing.browseGutter),
+        startIndent = GiftiarySpacing.browseGutter + WISH_THUMBNAIL + 14.dp,
+    )
+}
 
 @PreviewLightDark
 @Composable
 private fun WishlistDetailPreview() {
     val wishlist = Wishlist(UUID.randomUUID(), null, "Birthday 2027", Instant.EPOCH, Instant.EPOCH)
     fun wish(name: String, price: Money?, note: String?) =
-        Wish(UUID.randomUUID(), wishlist.id, name, note, price, null, null, Instant.EPOCH, Instant.EPOCH)
+        Wish(UUID.randomUUID(), wishlist.id, name, note, price, "https://example.com", null, Instant.EPOCH, Instant.EPOCH)
     GiftiaryTheme {
         WishlistDetailScreen(
             state = WishlistDetailUiState(
@@ -260,7 +353,7 @@ private fun WishlistDetailPreview() {
                     wishes = listOf(wish("Brass lamp", Money(12990, "HUF"), "The small one"), wish("Wool socks", null, null)),
                 ),
             ),
-            actions = WishlistDetailScreenActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = WishlistDetailScreenActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }

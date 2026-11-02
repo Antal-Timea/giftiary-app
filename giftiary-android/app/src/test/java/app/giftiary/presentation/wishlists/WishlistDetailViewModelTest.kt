@@ -146,6 +146,19 @@ class WishlistDetailViewModelTest {
         assertEquals(WishlistDetailContent.LoadFailed, viewModel.uiState.value.content)
     }
 
+    @Test
+    fun `a change of the list waiting to sync is reported, beside the list`() = runTest {
+        val own = wishlist("Birthday").also { wishlists.givenWishlists(it) }
+        val viewModel = viewModel(own.id)
+        keepSubscribed(viewModel.uiState)
+        assertFalse(viewModel.uiState.value.waitingToSync)
+
+        wishlists.waitingToSync.value = setOf(own.id)
+
+        assertTrue(viewModel.uiState.value.waitingToSync)
+        assertEquals(own, (viewModel.uiState.value.content as WishlistDetailContent.Loaded).wishlist)
+    }
+
     private fun viewModel(id: UUID) = WishlistDetailViewModel(id, wishlists, people)
 
     private fun TestScope.loaded(viewModel: WishlistDetailViewModel): WishlistDetailContent.Loaded {
