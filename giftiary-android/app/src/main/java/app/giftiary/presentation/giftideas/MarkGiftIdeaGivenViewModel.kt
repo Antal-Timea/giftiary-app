@@ -90,7 +90,7 @@ class MarkGiftIdeaGivenViewModel @AssistedInject constructor(
             PriceFormat.ParseResult.Invalid -> return _uiState.update { it.copy(priceError = PriceError.INVALID) }
         }
 
-        _uiState.update { it.copy(isBusy = true, writeError = null) }
+        _uiState.update { it.copy(isBusy = true, writeFailed = false) }
         viewModelScope.launch {
             try {
                 val gift = repository.markAsGiven(giftIdeaId, state.givenAt, price)
@@ -98,11 +98,12 @@ class MarkGiftIdeaGivenViewModel @AssistedInject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: GiftIdeaAlreadyGivenException) {
-                _uiState.update { it.copy(isBusy = false, writeError = MarkGivenError.ALREADY_GIVEN) }
+                // Final: the idea is already a gift, so there is nothing left to confirm or retry.
+                _uiState.update { it.copy(isBusy = false, status = MarkGivenStatus.ALREADY_GIVEN) }
             } catch (_: GiftIdeaNotFoundException) {
                 _uiState.update { it.copy(isBusy = false, status = MarkGivenStatus.NOT_AVAILABLE) }
             } catch (_: Exception) {
-                _uiState.update { it.copy(isBusy = false, writeError = MarkGivenError.FAILED) }
+                _uiState.update { it.copy(isBusy = false, writeFailed = true) }
             }
         }
     }
@@ -126,7 +127,8 @@ data class MarkGivenUiState(
     val priceError: PriceError? = null,
     /** The conversion is being stored; further confirmations are ignored. */
     val isBusy: Boolean = false,
-    val writeError: MarkGivenError? = null,
+    /** The last confirmation could not be stored; the input stays for another try. */
+    val writeFailed: Boolean = false,
     /** The gift created from the idea, once [status] is [MarkGivenStatus.DONE]. */
     val giftId: UUID? = null,
 )
@@ -139,11 +141,9 @@ enum class MarkGivenStatus {
     NOT_AVAILABLE,
     LOAD_FAILED,
 
+    /** Given meanwhile, e.g. on another screen: the idea can no longer be confirmed. */
+    ALREADY_GIVEN,
+
     /** The gift was recorded; the screen should move on to it. */
     DONE,
-}
-
-enum class MarkGivenError {
-    FAILED,
-    ALREADY_GIVEN,
 }

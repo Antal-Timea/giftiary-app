@@ -14,6 +14,7 @@ import app.giftiary.testing.person
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -130,7 +131,7 @@ class MarkGiftIdeaGivenViewModelTest {
         viewModel.confirm()
 
         val state = viewModel.uiState.value
-        assertEquals(MarkGivenError.FAILED, state.writeError)
+        assertTrue(state.writeFailed)
         assertFalse(state.isBusy)
         assertEquals(MarkGivenStatus.READY, state.status)
         assertEquals(LocalDate.of(2026, 3, 12), state.givenAt)
@@ -138,7 +139,7 @@ class MarkGiftIdeaGivenViewModelTest {
     }
 
     @Test
-    fun `an idea given meanwhile is reported as already given`() = runTest {
+    fun `an idea given meanwhile ends the flow, with no gift to open, and confirming again asks nothing`() = runTest {
         val scarf = ideaEntry(ideaDetails(anna), anna)
         repository.givenIdeas(scarf)
         val viewModel = viewModel(scarf.idea.id)
@@ -146,7 +147,17 @@ class MarkGiftIdeaGivenViewModelTest {
 
         viewModel.confirm()
 
-        assertEquals(MarkGivenError.ALREADY_GIVEN, viewModel.uiState.value.writeError)
+        val state = viewModel.uiState.value
+        assertEquals(MarkGivenStatus.ALREADY_GIVEN, state.status)
+        assertNull("no gift is guessed or opened", state.giftId)
+        assertFalse(state.isBusy)
+        assertFalse("not a retryable failure", state.writeFailed)
+
+        repository.writeFailure = null
+        viewModel.confirm()
+        assertEquals(1, repository.markAsGivenCalls)
+        assertEquals(MarkGivenStatus.ALREADY_GIVEN, viewModel.uiState.value.status)
+        assertTrue(repository.conversions.isEmpty())
     }
 
     @Test

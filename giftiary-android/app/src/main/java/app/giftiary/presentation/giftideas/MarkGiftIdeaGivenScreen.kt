@@ -131,6 +131,7 @@ fun MarkGiftIdeaGivenScreen(
                 MarkGivenStatus.LOADING -> SheetMessage(message = null)
                 MarkGivenStatus.NOT_AVAILABLE -> SheetMessage(stringResource(R.string.gift_idea_not_found))
                 MarkGivenStatus.LOAD_FAILED -> SheetMessage(stringResource(R.string.gift_idea_load_failed))
+                MarkGivenStatus.ALREADY_GIVEN -> SheetMessage(stringResource(R.string.gift_idea_already_given))
                 MarkGivenStatus.READY, MarkGivenStatus.DONE -> MarkGivenForm(
                     state = state,
                     onDateChange = onDateChange,
@@ -161,7 +162,12 @@ private fun SheetMessage(message: String?) {
         if (message == null) {
             CircularProgressIndicator(color = GiftiaryTheme.colors.textPrimary)
         } else {
-            Text(text = message, style = GiftiaryType.body, color = GiftiaryTheme.colors.textSecondary)
+            Text(
+                text = message,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                style = GiftiaryType.body,
+                color = GiftiaryTheme.colors.textSecondary,
+            )
         }
     }
 }
@@ -234,14 +240,9 @@ private fun MarkGivenForm(
             }
         }
         // Stays until the next try, so the failure is not missed; the form keeps what was entered.
-        state.writeError?.let {
+        if (state.writeFailed) {
             Text(
-                text = stringResource(
-                    when (it) {
-                        MarkGivenError.FAILED -> R.string.gift_idea_mark_given_failed
-                        MarkGivenError.ALREADY_GIVEN -> R.string.gift_idea_already_given
-                    },
-                ),
+                text = stringResource(R.string.gift_idea_mark_given_failed),
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 style = GiftiaryType.bodySmall,
                 color = colors.error,
