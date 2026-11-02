@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryInput
@@ -128,7 +130,9 @@ fun WishEditorScreen(state: WishEditorUiState, actions: WishEditorActions, modif
             WishEditorStatus.WISHLIST_NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.wishlist_not_found), actions.onBack, contentModifier)
             WishEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.wish_load_failed), actions.onBack, contentModifier)
             WishEditorStatus.EDITING, WishEditorStatus.SAVED, WishEditorStatus.DELETED ->
-                WishForm(state = state, actions = actions, modifier = contentModifier)
+                DecoratedPage(top = GiftCutout.LARGE) {
+                    WishForm(state = state, actions = actions, modifier = contentModifier)
+                }
         }
     }
 

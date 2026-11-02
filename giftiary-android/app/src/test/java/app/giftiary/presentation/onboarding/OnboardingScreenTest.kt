@@ -3,6 +3,9 @@ package app.giftiary.presentation.onboarding
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -10,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
+import app.giftiary.R
 import app.giftiary.presentation.theme.GiftiaryTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -86,12 +90,23 @@ class OnboardingScreenTest {
     }
 
     @Test
-    fun `there is no product navigation, and the image placeholders are silent`() {
+    fun `there is no product navigation, and the chapter images are silent`() {
         show()
 
         listOf("Home", "People", "Gifts", "Lists").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
-        // Only the progress speaks beyond the text; the placeholders carry no description.
-        compose.onNodeWithContentDescription("gift", substring = true, ignoreCase = true).assertDoesNotExist()
+        // Only the progress speaks beyond the text: the words say what each image shows.
+        repeat(3) { chapter ->
+            compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription), useUnmergedTree = true)
+                .assertCountEquals(1)
+            if (chapter < 2) compose.onNodeWithText("Continue").performClick()
+        }
+    }
+
+    @Test
+    fun `each chapter shows its owner-approved image`() {
+        assertEquals(R.drawable.giftiary_gift_cutout_large, OnboardingChapter.REMEMBER.image)
+        assertEquals(R.drawable.giftiary_gift_cutout_small, OnboardingChapter.PLAN.image)
+        assertEquals(R.drawable.giftiary_onboarding_share, OnboardingChapter.SHARE.image)
     }
 
     @Test

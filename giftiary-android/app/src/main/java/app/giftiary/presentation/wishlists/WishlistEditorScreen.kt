@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Person
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryDropdownField
@@ -129,7 +131,9 @@ fun WishlistEditorScreen(state: WishlistEditorUiState, actions: WishlistEditorAc
             WishlistEditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.wishlist_not_found), actions.onBack, contentModifier)
             WishlistEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.wishlist_load_failed), actions.onBack, contentModifier)
             WishlistEditorStatus.EDITING, WishlistEditorStatus.SAVED, WishlistEditorStatus.DELETED ->
-                WishlistForm(state = state, actions = actions, modifier = contentModifier)
+                DecoratedPage(top = GiftCutout.SMALL) {
+                    WishlistForm(state = state, actions = actions, modifier = contentModifier)
+                }
         }
     }
 

@@ -24,6 +24,8 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTaskHeader
@@ -109,15 +111,17 @@ fun PersonEditorScreen(
             EditorStatus.LOADING -> GiftiaryTaskStatus(null, onBack, contentModifier)
             EditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.person_editor_not_found), onBack, contentModifier)
             EditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.person_editor_load_failed), onBack, contentModifier)
-            EditorStatus.EDITING, EditorStatus.SAVED, EditorStatus.DELETED -> PersonForm(
-                state = state,
-                onBack = onBack,
-                onNameChange = onNameChange,
-                onRelationshipChange = onRelationshipChange,
-                onSave = onSave,
-                onDelete = deletion.onRequested,
-                modifier = contentModifier,
-            )
+            EditorStatus.EDITING, EditorStatus.SAVED, EditorStatus.DELETED -> DecoratedPage(top = GiftCutout.LARGE) {
+                PersonForm(
+                    state = state,
+                    onBack = onBack,
+                    onNameChange = onNameChange,
+                    onRelationshipChange = onRelationshipChange,
+                    onSave = onSave,
+                    onDelete = deletion.onRequested,
+                    modifier = contentModifier,
+                )
+            }
         }
     }
 

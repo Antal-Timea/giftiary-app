@@ -74,7 +74,7 @@ internal fun SignInContent(
     val colors = GiftiaryTheme.colors
     // One sign-in at a time: email and provider buttons wait for each other.
     val providerBusy = providerState.isBusy
-    AuthPage(modifier) {
+    AuthPage(modifier, decorated = true) {
         GiftiaryTaskHeader(
             title = stringResource(R.string.auth_sign_in_title),
             subtitle = stringResource(R.string.auth_sign_in_message),

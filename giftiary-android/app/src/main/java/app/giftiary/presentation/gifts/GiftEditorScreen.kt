@@ -45,6 +45,8 @@ import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.usecase.GiftInputError
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryChoicePill
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
@@ -196,7 +198,9 @@ fun GiftEditorScreen(
             GiftEditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.gift_not_found), actions.onBack, contentModifier)
             GiftEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.gift_load_failed), actions.onBack, contentModifier)
             GiftEditorStatus.EDITING, GiftEditorStatus.CLOSED, GiftEditorStatus.DELETED ->
-                GiftForm(state = state, actions = actions, widthClass = widthClass, modifier = contentModifier)
+                DecoratedPage(top = GiftCutout.LARGE, bottom = GiftCutout.SMALL) {
+                    GiftForm(state = state, actions = actions, widthClass = widthClass, modifier = contentModifier)
+                }
         }
     }
 

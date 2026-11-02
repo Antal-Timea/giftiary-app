@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryDivider
@@ -81,29 +83,30 @@ class ProfileActions(
 @Composable
 fun ProfileContent(state: ProfileUiState, actions: ProfileActions, modifier: Modifier = Modifier) {
     val colors = GiftiaryTheme.colors
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .verticalScroll(rememberScrollState())
-            .giftiaryReadableWidth()
-            .padding(horizontal = GiftiarySpacing.taskGutter, vertical = GiftiarySpacing.browseGutter),
-    ) {
-        GiftiaryBackButton(onClick = actions.onBack)
-        Identity(state, Modifier.padding(top = GiftiarySpacing.xl))
-        GiftiarySecondaryButton(
-            text = stringResource(R.string.profile_edit),
-            onClick = actions.onEditProfile,
-            modifier = Modifier.padding(top = GiftiarySpacing.xl),
-            leadingIcon = painterResource(R.drawable.ic_edit),
-            leadingIconTint = colors.textPrimary,
-        )
-        state.stats?.let { Story(it, Modifier.padding(top = GiftiarySpacing.xxl)) }
-        Column(Modifier.padding(top = GiftiarySpacing.l)) {
-            ProfileRow(R.drawable.ic_nav_settings, stringResource(R.string.settings_title), actions.onOpenSettings, chevron = true)
-            GiftiaryDivider(startIndent = ROW_TEXT_INDENT)
-            ProfileRow(R.drawable.ic_sign_out, stringResource(R.string.auth_sign_out), actions.onSignOut, chevron = false)
+    DecoratedPage(top = GiftCutout.SMALL, modifier = modifier.background(colors.background)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .verticalScroll(rememberScrollState())
+                .giftiaryReadableWidth()
+                .padding(horizontal = GiftiarySpacing.taskGutter, vertical = GiftiarySpacing.browseGutter),
+        ) {
+            GiftiaryBackButton(onClick = actions.onBack)
+            Identity(state, Modifier.padding(top = GiftiarySpacing.xl))
+            GiftiarySecondaryButton(
+                text = stringResource(R.string.profile_edit),
+                onClick = actions.onEditProfile,
+                modifier = Modifier.padding(top = GiftiarySpacing.xl),
+                leadingIcon = painterResource(R.drawable.ic_edit),
+                leadingIconTint = colors.textPrimary,
+            )
+            state.stats?.let { Story(it, Modifier.padding(top = GiftiarySpacing.xxl)) }
+            Column(Modifier.padding(top = GiftiarySpacing.l)) {
+                ProfileRow(R.drawable.ic_nav_settings, stringResource(R.string.settings_title), actions.onOpenSettings, chevron = true)
+                GiftiaryDivider(startIndent = ROW_TEXT_INDENT)
+                ProfileRow(R.drawable.ic_sign_out, stringResource(R.string.auth_sign_out), actions.onSignOut, chevron = false)
+            }
         }
     }
 }

@@ -1,7 +1,9 @@
 package app.giftiary.presentation.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +33,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -43,6 +46,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.presentation.components.EditorialHero
+import app.giftiary.presentation.components.EditorialImage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTextAction
 import app.giftiary.presentation.components.giftiaryReadableWidth
@@ -51,15 +56,16 @@ import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
 
-/** The three approved chapters, in order. */
+/** The three approved chapters, in order, each with its owner-approved image. */
 enum class OnboardingChapter(
     @StringRes val eyebrow: Int,
     @StringRes val title: Int,
     @StringRes val body: Int,
+    @DrawableRes val image: Int,
 ) {
-    REMEMBER(R.string.onboarding_remember_eyebrow, R.string.onboarding_remember_title, R.string.onboarding_remember_body),
-    PLAN(R.string.onboarding_plan_eyebrow, R.string.onboarding_plan_title, R.string.onboarding_plan_body),
-    SHARE(R.string.onboarding_share_eyebrow, R.string.onboarding_share_title, R.string.onboarding_share_body),
+    REMEMBER(R.string.onboarding_remember_eyebrow, R.string.onboarding_remember_title, R.string.onboarding_remember_body, GiftCutout.LARGE.image),
+    PLAN(R.string.onboarding_plan_eyebrow, R.string.onboarding_plan_title, R.string.onboarding_plan_body, GiftCutout.SMALL.image),
+    SHARE(R.string.onboarding_share_eyebrow, R.string.onboarding_share_title, R.string.onboarding_share_body, R.drawable.giftiary_onboarding_share),
 }
 
 /**
@@ -131,20 +137,19 @@ internal fun OnboardingContent(
     }
 }
 
-/** Remember: the image first, fading into the page, then the words. */
+/** Remember: the image first, straight on the page, then the words. */
 @Composable
 private fun ColumnScope.Remember(imageHeight: Dp, onSkip: () -> Unit) {
-    val colors = GiftiaryTheme.colors
-    Box(Modifier.fillMaxWidth()) {
-        // G1 slot "onboarding-remember": the wrapped gifts, fading into the ivory page.
-        ImagePlaceholder(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(imageHeight)
-                .background(Brush.verticalGradient(listOf(colors.heroFallback, colors.background))),
-        )
-        TopRow(onSkip)
-    }
+    TopRow(onSkip)
+    // G1-3 at full strength: the kept gift, whole, the chapter's picture rather than decoration.
+    Image(
+        painter = painterResource(OnboardingChapter.REMEMBER.image),
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(imageHeight)
+            .padding(horizontal = GiftiarySpacing.l),
+    )
     Words(OnboardingChapter.REMEMBER, showTitle = true)
 }
 
@@ -154,7 +159,7 @@ private fun ColumnScope.Plan(imageHeight: Dp, onSkip: () -> Unit) {
     val colors = GiftiaryTheme.colors
     TopRow(onSkip)
     Heading(OnboardingChapter.PLAN)
-    // G1 slot "onboarding-plan": the ribboned gift inside the aqua ring.
+    // G1-4 inside the aqua ring, close up, the circle leaving the screen to the right.
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,35 +168,43 @@ private fun ColumnScope.Plan(imageHeight: Dp, onSkip: () -> Unit) {
         contentAlignment = Alignment.CenterEnd,
     ) {
         val diameter = imageHeight - GiftiarySpacing.xxl
-        ImagePlaceholder(
+        Box(
             modifier = Modifier
                 .size(diameter)
                 .offset(x = diameter / 4)
                 .background(colors.surfaceContextQuiet, GiftiaryShapes.pill)
                 .padding(GiftiarySpacing.xl)
-                .background(colors.surfaceContext, GiftiaryShapes.pill),
-        )
+                .clip(GiftiaryShapes.pill)
+                .background(colors.surfaceContext),
+        ) {
+            Image(
+                painter = painterResource(OnboardingChapter.PLAN.image),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(PLAN_ZOOM),
+            )
+        }
     }
     Words(OnboardingChapter.PLAN, showTitle = false)
 }
 
-/** Share: the words over the warm image, which ends in the hero's rounded edge. */
+/**
+ * Share: the warm image, ending in the hero's rounded edge, then the words. The approved
+ * photograph fills its frame with the gift, so the words follow it instead of covering it.
+ */
 @Composable
 private fun ColumnScope.Share(imageHeight: Dp, onSkip: () -> Unit) {
-    // G1 slot "onboarding-share": the stack of gifts held out, on the warm yellow ground.
-    EditorialHero(modifier = Modifier.fillMaxWidth()) {
-        ImagePlaceholder(Modifier.matchParentSize().padding(top = GiftiarySpacing.xxxl * 3))
-        Column(Modifier.height(imageHeight + GiftiarySpacing.xxxl)) {
-            TopRow(onSkip)
-            Heading(OnboardingChapter.SHARE)
-        }
+    // G1-2, centred: the gift, the hands and the coral marks all stay in the frame.
+    EditorialHero(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(imageHeight + GiftiarySpacing.xxxl),
+        image = { EditorialImage(OnboardingChapter.SHARE.image) },
+    ) {
+        TopRow(onSkip)
     }
-    Text(
-        text = stringResource(OnboardingChapter.SHARE.body),
-        modifier = Modifier.padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.xl),
-        style = GiftiaryType.body.copy(fontSize = GiftiaryType.contentTitle.fontSize),
-        color = GiftiaryTheme.colors.textSecondary,
-    )
+    Words(OnboardingChapter.SHARE, showTitle = true)
     Row(
         modifier = Modifier.padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.l),
         horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
@@ -261,22 +274,6 @@ private fun Words(chapter: OnboardingChapter, showTitle: Boolean) {
     )
 }
 
-/**
- * Where the owner-approved original photograph will go. Until it exists the branded ground and the
- * gift glyph hold the slot's geometry; it is decoration, so screen readers skip it.
- */
-@Composable
-private fun ImagePlaceholder(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
-        Icon(
-            painter = painterResource(R.drawable.ic_gift_glyph),
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = GiftiaryTheme.colors.textLabel.copy(alpha = 0.35f),
-        )
-    }
-}
-
 /** The chapter dots, the current one long, and "1 / 3", read out as "Step 1 of 3". */
 @Composable
 private fun Progress(position: Int, count: Int, modifier: Modifier = Modifier) {
@@ -311,3 +308,6 @@ private fun OnboardingPreview() {
         OnboardingContent(OnboardingChapter.PLAN, {}, {})
     }
 }
+
+// The board shows the Plan gift close up, filling the ring rather than floating in it.
+private const val PLAN_ZOOM = 1.25f
