@@ -1,36 +1,44 @@
 package app.giftiary.presentation.gifts
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.GiftDirection
@@ -38,22 +46,25 @@ import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.usecase.GiftInputError
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
+import app.giftiary.presentation.components.GiftiaryChoicePill
 import app.giftiary.presentation.components.GiftiaryDateField
 import app.giftiary.presentation.components.GiftiaryDropdownField
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
+import app.giftiary.presentation.components.GiftiarySupportButton
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.LocalWidthClass
-import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
-import app.giftiary.presentation.components.directionColor
+import app.giftiary.presentation.components.arrow
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.components.giftiaryWideWidth
 import app.giftiary.presentation.occasions.occasionTitle
+import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -63,6 +74,7 @@ fun GiftEditorScreen(
     viewModel: GiftEditorViewModel,
     onClose: () -> Unit,
     onOpenPeople: () -> Unit,
+    onAddPerson: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.status) {
@@ -73,6 +85,7 @@ fun GiftEditorScreen(
         actions = GiftEditorActions(
             onBack = onClose,
             onOpenPeople = onOpenPeople,
+            onAddPerson = onAddPerson,
             onDirectionChange = viewModel::onDirectionChange,
             onPersonChange = viewModel::onPersonChange,
             onOccasionChange = viewModel::onOccasionChange,
@@ -98,6 +111,7 @@ fun GiftEditorScreen(
 class GiftEditorActions(
     val onBack: () -> Unit,
     val onOpenPeople: () -> Unit,
+    val onAddPerson: () -> Unit,
     val onDirectionChange: (GiftDirection) -> Unit,
     val onPersonChange: (Person) -> Unit,
     val onOccasionChange: (Occasion?) -> Unit,
@@ -156,17 +170,16 @@ fun GiftEditorScreen(
         }
     }
 
-    val title = if (state.isNew) R.string.gift_editor_add_title else R.string.gift_editor_edit_title
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(title), onBack = actions.onBack) },
+        containerColor = GiftiaryTheme.colors.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (state.status) {
-            GiftEditorStatus.LOADING -> LoadingContent(contentModifier)
-            GiftEditorStatus.NOT_FOUND -> MessageContent(stringResource(R.string.gift_not_found), contentModifier)
-            GiftEditorStatus.LOAD_FAILED -> MessageContent(stringResource(R.string.gift_load_failed), contentModifier)
+            GiftEditorStatus.LOADING -> GiftiaryTaskStatus(null, actions.onBack, contentModifier)
+            GiftEditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.gift_not_found), actions.onBack, contentModifier)
+            GiftEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.gift_load_failed), actions.onBack, contentModifier)
             GiftEditorStatus.EDITING, GiftEditorStatus.CLOSED ->
                 GiftForm(state = state, actions = actions, widthClass = widthClass, modifier = contentModifier)
         }
@@ -174,9 +187,12 @@ fun GiftEditorScreen(
 }
 
 /**
- * One form at every width: the fields are declared once, and only their arrangement changes. A wide
- * window puts who, what and when on the left and the optional details on the right; the whole form
- * scrolls as one, so a focused field in either column is brought above the keyboard.
+ * The approved quick capture: three numbered steps and Save, with the optional details one tap
+ * away. Edit opens with the details shown, so a gift's photo and price are where the user left
+ * them. Values live in the view model, so showing or hiding the details never loses them.
+ *
+ * A wide window puts the steps on the left and the details, always shown, on the right; the whole
+ * form scrolls as one, so a focused field in either column is brought above the keyboard.
  */
 @Composable
 private fun GiftForm(
@@ -186,132 +202,248 @@ private fun GiftForm(
     modifier: Modifier = Modifier,
 ) {
     val canEdit = state.status == GiftEditorStatus.EDITING && !state.isBusy
-    val direction: @Composable () -> Unit = {
-        DirectionSelector(selected = state.direction, onSelect = actions.onDirectionChange, enabled = canEdit)
-    }
-    val identityFields: @Composable () -> Unit = {
-            GiftiaryDropdownField(
-                label = giftPersonLabel(state.direction),
-                options = state.personOptions,
-                selected = state.selectedPerson,
-                optionLabel = { it.name },
-                onSelect = actions.onPersonChange,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canEdit,
-                errorMessage = when {
-                    GiftInputError.RECIPIENT_REQUIRED in state.errors -> stringResource(R.string.gift_error_recipient_required)
-                    GiftInputError.GIVER_REQUIRED in state.errors -> stringResource(R.string.gift_error_giver_required)
-                    else -> null
-                },
-            )
-            GiftiaryTextField(
-                value = state.name,
-                onValueChange = actions.onNameChange,
-                label = stringResource(R.string.gift_name),
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.gift_name_hint),
-                errorMessage = if (GiftInputError.NAME_REQUIRED in state.errors) stringResource(R.string.gift_error_name_required) else null,
-                enabled = canEdit,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
-            )
-            GiftiaryDropdownField(
-                label = stringResource(R.string.gift_occasion),
-                options = state.occasionOptions,
-                selected = state.selectedOccasion,
-                optionLabel = { occasion -> occasion?.let { occasionTitle(it) } ?: stringResource(R.string.gift_no_occasion) },
-                onSelect = actions.onOccasionChange,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canEdit && state.personId != null,
-            )
-            GiftiaryDateField(
-                label = stringResource(R.string.gift_date),
-                date = state.givenAt,
-                onDateChange = actions.onDateChange,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canEdit,
-            )
-    }
-    val detailFields: @Composable () -> Unit = {
-            GiftiaryTextField(
-                value = state.price,
-                onValueChange = actions.onPriceChange,
-                label = stringResource(R.string.gift_price_optional),
-                modifier = Modifier.fillMaxWidth(),
-                errorMessage = state.priceError?.let { priceErrorText(it, state.currencyCode) },
-                enabled = canEdit,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-                suffix = state.currencyCode,
-            )
-            GiftiaryTextField(
-                value = state.productUrl,
-                onValueChange = actions.onProductUrlChange,
-                label = stringResource(R.string.gift_product_url_optional),
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canEdit,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
-            )
-            GiftiaryTextField(
-                value = state.note,
-                onValueChange = actions.onNoteChange,
-                label = stringResource(R.string.gift_note_optional),
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canEdit,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                singleLine = false,
-                minLines = 3,
-            )
-            GiftPhotoField(
-                hasPhoto = state.photoPath != null,
-                photo = state.photo,
-                busy = state.photoBusy,
-                enabled = canEdit,
-                onPick = actions.onPhotoPicked,
-                camera = GiftPhotoCamera(
-                    newTarget = actions.onNewCaptureTarget,
-                    onCaptured = actions.onPhotoCaptured,
-                    onCancelled = actions.onCaptureCancelled,
-                    onUnavailable = actions.onCameraUnavailable,
-                ),
-                onRemove = actions.onPhotoRemoved,
-                modifier = Modifier.fillMaxWidth(),
-            )
-    }
+    var detailsShown by rememberSaveable { mutableStateOf(!state.isNew) }
+    // Kept here, above the layout switch, so a resize does not clear the search.
+    var personQuery by rememberSaveable { mutableStateOf("") }
     // A lone message and button stay one column even on a wide window.
     val twoColumns = widthClass == WidthClass.EXPANDED && !state.needsPerson
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .imePadding()
-            .then(if (twoColumns) Modifier.giftiaryWideWidth() else Modifier.giftiaryReadableWidth())
-            .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
-    ) {
-        when {
-            state.needsPerson -> {
-                direction()
-                NeedsPerson(onOpenPeople = actions.onOpenPeople)
-            }
-            twoColumns -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.xxl)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l)) {
-                        direction()
-                        identityFields()
+    // A price error is in the details: they open so it can be seen.
+    val showDetails = twoColumns || detailsShown || state.priceError != null
+
+    GiftPhotoSources(
+        onPick = actions.onPhotoPicked,
+        camera = GiftPhotoCamera(
+            newTarget = actions.onNewCaptureTarget,
+            onCaptured = actions.onPhotoCaptured,
+            onCancelled = actions.onCaptureCancelled,
+            onUnavailable = actions.onCameraUnavailable,
+        ),
+    ) { choosePhoto ->
+        val steps: @Composable () -> Unit = {
+            GiftSteps(
+                state = state,
+                actions = actions,
+                personQuery = personQuery,
+                onPersonQueryChange = { personQuery = it },
+                enabled = canEdit,
+            )
+        }
+        val details: @Composable () -> Unit = {
+            GiftDetails(state = state, actions = actions, onChoosePhoto = choosePhoto, enabled = canEdit)
+        }
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .then(if (twoColumns) Modifier.giftiaryWideWidth() else Modifier.giftiaryReadableWidth())
+                .padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.xxl),
+        ) {
+            GiftiaryTaskHeader(
+                title = stringResource(if (state.isNew) R.string.gift_editor_add_title else R.string.gift_editor_edit_title),
+                subtitle = stringResource(if (state.isNew) R.string.gift_editor_add_subtitle else R.string.gift_editor_edit_subtitle),
+                onBack = actions.onBack,
+            )
+            when {
+                state.needsPerson -> NeedsPerson(onOpenPeople = actions.onOpenPeople)
+                twoColumns -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.xxl)) {
+                        Column(Modifier.weight(1f)) { steps() }
+                        Column(Modifier.weight(1f).padding(top = GiftiarySpacing.section)) { details() }
                     }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l)) {
-                        detailFields()
-                    }
+                    SaveButton(state, actions.onSave, Modifier.align(Alignment.End).padding(top = GiftiarySpacing.xxl))
                 }
-                SaveButton(state = state, onSave = actions.onSave, modifier = Modifier.align(Alignment.End))
-            }
-            else -> {
-                direction()
-                identityFields()
-                detailFields()
-                SaveButton(state = state, onSave = actions.onSave, modifier = Modifier.fillMaxWidth())
+                showDetails -> {
+                    steps()
+                    DetailsToggle(shown = true, onToggle = { detailsShown = false }, Modifier.padding(top = GiftiarySpacing.xxl))
+                    Column(Modifier.padding(top = GiftiarySpacing.browseGutter)) { details() }
+                    SaveButton(state, actions.onSave, Modifier.fillMaxWidth().padding(top = 28.dp))
+                }
+                else -> {
+                    steps()
+                    SaveButton(state, actions.onSave, Modifier.fillMaxWidth().padding(top = GiftiarySpacing.xxl))
+                    DetailsToggle(shown = false, onToggle = { detailsShown = true }, Modifier.padding(top = 10.dp))
+                }
             }
         }
     }
+}
+
+/** Given or received, who, and what: everything a gift needs. */
+@Composable
+private fun GiftSteps(
+    state: GiftEditorUiState,
+    actions: GiftEditorActions,
+    personQuery: String,
+    onPersonQueryChange: (String) -> Unit,
+    enabled: Boolean,
+) {
+    StepHeading(number = 1, title = stringResource(R.string.gift_editor_step_direction), modifier = Modifier.padding(top = GiftiarySpacing.section))
+    Row(
+        modifier = Modifier
+            .padding(top = GiftiarySpacing.m)
+            .fillMaxWidth()
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        GiftDirection.entries.forEach { direction ->
+            GiftiaryChoicePill(
+                text = stringResource(if (direction == GiftDirection.GIVEN) R.string.gift_editor_i_gave else R.string.gift_editor_i_received),
+                selected = state.direction == direction,
+                onClick = { actions.onDirectionChange(direction) },
+                modifier = Modifier.weight(1f),
+                enabled = enabled,
+                leadingIcon = painterResource(direction.arrow),
+            )
+        }
+    }
+
+    StepHeading(
+        number = 2,
+        title = stringResource(
+            if (state.direction == GiftDirection.GIVEN) R.string.gift_editor_step_person_given else R.string.gift_editor_step_person_received,
+        ),
+        modifier = Modifier.padding(top = GiftiarySpacing.section),
+    )
+    GiftPersonChooser(
+        people = state.personOptions,
+        selectedId = state.personId,
+        query = personQuery,
+        onQueryChange = onPersonQueryChange,
+        onSelect = actions.onPersonChange,
+        onAddPerson = actions.onAddPerson,
+        enabled = enabled,
+        errorMessage = when {
+            GiftInputError.RECIPIENT_REQUIRED in state.errors -> stringResource(R.string.gift_error_recipient_required)
+            GiftInputError.GIVER_REQUIRED in state.errors -> stringResource(R.string.gift_error_giver_required)
+            else -> null
+        },
+        modifier = Modifier.padding(top = GiftiarySpacing.m),
+    )
+
+    val nameStep = stringResource(R.string.gift_editor_step_name)
+    StepHeading(number = 3, title = nameStep, modifier = Modifier.padding(top = GiftiarySpacing.section))
+    GiftiaryTextField(
+        value = state.name,
+        onValueChange = actions.onNameChange,
+        // The step above is the field's label; it is also what the field is called when read out.
+        label = null,
+        modifier = Modifier
+            .padding(top = GiftiarySpacing.m)
+            .fillMaxWidth()
+            .semantics { contentDescription = nameStep },
+        placeholder = stringResource(R.string.gift_editor_name_placeholder),
+        errorMessage = if (GiftInputError.NAME_REQUIRED in state.errors) stringResource(R.string.gift_error_name_required) else null,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+    )
+    Text(
+        text = stringResource(R.string.gift_editor_name_examples),
+        modifier = Modifier.padding(top = GiftiarySpacing.s),
+        style = GiftiaryType.metadata.copy(fontSize = 11.5.sp),
+        color = GiftiaryTheme.colors.textTertiary,
+    )
+}
+
+/**
+ * The optional details, in the board's order. The product link is not on the board but is a real
+ * part of a gift, so it follows the note as the last, quietest field.
+ */
+@Composable
+private fun GiftDetails(state: GiftEditorUiState, actions: GiftEditorActions, onChoosePhoto: () -> Unit, enabled: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.fieldGroup)) {
+        GiftiaryDropdownField(
+            label = stringResource(R.string.gift_occasion),
+            options = state.occasionOptions,
+            selected = state.selectedOccasion,
+            optionLabel = { occasion -> occasion?.let { occasionTitle(it) } ?: stringResource(R.string.gift_no_occasion) },
+            placeholder = stringResource(R.string.gift_no_occasion),
+            onSelect = actions.onOccasionChange,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled && state.personId != null,
+        )
+        GiftiaryDateField(
+            label = stringResource(R.string.gift_date),
+            date = state.givenAt,
+            onDateChange = actions.onDateChange,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+        GiftiaryTextField(
+            value = state.price,
+            onValueChange = actions.onPriceChange,
+            label = stringResource(R.string.gift_price),
+            modifier = Modifier.fillMaxWidth(),
+            errorMessage = state.priceError?.let { priceErrorText(it, state.currencyCode) },
+            enabled = enabled,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+            // Gifts are kept in the app's one currency, so it is shown, not offered as a choice.
+            suffix = state.currencyCode,
+        )
+        GiftPhotoTile(
+            hasPhoto = state.photoPath != null,
+            photo = state.photo,
+            busy = state.photoBusy,
+            enabled = enabled,
+            onChoose = onChoosePhoto,
+            onRemove = actions.onPhotoRemoved,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        GiftiaryTextField(
+            value = state.note,
+            onValueChange = actions.onNoteChange,
+            label = stringResource(R.string.gift_note),
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(R.string.gift_note_placeholder),
+            enabled = enabled,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            singleLine = false,
+            minLines = 3,
+        )
+        GiftiaryTextField(
+            value = state.productUrl,
+            onValueChange = actions.onProductUrlChange,
+            label = stringResource(R.string.gift_product_url),
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = stringResource(R.string.gift_product_url_placeholder),
+            enabled = enabled,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            leadingIcon = painterResource(R.drawable.ic_link),
+        )
+    }
+}
+
+/** A numbered step: the number is read as "Step 1 of 3", so it means something without sight. */
+@Composable
+private fun StepHeading(number: Int, title: String, modifier: Modifier = Modifier) {
+    val colors = GiftiaryTheme.colors
+    val position = stringResource(R.string.gift_editor_step, number, GIFT_STEPS)
+    Row(
+        modifier = modifier.semantics(mergeDescendants = true) { heading() },
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .background(colors.support, GiftiaryShapes.pill)
+                .clearAndSetSemantics { contentDescription = position },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = number.toString(), style = GiftiaryType.chip.copy(fontSize = 12.sp), color = colors.onSupport)
+        }
+        Text(text = title, style = GiftiaryType.sectionTitle.copy(fontSize = 18.sp), color = colors.textPrimary)
+    }
+}
+
+@Composable
+private fun DetailsToggle(shown: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    GiftiarySupportButton(
+        text = stringResource(if (shown) R.string.gift_editor_fewer_details else R.string.gift_editor_more_details),
+        onClick = onToggle,
+        modifier = modifier.fillMaxWidth(),
+        leadingIcon = painterResource(if (shown) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down),
+    )
 }
 
 @Composable
@@ -319,52 +451,22 @@ private fun SaveButton(state: GiftEditorUiState, onSave: () -> Unit, modifier: M
     GiftiaryPrimaryButton(
         text = stringResource(R.string.gift_editor_save),
         onClick = onSave,
-        modifier = modifier.padding(top = GiftiarySpacing.s),
+        modifier = modifier,
         enabled = state.status == GiftEditorStatus.EDITING,
         loading = state.isBusy,
+        trailingArrow = true,
     )
 }
 
 @Composable
-private fun DirectionSelector(selected: GiftDirection, onSelect: (GiftDirection) -> Unit, enabled: Boolean) {
-    val colors = GiftiaryTheme.colors
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        GiftDirection.entries.forEachIndexed { index, direction ->
-            SegmentedButton(
-                selected = direction == selected,
-                onClick = { onSelect(direction) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = GiftDirection.entries.size),
-                enabled = enabled,
-                icon = {
-                    Icon(
-                        painter = painterResource(
-                            if (direction == GiftDirection.GIVEN) R.drawable.ic_gift_given else R.drawable.ic_gift_received,
-                        ),
-                        contentDescription = null,
-                        tint = directionColor(direction),
-                    )
-                },
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = colors.surfaceContext,
-                    activeContentColor = colors.textPrimary,
-                    activeBorderColor = colors.border,
-                    inactiveContainerColor = colors.background,
-                    inactiveContentColor = colors.textSecondary,
-                    inactiveBorderColor = colors.border,
-                ),
-            ) {
-                Text(giftDirectionLabel(direction))
-            }
-        }
-    }
-}
-
-@Composable
 private fun NeedsPerson(onOpenPeople: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l)) {
+    Column(
+        modifier = Modifier.padding(top = GiftiarySpacing.section),
+        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+    ) {
         Text(
             text = stringResource(R.string.gift_editor_needs_person),
-            style = MaterialTheme.typography.bodyLarge,
+            style = GiftiaryType.body,
             color = GiftiaryTheme.colors.textSecondary,
         )
         GiftiaryPrimaryButton(
@@ -375,7 +477,9 @@ private fun NeedsPerson(onOpenPeople: () -> Unit) {
     }
 }
 
-private val previewActions = GiftEditorActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+private const val GIFT_STEPS = 3
+
+private val previewActions = GiftEditorActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
 
 @PreviewLightDark
 @GiftiaryAdaptivePreviews

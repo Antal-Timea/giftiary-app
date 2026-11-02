@@ -6,10 +6,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -17,29 +18,37 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.usecase.GiftIdeaInputError
+import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryDropdownField
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
+import app.giftiary.presentation.components.GiftiarySupportButton
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.LoadingContent
-import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.gifts.priceErrorText
 import app.giftiary.presentation.occasions.occasionTitle
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import java.time.Instant
 import java.util.UUID
 
@@ -111,104 +120,163 @@ fun GiftIdeaEditorScreen(
         }
     }
 
-    val title = if (state.isNew) R.string.gift_idea_editor_add_title else R.string.gift_idea_editor_edit_title
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(title), onBack = actions.onBack) },
+        containerColor = GiftiaryTheme.colors.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (state.status) {
-            GiftIdeaEditorStatus.LOADING -> LoadingContent(contentModifier)
-            GiftIdeaEditorStatus.NOT_FOUND -> MessageContent(stringResource(R.string.gift_idea_not_found), contentModifier)
-            GiftIdeaEditorStatus.LOAD_FAILED -> MessageContent(stringResource(R.string.gift_idea_load_failed), contentModifier)
+            GiftIdeaEditorStatus.LOADING -> GiftiaryTaskStatus(null, actions.onBack, contentModifier)
+            GiftIdeaEditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.gift_idea_not_found), actions.onBack, contentModifier)
+            GiftIdeaEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.gift_idea_load_failed), actions.onBack, contentModifier)
             GiftIdeaEditorStatus.EDITING, GiftIdeaEditorStatus.CLOSED ->
                 GiftIdeaForm(state = state, actions = actions, modifier = contentModifier)
         }
     }
 }
 
+/**
+ * The approved Add gift idea: what, for whom and for which occasion, then the optional details.
+ * Ideas have no photo, so the board's photo tile is left out. Status and the actual price are
+ * real parts of an idea that the board does not show; they join the details. Edit opens with the
+ * details shown.
+ */
 @Composable
 private fun GiftIdeaForm(state: GiftIdeaEditorUiState, actions: GiftIdeaEditorActions, modifier: Modifier = Modifier) {
     val canEdit = state.status == GiftIdeaEditorStatus.EDITING && !state.isBusy
+    var detailsShown by rememberSaveable { mutableStateOf(!state.isNew) }
+    // A price error is in the details: they open so it can be seen.
+    val showDetails = detailsShown || state.estimatedPriceError != null || state.actualPriceError != null
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .imePadding()
-            .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            .giftiaryReadableWidth()
+            .padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.xxl),
     ) {
+        GiftiaryTaskHeader(
+            title = stringResource(if (state.isNew) R.string.gift_idea_editor_add_title else R.string.gift_idea_editor_edit_title),
+            subtitle = stringResource(if (state.isNew) R.string.gift_idea_editor_add_subtitle else R.string.gift_idea_editor_edit_subtitle),
+            onBack = actions.onBack,
+        )
         if (state.needsPerson) {
             Text(
                 text = stringResource(R.string.gift_idea_editor_needs_person),
-                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = GiftiarySpacing.section),
+                style = GiftiaryType.body,
                 color = GiftiaryTheme.colors.textSecondary,
             )
             GiftiaryPrimaryButton(
                 text = stringResource(R.string.gift_editor_go_to_people),
                 onClick = actions.onOpenPeople,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = GiftiarySpacing.l),
             )
             return@Column
         }
 
-        GiftiaryDropdownField(
-            label = stringResource(R.string.gift_recipient),
-            options = state.recipientOptions,
-            selected = state.selectedRecipient,
-            optionLabel = { it.name },
-            onSelect = actions.onRecipientChange,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit,
-            errorMessage = if (GiftIdeaInputError.RECIPIENT_REQUIRED in state.errors) {
-                stringResource(R.string.gift_idea_error_recipient_required)
-            } else {
-                null
-            },
+        Column(
+            modifier = Modifier.padding(top = GiftiarySpacing.section),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            GiftiaryTextField(
+                value = state.name,
+                onValueChange = actions.onNameChange,
+                label = stringResource(R.string.gift_idea_name),
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = stringResource(R.string.gift_idea_name_hint),
+                errorMessage = if (GiftIdeaInputError.NAME_REQUIRED in state.errors) {
+                    stringResource(R.string.gift_idea_error_name_required)
+                } else {
+                    null
+                },
+                enabled = canEdit,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+            )
+            GiftiaryDropdownField(
+                label = stringResource(R.string.gift_idea_for),
+                options = state.recipientOptions,
+                selected = state.selectedRecipient,
+                optionLabel = { it.name },
+                onSelect = actions.onRecipientChange,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = canEdit,
+                errorMessage = if (GiftIdeaInputError.RECIPIENT_REQUIRED in state.errors) {
+                    stringResource(R.string.gift_idea_error_recipient_required)
+                } else {
+                    null
+                },
+                leadingIcon = state.selectedRecipient?.let { person -> { GiftiaryAvatar(name = person.name, size = 26.dp) } },
+            )
+            GiftiaryDropdownField(
+                label = stringResource(R.string.gift_idea_occasion_optional),
+                options = state.occasionOptions,
+                selected = state.selectedOccasion,
+                optionLabel = { occasion -> occasion?.let { occasionTitle(it) } ?: stringResource(R.string.gift_no_occasion) },
+                placeholder = stringResource(R.string.gift_no_occasion),
+                onSelect = actions.onOccasionChange,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = canEdit && state.recipientId != null,
+                leadingIcon = {
+                    Icon(painter = painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(16.dp))
+                },
+            )
+        }
+
+        GiftiarySupportButton(
+            text = stringResource(if (showDetails) R.string.gift_editor_fewer_details else R.string.gift_editor_more_details),
+            onClick = { detailsShown = !showDetails },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = GiftiarySpacing.xl),
+            leadingIcon = painterResource(if (showDetails) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down),
         )
-        GiftiaryTextField(
-            value = state.name,
-            onValueChange = actions.onNameChange,
-            label = stringResource(R.string.gift_idea_name),
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = stringResource(R.string.gift_idea_name_hint),
-            errorMessage = if (GiftIdeaInputError.NAME_REQUIRED in state.errors) {
-                stringResource(R.string.gift_idea_error_name_required)
-            } else {
-                null
-            },
-            enabled = canEdit,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+        if (showDetails) {
+            GiftIdeaDetails(state = state, actions = actions, enabled = canEdit, modifier = Modifier.padding(top = GiftiarySpacing.browseGutter))
+        }
+
+        GiftiaryPrimaryButton(
+            text = stringResource(R.string.gift_idea_editor_save),
+            onClick = actions.onSave,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 28.dp),
+            enabled = state.status == GiftIdeaEditorStatus.EDITING,
+            loading = state.isBusy,
+            trailingArrow = true,
         )
-        GiftIdeaStatusSelector(selected = state.ideaStatus, onSelect = actions.onStatusChange, enabled = canEdit)
-        GiftiaryDropdownField(
-            label = stringResource(R.string.gift_occasion),
-            options = state.occasionOptions,
-            selected = state.selectedOccasion,
-            optionLabel = { occasion -> occasion?.let { occasionTitle(it) } ?: stringResource(R.string.gift_no_occasion) },
-            onSelect = actions.onOccasionChange,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit && state.recipientId != null,
-        )
+    }
+}
+
+@Composable
+private fun GiftIdeaDetails(state: GiftIdeaEditorUiState, actions: GiftIdeaEditorActions, enabled: Boolean, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.fieldGroup)) {
+        Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
+            Text(text = stringResource(R.string.gift_idea_status), style = GiftiaryType.label, color = GiftiaryTheme.colors.textLabel)
+            GiftIdeaStatusSelector(selected = state.ideaStatus, onSelect = actions.onStatusChange, enabled = enabled)
+        }
         GiftiaryTextField(
             value = state.estimatedPrice,
             onValueChange = actions.onEstimatedPriceChange,
-            label = stringResource(R.string.gift_idea_estimated_price_optional),
+            label = stringResource(R.string.gift_idea_estimated_price),
             modifier = Modifier.fillMaxWidth(),
             errorMessage = state.estimatedPriceError?.let { priceErrorText(it, state.estimatedCurrencyCode) },
-            enabled = canEdit,
+            enabled = enabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+            // Ideas are kept in the app's one currency, so it is shown, not offered as a choice.
             suffix = state.estimatedCurrencyCode,
         )
         if (state.showsActualPrice) {
             GiftiaryTextField(
                 value = state.actualPrice,
                 onValueChange = actions.onActualPriceChange,
-                label = stringResource(R.string.gift_idea_actual_price_optional),
+                label = stringResource(R.string.gift_idea_actual_price),
                 modifier = Modifier.fillMaxWidth(),
                 errorMessage = state.actualPriceError?.let { priceErrorText(it, state.actualCurrencyCode) },
-                enabled = canEdit,
+                enabled = enabled,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 suffix = state.actualCurrencyCode,
             )
@@ -216,29 +284,23 @@ private fun GiftIdeaForm(state: GiftIdeaEditorUiState, actions: GiftIdeaEditorAc
         GiftiaryTextField(
             value = state.productUrl,
             onValueChange = actions.onProductUrlChange,
-            label = stringResource(R.string.gift_product_url_optional),
+            label = stringResource(R.string.gift_product_url),
             modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit,
+            placeholder = stringResource(R.string.gift_product_url_placeholder),
+            enabled = enabled,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
+            leadingIcon = painterResource(R.drawable.ic_link),
         )
         GiftiaryTextField(
             value = state.note,
             onValueChange = actions.onNoteChange,
-            label = stringResource(R.string.gift_note_optional),
+            label = stringResource(R.string.gift_note),
             modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit,
+            placeholder = stringResource(R.string.gift_idea_note_placeholder),
+            enabled = enabled,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             singleLine = false,
             minLines = 3,
-        )
-        GiftiaryPrimaryButton(
-            text = stringResource(R.string.gift_idea_editor_save),
-            onClick = actions.onSave,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = GiftiarySpacing.s),
-            enabled = state.status == GiftIdeaEditorStatus.EDITING,
-            loading = state.isBusy,
         )
     }
 }

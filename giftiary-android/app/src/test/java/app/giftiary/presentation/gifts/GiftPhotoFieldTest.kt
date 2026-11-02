@@ -79,15 +79,16 @@ class GiftPhotoFieldTest {
             }) {
                 GiftiaryTheme {
                     Box(Modifier.width(width)) {
-                        GiftPhotoField(
-                            hasPhoto = hasPhoto,
-                            photo = photo,
-                            busy = false,
-                            enabled = true,
-                            onPick = { events += "picked $it" },
-                            camera = camera,
-                            onRemove = { events += "removed" },
-                        )
+                        GiftPhotoSources(onPick = { events += "picked $it" }, camera = camera) { choose ->
+                            GiftPhotoTile(
+                                hasPhoto = hasPhoto,
+                                photo = photo,
+                                busy = false,
+                                enabled = true,
+                                onChoose = choose,
+                                onRemove = { events += "removed" },
+                            )
+                        }
                     }
                 }
             }

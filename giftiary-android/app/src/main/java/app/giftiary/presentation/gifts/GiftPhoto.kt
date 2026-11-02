@@ -13,12 +13,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,16 +37,21 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.core.net.toUri
 import app.giftiary.R
 import app.giftiary.presentation.components.GiftiarySecondaryButton
+import app.giftiary.presentation.components.giftiaryDashedOutline
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 /** A photo's image as read from storage; compared by identity, so a new read is a new value. */
 class LoadedPhoto(val bytes: ByteArray)
@@ -61,21 +68,18 @@ class GiftPhotoCamera(
 )
 
 /**
- * The editor's photo: add one by taking it with the camera app or choosing it in the system
- * photo picker, replace or remove it. Neither needs a permission: the camera app writes into a
- * file this app grants it, and the picker hands over only the chosen image. [hasPhoto] with no
- * [photo] is a photo that is not available right now.
+ * Adding a photo by taking it with the camera app or choosing it in the system photo picker, for
+ * a form whose [content] calls `choose` to ask which. Neither needs a permission: the camera app
+ * writes into a file this app grants it, and the picker hands over only the chosen image.
+ *
+ * Kept above any layout switch in the form: the launchers and the capture target are restored by
+ * their place in the composition, so a camera result that arrives after a rotation still finds them.
  */
 @Composable
-fun GiftPhotoField(
-    hasPhoto: Boolean,
-    photo: LoadedPhoto?,
-    busy: Boolean,
-    enabled: Boolean,
+fun GiftPhotoSources(
     onPick: (String) -> Unit,
     camera: GiftPhotoCamera,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier,
+    content: @Composable (choose: () -> Unit) -> Unit,
 ) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let { onPick(it.toString()) }
@@ -108,30 +112,76 @@ fun GiftPhotoField(
             onDismiss = { choosing = false },
         )
     }
+    content { choosing = true }
+}
+
+/**
+ * The photo in the form: a compact dashed tile while there is none, as on the approved board;
+ * once there is one, the whole photo, uncropped, with Replace and Remove under it. [hasPhoto] with
+ * no [photo] is a photo that is not available right now.
+ */
+@Composable
+fun GiftPhotoTile(
+    hasPhoto: Boolean,
+    photo: LoadedPhoto?,
+    busy: Boolean,
+    enabled: Boolean,
+    onChoose: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = GiftiaryTheme.colors
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
-        Text(
-            text = stringResource(R.string.gift_photo),
-            style = MaterialTheme.typography.labelMedium,
-            color = GiftiaryTheme.colors.textSecondary,
-        )
-        if (hasPhoto) PhotoOrPlaceholder(photo)
+        Text(text = stringResource(R.string.gift_photo), style = GiftiaryType.label, color = colors.textLabel)
+        if (!hasPhoto) {
+            AddPhotoTile(busy = busy, enabled = enabled && !busy, onClick = onChoose)
+            return@Column
+        }
+        PhotoOrPlaceholder(photo)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
             GiftiarySecondaryButton(
-                text = stringResource(if (hasPhoto) R.string.gift_photo_replace else R.string.gift_photo_add),
-                onClick = { choosing = true },
+                text = stringResource(R.string.gift_photo_replace),
+                onClick = onChoose,
                 enabled = enabled && !busy,
             )
-            if (hasPhoto) {
-                TextButton(
-                    onClick = onRemove,
-                    enabled = enabled && !busy,
-                    colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText),
-                ) {
-                    Text(stringResource(R.string.gift_photo_remove))
-                }
+            TextButton(
+                onClick = onRemove,
+                modifier = Modifier.heightIn(min = 48.dp),
+                enabled = enabled && !busy,
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+            ) {
+                Text(stringResource(R.string.gift_photo_remove), style = GiftiaryType.actionSmall)
             }
-            if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = GiftiaryTheme.colors.primaryAction, strokeWidth = 2.dp)
+            if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryAction, strokeWidth = 2.dp)
         }
+    }
+}
+
+@Composable
+private fun AddPhotoTile(busy: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val colors = GiftiaryTheme.colors
+    val content = if (enabled || busy) colors.primaryActionText else colors.textMuted
+    Column(
+        modifier = Modifier
+            .size(ADD_PHOTO_TILE)
+            .clip(GiftiaryShapes.input)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .giftiaryDashedOutline(content, cornerRadius = 16.dp)
+            .padding(GiftiarySpacing.xs),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (busy) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryAction, strokeWidth = 2.dp)
+        } else {
+            Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(18.dp), tint = content)
+        }
+        Text(
+            text = stringResource(R.string.gift_photo_add),
+            style = GiftiaryType.overline.copy(letterSpacing = TextUnit.Unspecified),
+            color = content,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -188,7 +238,7 @@ private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
                     .testTag(PHOTO_TAG)
                     .width(min(maxWidth, PHOTO_MAX_HEIGHT * ratio))
                     .aspectRatio(ratio)
-                    .clip(GiftiaryShapes.container),
+                    .clip(GiftiaryShapes.photoCard),
                 contentScale = ContentScale.Fit,
             )
         }
@@ -205,5 +255,6 @@ private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
 internal fun rememberDecoded(photo: LoadedPhoto): ImageBitmap? =
     remember(photo) { BitmapFactory.decodeByteArray(photo.bytes, 0, photo.bytes.size)?.asImageBitmap() }
 
-internal val PHOTO_MAX_HEIGHT = 360.dp
+internal val PHOTO_MAX_HEIGHT = 280.dp
+private val ADD_PHOTO_TILE = 84.dp
 internal const val PHOTO_TAG = "gift_photo"

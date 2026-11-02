@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.Locale
 
-/** The words the redesigned Home, People, Person detail, Gifts and Lists added exist in Hungarian too, not only in English. */
+/** The words the redesigned Home, People, Person detail, Gifts, Lists and the task flows added exist in Hungarian too, not only in English. */
 @RunWith(RobolectricTestRunner::class)
 class RedesignStringsTest {
 
@@ -38,6 +38,16 @@ class RedesignStringsTest {
             R.string.wish_add_description, R.string.wish_price_estimate, R.string.wish_view_link, R.string.wish_more,
             R.string.wish_edit, R.string.shared_wish_get, R.string.shared_wish_get_description, R.string.shared_wish_getting,
             R.string.shared_wish_undo, R.string.shared_wish_undo_description,
+            R.string.person_editor_add_subtitle, R.string.person_editor_edit_subtitle, R.string.gift_editor_add_subtitle,
+            R.string.gift_editor_edit_subtitle, R.string.gift_editor_step, R.string.gift_editor_step_direction,
+            R.string.gift_editor_i_gave, R.string.gift_editor_i_received, R.string.gift_editor_step_person_given,
+            R.string.gift_editor_step_person_received, R.string.gift_editor_search_people, R.string.gift_editor_no_match,
+            R.string.gift_editor_new_person, R.string.gift_editor_new_person_description, R.string.gift_editor_step_name,
+            R.string.gift_editor_name_placeholder, R.string.gift_editor_name_examples, R.string.gift_editor_more_details,
+            R.string.gift_editor_fewer_details, R.string.gift_price, R.string.gift_note_placeholder,
+            R.string.gift_product_url_placeholder, R.string.gift_idea_editor_add_subtitle, R.string.gift_idea_editor_edit_subtitle,
+            R.string.gift_idea_for, R.string.gift_idea_occasion_optional, R.string.gift_idea_status,
+            R.string.gift_idea_note_placeholder,
         )
         strings.forEach { id ->
             assertNotEquals(english.resources.getResourceEntryName(id), english.getString(id), hungarian.getString(id))
