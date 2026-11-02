@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gift: offering to get a wish. Stroke drawn from the approved design system; tinted where used. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M3,7h18v4H3z"
+        android:strokeWidth="1.9"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M5,11v9a1,1 0,0 0,1 1h12a1,1 0,0 0,1 -1v-9"
+        android:strokeWidth="1.9"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M12,7v13"
+        android:strokeWidth="1.9"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M12,7c-1.2,-3 -3.4,-4 -4.8,-3S6,6.8 7.5,7h4.5ZM12,7c1.2,-3 3.4,-4 4.8,-3S18,6.8 16.5,7h-4.5Z"
+        android:strokeWidth="1.9"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

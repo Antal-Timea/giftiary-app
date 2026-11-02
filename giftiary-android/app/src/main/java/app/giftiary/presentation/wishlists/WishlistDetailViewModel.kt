@@ -43,12 +43,16 @@ class WishlistDetailViewModel @AssistedInject constructor(
         if (wishlist == null) WishlistDetailContent.NotFound else loaded(wishlist, wishes, people)
     }.catch { emit(WishlistDetailContent.LoadFailed) }
 
+    // Only a hint; a queue that cannot be read must not hide the list itself.
+    private val waitingToSync = repository.observeWaitingToSync(wishlistId).catch { emit(false) }
+
     val uiState: StateFlow<WishlistDetailUiState> =
-        combine(wishlist, actions) { content, actions ->
+        combine(wishlist, waitingToSync, actions) { content, waitingToSync, actions ->
             // Once deleted, the wishlist is gone from Room too; keep reporting the deletion, not "not found".
             WishlistDetailUiState(
                 content = if (actions.deleted) WishlistDetailContent.Deleted else content,
                 actions = actions,
+                waitingToSync = waitingToSync,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -106,6 +110,8 @@ class WishlistDetailViewModel @AssistedInject constructor(
 data class WishlistDetailUiState(
     val content: WishlistDetailContent = WishlistDetailContent.Loading,
     val actions: WishlistDetailActions = WishlistDetailActions(),
+    /** A change of the list or its wishes is saved on this device and not yet uploaded. */
+    val waitingToSync: Boolean = false,
 )
 
 data class WishlistDetailActions(

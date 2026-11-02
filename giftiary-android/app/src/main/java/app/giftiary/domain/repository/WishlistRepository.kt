@@ -25,6 +25,12 @@ interface WishlistRepository {
     /** How many active wishes each wishlist has, by wishlist id; a wishlist without wishes is absent. */
     fun observeWishCounts(): Flow<Map<UUID, Int>>
 
+    /**
+     * Whether a saved change of the wishlist or of one of its wishes is still waiting to be
+     * uploaded; a change held back for the user's attention is not waiting.
+     */
+    fun observeWaitingToSync(wishlistId: UUID): Flow<Boolean>
+
     /** The wishlist as it changes; null while it does not exist, is deleted or is not the account's. */
     fun observeWishlist(id: UUID): Flow<Wishlist?>
 

@@ -334,8 +334,6 @@ nagy történetek</string>
     <string name="wishlists_load_failed">A kívánságlisták betöltése nem sikerült.</string>
     <string name="wishlists_empty_title">Még nincs kívánságlistád</string>
     <string name="wishlists_empty_message">Gyűjts kívánságokat magadnak vagy a szeretteidnek.</string>
-    <string name="wishlists_section_own">Saját kívánságlisták</string>
-    <string name="wishlists_section_people">Szeretteidnek</string>
     <string name="wishlist_for_me">Saját kívánságlista</string>
     <string name="wishlist_for_person">%1$s részére</string>
     <string name="wishlist_person_removed">Törölt személy</string>
@@ -352,7 +350,6 @@ nagy történetek</string>
     <string name="wishlist_person_unavailable">Ez a személy már nem elérhető. Válassz mást.</string>
     <string name="wishlist_not_found">Ez a kívánságlista már nem létezik.</string>
     <string name="wishlist_load_failed">A kívánságlista betöltése nem sikerült.</string>
-    <string name="wishlist_rename">Átnevezés</string>
     <string name="wishlist_wishes">Kívánságok</string>
     <string name="wishes_empty">Még nincs kívánság. Add hozzá az első tételt.</string>
     <string name="wishlist_delete">Kívánságlista törlése</string>
@@ -421,14 +418,9 @@ nagy történetek</string>
     <string name="sharing_network_error">Nem sikerült elérni a Giftiaryt. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
     <string name="sharing_server_error">Valami hiba történt. Próbáld újra.</string>
     <string name="sharing_retry">Újra</string>
-    <string name="wishlists_open_shared">Velem megosztott</string>
     <string name="shared_wishlists_title">Velem megosztott</string>
     <string name="shared_wishlists_join">Csatlakozás</string>
-    <string name="shared_wishlists_empty_title">Még semmit nem osztottak meg veled</string>
     <string name="shared_wishlists_empty_message">Ha valaki meghív a kívánságlistájára, nyisd meg a linkjét, vagy illeszd be itt.</string>
-    <string name="shared_wishlists_join_with_link">Csatlakozás meghívó linkkel</string>
-    <string name="shared_wishlist_from">Tőle: %1$s</string>
-    <string name="shared_wishlist_from_fallback">Egy Giftiary-felhasználótól</string>
     <string name="shared_wishlist_unavailable">Ez a kívánságlista nem érhető el.</string>
     <string name="shared_wishlist_no_wishes">Ezen a listán még nincs kívánság.</string>
     <string name="shared_wishlist_leave">Kilépés a kívánságlistából</string>
@@ -436,12 +428,8 @@ nagy történetek</string>
     <string name="shared_wishlist_leave_dialog_message">Többé nem látod ezt a kívánságlistát. Új meghívóval később újra csatlakozhatsz.</string>
     <string name="shared_wishlist_leave_confirm">Kilépés</string>
     <string name="shared_wish_available">Szabad</string>
-    <string name="shared_wish_reserved_by_you">Te foglaltad le</string>
     <string name="shared_wish_reserved">Lefoglalva</string>
-    <string name="shared_wish_reserve">Lefoglalom</string>
-    <string name="shared_wish_reserve_description">%1$s lefoglalása</string>
     <string name="shared_wish_release">Felszabadítom</string>
-    <string name="shared_wish_release_description">%1$s felszabadítása</string>
     <string name="shared_wish_release_dialog_title">Felszabadítod: %1$s?</string>
     <string name="shared_wish_release_dialog_message">Utána a lista egy másik tagja is lefoglalhatja.</string>
     <string name="shared_wish_taken">Valaki más hamarabb lefoglalta.</string>
@@ -540,4 +528,26 @@ nagy történetek</string>
     <string name="quick_add_person_description">Adj hozzá valakit, aki fontos</string>
     <string name="quick_add_list">Lista</string>
     <string name="quick_add_list_description">Hozz létre egy kívánságlistát</string>
+    <!-- Lists and wishlists, redesigned -->
+    <string name="lists_title">Listák</string>
+    <string name="lists_subtitle">Kívánj, tervezz és ossz meg a szeretteiddel.</string>
+    <string name="lists_section_yours">Listáid</string>
+    <string name="lists_only_you">Csak te látod</string>
+    <string name="lists_shared_subtitle">Listák, amelyeket mások megosztottak veled.</string>
+    <string name="lists_join_description">Csatlakozás kívánságlistához meghívó linkkel</string>
+    <string name="wishlist_more">%1$s – további lehetőségek</string>
+    <string name="wishlist_edit">Lista szerkesztése</string>
+    <string name="wishlist_sharing_invited_only">Csak az általad meghívottak látják</string>
+    <string name="wishlist_sharing_manage">Kezelés</string>
+    <string name="wishlist_sharing_manage_description">Megosztás kezelése</string>
+    <string name="wish_add_description">Kívánság hozzáadása ehhez a listához</string>
+    <string name="wish_price_estimate">kb. %1$s</string>
+    <string name="wish_view_link">Link megnyitása</string>
+    <string name="wish_more">%1$s – további lehetőségek</string>
+    <string name="wish_edit">Kívánság szerkesztése</string>
+    <string name="shared_wish_get">Megveszem</string>
+    <string name="shared_wish_get_description">Megveszem: %1$s</string>
+    <string name="shared_wish_getting">Te veszed meg</string>
+    <string name="shared_wish_undo">Visszavonás</string>
+    <string name="shared_wish_undo_description">Visszavonás: már nem te veszed meg: %1$s</string>
 </resources>

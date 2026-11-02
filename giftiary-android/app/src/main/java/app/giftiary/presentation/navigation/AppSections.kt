@@ -55,7 +55,6 @@ internal val routeSections: Map<KClass<*>, AppSection> = mapOf(
     AddWishRoute::class to AppSection.WISHLISTS,
     EditWishRoute::class to AppSection.WISHLISTS,
     WishlistAccessRoute::class to AppSection.WISHLISTS,
-    SharedWishlistsRoute::class to AppSection.WISHLISTS,
     SharedWishlistRoute::class to AppSection.WISHLISTS,
     JoinWishlistRoute::class to AppSection.WISHLISTS,
     SettingsRoute::class to AppSection.SETTINGS,
@@ -84,7 +83,6 @@ internal val routesWithNavigationBar: Set<KClass<*>> = setOf(
     WishlistsRoute::class,
     WishlistDetailRoute::class,
     WishDetailRoute::class,
-    SharedWishlistsRoute::class,
     SharedWishlistRoute::class,
 )
 

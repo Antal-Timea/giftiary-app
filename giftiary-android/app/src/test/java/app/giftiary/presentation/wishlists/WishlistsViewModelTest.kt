@@ -5,6 +5,7 @@ import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
+import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
@@ -50,6 +51,19 @@ class WishlistsViewModelTest {
 
         assertEquals(listOf(WishlistOfPerson(orphan, null)), content.forPeople)
         assertTrue(content.own.isEmpty())
+    }
+
+    @Test
+    fun `each list knows how many active wishes it has`() = runTest {
+        val own = wishlist("Birthday")
+        val empty = wishlist("Christmas")
+        wishlists.givenWishlists(own, empty)
+        wishlists.givenWishes(wish(own.id, "Lamp"), wish(own.id, "Mug"))
+
+        val content = loaded(WishlistsViewModel(wishlists, people))
+
+        assertEquals(2, content.wishCount(own))
+        assertEquals(0, content.wishCount(empty))
     }
 
     @Test

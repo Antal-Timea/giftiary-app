@@ -22,11 +22,10 @@ import app.giftiary.presentation.wishlists.WishlistsScreen
 internal fun NavGraphBuilder.wishlistDestinations(navController: NavHostController) {
     composable<WishlistsRoute> {
         WishlistsScreen(
-            // The navigation bar or rail leads away from a section root; it has no back arrow.
-            onBack = null,
             onAddWishlist = dropUnlessResumed { navController.navigate(AddWishlistRoute()) },
             onOpenWishlist = { id -> navController.navigate(WishlistDetailRoute(id.toString())) },
-            onOpenShared = dropUnlessResumed { navController.navigate(SharedWishlistsRoute) },
+            onOpenShared = { id -> navController.navigate(SharedWishlistRoute(id.toString())) },
+            onJoin = dropUnlessResumed { navController.navigate(JoinWishlistRoute) },
         )
     }
     composable<AddWishlistRoute> { entry ->
@@ -62,10 +61,11 @@ internal fun NavGraphBuilder.wishlistDestinations(navController: NavHostControll
                     factory.create(wishlistId)
                 },
                 onBack = navController.popBackStackUnlessPaused(),
-                onRename = { id -> navController.navigate(EditWishlistRoute(id.toString())) },
+                onEditList = { id -> navController.navigate(EditWishlistRoute(id.toString())) },
                 onOpenPerson = { id -> navController.navigate(PersonDetailRoute(id.toString())) },
                 onAddWish = { id -> navController.navigate(AddWishRoute(id.toString())) },
                 onOpenWish = { id -> navController.navigate(WishDetailRoute(id.toString())) },
+                onEditWish = { id -> navController.navigate(EditWishRoute(id.toString())) },
                 onShare = { id -> navController.navigate(WishlistAccessRoute(id.toString())) },
             )
         }
