@@ -29,6 +29,9 @@ interface GiftIdeaRepository {
     /** Emits null while the idea is not active: missing, deleted or already given. */
     fun observeGiftIdea(id: UUID): Flow<GiftIdeaEntry?>
 
+    /** Whether a change to the idea, saved on this device, has yet to reach the account. */
+    fun observeWaitingToSync(id: UUID): Flow<Boolean>
+
     /** Returns null if the idea is not active: missing, deleted or already given. */
     suspend fun getGiftIdea(id: UUID): GiftIdeaEntry?
 

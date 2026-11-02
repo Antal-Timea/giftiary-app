@@ -209,7 +209,7 @@ private fun AccessContents(
                 title = stringResource(R.string.wishlist_access_title),
                 subtitle = stringResource(R.string.wishlist_access_intro),
                 onBack = actions.onBack,
-                wordmark = false,
+                eyebrow = null,
                 context = wishlistName?.let { name -> { SharedListName(name) } },
             )
             // Keeps what is shown while it is refreshed.

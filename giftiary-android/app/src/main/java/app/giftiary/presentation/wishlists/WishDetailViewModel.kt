@@ -43,10 +43,16 @@ class WishDetailViewModel @AssistedInject constructor(
         }
         .catch { emit(WishDetailContent.LoadFailed) }
 
+    private val waitingToSync = repository.observeWishWaitingToSync(wishId).catch { emit(false) }
+
     val uiState: StateFlow<WishDetailUiState> =
-        combine(wish, actions) { content, actions ->
+        combine(wish, actions, waitingToSync) { content, actions, waiting ->
             // Once deleted, the wish is gone from Room too; keep reporting the deletion, not "not found".
-            WishDetailUiState(content = if (actions.deleted) WishDetailContent.Deleted else content, actions = actions)
+            WishDetailUiState(
+                content = if (actions.deleted) WishDetailContent.Deleted else content,
+                actions = actions,
+                waitingToSync = waiting,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -93,6 +99,8 @@ class WishDetailViewModel @AssistedInject constructor(
 data class WishDetailUiState(
     val content: WishDetailContent = WishDetailContent.Loading,
     val actions: WishDetailActions = WishDetailActions(),
+    /** Saved on this device, not yet in the account; never inferred from the absence of an error. */
+    val waitingToSync: Boolean = false,
 )
 
 data class WishDetailActions(

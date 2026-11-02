@@ -250,4 +250,18 @@ class WishViewModelsTest {
         viewModel.onDeleteErrorShown()
         assertFalse(viewModel.uiState.value.deleteFailed)
     }
+
+    @Test
+    fun `a wish's detail shows waiting to sync only for its own queued change`() = runTest {
+        val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
+        val viewModel = WishDetailViewModel(lamp.id, repository)
+        keepSubscribed(viewModel.uiState)
+        assertFalse(viewModel.uiState.value.waitingToSync)
+
+        repository.waitingToSync.value = setOf(list.id)
+        assertFalse("the list waiting is not the wish waiting", viewModel.uiState.value.waitingToSync)
+
+        repository.wishesWaitingToSync.value = setOf(lamp.id)
+        assertTrue(viewModel.uiState.value.waitingToSync)
+    }
 }

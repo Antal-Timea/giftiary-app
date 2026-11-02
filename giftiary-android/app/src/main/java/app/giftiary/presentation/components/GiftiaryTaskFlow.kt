@@ -44,31 +44,33 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
 
 /**
- * The top of a task flow such as Add a gift: the aqua back circle, the wordmark, the one big
- * title and a standfirst. It is part of the page and scrolls with the form, as on the boards.
+ * The top of a task flow such as Add a gift, or of a detail page such as a gift idea: the aqua back
+ * circle, an eyebrow, the one big title and a standfirst. It is part of the page and scrolls with
+ * it, as on the boards. [onBack] is null beside a list, which stays in view instead.
  */
 @Composable
 fun GiftiaryTaskHeader(
     title: String,
-    subtitle: String,
-    onBack: () -> Unit,
+    subtitle: String?,
+    onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
     // Secondary actions, such as deleting what is edited, kept beside the back circle and away from Save.
     menu: (@Composable () -> Unit)? = null,
-    // Share & Invite drops the wordmark and names the list it shares between title and standfirst.
-    wordmark: Boolean = true,
+    // The wordmark on task flows, what the page shows on details ("Gift idea"), none on Share & Invite.
+    eyebrow: String? = stringResource(R.string.app_name).uppercase(),
+    // What the title belongs to, between title and standfirst: the shared list, the idea's person.
     context: (@Composable () -> Unit)? = null,
 ) {
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GiftiaryBackButton(onClick = onBack)
+            onBack?.let { GiftiaryBackButton(onClick = it) }
             Spacer(Modifier.weight(1f))
             menu?.invoke()
         }
-        if (wordmark) {
+        if (eyebrow != null) {
             Text(
-                text = stringResource(R.string.app_name).uppercase(),
+                text = eyebrow,
                 modifier = Modifier.padding(top = GiftiarySpacing.browseGutter),
                 style = GiftiaryType.wordmark,
                 color = colors.textLabel,
@@ -77,18 +79,20 @@ fun GiftiaryTaskHeader(
         Text(
             text = title,
             modifier = Modifier
-                .padding(top = if (wordmark) GiftiarySpacing.s else GiftiarySpacing.browseGutter)
+                .padding(top = if (eyebrow != null) GiftiarySpacing.s else GiftiarySpacing.browseGutter)
                 .semantics { heading() },
             style = GiftiaryType.display,
             color = colors.textPrimary,
         )
         if (context != null) Box(Modifier.padding(top = GiftiarySpacing.s)) { context() }
-        Text(
-            text = subtitle,
-            modifier = Modifier.padding(top = GiftiarySpacing.s),
-            style = GiftiaryType.body,
-            color = colors.textSecondary,
-        )
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                modifier = Modifier.padding(top = GiftiarySpacing.s),
+                style = GiftiaryType.body,
+                color = colors.textSecondary,
+            )
+        }
     }
 }
 

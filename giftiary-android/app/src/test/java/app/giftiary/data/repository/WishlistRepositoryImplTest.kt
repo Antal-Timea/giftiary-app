@@ -574,4 +574,23 @@ class WishlistRepositoryImplTest {
         updatedAt = clock.instant,
         deletedAt = null,
     )
+
+    @Test
+    fun `a wish waits to sync only while its own change is queued`() = runTest {
+        val wishlist = repository.addWishlist(null, "Mine")
+        val wish = repository.addWish(wishlist.id, lamp)
+        val other = repository.addWish(wishlist.id, lamp)
+        assertTrue(repository.observeWishWaitingToSync(wish.id).first())
+
+        markSynced(SyncEntityType.WISH, wish.id)
+        assertFalse(repository.observeWishWaitingToSync(wish.id).first())
+        assertTrue("the list's other wish is not this one", repository.observeWaitingToSync(wishlist.id).first())
+        assertTrue(repository.observeWishWaitingToSync(other.id).first())
+
+        repository.updateWish(wish.id, lamp.copy(name = "Brass lamp"))
+        assertTrue(repository.observeWishWaitingToSync(wish.id).first())
+        val operation = syncDao.findForEntity(SyncEntityType.WISH, wish.id)!!
+        syncDao.update(operation.copy(blockedReason = BlockReason.REJECTED.name))
+        assertFalse("a blocked change needs attention instead", repository.observeWishWaitingToSync(wish.id).first())
+    }
 }

@@ -60,6 +60,11 @@ class FakeGiftIdeaRepository : GiftIdeaRepository {
 
     override suspend fun getGiftIdea(id: UUID): GiftIdeaEntry? = entries.value.find { it.idea.id == id }
 
+    /** Ids of the ideas with a change waiting to sync. */
+    val waitingToSync = MutableStateFlow<Set<UUID>>(emptySet())
+
+    override fun observeWaitingToSync(id: UUID): Flow<Boolean> = waitingToSync.map { id in it }
+
     override suspend fun addGiftIdea(details: GiftIdeaDetails): GiftIdea {
         writeFailure?.let { throw it }
         if (details.recipientPersonId !in people) throw PersonNotFoundException(details.recipientPersonId)

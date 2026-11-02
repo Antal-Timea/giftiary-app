@@ -1,5 +1,7 @@
 package app.giftiary.presentation.giftideas
 
+import app.giftiary.domain.model.OccasionType
+import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.repository.GiftIdeaAlreadyGivenException
 import app.giftiary.presentation.gifts.PriceError
@@ -150,5 +152,32 @@ class MarkGiftIdeaGivenViewModelTest {
     @Test
     fun `an idea that is no longer active cannot be given`() {
         assertEquals(MarkGivenStatus.NOT_AVAILABLE, viewModel(UUID.randomUUID()).uiState.value.status)
+    }
+
+    @Test
+    fun `the sheet names the idea's occasion and keeps the estimate beside the price`() {
+        val birthday = Occasion(UUID.randomUUID(), anna.id, OccasionType.BIRTHDAY, null, 12, 10, null, true, Instant.EPOCH, Instant.EPOCH)
+        val scarf = ideaEntry(ideaDetails(anna, estimatedPrice = Money(10000, "HUF"), actualPrice = Money(9500, "HUF")), anna)
+            .copy(occasion = birthday)
+        repository.givenIdeas(scarf)
+
+        val state = viewModel(scarf.idea.id).uiState.value
+
+        assertEquals(birthday, state.occasion)
+        assertEquals(Money(10000, "HUF"), state.estimate)
+        assertEquals("the price still starts from what was paid", "9500", state.price)
+    }
+
+    @Test
+    fun `confirming again, as a repeated tap would, converts the idea once`() = runTest {
+        val scarf = ideaEntry(ideaDetails(anna), anna)
+        repository.givenIdeas(scarf)
+        val viewModel = viewModel(scarf.idea.id)
+
+        viewModel.confirm()
+        viewModel.confirm()
+
+        assertEquals(MarkGivenStatus.DONE, viewModel.uiState.value.status)
+        assertEquals(1, repository.conversions.size)
     }
 }
