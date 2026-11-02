@@ -21,7 +21,7 @@ internal fun NavGraphBuilder.sharingDestinations(navController: NavHostControlle
                     factory.create(wishlistId)
                 },
                 onBack = navController.popBackStackUnlessPaused(),
-                onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
+                onEditName = dropUnlessResumed { navController.navigate(EditProfileRoute) },
             )
         }
     }

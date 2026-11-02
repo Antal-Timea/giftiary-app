@@ -3,6 +3,7 @@ package app.giftiary.presentation.auth
 import app.giftiary.data.auth.PasswordRecovery
 import app.giftiary.data.auth.RecoveryLink
 import app.giftiary.data.auth.RecoveryState
+import app.giftiary.data.onboarding.OnboardingPreferences
 import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.model.AuthUser
 import app.giftiary.domain.repository.AccountDeletionState
@@ -17,12 +18,21 @@ import app.giftiary.testing.MainDispatcherRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.util.UUID
 
+// Robolectric for the onboarding record, kept in the app's preferences.
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class AuthGateViewModelTest {
 
     @get:Rule
@@ -44,7 +54,75 @@ class AuthGateViewModelTest {
     private val recovery = PasswordRecovery(auth, CoroutineScope(Dispatchers.Unconfined))
     private val deletion = FakeAccountDeletion()
     private val pendingJoin = PendingWishlistJoin()
-    private val viewModel by lazy { AuthGateViewModel(session, recovery, deletion, pendingJoin) }
+    private var freshInstall = true
+    private val onboarding by lazy { onboardingOnThisDevice() }
+    private val viewModel by lazy { AuthGateViewModel(session, recovery, deletion, pendingJoin, onboarding) }
+
+    // A new instance reads what an earlier one stored, as after a restart.
+    private fun onboardingOnThisDevice() = OnboardingPreferences(ApplicationProvider.getApplicationContext(), freshInstall)
+
+    @Test
+    fun `a new installation opens signed out with the introduction, once`() {
+        session.state.value = OwnerSessionState.SignedOut
+        assertTrue(viewModel.showOnboarding.value)
+
+        viewModel.onOnboardingDone()
+
+        assertFalse(viewModel.showOnboarding.value)
+        assertFalse("not again after a restart", onboardingOnThisDevice().pending.value)
+    }
+
+    @Test
+    fun `an updated app never shows the introduction, although nothing was recorded before it existed`() {
+        freshInstall = false
+        session.state.value = OwnerSessionState.SignedOut
+
+        assertFalse(viewModel.showOnboarding.value)
+    }
+
+    @Test
+    fun `an account opened here ends the introduction, so signing out later goes straight to sign-in`() {
+        session.state.value = OwnerSessionState.Ready(alice)
+        viewModel.showOnboarding
+
+        session.state.value = OwnerSessionState.SignedOut
+
+        assertFalse(viewModel.showOnboarding.value)
+        assertFalse(onboardingOnThisDevice().pending.value)
+    }
+
+    @Test
+    fun `a deleted account does not bring the introduction back for the next one`() {
+        session.state.value = OwnerSessionState.Ready(alice)
+        viewModel.showOnboarding
+
+        deletion.state.value = AccountDeletionState.Deleted
+        viewModel.onAccountDeletedShown()
+        session.state.value = OwnerSessionState.SignedOut
+
+        assertFalse(viewModel.showOnboarding.value)
+    }
+
+    @Test
+    fun `an invite link goes straight to sign-in, leaving the introduction for later`() {
+        session.state.value = OwnerSessionState.SignedOut
+        pendingJoin.offer(PendingJoin.Invite(InviteToken.of("a".repeat(43))!!))
+
+        assertFalse(viewModel.showOnboarding.value)
+        assertTrue("not completed by it", onboarding.pending.value)
+    }
+
+    @Test
+    fun `a recovery link is shown over the introduction, which stays for afterwards`() {
+        session.state.value = OwnerSessionState.SignedOut
+        assertTrue(viewModel.showOnboarding.value)
+
+        recovery.start(RecoveryLink.Code("code"))
+
+        // The gate draws recovery before anything signed out, so the introduction waits under it.
+        assertEquals(RecoveryState.ChoosingPassword(), viewModel.recoveryState.value)
+        assertTrue(viewModel.showOnboarding.value)
+    }
 
     @Test
     fun `a password recovery under way is what the gate shows`() {

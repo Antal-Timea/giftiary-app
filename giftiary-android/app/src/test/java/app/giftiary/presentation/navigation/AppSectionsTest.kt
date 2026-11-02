@@ -66,7 +66,7 @@ class AppSectionsTest {
             AddGiftIdeaRoute::class, EditGiftIdeaRoute::class,
             AddWishlistRoute::class, EditWishlistRoute::class, AddWishRoute::class, EditWishRoute::class,
             WishlistAccessRoute::class, JoinWishlistRoute::class,
-            SyncAttentionRoute::class, SettingsRoute::class,
+            SyncAttentionRoute::class, SettingsRoute::class, ProfileRoute::class, EditProfileRoute::class,
         )
         val shown = routesWithNavigationBar
 

@@ -2,54 +2,56 @@ package app.giftiary.presentation.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.giftiary.BuildConfig
 import app.giftiary.R
 import app.giftiary.domain.repository.AccountDeletionFailure
-import app.giftiary.domain.repository.ProfileFailure
-import app.giftiary.presentation.components.GiftiaryPrimaryButton
-import app.giftiary.presentation.components.GiftiarySecondaryButton
-import app.giftiary.presentation.components.GiftiaryTextField
-import app.giftiary.presentation.components.GiftiaryTopBar
+import app.giftiary.presentation.components.GiftiaryDivider
+import app.giftiary.presentation.components.GiftiaryRow
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTextAction
 import app.giftiary.presentation.components.giftiaryReadableWidth
-import app.giftiary.presentation.home.ReminderCard
 import app.giftiary.presentation.home.ReminderCardActions
 import app.giftiary.presentation.home.ReminderCardState
 import app.giftiary.presentation.home.ReminderCardViewModel
 import app.giftiary.presentation.home.rememberReminderCardActions
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 @Composable
 fun SettingsScreen(
@@ -67,11 +69,7 @@ fun SettingsScreen(
         reminderActions = rememberReminderCardActions(reminders),
         actions = SettingsActions(
             onBack = onBack,
-            onNameChange = viewModel::onNameChange,
-            onSave = viewModel::onSave,
-            onRetry = viewModel::load,
             onSignOut = onSignOut,
-            onMessageShown = viewModel::onMessageShown,
             onDeleteAccount = viewModel::onDeleteAccount,
             onDeleteAccountDismiss = viewModel::onDeleteAccountDismiss,
             onDeleteAccountConfirm = viewModel::onDeleteAccountConfirm,
@@ -81,18 +79,18 @@ fun SettingsScreen(
 
 class SettingsActions(
     val onBack: (() -> Unit)?,
-    val onNameChange: (String) -> Unit,
-    val onSave: () -> Unit,
-    val onRetry: () -> Unit,
     val onSignOut: () -> Unit,
-    val onMessageShown: () -> Unit,
     val onDeleteAccount: () -> Unit,
     val onDeleteAccountDismiss: () -> Unit,
     val onDeleteAccountConfirm: () -> Unit,
 )
 
+/**
+ * The approved Settings board's groups, holding what Giftiary has: occasion reminders, the privacy
+ * policy, the version, and the account. The name others see is edited from Profile.
+ */
 @Composable
-private fun SettingsContent(
+fun SettingsContent(
     state: SettingsUiState,
     email: String?,
     reminderState: ReminderCardState,
@@ -100,65 +98,134 @@ private fun SettingsContent(
     actions: SettingsActions,
     modifier: Modifier = Modifier,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val message = when {
-        state.saved -> stringResource(R.string.settings_name_saved)
-        state.saveFailure == ProfileFailure.NETWORK -> stringResource(R.string.sharing_network_error)
-        state.saveFailure != null -> stringResource(R.string.sharing_server_error)
-        else -> null
-    }
-    LaunchedEffect(state.saved, state.saveFailure) {
-        if (message != null) {
-            snackbarHostState.showSnackbar(message)
-            actions.onMessageShown()
-        }
-    }
-    Scaffold(
-        modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(R.string.settings_title), onBack = actions.onBack) },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { contentPadding ->
+    Scaffold(modifier = modifier, containerColor = GiftiaryTheme.colors.background) { contentPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
-                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .giftiaryReadableWidth()
-                .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
-            verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
+                .padding(horizontal = GiftiarySpacing.taskGutter, vertical = GiftiarySpacing.browseGutter),
         ) {
-            Heading(stringResource(R.string.settings_profile))
-            Profile(state, actions)
+            GiftiaryTaskHeader(title = stringResource(R.string.settings_title), subtitle = null, onBack = actions.onBack, eyebrow = null)
             if (reminderState != ReminderCardState.Hidden) {
-                Heading(stringResource(R.string.settings_reminders))
-                ReminderCard(state = reminderState, actions = reminderActions)
+                Group(stringResource(R.string.settings_notifications))
+                ReminderRow(reminderState, reminderActions)
             }
-            Heading(stringResource(R.string.settings_legal))
+            Group(stringResource(R.string.settings_privacy_data))
             PrivacyPolicyLink()
-            Heading(stringResource(R.string.settings_account))
-            if (email != null) {
-                Text(
-                    text = stringResource(R.string.settings_signed_in_as, email),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = GiftiaryTheme.colors.textSecondary,
-                )
-            }
-            GiftiarySecondaryButton(
-                text = stringResource(R.string.auth_sign_out),
-                onClick = actions.onSignOut,
-                modifier = Modifier.fillMaxWidth(),
+            Group(stringResource(R.string.settings_about))
+            SettingsRow(
+                title = stringResource(R.string.settings_version),
+                trailing = { Text(text = BuildConfig.VERSION_NAME, style = GiftiaryType.body, color = GiftiaryTheme.colors.textPrimary) },
             )
-            TextButton(
+            Group(stringResource(R.string.settings_account))
+            SettingsRow(
+                title = stringResource(R.string.auth_sign_out),
+                supporting = email?.let { stringResource(R.string.settings_signed_in_as, it) },
+                onClick = actions.onSignOut,
+            )
+            GiftiaryDivider()
+            SettingsRow(
+                title = stringResource(R.string.settings_delete_account),
+                supporting = stringResource(R.string.settings_delete_account_detail),
                 onClick = actions.onDeleteAccount,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText),
-            ) {
-                Text(stringResource(R.string.settings_delete_account))
-            }
+            )
         }
     }
     state.deleteDialog?.let { DeleteAccountConfirmation(it, actions) }
+}
+
+@Composable
+private fun Group(title: String) {
+    Text(
+        text = title.uppercase(),
+        modifier = Modifier
+            .padding(top = GiftiarySpacing.xxl, bottom = GiftiarySpacing.xs)
+            .semantics { heading() },
+        style = GiftiaryType.wordmark,
+        color = GiftiaryTheme.colors.textLabel,
+    )
+}
+
+@Composable
+private fun SettingsRow(
+    title: String,
+    supporting: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    GiftiaryRow(
+        title = title,
+        supporting = supporting?.let { { SettingsSupportingText(it) } },
+        trailing = trailing,
+        titleStyle = GiftiaryType.actionLarge,
+        contentPadding = PaddingValues(vertical = GiftiarySpacing.l),
+        onClick = onClick,
+    )
+}
+
+@Composable
+private fun SettingsSupportingText(text: String) {
+    Text(text = text, style = GiftiaryType.bodySmall, color = GiftiaryTheme.colors.textSecondary)
+}
+
+/**
+ * Daily occasion reminders as the board's switch. On means the user asked for them; when Android
+ * has not allowed or has switched off notifications, that is said under it with the way to fix it.
+ */
+@Composable
+private fun ReminderRow(state: ReminderCardState, actions: ReminderCardActions) {
+    val colors = GiftiaryTheme.colors
+    val on = state != ReminderCardState.Off
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .toggleable(value = on, role = Role.Switch, onValueChange = { if (it) actions.onTurnOn() else actions.onTurnOff() })
+                .padding(vertical = GiftiarySpacing.l),
+            horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(text = stringResource(R.string.reminder_channel_name), style = GiftiaryType.actionLarge, color = colors.textPrimary)
+                SettingsSupportingText(
+                    stringResource(
+                        when (state) {
+                            ReminderCardState.On -> R.string.reminder_card_on
+                            ReminderCardState.NeedsPermission -> R.string.reminder_card_needs_permission
+                            ReminderCardState.Blocked -> R.string.reminder_card_blocked
+                            ReminderCardState.Off, ReminderCardState.Hidden -> R.string.reminder_card_off
+                        },
+                    ),
+                )
+            }
+            Switch(
+                checked = on,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colors.background,
+                    checkedTrackColor = colors.support,
+                    checkedBorderColor = colors.support,
+                    uncheckedThumbColor = colors.textMuted,
+                    uncheckedTrackColor = colors.background,
+                    uncheckedBorderColor = colors.borderStrong,
+                ),
+            )
+        }
+        if (state == ReminderCardState.NeedsPermission || state == ReminderCardState.Blocked) {
+            Row(
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            ) {
+                if (state == ReminderCardState.NeedsPermission) {
+                    GiftiaryTextAction(text = stringResource(R.string.reminder_allow), onClick = actions.onAllow, underline = true)
+                }
+                GiftiaryTextAction(text = stringResource(R.string.reminder_open_settings), onClick = actions.onOpenSettings, underline = true)
+            }
+        }
+    }
 }
 
 /** Opens the published privacy policy in the browser, in the app's language. */
@@ -166,14 +233,22 @@ private fun SettingsContent(
 internal fun PrivacyPolicyLink(modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
     val url = stringResource(R.string.settings_privacy_policy_url)
-    TextButton(
+    GiftiaryRow(
+        title = stringResource(R.string.settings_privacy_policy),
+        modifier = modifier,
+        trailing = {
+            Icon(
+                painter = painterResource(R.drawable.ic_open_link),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = GiftiaryTheme.colors.textLabel,
+            )
+        },
+        titleStyle = GiftiaryType.actionLarge,
+        contentPadding = PaddingValues(vertical = GiftiarySpacing.l),
         // Without a browser there is nothing to open it in; that is not an app error.
         onClick = { runCatching { uriHandler.openUri(url) } },
-        modifier = modifier,
-        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText),
-    ) {
-        Text(stringResource(R.string.settings_privacy_policy))
-    }
+    )
 }
 
 @Composable
@@ -228,73 +303,16 @@ private fun DeleteAccountConfirmation(dialog: DeleteAccountDialog, actions: Sett
     )
 }
 
-@Composable
-private fun Profile(state: SettingsUiState, actions: SettingsActions) {
-    val colors = GiftiaryTheme.colors
-    when (val profile = state.profile) {
-        ProfileContent.Loading -> CircularProgressIndicator(color = colors.primaryAction)
-        is ProfileContent.Failed -> {
-            Text(
-                text = stringResource(
-                    when (profile.failure) {
-                        ProfileFailure.UNAVAILABLE -> R.string.settings_profile_unavailable
-                        ProfileFailure.NETWORK -> R.string.sharing_network_error
-                        ProfileFailure.SERVER -> R.string.sharing_server_error
-                    },
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.textSecondary,
-            )
-            GiftiarySecondaryButton(text = stringResource(R.string.sharing_retry), onClick = actions.onRetry)
-        }
-        is ProfileContent.Loaded -> {
-            GiftiaryTextField(
-                value = state.nameInput,
-                onValueChange = actions.onNameChange,
-                label = stringResource(R.string.settings_display_name),
-                modifier = Modifier.fillMaxWidth(),
-                errorMessage = if (state.inputInvalid) stringResource(R.string.settings_display_name_invalid) else null,
-                enabled = !state.isSaving,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { actions.onSave() }),
-            )
-            Text(
-                text = stringResource(R.string.settings_display_name_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-            GiftiaryPrimaryButton(
-                text = stringResource(R.string.settings_save_name),
-                onClick = actions.onSave,
-                modifier = Modifier.fillMaxWidth(),
-                loading = state.isSaving,
-            )
-        }
-    }
-}
-
-@Composable
-private fun Heading(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier
-            .padding(top = GiftiarySpacing.l)
-            .semantics { heading() },
-        style = MaterialTheme.typography.titleMedium,
-        color = GiftiaryTheme.colors.textPrimary,
-    )
-}
-
-@PreviewLightDark
+@Preview
 @Composable
 private fun SettingsPreview() {
     GiftiaryTheme {
         SettingsContent(
-            state = SettingsUiState(profile = ProfileContent.Loaded(saved = "Anna"), nameInput = "Anna"),
+            state = SettingsUiState(),
             email = "anna@example.com",
-            reminderState = ReminderCardState.Off,
+            reminderState = ReminderCardState.On,
             reminderActions = ReminderCardActions({}, {}, {}, {}),
-            actions = SettingsActions({}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = SettingsActions({}, {}, {}, {}, {}),
         )
     }
 }

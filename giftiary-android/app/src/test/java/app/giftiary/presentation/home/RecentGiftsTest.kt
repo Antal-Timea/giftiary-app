@@ -98,7 +98,8 @@ class RecentGiftsTest {
                     onOpenAllGifts = onOpenAll,
                     onOpenOwnOccasions = {},
                     onOpenSyncAttention = {},
-                    onOpenSettings = {},
+                    accountEmail = "anna@example.com",
+                    onOpenProfile = {},
                     widthClass = WidthClass.COMPACT,
                 )
             }

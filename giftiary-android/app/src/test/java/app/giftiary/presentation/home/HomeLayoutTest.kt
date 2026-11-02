@@ -46,7 +46,6 @@ class HomeLayoutTest {
     private fun showHome(
         width: Dp,
         widthClass: WidthClass,
-        showSettingsLink: Boolean,
         reminderCard: ReminderCardState = ReminderCardState.Off,
     ) {
         compose.setContent {
@@ -63,8 +62,8 @@ class HomeLayoutTest {
                         onOpenAllGifts = {},
                         onOpenOwnOccasions = {},
                         onOpenSyncAttention = {},
-                        onOpenSettings = {},
-                        showSettingsLink = showSettingsLink,
+                        accountEmail = "anna@example.com",
+                        onOpenProfile = {},
                         widthClass = widthClass,
                     )
                 }
@@ -76,7 +75,7 @@ class HomeLayoutTest {
 
     @Test
     fun `a phone shows the hero, sync status, coming up, the reminder and recent gifts, top to bottom`() {
-        showHome(width = 411.dp, widthClass = WidthClass.COMPACT, showSettingsLink = true)
+        showHome(width = 411.dp, widthClass = WidthClass.COMPACT)
 
         val order = listOf(title, sync, comingUp, ownOccasions, reminder, recentGifts)
         val tops = order.map { bounds(it).top }
@@ -84,14 +83,16 @@ class HomeLayoutTest {
         // The hero and the band run edge to edge; their text keeps the browse gutter.
         assertNear(GiftiarySpacing.browseGutter, bounds(comingUp).left, "coming up start")
         assertNear(GiftiarySpacing.browseGutter, bounds(recentGifts).left, "recent gifts start")
-        // Settings, where the board's profile avatar sits, inside the hero.
-        val settings = compose.onNodeWithContentDescription("Settings").getBoundsInRoot()
-        assertTrue("settings in the hero", settings.bottom < bounds(title).bottom && settings.right > 300.dp)
+        // The profile avatar where the board has it: top right, inside the hero, a 48dp target.
+        val profile = compose.onNodeWithContentDescription("Your profile").getBoundsInRoot()
+        assertTrue("profile in the hero", profile.bottom < bounds(title).bottom && profile.right > 300.dp)
+        assertNear(48.dp, profile.right - profile.left, "profile target width")
+        compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
     }
 
     @Test
-    fun `a medium window shows the same column at a readable, centred width, without the Settings link`() {
-        showHome(width = 800.dp, widthClass = WidthClass.MEDIUM, showSettingsLink = false)
+    fun `a medium window shows the same column at a readable, centred width, with the profile entry and no Settings link`() {
+        showHome(width = 800.dp, widthClass = WidthClass.MEDIUM)
 
         val start = centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.browseGutter
         assertNear(start, bounds(comingUp).left, "coming up start")
@@ -99,11 +100,12 @@ class HomeLayoutTest {
         val tops = listOf(title, sync, comingUp, ownOccasions, reminder, recentGifts).map { bounds(it).top }
         assertEquals(tops.sorted(), tops)
         compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Your profile").assertExists()
     }
 
     @Test
     fun `an expanded window puts coming up and the reminder, sync status and recent gifts side by side under the header`() {
-        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSettingsLink = false)
+        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED)
 
         val header = bounds(title)
         val left = bounds(comingUp)
@@ -119,11 +121,12 @@ class HomeLayoutTest {
         assertTrue("sync status under the reminder", status.left > left.left + 550.dp && status.top > card.bottom)
         assertTrue("recent gifts under the sync status", recent.left > left.left + 550.dp && recent.top > status.bottom)
         compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
+        assertTrue("profile entry in the header", compose.onNodeWithContentDescription("Your profile").getBoundsInRoot().top < header.bottom)
     }
 
     @Test
     fun `without a reminder card the sync status heads the second column`() {
-        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, showSettingsLink = false, reminderCard = ReminderCardState.Hidden)
+        showHome(width = 1200.dp, widthClass = WidthClass.EXPANDED, reminderCard = ReminderCardState.Hidden)
 
         compose.onNodeWithText(reminder).assertDoesNotExist()
         val status = bounds(sync)

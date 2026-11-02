@@ -5,15 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -23,7 +18,6 @@ import app.giftiary.domain.usecase.CredentialsInputError
 import app.giftiary.domain.usecase.MIN_PASSWORD_LENGTH
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.theme.GiftiarySpacing
-import app.giftiary.presentation.theme.GiftiaryTheme
 
 /**
  * Email and password, plus the backend's answer to the last attempt, shared by both auth forms.
@@ -80,14 +74,7 @@ internal fun CredentialsFields(
                 visualTransformation = PasswordVisualTransformation(),
             )
         }
-        state.authError?.let { error ->
-            Text(
-                text = stringResource(error.messageRes()),
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                style = MaterialTheme.typography.bodyMedium,
-                color = GiftiaryTheme.colors.error,
-            )
-        }
+        state.authError?.let { AuthStatusText(stringResource(it.messageRes())) }
     }
 }
 

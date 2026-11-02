@@ -1,17 +1,7 @@
 package app.giftiary.presentation.auth
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,8 +15,7 @@ import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.domain.usecase.CredentialsInputError
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.components.GiftiaryTaskHeader
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 
@@ -57,8 +46,12 @@ fun CreateAccountScreen(
     )
 }
 
+/**
+ * Account creation, set like the approved Sign in board: a provider creates the account on first
+ * use, so its buttons lead here too, before the email form.
+ */
 @Composable
-private fun CreateAccountContent(
+internal fun CreateAccountContent(
     state: CreateAccountUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -70,54 +63,38 @@ private fun CreateAccountContent(
     onProvider: (AuthProvider) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(R.string.auth_create_account_title), onBack = onBack) },
-    ) { contentPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .giftiaryReadableWidth()
-                .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
-        ) {
-            Text(
-                text = stringResource(R.string.auth_create_account_message),
-                style = MaterialTheme.typography.bodyLarge,
-                color = GiftiaryTheme.colors.textSecondary,
-            )
-            Spacer(Modifier.height(GiftiarySpacing.xl))
-            CredentialsFields(
-                state = state.credentials,
-                onEmailChange = onEmailChange,
-                onPasswordChange = onPasswordChange,
-                onSubmit = onSubmit,
-                showPasswordHint = true,
-                modifier = Modifier.fillMaxWidth(),
-                passwordConfirmation = state.passwordConfirmation,
-                confirmationError = state.confirmationError,
-                onPasswordConfirmationChange = onPasswordConfirmationChange,
-            )
-            Spacer(Modifier.height(GiftiarySpacing.xl))
-            GiftiaryPrimaryButton(
-                text = stringResource(R.string.auth_create_account),
-                onClick = onSubmit,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !providerState.isBusy,
-                loading = state.credentials.isSubmitting,
-            )
-            Spacer(Modifier.height(GiftiarySpacing.xl))
-            // A provider creates the account on first use, so its buttons serve here too.
-            ProviderSignInSection(
-                providers = providers,
-                state = providerState,
-                onProvider = onProvider,
-                enabled = !state.credentials.isSubmitting,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+    AuthPage(modifier) {
+        GiftiaryTaskHeader(
+            title = stringResource(R.string.auth_create_account_title),
+            subtitle = stringResource(R.string.auth_create_account_message),
+            onBack = onBack,
+        )
+        ProviderSignInSection(
+            providers = providers,
+            state = providerState,
+            onProvider = onProvider,
+            enabled = !state.credentials.isSubmitting,
+            modifier = Modifier.fillMaxWidth().padding(top = GiftiarySpacing.s),
+        )
+        CredentialsFields(
+            state = state.credentials,
+            onEmailChange = onEmailChange,
+            onPasswordChange = onPasswordChange,
+            onSubmit = onSubmit,
+            showPasswordHint = true,
+            modifier = Modifier.fillMaxWidth(),
+            passwordConfirmation = state.passwordConfirmation,
+            confirmationError = state.confirmationError,
+            onPasswordConfirmationChange = onPasswordConfirmationChange,
+        )
+        GiftiaryPrimaryButton(
+            text = stringResource(R.string.auth_create_account),
+            onClick = onSubmit,
+            modifier = Modifier.fillMaxWidth().padding(top = GiftiarySpacing.s),
+            enabled = !providerState.isBusy,
+            loading = state.credentials.isSubmitting,
+            trailingArrow = true,
+        )
     }
 }
 
