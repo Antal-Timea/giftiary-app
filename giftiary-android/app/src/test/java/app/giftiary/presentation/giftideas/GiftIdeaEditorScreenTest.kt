@@ -49,6 +49,7 @@ class GiftIdeaEditorScreenTest {
     private val editing = adding.copy(
         isNew = false,
         name = "Wireless headphones",
+        savedName = "Wireless headphones",
         occasionId = birthday.id,
         ideaStatus = GiftIdeaStatus.PLANNED,
         estimatedPrice = "45000",
@@ -72,7 +73,10 @@ class GiftIdeaEditorScreenTest {
         onProductUrlChange = { events += "url $it" },
         onNoteChange = { events += "note $it" },
         onSave = { events += "save" },
-        onWriteErrorShown = {},
+        onWriteErrorShown = { events += "error shown" },
+        onDeleteRequested = { events += "delete" },
+        onDeleteDismissed = { events += "dismiss" },
+        onDeleteConfirmed = { events += "confirm" },
     )
 
     private fun show(state: GiftIdeaEditorUiState) {
@@ -146,10 +150,45 @@ class GiftIdeaEditorScreenTest {
     }
 
     @Test
-    fun `deleting stays on the idea's page, not in its editor`() {
+    fun `adding offers no delete`() {
+        show(adding)
+
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
+        compose.onNodeWithText("Delete", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `editing keeps delete in the header's options, not beside Save`() {
         show(editing)
 
         compose.onNodeWithText("Delete", substring = true).assertDoesNotExist()
+        val more = compose.onNodeWithContentDescription("More options").getBoundsInRoot()
+        assertTrue("the options sit in the header, above the title", more.bottom <= top("Edit gift idea"))
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Delete gift idea").performClick()
+        assertEquals(listOf("delete"), events)
+    }
+
+    @Test
+    fun `the confirmation names the idea, and cancel and delete reach the editor`() {
+        show(editing.copy(name = "Headphones", confirmingDelete = true))
+
+        compose.onNodeWithText("Delete Wireless headphones?").assertExists()
+        compose.onNodeWithText("This idea will be removed from your plans.").assertExists()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Delete").performClick()
+        assertEquals(listOf("dismiss", "confirm"), events)
+    }
+
+    @Test
+    fun `a failed delete is said and the form stays`() {
+        show(editing.copy(writeError = GiftIdeaWriteError.DELETE_FAILED))
+
+        compose.onNodeWithText("Could not delete. Please try again.").assertExists()
+        compose.onNodeWithText("Save idea").assertExists()
+        compose.mainClock.advanceTimeBy(10_000)
+        assertTrue("the error is marked shown", "error shown" in events)
     }
 
     @Test

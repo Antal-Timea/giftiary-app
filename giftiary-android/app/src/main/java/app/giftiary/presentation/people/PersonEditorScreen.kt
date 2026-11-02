@@ -24,10 +24,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTaskHeader
 import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
+import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -36,10 +38,15 @@ import app.giftiary.presentation.theme.GiftiaryTheme
 fun PersonEditorScreen(
     viewModel: PersonEditorViewModel,
     onClose: () -> Unit,
+    onDeleted: () -> Unit = onClose,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.status) {
-        if (state.status == EditorStatus.SAVED) onClose()
+        when (state.status) {
+            EditorStatus.SAVED -> onClose()
+            EditorStatus.DELETED -> onDeleted()
+            else -> Unit
+        }
     }
     PersonEditorScreen(
         state = state,
@@ -48,8 +55,22 @@ fun PersonEditorScreen(
         onRelationshipChange = viewModel::onRelationshipChange,
         onSave = viewModel::save,
         onSaveErrorShown = viewModel::onSaveErrorShown,
+        deletion = PersonEditorDeletion(
+            onRequested = viewModel::onDeleteRequested,
+            onDismissed = viewModel::onDeleteDismissed,
+            onConfirmed = viewModel::onDeleteConfirmed,
+            onErrorShown = viewModel::onDeleteErrorShown,
+        ),
     )
 }
+
+/** What deleting from the editor reaches; only an existing person offers it. */
+class PersonEditorDeletion(
+    val onRequested: () -> Unit,
+    val onDismissed: () -> Unit,
+    val onConfirmed: () -> Unit,
+    val onErrorShown: () -> Unit,
+)
 
 @Composable
 fun PersonEditorScreen(
@@ -59,6 +80,7 @@ fun PersonEditorScreen(
     onRelationshipChange: (String) -> Unit,
     onSave: () -> Unit,
     onSaveErrorShown: () -> Unit,
+    deletion: PersonEditorDeletion,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -67,6 +89,13 @@ fun PersonEditorScreen(
         if (state.saveFailed) {
             snackbarHostState.showSnackbar(saveFailedMessage)
             onSaveErrorShown()
+        }
+    }
+    val deleteFailedMessage = stringResource(R.string.people_delete_failed)
+    LaunchedEffect(state.deleteFailed) {
+        if (state.deleteFailed) {
+            snackbarHostState.showSnackbar(deleteFailedMessage)
+            deletion.onErrorShown()
         }
     }
 
@@ -80,15 +109,26 @@ fun PersonEditorScreen(
             EditorStatus.LOADING -> GiftiaryTaskStatus(null, onBack, contentModifier)
             EditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.person_editor_not_found), onBack, contentModifier)
             EditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.person_editor_load_failed), onBack, contentModifier)
-            EditorStatus.EDITING, EditorStatus.SAVED -> PersonForm(
+            EditorStatus.EDITING, EditorStatus.SAVED, EditorStatus.DELETED -> PersonForm(
                 state = state,
                 onBack = onBack,
                 onNameChange = onNameChange,
                 onRelationshipChange = onRelationshipChange,
                 onSave = onSave,
+                onDelete = deletion.onRequested,
                 modifier = contentModifier,
             )
         }
+    }
+
+    if (state.confirmingDelete) {
+        GiftiaryConfirmDialog(
+            title = stringResource(R.string.people_delete_dialog_title, state.savedName),
+            message = stringResource(R.string.people_delete_dialog_message),
+            confirmLabel = stringResource(R.string.people_delete_confirm),
+            onConfirm = deletion.onConfirmed,
+            onDismiss = deletion.onDismissed,
+        )
     }
 }
 
@@ -104,9 +144,10 @@ private fun PersonForm(
     onNameChange: (String) -> Unit,
     onRelationshipChange: (String) -> Unit,
     onSave: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val canEdit = state.status == EditorStatus.EDITING && !state.isSaving
+    val canEdit = state.status == EditorStatus.EDITING && !state.isBusy
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -119,6 +160,13 @@ private fun PersonForm(
             title = stringResource(if (state.isNewPerson) R.string.person_editor_add_title else R.string.person_editor_edit_title),
             subtitle = stringResource(if (state.isNewPerson) R.string.person_editor_add_subtitle else R.string.person_editor_edit_subtitle),
             onBack = onBack,
+            menu = if (state.isNewPerson) null else {
+                {
+                    OptionsMenu(R.drawable.ic_more, stringResource(R.string.task_more)) {
+                        Option(stringResource(R.string.people_delete, state.savedName), R.drawable.ic_delete, onDelete, enabled = canEdit)
+                    }
+                }
+            },
         )
         Column(
             modifier = Modifier.padding(top = GiftiarySpacing.section),
@@ -156,7 +204,7 @@ private fun PersonForm(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = GiftiarySpacing.xxl),
-            enabled = state.status == EditorStatus.EDITING,
+            enabled = state.status == EditorStatus.EDITING && !state.isDeleting,
             loading = state.isSaving,
             trailingArrow = true,
         )
@@ -179,6 +227,7 @@ private fun PersonEditorValidationPreview() {
             onRelationshipChange = {},
             onSave = {},
             onSaveErrorShown = {},
+            deletion = PersonEditorDeletion({}, {}, {}, {}),
         )
     }
 }
@@ -200,6 +249,7 @@ private fun PersonEditorSavingPreview() {
             onRelationshipChange = {},
             onSave = {},
             onSaveErrorShown = {},
+            deletion = PersonEditorDeletion({}, {}, {}, {}),
         )
     }
 }

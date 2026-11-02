@@ -54,12 +54,12 @@ import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.LoadingContent
+import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
-import app.giftiary.presentation.wishlists.OptionsMenu
 import app.giftiary.presentation.wishlists.WishDivider
 import app.giftiary.presentation.wishlists.WishRowContent
 import app.giftiary.presentation.wishlists.WishlistHeader

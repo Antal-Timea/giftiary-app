@@ -52,10 +52,16 @@ fun GiftiaryTaskHeader(
     subtitle: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    // Secondary actions, such as deleting what is edited, kept beside the back circle and away from Save.
+    menu: (@Composable () -> Unit)? = null,
 ) {
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier.fillMaxWidth()) {
-        GiftiaryBackButton(onClick = onBack)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GiftiaryBackButton(onClick = onBack)
+            Spacer(Modifier.weight(1f))
+            menu?.invoke()
+        }
         Text(
             text = stringResource(R.string.app_name).uppercase(),
             modifier = Modifier.padding(top = GiftiarySpacing.browseGutter),

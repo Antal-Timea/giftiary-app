@@ -69,6 +69,7 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
                 onClose = navController.popBackStackUnlessPaused(),
                 onOpenPeople = { navController.navigate(PeopleRoute) },
                 onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
+                onDeleted = dropUnlessResumed { navController.leaveDeletedEditor<GiftDetailRoute>() },
             )
         }
     }
@@ -96,6 +97,7 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
                 },
                 onClose = navController.popBackStackUnlessPaused(),
                 onOpenPeople = { navController.navigate(PeopleRoute) },
+                onDeleted = dropUnlessResumed { navController.leaveDeletedEditor<GiftIdeaDetailRoute>() },
             )
         }
     }

@@ -52,9 +52,38 @@ class PersonEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(saveFailed = false) }
     }
 
+    fun onDeleteRequested() {
+        _uiState.update { if (personId != null && it.status == EditorStatus.EDITING) it.copy(confirmingDelete = true) else it }
+    }
+
+    fun onDeleteDismissed() {
+        _uiState.update { it.copy(confirmingDelete = false) }
+    }
+
+    fun onDeleteErrorShown() {
+        _uiState.update { it.copy(deleteFailed = false) }
+    }
+
+    fun onDeleteConfirmed() {
+        val state = _uiState.value
+        if (personId == null || state.status != EditorStatus.EDITING || state.isBusy) return
+
+        _uiState.update { it.copy(confirmingDelete = false, isDeleting = true, deleteFailed = false) }
+        viewModelScope.launch {
+            try {
+                repository.deletePerson(personId)
+                _uiState.update { it.copy(status = EditorStatus.DELETED) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isDeleting = false, deleteFailed = true) }
+            }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
-        if (state.status != EditorStatus.EDITING || state.isSaving) return
+        if (state.status != EditorStatus.EDITING || state.isBusy) return
 
         _uiState.update { it.copy(isSaving = true, saveFailed = false) }
         viewModelScope.launch {
@@ -91,6 +120,7 @@ class PersonEditorViewModel @AssistedInject constructor(
                         it.copy(
                             status = EditorStatus.EDITING,
                             name = person.name,
+                            savedName = person.name,
                             relationship = person.relationship.orEmpty(),
                         )
                     }
@@ -117,7 +147,15 @@ data class PersonEditorUiState(
     val showNameRequired: Boolean = false,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
-)
+    /** The name as stored, which the delete confirmation names even while [name] is being edited. */
+    val savedName: String = "",
+    val confirmingDelete: Boolean = false,
+    val isDeleting: Boolean = false,
+    val deleteFailed: Boolean = false,
+) {
+    /** A save or delete is in progress; further ones are ignored. */
+    val isBusy: Boolean get() = isSaving || isDeleting
+}
 
 enum class EditorStatus {
     LOADING,
@@ -127,4 +165,7 @@ enum class EditorStatus {
 
     /** The person was stored locally; the screen should close. */
     SAVED,
+
+    /** The person was deleted; the screen should close, along with the person's page. */
+    DELETED,
 }

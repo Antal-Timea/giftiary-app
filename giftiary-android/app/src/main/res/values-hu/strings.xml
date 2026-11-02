@@ -558,6 +558,7 @@ nagy történetek</string>
     <string name="lists_only_you">Csak te látod</string>
     <string name="lists_shared_subtitle">Listák, amelyeket mások megosztottak veled.</string>
     <string name="lists_join_description">Csatlakozás kívánságlistához meghívó linkkel</string>
+    <string name="task_more">További lehetőségek</string>
     <string name="wishlist_more">%1$s – további lehetőségek</string>
     <string name="wishlist_edit">Lista szerkesztése</string>
     <string name="wishlist_sharing_invited_only">Csak az általad meghívottak látják</string>

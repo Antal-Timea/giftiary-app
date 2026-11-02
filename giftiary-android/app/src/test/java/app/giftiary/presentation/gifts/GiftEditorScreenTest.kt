@@ -68,6 +68,7 @@ class GiftEditorScreenTest {
         isNew = false,
         personId = peter.id,
         name = "LEGO",
+        savedName = "LEGO",
         price = "24990",
         note = "Wrapped in blue",
         productUrl = "https://example.org/lego",
@@ -117,13 +118,16 @@ class GiftEditorScreenTest {
         onProductUrlChange = { events += "url $it" },
         onNoteChange = { events += "note $it" },
         onSave = { events += "save" },
-        onWriteErrorShown = {},
+        onWriteErrorShown = { events += "error shown" },
         onPhotoPicked = { events += "picked $it" },
         onNewCaptureTarget = { "content://app.giftiary.photos/camera/1.jpg" },
         onPhotoCaptured = { events += "captured $it" },
         onCaptureCancelled = { events += "cancelled $it" },
         onCameraUnavailable = { events += "unavailable" },
         onPhotoRemoved = { events += "removed" },
+        onDeleteRequested = { events += "delete" },
+        onDeleteDismissed = { events += "dismiss" },
+        onDeleteConfirmed = { events += "confirm" },
     )
 
     private fun top(text: String) = compose.onNodeWithText(text, useUnmergedTree = true).getBoundsInRoot().top
@@ -313,10 +317,45 @@ class GiftEditorScreenTest {
     }
 
     @Test
-    fun `deleting stays on the gift's page, not in its editor`() {
+    fun `adding offers no delete`() {
+        show(adding)
+
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
+        compose.onNodeWithText("Delete", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `editing keeps delete in the header's options, not beside Save`() {
         show(editing)
 
         compose.onNodeWithText("Delete", substring = true).assertDoesNotExist()
+        val more = compose.onNodeWithContentDescription("More options").getBoundsInRoot()
+        assertTrue("the options sit in the header, above the title", more.bottom <= top("Edit gift"))
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Delete gift").performClick()
+        assertEquals(listOf("delete"), events)
+    }
+
+    @Test
+    fun `the confirmation names the gift, and cancel and delete reach the editor`() {
+        show(editing.copy(name = "LEGO set", confirmingDelete = true))
+
+        compose.onNodeWithText("Delete LEGO?").assertExists()
+        compose.onNodeWithText("This gift will be removed from your history.").assertExists()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Delete").performClick()
+        assertEquals(listOf("dismiss", "confirm"), events)
+    }
+
+    @Test
+    fun `a failed delete is said and the form stays`() {
+        show(editing.copy(writeError = GiftWriteError.DELETE_FAILED))
+
+        compose.onNodeWithText("Could not delete. Please try again.").assertExists()
+        compose.onNodeWithText("Save gift").assertExists()
+        compose.mainClock.advanceTimeBy(10_000)
+        assertTrue("the error is marked shown", "error shown" in events)
     }
 
     @Test

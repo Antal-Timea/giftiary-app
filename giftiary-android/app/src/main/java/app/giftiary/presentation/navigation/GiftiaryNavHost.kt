@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -85,3 +86,12 @@ internal fun WithUuid(raw: String, navController: NavHostController, content: @C
 // Ignores repeated taps while the screen is already leaving, which would otherwise pop twice.
 @Composable
 internal fun NavHostController.popBackStackUnlessPaused(): () -> Unit = dropUnlessResumed { popBackStack() }
+
+/**
+ * Leaves an editor whose entry was just deleted, and the deleted entry's page [T] beneath it, so
+ * Back never lands on something gone. A page beside a list instead clears itself.
+ */
+internal inline fun <reified T : Any> NavHostController.leaveDeletedEditor() {
+    popBackStack()
+    if (currentBackStackEntry?.destination?.hasRoute<T>() == true) popBackStack()
+}

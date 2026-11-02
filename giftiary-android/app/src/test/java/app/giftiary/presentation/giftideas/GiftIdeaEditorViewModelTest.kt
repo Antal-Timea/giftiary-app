@@ -291,4 +291,65 @@ class GiftIdeaEditorViewModelTest {
         assertEquals(GiftIdeaEditorTarget.New(anna.id, christmas.id), GiftIdeaEditorTarget.newFor(anna.id.toString(), christmas.id.toString()))
         assertEquals(GiftIdeaEditorTarget.New(), GiftIdeaEditorTarget.newFor(null, null))
     }
+
+    @Test
+    fun `a new idea offers no delete`() {
+        val viewModel = viewModel()
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertFalse(viewModel.uiState.value.confirmingDelete)
+        assertEquals(GiftIdeaEditorStatus.EDITING, viewModel.uiState.value.status)
+    }
+
+    @Test
+    fun `deleting an idea asks first, and dismissing keeps it and the edits`() {
+        val scarf = ideaEntry(ideaDetails(anna, name = "Scarf"), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        viewModel.onNameChange("Wool scarf")
+
+        viewModel.onDeleteRequested()
+        assertTrue(viewModel.uiState.value.confirmingDelete)
+        assertEquals("Scarf", viewModel.uiState.value.savedName)
+        viewModel.onDeleteDismissed()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.confirmingDelete)
+        assertEquals(GiftIdeaEditorStatus.EDITING, state.status)
+        assertEquals("Wool scarf", state.name)
+        assertEquals(listOf(scarf), ideas.currentIdeas)
+    }
+
+    @Test
+    fun `confirming deletes the idea and closes as deleted`() {
+        val scarf = ideaEntry(ideaDetails(anna), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertEquals(GiftIdeaEditorStatus.DELETED, viewModel.uiState.value.status)
+        assertTrue(ideas.currentIdeas.isEmpty())
+    }
+
+    @Test
+    fun `a failed idea delete stays open with the edits and reports it`() {
+        val scarf = ideaEntry(ideaDetails(anna), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        viewModel.onNameChange("Wool scarf")
+        ideas.writeFailure = IOException("disk full")
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        val state = viewModel.uiState.value
+        assertEquals(GiftIdeaEditorStatus.EDITING, state.status)
+        assertEquals(GiftIdeaWriteError.DELETE_FAILED, state.writeError)
+        assertFalse(state.isBusy)
+        assertEquals("Wool scarf", state.name)
+    }
 }

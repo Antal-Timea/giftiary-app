@@ -47,6 +47,7 @@ import app.giftiary.domain.model.Person
 import app.giftiary.domain.usecase.GiftInputError
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryChoicePill
+import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryDateField
 import app.giftiary.presentation.components.GiftiaryDropdownField
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
@@ -55,6 +56,7 @@ import app.giftiary.presentation.components.GiftiaryTaskHeader
 import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.LocalWidthClass
+import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.components.arrow
@@ -75,10 +77,15 @@ fun GiftEditorScreen(
     onClose: () -> Unit,
     onOpenPeople: () -> Unit,
     onAddPerson: () -> Unit,
+    onDeleted: () -> Unit = onClose,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.status) {
-        if (state.status == GiftEditorStatus.CLOSED) onClose()
+        when (state.status) {
+            GiftEditorStatus.CLOSED -> onClose()
+            GiftEditorStatus.DELETED -> onDeleted()
+            else -> Unit
+        }
     }
     GiftEditorScreen(
         state = state,
@@ -103,6 +110,9 @@ fun GiftEditorScreen(
             onCameraUnavailable = viewModel::onCameraUnavailable,
             onPhotoRemoved = viewModel::onPhotoRemoved,
             onPhotoErrorShown = viewModel::onPhotoErrorShown,
+            onDeleteRequested = viewModel::onDeleteRequested,
+            onDeleteDismissed = viewModel::onDeleteDismissed,
+            onDeleteConfirmed = viewModel::onDeleteConfirmed,
         ),
     )
 }
@@ -129,6 +139,10 @@ class GiftEditorActions(
     val onCameraUnavailable: (String) -> Unit = {},
     val onPhotoRemoved: () -> Unit = {},
     val onPhotoErrorShown: () -> Unit = {},
+    // Only an existing gift offers deleting.
+    val onDeleteRequested: () -> Unit = {},
+    val onDeleteDismissed: () -> Unit = {},
+    val onDeleteConfirmed: () -> Unit = {},
 )
 
 @Composable
@@ -146,6 +160,7 @@ fun GiftEditorScreen(
                 GiftWriteError.PERSON_UNAVAILABLE -> R.string.gift_person_unavailable
                 GiftWriteError.OCCASION_UNAVAILABLE -> R.string.gift_occasion_unavailable
                 GiftWriteError.PHOTO_UNAVAILABLE -> R.string.gift_photo_unavailable_on_save
+                GiftWriteError.DELETE_FAILED -> R.string.gift_delete_failed
             },
         )
     }
@@ -180,9 +195,19 @@ fun GiftEditorScreen(
             GiftEditorStatus.LOADING -> GiftiaryTaskStatus(null, actions.onBack, contentModifier)
             GiftEditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.gift_not_found), actions.onBack, contentModifier)
             GiftEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.gift_load_failed), actions.onBack, contentModifier)
-            GiftEditorStatus.EDITING, GiftEditorStatus.CLOSED ->
+            GiftEditorStatus.EDITING, GiftEditorStatus.CLOSED, GiftEditorStatus.DELETED ->
                 GiftForm(state = state, actions = actions, widthClass = widthClass, modifier = contentModifier)
         }
+    }
+
+    if (state.confirmingDelete) {
+        GiftiaryConfirmDialog(
+            title = stringResource(R.string.gift_delete_dialog_title, state.savedName),
+            message = stringResource(R.string.gift_delete_dialog_message),
+            confirmLabel = stringResource(R.string.gift_delete_confirm),
+            onConfirm = actions.onDeleteConfirmed,
+            onDismiss = actions.onDeleteDismissed,
+        )
     }
 }
 
@@ -243,6 +268,13 @@ private fun GiftForm(
                 title = stringResource(if (state.isNew) R.string.gift_editor_add_title else R.string.gift_editor_edit_title),
                 subtitle = stringResource(if (state.isNew) R.string.gift_editor_add_subtitle else R.string.gift_editor_edit_subtitle),
                 onBack = actions.onBack,
+                menu = if (state.isNew) null else {
+                    {
+                        OptionsMenu(R.drawable.ic_more, stringResource(R.string.task_more)) {
+                            Option(stringResource(R.string.gift_delete), R.drawable.ic_delete, actions.onDeleteRequested, enabled = canEdit)
+                        }
+                    }
+                },
             )
             when {
                 state.needsPerson -> NeedsPerson(onOpenPeople = actions.onOpenPeople)
@@ -452,8 +484,8 @@ private fun SaveButton(state: GiftEditorUiState, onSave: () -> Unit, modifier: M
         text = stringResource(R.string.gift_editor_save),
         onClick = onSave,
         modifier = modifier,
-        enabled = state.status == GiftEditorStatus.EDITING,
-        loading = state.isBusy,
+        enabled = state.status == GiftEditorStatus.EDITING && !state.isDeleting,
+        loading = state.isBusy && !state.isDeleting,
         trailingArrow = true,
     )
 }
