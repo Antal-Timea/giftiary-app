@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -66,9 +67,48 @@ class WishlistEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(writeError = null) }
     }
 
+    /** Only while editing; the confirmation says how many wishes go with the list. */
+    fun onDeleteRequested() {
+        val wishlistId = (target as? WishlistEditorTarget.Existing)?.wishlistId ?: return
+        val state = _uiState.value
+        if (state.status != WishlistEditorStatus.EDITING || state.isBusy) return
+        viewModelScope.launch {
+            val wishCount = try {
+                wishlistRepository.observeWishes(wishlistId).first().size
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Asking still works; the message just cannot count the wishes.
+                0
+            }
+            _uiState.update { it.copy(confirmingDelete = true, deleteWishCount = wishCount) }
+        }
+    }
+
+    fun onDeleteDismissed() {
+        _uiState.update { it.copy(confirmingDelete = false) }
+    }
+
+    fun onDeleteConfirmed() {
+        val wishlistId = (target as? WishlistEditorTarget.Existing)?.wishlistId ?: return
+        if (_uiState.value.status != WishlistEditorStatus.EDITING || _uiState.value.isBusy) return
+
+        _uiState.update { it.copy(confirmingDelete = false, isDeleting = true, writeError = null) }
+        viewModelScope.launch {
+            try {
+                wishlistRepository.deleteWishlist(wishlistId)
+                _uiState.update { it.copy(status = WishlistEditorStatus.DELETED) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isDeleting = false, writeError = WishlistWriteError.DELETE_FAILED) }
+            }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
-        if (state.status != WishlistEditorStatus.EDITING || state.isSaving) return
+        if (state.status != WishlistEditorStatus.EDITING || state.isBusy) return
         // Until the people are known, a preselected person may be shown as the user's own list.
         if (target is WishlistEditorTarget.New && !state.peopleLoaded) return
 
@@ -128,7 +168,9 @@ class WishlistEditorViewModel @AssistedInject constructor(
                     null -> WishlistOwner.Me
                     else -> personRepository.getPerson(personId)?.let { WishlistOwner.Person(it.name) } ?: WishlistOwner.PersonRemoved
                 }
-                _uiState.update { it.copy(status = WishlistEditorStatus.EDITING, name = wishlist.name, owner = owner) }
+                _uiState.update {
+                    it.copy(status = WishlistEditorStatus.EDITING, name = wishlist.name, savedName = wishlist.name, owner = owner)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -169,7 +211,16 @@ data class WishlistEditorUiState(
     val writeError: WishlistWriteError? = null,
     /** Set once saved; a new wishlist opens next. */
     val savedWishlistId: UUID? = null,
+    /** The name as stored, which the delete confirmation names even while [name] is being edited. */
+    val savedName: String = "",
+    val confirmingDelete: Boolean = false,
+    /** The wishes deleted with the list, for the confirmation. */
+    val deleteWishCount: Int = 0,
+    val isDeleting: Boolean = false,
 ) {
+    /** A save or delete is in progress; further ones are ignored. */
+    val isBusy: Boolean get() = isSaving || isDeleting
+
     /** Null stands for the user's own wishlist, offered first. */
     val personOptions: List<Person?> get() = listOf(null) + activePeople
 
@@ -184,9 +235,13 @@ enum class WishlistEditorStatus {
 
     /** Stored locally; the screen should close, or open the new wishlist. */
     SAVED,
+
+    /** The wishlist was deleted; the screen should close, along with the list's page. */
+    DELETED,
 }
 
 enum class WishlistWriteError {
     FAILED,
     PERSON_UNAVAILABLE,
+    DELETE_FAILED,
 }

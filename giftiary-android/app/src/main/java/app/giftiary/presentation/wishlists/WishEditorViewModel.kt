@@ -66,9 +66,38 @@ class WishEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(saveFailed = false) }
     }
 
+    fun onDeleteRequested() {
+        _uiState.update { if (target is WishEditorTarget.Existing && it.status == WishEditorStatus.EDITING) it.copy(confirmingDelete = true) else it }
+    }
+
+    fun onDeleteDismissed() {
+        _uiState.update { it.copy(confirmingDelete = false) }
+    }
+
+    fun onDeleteErrorShown() {
+        _uiState.update { it.copy(deleteFailed = false) }
+    }
+
+    fun onDeleteConfirmed() {
+        val wishId = (target as? WishEditorTarget.Existing)?.wishId ?: return
+        if (_uiState.value.status != WishEditorStatus.EDITING || _uiState.value.isBusy) return
+
+        _uiState.update { it.copy(confirmingDelete = false, isDeleting = true, deleteFailed = false) }
+        viewModelScope.launch {
+            try {
+                repository.deleteWish(wishId)
+                _uiState.update { it.copy(status = WishEditorStatus.DELETED) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isDeleting = false, deleteFailed = true) }
+            }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
-        if (state.status != WishEditorStatus.EDITING || state.isSaving) return
+        if (state.status != WishEditorStatus.EDITING || state.isBusy) return
 
         val price = PriceFormat.parse(state.price, state.currencyCode)
         val priceError = price.toError()
@@ -114,13 +143,14 @@ class WishEditorViewModel @AssistedInject constructor(
             try {
                 _uiState.update { state ->
                     when (target) {
-                        is WishEditorTarget.New -> if (repository.getWishlist(target.wishlistId) == null) {
-                            state.copy(status = WishEditorStatus.WISHLIST_NOT_FOUND)
-                        } else {
-                            state.copy(status = WishEditorStatus.EDITING)
+                        is WishEditorTarget.New -> when (val wishlist = repository.getWishlist(target.wishlistId)) {
+                            null -> state.copy(status = WishEditorStatus.WISHLIST_NOT_FOUND)
+                            else -> state.copy(status = WishEditorStatus.EDITING, wishlistName = wishlist.name)
                         }
-                        is WishEditorTarget.Existing ->
-                            repository.getWish(target.wishId)?.let { state.loaded(it) } ?: state.copy(status = WishEditorStatus.NOT_FOUND)
+                        is WishEditorTarget.Existing -> when (val wish = repository.getWish(target.wishId)) {
+                            null -> state.copy(status = WishEditorStatus.NOT_FOUND)
+                            else -> state.loaded(wish, repository.getWishlist(wish.wishlistId)?.name)
+                        }
                     }
                 }
             } catch (e: CancellationException) {
@@ -138,9 +168,11 @@ class WishEditorViewModel @AssistedInject constructor(
 
     private companion object {
 
-        fun WishEditorUiState.loaded(wish: Wish) = copy(
+        fun WishEditorUiState.loaded(wish: Wish, wishlistName: String?) = copy(
             status = WishEditorStatus.EDITING,
+            wishlistName = wishlistName,
             name = wish.name,
+            savedName = wish.name,
             price = wish.estimatedPrice?.let { PriceFormat.formatForInput(it, Locale.getDefault()) }.orEmpty(),
             currencyCode = wish.estimatedPrice?.currencyCode ?: DefaultCurrency.CODE,
             productUrl = wish.productUrl.orEmpty(),
@@ -167,7 +199,17 @@ data class WishEditorUiState(
     val priceError: PriceError? = null,
     val isSaving: Boolean = false,
     val saveFailed: Boolean = false,
-)
+    /** The list the wish is on, which it cannot leave; null until known. */
+    val wishlistName: String? = null,
+    /** The name as stored, which the delete confirmation names even while [name] is being edited. */
+    val savedName: String = "",
+    val confirmingDelete: Boolean = false,
+    val isDeleting: Boolean = false,
+    val deleteFailed: Boolean = false,
+) {
+    /** A save or delete is in progress; further ones are ignored. */
+    val isBusy: Boolean get() = isSaving || isDeleting
+}
 
 enum class WishEditorStatus {
     LOADING,
@@ -180,4 +222,7 @@ enum class WishEditorStatus {
 
     /** Stored locally; the screen should close. */
     SAVED,
+
+    /** The wish was deleted; the screen should close, along with the wish's page. */
+    DELETED,
 }

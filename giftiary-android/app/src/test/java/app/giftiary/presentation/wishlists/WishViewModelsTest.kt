@@ -177,4 +177,77 @@ class WishViewModelsTest {
         assertTrue(viewModel.uiState.value.actions.writeFailed)
         assertTrue(viewModel.uiState.value.content is WishDetailContent.Loaded)
     }
+
+    @Test
+    fun `the wish editor names the list the wish is on, adding or editing`() = runTest {
+        val lamp = wish(list.id, "Lamp")
+        repository.givenWishes(lamp)
+
+        assertEquals("Birthday", editor(WishEditorTarget.New(list.id)).uiState.value.wishlistName)
+        assertEquals("Birthday", editor(WishEditorTarget.Existing(lamp.id)).uiState.value.wishlistName)
+    }
+
+    @Test
+    fun `a new wish offers no delete`() = runTest {
+        val viewModel = editor(WishEditorTarget.New(list.id))
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertFalse(viewModel.uiState.value.confirmingDelete)
+        assertEquals(WishEditorStatus.EDITING, viewModel.uiState.value.status)
+    }
+
+    @Test
+    fun `deleting from the wish editor asks first, and dismissing keeps the wish and the edits`() = runTest {
+        val lamp = wish(list.id, "Lamp")
+        repository.givenWishes(lamp)
+        val viewModel = editor(WishEditorTarget.Existing(lamp.id))
+        viewModel.onNameChange("Brass lamp")
+
+        viewModel.onDeleteRequested()
+        assertTrue(viewModel.uiState.value.confirmingDelete)
+        assertEquals("Lamp", viewModel.uiState.value.savedName)
+        viewModel.onDeleteDismissed()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.confirmingDelete)
+        assertEquals(WishEditorStatus.EDITING, state.status)
+        assertEquals("Brass lamp", state.name)
+        assertEquals(listOf(lamp), repository.currentWishes)
+    }
+
+    @Test
+    fun `confirming in the wish editor deletes only that wish and closes as deleted`() = runTest {
+        val lamp = wish(list.id, "Lamp")
+        val book = wish(list.id, "Book")
+        repository.givenWishes(lamp, book)
+        val viewModel = editor(WishEditorTarget.Existing(lamp.id))
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertEquals(WishEditorStatus.DELETED, viewModel.uiState.value.status)
+        assertEquals(listOf(book), repository.currentWishes)
+    }
+
+    @Test
+    fun `a failed delete from the wish editor stays open with the edits and reports it`() = runTest {
+        val lamp = wish(list.id, "Lamp")
+        repository.givenWishes(lamp)
+        val viewModel = editor(WishEditorTarget.Existing(lamp.id))
+        viewModel.onNameChange("Brass lamp")
+        repository.writeFailure = IOException("disk full")
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        val state = viewModel.uiState.value
+        assertEquals(WishEditorStatus.EDITING, state.status)
+        assertTrue(state.deleteFailed)
+        assertFalse(state.isBusy)
+        assertEquals("Brass lamp", state.name)
+        viewModel.onDeleteErrorShown()
+        assertFalse(viewModel.uiState.value.deleteFailed)
+    }
 }
