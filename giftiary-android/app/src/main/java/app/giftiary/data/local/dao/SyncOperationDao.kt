@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperationEntity
+import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.util.UUID
 
@@ -32,6 +33,22 @@ interface SyncOperationDao {
 
     @Query("SELECT * FROM sync_operation WHERE entityType = :entityType AND entityId = :entityId")
     suspend fun findForEntity(entityType: SyncEntityType, entityId: UUID): SyncOperationEntity?
+
+    /**
+     * Whether the entity has a change still on its way, counted as the sync status counts it: a
+     * blocked change needs attention instead, except a legacy REMOTE_NEWER block, which the next
+     * push settles.
+     */
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM sync_operation
+            WHERE ownerUserId = :ownerUserId AND entityType = :entityType AND entityId = :entityId
+                AND (blockedReason IS NULL OR blockedReason = 'REMOTE_NEWER')
+        )
+        """,
+    )
+    fun observeWaiting(ownerUserId: UUID, entityType: SyncEntityType, entityId: UUID): Flow<Boolean>
 
     /**
      * The owner's whole queue, blocked operations included, oldest first. Unbounded on purpose:

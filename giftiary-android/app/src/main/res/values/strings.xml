@@ -145,9 +145,18 @@ big stories</string>
     <string name="occasion_error_year_required">A one-time occasion needs a year</string>
 
     <string name="gifts_title">Gifts</string>
+    <string name="gifts_history_title">Gift history</string>
+    <string name="gifts_subtitle">Search, filter and revisit every shared gift.</string>
+    <string name="gifts_search_hint">Search your gift history…</string>
+    <string name="gifts_no_results_title">No gifts found for “%1$s”</string>
+    <string name="gifts_no_results_message">Try another gift, person or occasion.</string>
+    <plurals name="gifts_no_results_count">
+        <item quantity="one">%1$d gift is still in your history.</item>
+        <item quantity="other">%1$d gifts are still in your history.</item>
+    </plurals>
+    <string name="gift_detail_more">Options for %1$s</string>
     <string name="gifts_add">Add gift</string>
     <string name="gifts_select_gift">Select a gift to see its details.</string>
-    <string name="gifts_select_idea">Select an idea to see its details.</string>
     <string name="gifts_filter_all">All</string>
     <string name="gifts_empty_title">No gifts yet</string>
     <string name="gifts_empty_message">Start by adding a gift you’ve given or received.</string>
@@ -171,7 +180,6 @@ big stories</string>
     <string name="gift_date_confirm">OK</string>
     <string name="gift_occasion">Occasion</string>
     <string name="gift_no_occasion">No occasion</string>
-    <string name="gift_price">Price</string>
     <string name="gift_price_optional">Price (optional)</string>
     <string name="gift_product_url">Product link</string>
     <string name="gift_product_url_optional">Product link (optional)</string>
@@ -186,7 +194,6 @@ big stories</string>
     <string name="gift_photo_description">Photo of the gift</string>
     <string name="gift_photo_unreadable">This image couldn’t be opened. Try another one.</string>
     <string name="gift_photo_unavailable">The photo isn’t available right now.</string>
-    <string name="gift_photo_pending">Saved on this device, waiting to upload</string>
     <string name="gift_photo_unavailable_on_save">The photo is no longer on this device. Add it again.</string>
     <string name="gift_note_optional">Note (optional)</string>
     <string name="gift_delete">Delete gift</string>
@@ -223,10 +230,7 @@ big stories</string>
     <string name="person_detail_more">More for %1$s</string>
     <string name="person_detail_plan_gift">Plan gift</string>
     <string name="person_detail_gift_ideas_subtitle">Future possibilities, not yet given</string>
-    <string name="gifts_filter_ideas">Ideas</string>
     <string name="gift_ideas_add">Add gift idea</string>
-    <string name="gift_ideas_empty_title">No gift ideas yet</string>
-    <string name="gift_ideas_empty_message">Save something you’d like to give later.</string>
     <string name="gift_idea_status_idea">Idea</string>
     <string name="gift_idea_status_planned">Planned</string>
     <string name="gift_idea_status_purchased">Purchased</string>

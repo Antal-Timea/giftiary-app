@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.Locale
 
-/** The words the redesigned Home, People and Person detail added exist in Hungarian too, not only in English. */
+/** The words the redesigned Home, People, Person detail and Gifts added exist in Hungarian too, not only in English. */
 @RunWith(RobolectricTestRunner::class)
 class RedesignStringsTest {
 
@@ -30,11 +30,13 @@ class RedesignStringsTest {
             R.string.people_no_results_message, R.string.gift_given_to, R.string.gift_received_from,
             R.string.person_detail_history, R.string.person_detail_edit, R.string.person_detail_plan_gift,
             R.string.person_detail_gift_ideas_subtitle, R.string.person_detail_add_gift_idea,
+            R.string.gifts_history_title, R.string.gifts_subtitle, R.string.gifts_search_hint,
+            R.string.gifts_no_results_title, R.string.gifts_no_results_message, R.string.gift_detail_more,
         )
         strings.forEach { id ->
             assertNotEquals(english.resources.getResourceEntryName(id), english.getString(id), hungarian.getString(id))
         }
-        listOf(R.plurals.coming_up_days_unit, R.plurals.people_no_results_count, R.plurals.person_detail_history_count).forEach { id ->
+        listOf(R.plurals.coming_up_days_unit, R.plurals.people_no_results_count, R.plurals.person_detail_history_count, R.plurals.gifts_no_results_count).forEach { id ->
             assertNotEquals(
                 english.resources.getResourceEntryName(id),
                 english.resources.getQuantityString(id, 2, 2),

@@ -24,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
-import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.presentation.components.arrow
 import app.giftiary.presentation.components.directionColor
@@ -81,7 +80,7 @@ fun GiftMemoryCard(
             overflow = TextOverflow.Ellipsis,
         )
         val line = listOfNotNull(
-            memoryDirection(entry),
+            giftDirectionLine(entry),
             entry.occasion?.takeIf { showOccasion }?.let { occasionTitle(it) },
         ).joinToString(" · ")
         Row(
@@ -103,19 +102,6 @@ fun GiftMemoryCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-    }
-}
-
-/** "Given to Mom", "Received from Peter", "Grandma → Martin", or the bare direction. */
-@Composable
-private fun memoryDirection(entry: GiftEntry): String {
-    val giver = entry.giver?.name
-    val recipient = entry.recipient?.name
-    if (giver != null && recipient != null) return stringResource(R.string.gift_between_people, giver, recipient)
-    val other = if (entry.gift.direction == GiftDirection.GIVEN) recipient else giver
-    return when (entry.gift.direction) {
-        GiftDirection.GIVEN -> other?.let { stringResource(R.string.gift_given_to, it) } ?: stringResource(R.string.gift_direction_given)
-        GiftDirection.RECEIVED -> other?.let { stringResource(R.string.gift_received_from, it) } ?: stringResource(R.string.gift_direction_received)
     }
 }
 

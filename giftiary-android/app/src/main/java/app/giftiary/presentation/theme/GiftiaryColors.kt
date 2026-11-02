@@ -66,6 +66,12 @@ data class GiftiaryColors(
     val skeleton: Color,
     val scrim: Color,
     val heroFallback: Color,
+    /** The facts block on a detail screen: occasion, date, price (DS-04 aqua context, lighter). */
+    val infoSurface: Color,
+    /** Text and controls set directly on a photograph, above [photoScrim]. */
+    val onPhoto: Color,
+    /** The shade under text on a photograph, faded in towards the bottom of a hero. */
+    val photoScrim: Color,
 )
 
 internal val DarkGiftiaryColors = GiftiaryColors(
@@ -115,6 +121,9 @@ internal val DarkGiftiaryColors = GiftiaryColors(
     skeleton = Color(0xFF283431),
     scrim = Color(0xFF0A100F),
     heroFallback = Color(0xFFE3A73A),
+    infoSurface = Color(0xFF1D3B36),
+    onPhoto = Color(0xFFF2EDE1),
+    photoScrim = Color(0xFF0C0909),
 )
 
 // The approved light palette (design system board DS-01).
@@ -166,6 +175,9 @@ internal val LightGiftiaryColors = GiftiaryColors(
     skeleton = Color(0x0F17423E), // teal at 0.06
     scrim = Color(0x9417423E), // teal at 0.58
     heroFallback = Color(0xFFE3A73A),
+    infoSurface = Color(0x8CBFEAE3), // aqua band at 0.55
+    onPhoto = Color(0xFFFBF7EE),
+    photoScrim = Color(0xFF0C0909),
 )
 
 internal val LocalGiftiaryColors = staticCompositionLocalOf { LightGiftiaryColors }

@@ -1,27 +1,14 @@
 package app.giftiary.presentation.gifts
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.repository.GiftEntry
-import app.giftiary.presentation.components.directionColor
 import app.giftiary.presentation.occasions.OccasionDateFormatter
-import app.giftiary.presentation.theme.GiftiarySpacing
 import java.time.LocalDate
 
 @Composable
@@ -43,19 +30,17 @@ fun giftPersonLabel(direction: GiftDirection): String = stringResource(
     },
 )
 
-/**
- * Names the people involved: the other person for the user's own gifts, or "Giver → Recipient"
- * for a gift between two other people. Null if the person is unknown.
- */
+/** "Given to Mom", "Received from Peter", "Grandma → Martin", or the bare direction. */
 @Composable
 @ReadOnlyComposable
-fun giftPeople(entry: GiftEntry): String? {
+fun giftDirectionLine(entry: GiftEntry): String {
     val giver = entry.giver?.name
     val recipient = entry.recipient?.name
-    return when {
-        giver != null && recipient != null -> stringResource(R.string.gift_between_people, giver, recipient)
-        entry.gift.direction == GiftDirection.GIVEN -> recipient
-        else -> giver
+    if (giver != null && recipient != null) return stringResource(R.string.gift_between_people, giver, recipient)
+    val other = if (entry.gift.direction == GiftDirection.GIVEN) recipient else giver
+    return when (entry.gift.direction) {
+        GiftDirection.GIVEN -> other?.let { stringResource(R.string.gift_given_to, it) } ?: stringResource(R.string.gift_direction_given)
+        GiftDirection.RECEIVED -> other?.let { stringResource(R.string.gift_received_from, it) } ?: stringResource(R.string.gift_direction_received)
     }
 }
 
@@ -74,29 +59,4 @@ fun priceErrorText(error: PriceError, currencyCode: String): String = when (erro
     PriceError.INVALID -> stringResource(R.string.gift_error_price_invalid)
     PriceError.NEGATIVE -> stringResource(R.string.gift_error_price_negative)
     PriceError.TOO_PRECISE -> stringResource(R.string.gift_error_price_too_precise, currencyCode)
-}
-
-/** Direction as icon plus text in its semantic color, so it never relies on color alone. */
-@Composable
-fun GiftDirectionTag(direction: GiftDirection, modifier: Modifier = Modifier) {
-    val color = directionColor(direction)
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            painter = painterResource(
-                when (direction) {
-                    GiftDirection.GIVEN -> R.drawable.ic_gift_given
-                    GiftDirection.RECEIVED -> R.drawable.ic_gift_received
-                },
-            ),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = color,
-        )
-        Spacer(Modifier.width(GiftiarySpacing.xs))
-        Text(
-            text = giftDirectionLabel(direction),
-            style = MaterialTheme.typography.labelLarge,
-            color = color,
-        )
-    }
 }

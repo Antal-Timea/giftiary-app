@@ -64,6 +64,25 @@ class GiftDetailViewModelTest {
     }
 
     @Test
+    fun `a change still waiting to sync, or a photo waiting to upload, is pending`() = runTest {
+        val path = photos.importPhoto("content://photo")
+        val withPhoto = giftEntry(giftDetails(person = anna).copy(photoPath = path), anna)
+        repository.givenGifts(withPhoto)
+        val viewModel = GiftDetailViewModel(withPhoto.gift.id, repository, photos)
+        keepSubscribed(viewModel.uiState)
+        assertFalse(viewModel.uiState.value.pendingSync)
+
+        repository.waitingToSync.value = setOf(withPhoto.gift.id)
+        assertTrue(viewModel.uiState.value.waitingToSync)
+        assertTrue(viewModel.uiState.value.pendingSync)
+
+        repository.waitingToSync.value = emptySet()
+        photos.pendingUploads.value = setOf(path)
+        assertFalse(viewModel.uiState.value.waitingToSync)
+        assertTrue(viewModel.uiState.value.pendingSync)
+    }
+
+    @Test
     fun `a gift without a photo shows none`() = runTest {
         repository.people[anna.id] = anna
         repository.givenGifts(book)

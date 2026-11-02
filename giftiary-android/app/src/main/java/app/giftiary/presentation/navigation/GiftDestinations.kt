@@ -28,19 +28,13 @@ import java.util.UUID
 /** Gift history, gifts and gift ideas, including marking an idea as given. */
 internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) {
     composable<GiftHistoryRoute> {
+        // A section root: the navigation bar or rail leads away from it, so it has no back arrow.
         GiftHistoryScreen(
-            // The navigation bar or rail leads away from a section root; it has no back arrow.
-            onBack = null,
             onAddGift = dropUnlessResumed { navController.navigate(AddGiftRoute()) },
             onOpenGift = { id -> navController.navigate(GiftDetailRoute(id.toString())) },
-            onAddGiftIdea = dropUnlessResumed { navController.navigate(AddGiftIdeaRoute()) },
-            onOpenGiftIdea = { id -> navController.navigate(GiftIdeaDetailRoute(id.toString())) },
-            // Beside the list on a wide window: one view model per item, kept in the history's entry.
+            // Beside the list on a wide window: one view model per gift, kept in the history's entry.
             giftDetail = { id, onDeleted ->
                 GiftDetail(id, navController, onBack = null, onDeleted = onDeleted, viewModelKey = "gift-$id")
-            },
-            ideaDetail = { id, onDeleted ->
-                GiftIdeaDetail(id, navController, onBack = null, onDeleted = onDeleted, viewModelKey = "idea-$id")
             },
         )
     }
@@ -132,6 +126,7 @@ private fun GiftDetail(
         onBack = onBack,
         onDeleted = onDeleted,
         onEditGift = { id -> navController.navigate(EditGiftRoute(id.toString())) },
+        onOpenPerson = { id -> navController.navigate(PersonDetailRoute(id.toString())) },
     )
 }
 

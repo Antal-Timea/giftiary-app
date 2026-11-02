@@ -25,18 +25,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.presentation.components.WidthClass
-import app.giftiary.presentation.giftideas.GiftIdeaDetailContent
-import app.giftiary.presentation.giftideas.GiftIdeaDetailScreen
-import app.giftiary.presentation.giftideas.GiftIdeaDetailUiState
-import app.giftiary.presentation.giftideas.GiftIdeaDetailViewModel
 import app.giftiary.presentation.theme.GiftiaryTheme
-import app.giftiary.testing.FakeGiftIdeaRepository
 import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeGiftRepository
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
-import app.giftiary.testing.ideaDetails
-import app.giftiary.testing.ideaEntry
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,7 +45,7 @@ import java.util.UUID
 
 /**
  * The gift history per width class: what a tap does, the panes, Back and the hand-off when a wide
- * window narrows, for gifts and ideas alike. The state is held here the way the view model holds it.
+ * window narrows. The state is held here the way the view model holds it.
  */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
 @RunWith(RobolectricTestRunner::class)
@@ -65,52 +58,31 @@ class GiftHistoryListDetailTest {
     private val anna = person("Anna")
     private val book = giftEntry(giftDetails(GiftDirection.GIVEN, anna, "Book", LocalDate.of(2026, 3, 12)), anna)
     private val headphones = giftEntry(giftDetails(GiftDirection.RECEIVED, anna, "Headphones", LocalDate.of(2025, 11, 4)), anna)
-    private val scarf = ideaEntry(ideaDetails(anna, name = "Scarf"), anna)
-    private val gifts = GiftHistoryContent.Loaded(listOf(book, headphones))
-    private val ideaList = GiftHistoryContent.IdeasLoaded(listOf(scarf))
+    private val gifts = GiftHistoryContent.Loaded(groupByYearAndMonth(listOf(book, headphones)))
     private val selectGift = "Select a gift to see its details."
-    private val selectIdea = "Select an idea to see its details."
 
-    private var state by mutableStateOf(GiftHistoryUiState(GiftFilter.ALL, GiftHistoryContent.Loading))
+    private var state by mutableStateOf(GiftHistoryUiState())
     private var widthClass by mutableStateOf(WidthClass.EXPANDED)
     private val openedGifts = mutableListOf<UUID>()
-    private val openedIdeas = mutableListOf<UUID>()
 
-    private fun showHistory(
-        width: WidthClass,
-        content: GiftHistoryContent = gifts,
-        selection: GiftHistorySelection? = null,
-    ) {
+    private fun showHistory(width: WidthClass, content: GiftHistoryContent = gifts, selected: UUID? = null) {
         widthClass = width
-        state = GiftHistoryUiState(
-            filter = if (content is GiftHistoryContent.IdeasLoaded) GiftFilter.IDEAS else GiftFilter.ALL,
-            content = content,
-            selection = selection,
-        )
+        state = GiftHistoryUiState(content = content, selectedGiftId = selected)
         compose.setContent {
             GiftiaryTheme {
                 Box(Modifier.width(widthOf(widthClass)).fillMaxHeight()) {
                     AdaptiveGiftHistoryScreen(
                         state = state,
-                        onBack = null,
                         onFilterChange = {},
+                        onQueryChange = {},
                         onAddGift = {},
                         onOpenGift = { openedGifts += it },
-                        onAddGiftIdea = {},
-                        onOpenGiftIdea = { openedIdeas += it },
-                        onSelectGift = { state = state.copy(selection = GiftHistorySelection.Gift(it.gift.id)) },
-                        onSelectIdea = { state = state.copy(selection = GiftHistorySelection.Idea(it.idea.id)) },
-                        onClearSelection = { state = state.copy(selection = null) },
+                        onSelectGift = { state = state.copy(selectedGiftId = it.gift.id) },
+                        onClearSelection = { state = state.copy(selectedGiftId = null) },
                         giftDetail = { id, onDeleted ->
                             Column {
                                 Text("Gift detail " + listOf(book, headphones).first { it.gift.id == id }.gift.name)
                                 TextButton(onClick = onDeleted) { Text("Delete gift") }
-                            }
-                        },
-                        ideaDetail = { id, onDeleted ->
-                            Column {
-                                Text("Idea detail " + scarf.idea.name.takeIf { scarf.idea.id == id })
-                                TextButton(onClick = onDeleted) { Text("Delete idea") }
                             }
                         },
                         widthClass = widthClass,
@@ -132,29 +104,25 @@ class GiftHistoryListDetailTest {
         get() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.hasEnabledCallbacks() }
 
     @Test
-    fun `a phone opens a gift or an idea as a screen of its own, with no selection`() {
+    fun `a phone opens a gift as a screen of its own, with no selection`() {
         showHistory(WidthClass.COMPACT)
         compose.onNodeWithText("Book").performClick()
         assertEquals(listOf(book.gift.id), openedGifts)
         compose.onNodeWithText("Book").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
-
-        state = state.copy(filter = GiftFilter.IDEAS, content = ideaList)
-        compose.onNodeWithText("Scarf").performClick()
-        assertEquals(listOf(scarf.idea.id), openedIdeas)
-        assertNull(state.selection)
-        compose.onNodeWithText(selectIdea).assertDoesNotExist()
+        assertNull(state.selectedGiftId)
+        compose.onNodeWithText(selectGift).assertDoesNotExist()
     }
 
     @Test
-    fun `a medium window opens the item too, from a list at the readable width`() {
+    fun `a medium window opens the gift too, from a list at the readable width`() {
         showHistory(WidthClass.MEDIUM)
 
-        // 640 dp centred in 800 dp starts at 80 dp, then the row's 16 dp padding.
-        assertTrue("list capped and centred (was ${left("Book")})", left("Book") in 95.dp..97.dp)
+        // 640 dp centred in 800 dp starts at 80 dp; then the 22 dp gutter, 52 dp thumbnail and 14 dp gap.
+        assertTrue("list capped and centred (was ${left("Book")})", left("Book") in 167.dp..169.dp)
         compose.onNodeWithText(selectGift).assertDoesNotExist()
         compose.onNodeWithText("Book").performClick()
         assertEquals(listOf(book.gift.id), openedGifts)
-        assertNull(state.selection)
+        assertNull(state.selectedGiftId)
     }
 
     @Test
@@ -166,7 +134,7 @@ class GiftHistoryListDetailTest {
         compose.onNodeWithText("Book").performClick()
 
         assertTrue("nothing navigated", openedGifts.isEmpty())
-        assertEquals(GiftHistorySelection.Gift(book.gift.id), state.selection)
+        assertEquals(book.gift.id, state.selectedGiftId)
         assertTrue(left("Gift detail Book") > 360.dp)
         compose.onNodeWithText(selectGift).assertDoesNotExist()
         compose.onNodeWithText("Book").assertIsSelected()
@@ -178,30 +146,12 @@ class GiftHistoryListDetailTest {
     }
 
     @Test
-    fun `an expanded window selects an idea the same way, with its own placeholder`() {
-        showHistory(WidthClass.EXPANDED, content = ideaList)
-        compose.onNodeWithText(selectIdea).assertExists()
-        compose.onNodeWithText(selectGift).assertDoesNotExist()
-
-        compose.onNodeWithText("Scarf").performClick()
-
-        assertTrue(openedIdeas.isEmpty())
-        assertEquals(GiftHistorySelection.Idea(scarf.idea.id), state.selection)
-        compose.onNodeWithText("Idea detail Scarf").assertExists()
-        compose.onNodeWithText("Scarf").assertIsSelected()
-    }
-
-    @Test
-    fun `deleting the item beside the list closes it there`() {
-        showHistory(WidthClass.EXPANDED, selection = GiftHistorySelection.Gift(book.gift.id))
+    fun `deleting the gift beside the list closes it there`() {
+        showHistory(WidthClass.EXPANDED, selected = book.gift.id)
         compose.onNodeWithText("Delete gift").performClick()
-        assertNull(state.selection)
+        assertNull(state.selectedGiftId)
         compose.onNodeWithText(selectGift).assertExists()
-
-        state = GiftHistoryUiState(GiftFilter.IDEAS, ideaList, GiftHistorySelection.Idea(scarf.idea.id))
-        compose.onNodeWithText("Delete idea").performClick()
-        assertNull(state.selection)
-        assertTrue("nothing navigated", openedGifts.isEmpty() && openedIdeas.isEmpty())
+        assertTrue("nothing navigated", openedGifts.isEmpty())
     }
 
     @Test
@@ -209,14 +159,12 @@ class GiftHistoryListDetailTest {
         showHistory(WidthClass.EXPANDED, content = GiftHistoryContent.NoGifts)
         listOf(
             GiftHistoryContent.NoGifts,
-            GiftHistoryContent.NoMatches,
-            GiftHistoryContent.NoIdeas,
+            GiftHistoryContent.NoMatches(total = 2),
             GiftHistoryContent.Loading,
             GiftHistoryContent.LoadFailed,
         ).forEach { content ->
             state = state.copy(content = content)
             compose.onNodeWithText(selectGift).assertDoesNotExist()
-            compose.onNodeWithText(selectIdea).assertDoesNotExist()
         }
     }
 
@@ -229,20 +177,19 @@ class GiftHistoryListDetailTest {
         assertTrue(backIsIntercepted)
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
 
-        assertNull(state.selection)
+        assertNull(state.selectedGiftId)
         compose.onNodeWithText(selectGift).assertExists()
         assertFalse(backIsIntercepted)
     }
 
     @Test
     fun `narrowing opens the selected gift once, as its own screen`() {
-        showHistory(WidthClass.EXPANDED, selection = GiftHistorySelection.Gift(book.gift.id))
+        showHistory(WidthClass.EXPANDED, selected = book.gift.id)
 
         widthClass = WidthClass.MEDIUM
         compose.waitForIdle()
         assertEquals(listOf(book.gift.id), openedGifts)
-        assertTrue(openedIdeas.isEmpty())
-        assertNull(state.selection)
+        assertNull(state.selectedGiftId)
 
         widthClass = WidthClass.EXPANDED
         compose.waitForIdle()
@@ -252,87 +199,52 @@ class GiftHistoryListDetailTest {
     }
 
     @Test
-    fun `narrowing opens the selected idea once, as its own screen`() {
-        showHistory(WidthClass.EXPANDED, content = ideaList, selection = GiftHistorySelection.Idea(scarf.idea.id))
-
-        widthClass = WidthClass.COMPACT
-        compose.waitForIdle()
-
-        assertEquals(listOf(scarf.idea.id), openedIdeas)
-        assertTrue(openedGifts.isEmpty())
-        assertNull(state.selection)
-    }
-
-    @Test
     fun `narrowing without a selection opens nothing`() {
         showHistory(WidthClass.EXPANDED)
 
         widthClass = WidthClass.MEDIUM
         compose.waitForIdle()
 
-        assertTrue(openedGifts.isEmpty() && openedIdeas.isEmpty())
+        assertTrue(openedGifts.isEmpty())
     }
 
     @Test
-    fun `the details beside the list have no back arrow, their own screens keep it`() {
+    fun `the detail beside the list has no back arrow, its own screen keeps it`() {
         var onBack: (() -> Unit)? by mutableStateOf(null)
-        var showIdea by mutableStateOf(false)
         compose.setContent {
             GiftiaryTheme {
-                if (showIdea) {
-                    GiftIdeaDetailScreen(
-                        state = GiftIdeaDetailUiState(content = GiftIdeaDetailContent.Loaded(scarf)),
-                        onBack = onBack,
-                        onEdit = {},
-                        onMarkAsGiven = {},
-                        onStatusChange = {},
-                        onDeleteRequested = {},
-                        onDeleteConfirmed = {},
-                        onDeleteDismissed = {},
-                        onWriteErrorShown = {},
-                    )
-                } else {
-                    GiftDetailScreen(
-                        state = GiftDetailUiState(content = GiftDetailContent.Loaded(book)),
-                        onBack = onBack,
-                        onEditGift = {},
-                        onDeleteRequested = {},
-                        onDeleteConfirmed = {},
-                        onDeleteDismissed = {},
-                        onDeleteErrorShown = {},
-                    )
-                }
+                GiftDetailScreen(
+                    state = GiftDetailUiState(content = GiftDetailContent.Loaded(book)),
+                    onBack = onBack,
+                    onEditGift = {},
+                    onOpenPerson = {},
+                    onDeleteRequested = {},
+                    onDeleteConfirmed = {},
+                    onDeleteDismissed = {},
+                    onDeleteErrorShown = {},
+                )
             }
         }
-        for (idea in listOf(false, true)) {
-            showIdea = idea
-            onBack = null
-            compose.onNodeWithContentDescription("Back").assertDoesNotExist()
-            onBack = {}
-            compose.onNodeWithContentDescription("Back").assertExists()
-        }
+        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
+        onBack = {}
+        compose.onNodeWithContentDescription("Back").assertExists()
     }
 
     @Test
-    fun `deleting a gift or an idea reports it through onDeleted, not Back`() {
+    fun `deleting a gift reports it through onDeleted, not Back`() {
         val giftRepository = FakeGiftRepository().apply { givenGifts(book) }
-        val ideaRepository = FakeGiftIdeaRepository().apply { givenIdeas(scarf) }
         val giftViewModel = GiftDetailViewModel(book.gift.id, giftRepository, FakeGiftPhotoRepository())
-        val ideaViewModel = GiftIdeaDetailViewModel(scarf.idea.id, ideaRepository)
         var backs = 0
         val deleted = mutableListOf<String>()
         compose.setContent {
             GiftiaryTheme {
                 Box(Modifier.width(600.dp)) {
-                    GiftDetailScreen(viewModel = giftViewModel, onBack = { backs++ }, onDeleted = { deleted += "gift" }, onEditGift = {})
-                }
-                Box(Modifier.width(600.dp)) {
-                    GiftIdeaDetailScreen(
-                        viewModel = ideaViewModel,
+                    GiftDetailScreen(
+                        viewModel = giftViewModel,
                         onBack = { backs++ },
-                        onDeleted = { deleted += "idea" },
-                        onEditGiftIdea = {},
-                        onMarkAsGiven = {},
+                        onDeleted = { deleted += "gift" },
+                        onEditGift = {},
+                        onOpenPerson = {},
                     )
                 }
             }
@@ -342,12 +254,10 @@ class GiftHistoryListDetailTest {
         compose.runOnIdle {
             giftViewModel.onDeleteRequested()
             giftViewModel.onDeleteConfirmed()
-            ideaViewModel.onDeleteRequested()
-            ideaViewModel.onDeleteConfirmed()
         }
         compose.waitForIdle()
 
-        assertEquals(listOf("gift", "idea"), deleted.sorted())
+        assertEquals(listOf("gift"), deleted)
         assertEquals(0, backs)
     }
 }
