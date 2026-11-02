@@ -171,21 +171,6 @@ private fun PhotoSource(label: String, onClick: () -> Unit) {
     )
 }
 
-/** The detail screen's photo, with a quiet note while it is on this device only. */
-@Composable
-fun GiftPhotoView(photo: LoadedPhoto?, loading: Boolean, uploadPending: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs)) {
-        if (!loading) PhotoOrPlaceholder(photo)
-        if (uploadPending) {
-            Text(
-                text = stringResource(R.string.gift_photo_pending),
-                style = MaterialTheme.typography.bodySmall,
-                color = GiftiaryTheme.colors.textMuted,
-            )
-        }
-    }
-}
-
 /**
  * The whole photo, never cropped: sized to its own aspect ratio, as wide as the column allows
  * but no taller than [PHOTO_MAX_HEIGHT], so a tall portrait does not fill the screen.

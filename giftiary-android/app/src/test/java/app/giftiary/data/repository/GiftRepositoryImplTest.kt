@@ -10,6 +10,7 @@ import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.data.photos.GiftPhotoFiles
+import app.giftiary.data.sync.BlockReason
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Money
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -313,6 +315,23 @@ class GiftRepositoryImplTest {
     }
 
     private val birthdayDetails = OccasionDetails(OccasionType.BIRTHDAY, null, 12, 3, null, true)
+
+    @Test
+    fun `a gift waits to sync while its change is queued, not while it is blocked`() = runTest {
+        val gift = gifts.addGift(givenTo(anna.id))
+        assertTrue(gifts.observeWaitingToSync(gift.id).first())
+
+        val operation = syncDao.findForEntity(SyncEntityType.GIFT, gift.id)!!
+        syncDao.update(operation.copy(blockedReason = BlockReason.REJECTED.name))
+        assertFalse("a blocked change needs attention instead", gifts.observeWaitingToSync(gift.id).first())
+
+        // Settled by the next push, so the sync status counts it as waiting too.
+        syncDao.update(operation.copy(blockedReason = BlockReason.REMOTE_NEWER.name))
+        assertTrue(gifts.observeWaitingToSync(gift.id).first())
+
+        syncDao.delete(operation)
+        assertFalse(gifts.observeWaitingToSync(gift.id).first())
+    }
 
     private fun givenTo(personId: UUID) = GiftDetails(
         direction = GiftDirection.GIVEN,

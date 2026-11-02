@@ -10,6 +10,8 @@ import app.giftiary.domain.repository.GiftRepository
 import app.giftiary.domain.repository.PersonNotFoundException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import java.time.Instant
@@ -35,13 +37,24 @@ class FakeGiftRepository : GiftRepository {
         entries.value = entry.toList()
     }
 
-    override fun observeGifts(): Flow<List<GiftEntry>> = entries.map { it.sortedByDescending { e -> e.gift.givenAt } }
+    /** When set, observing gifts throws it, standing in for an unreadable local database. */
+    var readFailure: Exception? = null
+
+    override fun observeGifts(): Flow<List<GiftEntry>> = flow {
+        readFailure?.let { throw it }
+        emitAll(entries.map { it.sortedByDescending { e -> e.gift.givenAt } })
+    }
 
     override fun observeGiftsForPerson(personId: UUID): Flow<List<GiftEntry>> = observeGifts().map { list ->
         list.filter { it.gift.giverPersonId == personId || it.gift.recipientPersonId == personId }
     }
 
     override fun observeGift(id: UUID): Flow<GiftEntry?> = entries.map { list -> list.find { it.gift.id == id } }
+
+    /** Ids of the gifts with a change waiting to sync. */
+    val waitingToSync = MutableStateFlow<Set<UUID>>(emptySet())
+
+    override fun observeWaitingToSync(id: UUID): Flow<Boolean> = waitingToSync.map { id in it }
 
     override suspend fun getGift(id: UUID): GiftEntry? = entries.value.find { it.gift.id == id }
 

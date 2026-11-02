@@ -144,9 +144,18 @@ nagy történetek</string>
     <string name="occasion_error_year_required">Egyszeri alkalomhoz add meg az évet</string>
 
     <string name="gifts_title">Ajándékok</string>
+    <string name="gifts_history_title">Ajándéktörténet</string>
+    <string name="gifts_subtitle">Keress, szűrj, és idézd fel az összes közös ajándékot.</string>
+    <string name="gifts_search_hint">Keresés az ajándékok között…</string>
+    <string name="gifts_no_results_title">Nincs ajándék erre: „%1$s”</string>
+    <string name="gifts_no_results_message">Próbálj másik ajándékot, nevet vagy alkalmat.</string>
+    <plurals name="gifts_no_results_count">
+        <item quantity="one">%1$d ajándék továbbra is megvan a történetedben.</item>
+        <item quantity="other">%1$d ajándék továbbra is megvan a történetedben.</item>
+    </plurals>
+    <string name="gift_detail_more">Lehetőségek: %1$s</string>
     <string name="gifts_add">Ajándék hozzáadása</string>
     <string name="gifts_select_gift">Válassz ki egy ajándékot, hogy lásd a részleteit.</string>
-    <string name="gifts_select_idea">Válassz ki egy ötletet, hogy lásd a részleteit.</string>
     <string name="gifts_filter_all">Összes</string>
     <string name="gifts_empty_title">Még nincs ajándék</string>
     <string name="gifts_empty_message">Kezdd egy ajándékkal, amit adtál vagy kaptál.</string>
@@ -170,7 +179,6 @@ nagy történetek</string>
     <string name="gift_date_confirm">OK</string>
     <string name="gift_occasion">Alkalom</string>
     <string name="gift_no_occasion">Nincs alkalom</string>
-    <string name="gift_price">Ár</string>
     <string name="gift_price_optional">Ár (nem kötelező)</string>
     <string name="gift_product_url">Termék linkje</string>
     <string name="gift_product_url_optional">Termék linkje (nem kötelező)</string>
@@ -185,7 +193,6 @@ nagy történetek</string>
     <string name="gift_photo_description">Az ajándék fotója</string>
     <string name="gift_photo_unreadable">Ezt a képet nem sikerült megnyitni. Próbálj egy másikat.</string>
     <string name="gift_photo_unavailable">A fotó most nem érhető el.</string>
-    <string name="gift_photo_pending">Ezen az eszközön mentve, feltöltésre vár</string>
     <string name="gift_photo_unavailable_on_save">A fotó már nincs ezen az eszközön. Add hozzá újra.</string>
     <string name="gift_note_optional">Megjegyzés (nem kötelező)</string>
     <string name="gift_delete">Ajándék törlése</string>
@@ -222,10 +229,7 @@ nagy történetek</string>
     <string name="person_detail_more">Továbbiak: %1$s</string>
     <string name="person_detail_plan_gift">Ajándék tervezése</string>
     <string name="person_detail_gift_ideas_subtitle">Jövőbeli lehetőségek, még nem adtad oda</string>
-    <string name="gifts_filter_ideas">Ötletek</string>
     <string name="gift_ideas_add">Ajándékötlet hozzáadása</string>
-    <string name="gift_ideas_empty_title">Még nincs ajándékötlet</string>
-    <string name="gift_ideas_empty_message">Mentsd el, amit később szívesen adnál.</string>
     <string name="gift_idea_status_idea">Ötlet</string>
     <string name="gift_idea_status_planned">Tervezett</string>
     <string name="gift_idea_status_purchased">Megvásárolva</string>

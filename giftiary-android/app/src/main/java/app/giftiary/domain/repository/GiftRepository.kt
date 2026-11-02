@@ -26,6 +26,9 @@ interface GiftRepository {
     /** Emits null while the gift does not exist or after it has been deleted. */
     fun observeGift(id: UUID): Flow<GiftEntry?>
 
+    /** Whether a change to the gift, saved on this device, has yet to reach the account. */
+    fun observeWaitingToSync(id: UUID): Flow<Boolean>
+
     /** Returns null if the gift does not exist or has been deleted. */
     suspend fun getGift(id: UUID): GiftEntry?
 

@@ -59,10 +59,18 @@ class GiftDetailViewModel @AssistedInject constructor(
         }
         .catch { emit(null) }
 
+    // Unknown is not waiting: the gift is never said to be pending on a failed read.
+    private val waitingToSync = repository.observeWaitingToSync(giftId).catch { emit(false) }
+
     val uiState: StateFlow<GiftDetailUiState> =
-        combine(gift, actions, photo) { content, actions, photo ->
-            // Once deleted, the gift is gone from Room too; keep reporting the deletion, not "not found".
-            GiftDetailUiState(content = if (actions.deleted) GiftDetailContent.Deleted else content, actions = actions, photo = photo)
+        combine(gift, actions, photo, waitingToSync) { content, actions, photo, waiting ->
+            GiftDetailUiState(
+                // Once deleted, the gift is gone from Room too; keep reporting the deletion, not "not found".
+                content = if (actions.deleted) GiftDetailContent.Deleted else content,
+                actions = actions,
+                photo = photo,
+                waitingToSync = waiting,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -111,7 +119,13 @@ data class GiftDetailUiState(
     val actions: GiftDetailActions = GiftDetailActions(),
     /** Null for a gift without a photo. */
     val photo: GiftDetailPhoto? = null,
-)
+    /** A change to the gift itself is saved here but not yet in the account. */
+    val waitingToSync: Boolean = false,
+) {
+    /** Saved on this device, not yet synced: the gift's own change or its photo's upload. */
+    val pendingSync: Boolean
+        get() = waitingToSync || photo?.uploadPending == true
+}
 
 data class GiftDetailPhoto(
     val photo: LoadedPhoto?,

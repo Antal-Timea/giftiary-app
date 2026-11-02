@@ -30,8 +30,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -67,6 +65,7 @@ import app.giftiary.domain.usecase.occasionPlans
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.GiftiaryPillButton
+import app.giftiary.presentation.components.HeroCircleButton
 import app.giftiary.presentation.components.ListRow
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
@@ -359,25 +358,6 @@ private fun PersonHero(person: Person, onBack: (() -> Unit)?, onEdit: () -> Unit
                     color = colors.textSecondary,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun HeroCircleButton(@DrawableRes icon: Int, contentDescription: String, onClick: () -> Unit) {
-    val colors = GiftiaryTheme.colors
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(48.dp),
-        colors = IconButtonDefaults.iconButtonColors(contentColor = colors.textPrimary),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(colors.background, GiftiaryShapes.pill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(painter = painterResource(icon), contentDescription = contentDescription, modifier = Modifier.size(18.dp))
         }
     }
 }

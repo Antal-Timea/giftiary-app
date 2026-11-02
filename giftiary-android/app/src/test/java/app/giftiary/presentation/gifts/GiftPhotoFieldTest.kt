@@ -183,19 +183,6 @@ class GiftPhotoFieldTest {
         assertNear(75.dp, bounds.bottom - bounds.top, "height")
     }
 
-    @Test
-    fun `the detail screen sizes its photo the same way`() {
-        compose.setContent {
-            GiftiaryTheme {
-                Box(Modifier.width(320.dp)) { GiftPhotoView(photo = jpeg(width = 900, height = 1200), loading = false, uploadPending = false) }
-            }
-        }
-
-        val bounds = compose.onNodeWithTag(PHOTO_TAG).getBoundsInRoot()
-        assertNear(PHOTO_MAX_HEIGHT, bounds.bottom - bounds.top, "height")
-        assertNear(PHOTO_MAX_HEIGHT * 0.75f, bounds.right - bounds.left, "width")
-    }
-
     private fun jpeg(width: Int, height: Int): LoadedPhoto {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF2A5A52.toInt()) }
         return LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())
