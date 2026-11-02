@@ -7,6 +7,7 @@ import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.person
+import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -174,5 +175,69 @@ class WishlistEditorViewModelTest {
         assertEquals(WishlistEditorStatus.EDITING, viewModel.uiState.value.status)
         viewModel.onWriteErrorShown()
         assertNull(viewModel.uiState.value.writeError)
+    }
+
+    @Test
+    fun `a new wishlist offers no delete`() = runTest {
+        val viewModel = editor(WishlistEditorTarget.New())
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertFalse(viewModel.uiState.value.confirmingDelete)
+        assertEquals(WishlistEditorStatus.EDITING, viewModel.uiState.value.status)
+    }
+
+    @Test
+    fun `deleting a list asks first, counting its wishes, and dismissing keeps it and the edits`() = runTest {
+        val birthday = wishlist("Birthday")
+        wishlists.givenWishlists(birthday)
+        wishlists.givenWishes(wish(birthday.id, "Lamp"), wish(birthday.id, "Book"))
+        val viewModel = editor(WishlistEditorTarget.Existing(birthday.id))
+        viewModel.onNameChange("Birthday 2027")
+
+        viewModel.onDeleteRequested()
+        val asking = viewModel.uiState.value
+        assertTrue(asking.confirmingDelete)
+        assertEquals(2, asking.deleteWishCount)
+        assertEquals("the confirmation names the stored list", "Birthday", asking.savedName)
+        viewModel.onDeleteDismissed()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.confirmingDelete)
+        assertEquals(WishlistEditorStatus.EDITING, state.status)
+        assertEquals("Birthday 2027", state.name)
+        assertEquals(listOf(birthday), wishlists.currentWishlists)
+    }
+
+    @Test
+    fun `confirming deletes the list and closes as deleted`() = runTest {
+        val birthday = wishlist("Birthday")
+        wishlists.givenWishlists(birthday)
+        val viewModel = editor(WishlistEditorTarget.Existing(birthday.id))
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertEquals(WishlistEditorStatus.DELETED, viewModel.uiState.value.status)
+        assertTrue(wishlists.currentWishlists.isEmpty())
+    }
+
+    @Test
+    fun `a failed list delete stays open with the edits and reports it`() = runTest {
+        val birthday = wishlist("Birthday")
+        wishlists.givenWishlists(birthday)
+        val viewModel = editor(WishlistEditorTarget.Existing(birthday.id))
+        viewModel.onNameChange("Birthday 2027")
+        wishlists.writeFailure = IOException("disk full")
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        val state = viewModel.uiState.value
+        assertEquals(WishlistEditorStatus.EDITING, state.status)
+        assertEquals(WishlistWriteError.DELETE_FAILED, state.writeError)
+        assertFalse(state.isBusy)
+        assertEquals("Birthday 2027", state.name)
     }
 }

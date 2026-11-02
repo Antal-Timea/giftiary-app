@@ -32,6 +32,7 @@ class DeletedEditorNavigationTest {
         HomeRoute::class, PeopleRoute::class, PersonDetailRoute::class, EditPersonRoute::class,
         GiftHistoryRoute::class, GiftDetailRoute::class, EditGiftRoute::class,
         GiftIdeaDetailRoute::class, EditGiftIdeaRoute::class,
+        WishlistsRoute::class, WishlistDetailRoute::class, EditWishlistRoute::class, WishDetailRoute::class, EditWishRoute::class,
     )
 
     private fun showNavHost() {
@@ -47,6 +48,11 @@ class DeletedEditorNavigationTest {
                 composable<EditGiftRoute> { Text("Edit gift") }
                 composable<GiftIdeaDetailRoute> { Text("Idea") }
                 composable<EditGiftIdeaRoute> { Text("Edit idea") }
+                composable<WishlistsRoute> { Text("Lists") }
+                composable<WishlistDetailRoute> { Text("List") }
+                composable<EditWishlistRoute> { Text("Edit list") }
+                composable<WishDetailRoute> { Text("Wish") }
+                composable<EditWishRoute> { Text("Edit wish") }
             }
         }
     }
@@ -89,5 +95,27 @@ class DeletedEditorNavigationTest {
         navigate(GiftIdeaDetailRoute(id), EditGiftIdeaRoute(id))
         compose.runOnIdle { navController.leaveDeletedEditor<GiftIdeaDetailRoute>() }
         assertEquals(listOf(HomeRoute::class, GiftHistoryRoute::class), stack())
+    }
+
+    @Test
+    fun `a deleted list leaves its editor and its page`() {
+        showNavHost()
+        navigate(WishlistsRoute, WishlistDetailRoute(id), EditWishlistRoute(id))
+
+        compose.runOnIdle { navController.leaveDeletedEditor<WishlistDetailRoute>() }
+
+        assertEquals(listOf(HomeRoute::class, WishlistsRoute::class), stack())
+    }
+
+    @Test
+    fun `a deleted wish leaves its page when edited from there, and only the editor when edited from the list`() {
+        showNavHost()
+        navigate(WishlistsRoute, WishlistDetailRoute(id), WishDetailRoute(id), EditWishRoute(id))
+        compose.runOnIdle { navController.leaveDeletedEditor<WishDetailRoute>() }
+        assertEquals(listOf(HomeRoute::class, WishlistsRoute::class, WishlistDetailRoute::class), stack())
+
+        navigate(EditWishRoute(id))
+        compose.runOnIdle { navController.leaveDeletedEditor<WishDetailRoute>() }
+        assertEquals(listOf(HomeRoute::class, WishlistsRoute::class, WishlistDetailRoute::class), stack())
     }
 }

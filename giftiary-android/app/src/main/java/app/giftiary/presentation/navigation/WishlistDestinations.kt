@@ -51,6 +51,7 @@ internal fun NavGraphBuilder.wishlistDestinations(navController: NavHostControll
                 },
                 onClose = navController.popBackStackUnlessPaused(),
                 onCreated = {},
+                onDeleted = dropUnlessResumed { navController.leaveDeletedEditor<WishlistDetailRoute>() },
             )
         }
     }
@@ -87,6 +88,7 @@ internal fun NavGraphBuilder.wishlistDestinations(navController: NavHostControll
                     factory.create(WishEditorTarget.Existing(wishId))
                 },
                 onClose = navController.popBackStackUnlessPaused(),
+                onDeleted = dropUnlessResumed { navController.leaveDeletedEditor<WishDetailRoute>() },
             )
         }
     }

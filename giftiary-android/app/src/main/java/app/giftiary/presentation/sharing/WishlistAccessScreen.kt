@@ -2,36 +2,45 @@ package app.giftiary.presentation.sharing
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
@@ -41,14 +50,21 @@ import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.GiftiaryAvatar
+import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
+import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.LoadingContent
-import app.giftiary.presentation.components.SectionHeading
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTaskStatus
+import app.giftiary.presentation.components.OptionsMenu
+import app.giftiary.presentation.components.OptionsMenuScope
+import app.giftiary.presentation.components.giftiaryDashedOutline
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import java.time.Instant
 import java.util.UUID
 
@@ -127,19 +143,25 @@ fun WishlistAccessScreen(
     }
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = wishlistName ?: stringResource(R.string.wishlist_access_title), onBack = actions.onBack) },
+        containerColor = GiftiaryTheme.colors.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (val content = state.content) {
-            AccessContent.Loading -> LoadingContent(contentModifier)
-            is AccessContent.Failed -> FailureContent(
-                message = accessFailureText(content.failure),
-                // Unavailable stays so until the list syncs; retrying is still harmless.
-                onRetry = actions.onRetry,
-                modifier = contentModifier,
-            )
-            is AccessContent.Loaded -> AccessContents(state, content.access, actions, contentModifier)
+            AccessContent.Loading -> GiftiaryTaskStatus(null, actions.onBack, contentModifier)
+            is AccessContent.Failed -> Column(modifier = contentModifier.fillMaxSize()) {
+                GiftiaryBackButton(
+                    onClick = actions.onBack,
+                    modifier = Modifier.padding(start = GiftiarySpacing.taskGutter, top = GiftiarySpacing.browseGutter),
+                )
+                FailureContent(
+                    message = accessFailureText(content.failure),
+                    // Unavailable stays so until the list syncs; retrying is still harmless.
+                    onRetry = actions.onRetry,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            is AccessContent.Loaded -> AccessContents(state, content.access, wishlistName, actions, contentModifier)
         }
     }
 
@@ -155,29 +177,72 @@ fun WishlistAccessScreen(
     }
 }
 
+/**
+ * The approved Share & Invite: the list, the people with access and "Share with someone", then the
+ * note on reservations. People are shown only as the server returns them: a name, or a neutral
+ * label, and when they joined; nothing the user keeps about them, so no relationship line. Sharing
+ * works through invite links, so "Share with someone" creates one, and the open links follow the
+ * people with access. Removing, withdrawing and the rest stay behind each row's options.
+ */
 @Composable
 private fun AccessContents(
     state: WishlistAccessUiState,
     access: WishlistAccess,
+    wishlistName: String?,
     actions: WishlistAccessActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
-    LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = GiftiarySpacing.xxl)) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .giftiaryReadableWidth(),
+        contentPadding = PaddingValues(
+            start = GiftiarySpacing.taskGutter,
+            end = GiftiarySpacing.taskGutter,
+            top = GiftiarySpacing.browseGutter,
+            bottom = GiftiarySpacing.xxl,
+        ),
+    ) {
         item {
+            GiftiaryTaskHeader(
+                title = stringResource(R.string.wishlist_access_title),
+                subtitle = stringResource(R.string.wishlist_access_intro),
+                onBack = actions.onBack,
+                wordmark = false,
+                context = wishlistName?.let { name -> { SharedListName(name) } },
+            )
             // Keeps what is shown while it is refreshed.
             if (state.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = colors.primaryAction)
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = GiftiarySpacing.l),
+                    color = colors.primaryAction,
+                )
             }
-            Text(
-                text = stringResource(R.string.wishlist_access_intro),
-                modifier = Modifier.padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.textSecondary,
-            )
         }
         if (state.showNamePrompt) {
             item { NamePrompt(onAddName = actions.onAddName, onDismiss = actions.onNamePromptDismissed) }
+        }
+
+        item { AccessHeading(stringResource(R.string.wishlist_access_members)) }
+        if (access.members.isEmpty()) item { QuietLine(stringResource(R.string.wishlist_access_no_members)) }
+        items(access.members, key = { it.userId }) { member ->
+            val name = memberName(member.displayName)
+            AccessRow(
+                leading = { GiftiaryAvatar(name = name) },
+                title = name,
+                detail = stringResource(R.string.wishlist_access_member_joined, sharingDate(member.joinedAt)),
+                optionsDescription = stringResource(R.string.wishlist_access_member_more, name),
+            ) {
+                Option(
+                    text = stringResource(R.string.wishlist_access_remove_description, name),
+                    icon = R.drawable.ic_delete,
+                    onClick = { actions.onRemoveRequested(member) },
+                    enabled = member.userId !in state.changing,
+                )
+            }
         }
         item {
             // Never waits for the name prompt: an invite can be created either way.
@@ -185,75 +250,174 @@ private fun AccessContents(
             if (invite != null) {
                 NewInviteCard(invite = invite, onShare = { actions.onShare(invite) })
             } else {
-                GiftiaryPrimaryButton(
-                    text = stringResource(R.string.wishlist_access_create_invite),
-                    onClick = actions.onCreateInvite,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
-                    loading = state.isCreating,
-                )
+                ShareWithSomeone(onClick = actions.onCreateInvite, creating = state.isCreating)
             }
         }
-        item { SectionHeading(stringResource(R.string.wishlist_access_invites)) }
-        if (access.invites.isEmpty()) item { ListNote(stringResource(R.string.wishlist_access_no_invites)) }
-        items(access.invites, key = { it.id }) { invite ->
-            val created = sharingDate(invite.createdAt)
-            ActionRow(
-                title = stringResource(R.string.wishlist_access_invite),
-                detail = stringResource(R.string.wishlist_access_invite_dates, created, sharingDate(invite.expiresAt)),
-                actionLabel = stringResource(R.string.wishlist_access_revoke),
-                actionDescription = stringResource(R.string.wishlist_access_revoke_description, created),
-                onAction = { actions.onRevokeInvite(invite.id) },
-                actionEnabled = invite.id !in state.changing,
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
+
+        if (access.invites.isNotEmpty()) {
+            item { AccessHeading(stringResource(R.string.wishlist_access_invites)) }
+            items(access.invites, key = { it.id }) { invite ->
+                val created = sharingDate(invite.createdAt)
+                AccessRow(
+                    leading = { LinkMark() },
+                    title = stringResource(R.string.wishlist_access_invite),
+                    detail = stringResource(R.string.wishlist_access_invite_dates, created, sharingDate(invite.expiresAt)),
+                    optionsDescription = stringResource(R.string.wishlist_access_invite_more, created),
+                ) {
+                    Option(
+                        text = stringResource(R.string.wishlist_access_revoke_description, created),
+                        icon = R.drawable.ic_close,
+                        onClick = { actions.onRevokeInvite(invite.id) },
+                        enabled = invite.id !in state.changing,
+                    )
+                }
+            }
         }
-        item { SectionHeading(stringResource(R.string.wishlist_access_members)) }
-        if (access.members.isEmpty()) item { ListNote(stringResource(R.string.wishlist_access_no_members)) }
-        items(access.members, key = { it.userId }) { member ->
-            val name = memberName(member.displayName)
-            ActionRow(
-                title = name,
-                detail = stringResource(R.string.wishlist_access_member_joined, sharingDate(member.joinedAt)),
-                actionLabel = stringResource(R.string.wishlist_access_remove),
-                actionDescription = stringResource(R.string.wishlist_access_remove_description, name),
-                onAction = { actions.onRemoveRequested(member) },
-                actionEnabled = member.userId !in state.changing,
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = GiftiarySpacing.l), color = colors.divider)
+
+        item { ReservationsNote() }
+    }
+}
+
+/** The list being shared, under the title: its cover and name. */
+@Composable
+private fun SharedListName(name: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        GiftiaryAvatar(name = name, size = 24.dp)
+        Text(text = name, style = GiftiaryType.contentTitle, color = GiftiaryTheme.colors.textLabel)
+    }
+}
+
+@Composable
+private fun AccessHeading(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .padding(top = GiftiarySpacing.section, bottom = GiftiarySpacing.s)
+            .semantics { heading() },
+        style = GiftiaryType.sectionTitle.copy(fontSize = 18.sp),
+        color = GiftiaryTheme.colors.textPrimary,
+    )
+}
+
+@Composable
+private fun QuietLine(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(vertical = GiftiarySpacing.s),
+        style = GiftiaryType.body,
+        color = GiftiaryTheme.colors.textSecondary,
+    )
+}
+
+/** A person or an invite: a 48dp mark, two lines, and its actions behind one quiet ⋮. */
+@Composable
+private fun AccessRow(
+    leading: @Composable () -> Unit,
+    title: String,
+    detail: String,
+    optionsDescription: String,
+    options: @Composable OptionsMenuScope.() -> Unit,
+) {
+    val colors = GiftiaryTheme.colors
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 72.dp)
+                .padding(vertical = GiftiarySpacing.m),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            leading()
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = GiftiarySpacing.l),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(text = title, style = GiftiaryType.rowTitle, color = colors.textPrimary)
+                Text(text = detail, style = GiftiaryType.body, color = colors.textSecondary)
+            }
+            OptionsMenu(R.drawable.ic_more_vertical, optionsDescription, items = options)
         }
+        GiftiaryDivider(modifier = Modifier.padding(start = 64.dp))
+    }
+}
+
+/** The board's dashed coral "Share with someone"; it creates an invite link to share. */
+@Composable
+private fun ShareWithSomeone(onClick: () -> Unit, creating: Boolean) {
+    val colors = GiftiaryTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clickable(enabled = !creating, role = Role.Button, onClick = onClick)
+            .padding(vertical = GiftiarySpacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .giftiaryDashedOutline(colors.primaryActionText, 24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (creating) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryActionText, strokeWidth = 2.dp)
+            } else {
+                Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(20.dp), tint = colors.primaryActionText)
+            }
+        }
+        Text(
+            text = stringResource(R.string.wishlist_access_create_invite),
+            modifier = Modifier.padding(start = GiftiarySpacing.l),
+            style = GiftiaryType.rowTitle,
+            color = colors.primaryActionText,
+        )
+    }
+}
+
+@Composable
+private fun LinkMark() {
+    val colors = GiftiaryTheme.colors
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .background(colors.surfaceContext, GiftiaryShapes.pill),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(R.drawable.ic_link), contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.textPrimary)
     }
 }
 
 @Composable
 private fun NewInviteCard(invite: CreatedInvite, onShare: () -> Unit) {
     val colors = GiftiaryTheme.colors
-    Surface(
+    Column(
         modifier = Modifier
+            .padding(vertical = GiftiarySpacing.m)
             .fillMaxWidth()
-            .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
-        shape = GiftiaryShapes.container,
-        color = colors.surfaceElevated,
+            .background(colors.infoSurface, GiftiaryShapes.container)
+            .padding(GiftiarySpacing.l),
+        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
     ) {
-        Column(modifier = Modifier.padding(GiftiarySpacing.l), verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
-            Text(
-                text = stringResource(R.string.wishlist_access_new_invite_title),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-            )
-            Text(
-                text = stringResource(R.string.wishlist_access_new_invite_message, sharingDate(invite.expiresAt)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-            GiftiaryPrimaryButton(
-                text = stringResource(R.string.wishlist_access_share_link),
-                onClick = onShare,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        Text(
+            text = stringResource(R.string.wishlist_access_new_invite_title),
+            modifier = Modifier.semantics { heading() },
+            style = GiftiaryType.rowTitle,
+            color = colors.textPrimary,
+        )
+        Text(
+            text = stringResource(R.string.wishlist_access_new_invite_message, sharingDate(invite.expiresAt)),
+            style = GiftiaryType.body,
+            color = colors.textPrimary,
+        )
+        GiftiaryPrimaryButton(
+            text = stringResource(R.string.wishlist_access_share_link),
+            onClick = onShare,
+            modifier = Modifier
+                .padding(top = GiftiarySpacing.xs)
+                .fillMaxWidth(),
+        )
     }
 }
 
@@ -261,29 +425,47 @@ private fun NewInviteCard(invite: CreatedInvite, onShare: () -> Unit) {
 @Composable
 private fun NamePrompt(onAddName: () -> Unit, onDismiss: () -> Unit) {
     val colors = GiftiaryTheme.colors
-    Surface(
+    Column(
         modifier = Modifier
+            .padding(top = GiftiarySpacing.l)
             .fillMaxWidth()
-            .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
-        shape = GiftiaryShapes.container,
-        color = colors.surfaceElevated,
+            .background(colors.infoSurface, GiftiaryShapes.container)
+            .padding(start = GiftiarySpacing.l, end = GiftiarySpacing.s, top = GiftiarySpacing.m),
     ) {
-        Column(modifier = Modifier.padding(start = GiftiarySpacing.l, end = GiftiarySpacing.s, top = GiftiarySpacing.m)) {
-            Text(
-                text = stringResource(R.string.wishlist_access_name_prompt),
-                modifier = Modifier.padding(end = GiftiarySpacing.s),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textPrimary,
-            )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary)) {
-                    Text(stringResource(R.string.wishlist_access_name_prompt_later))
-                }
-                TextButton(onClick = onAddName, colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText)) {
-                    Text(stringResource(R.string.wishlist_access_name_prompt_add))
-                }
+        Text(
+            text = stringResource(R.string.wishlist_access_name_prompt),
+            modifier = Modifier.padding(end = GiftiarySpacing.s),
+            style = GiftiaryType.body,
+            color = colors.textPrimary,
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary)) {
+                Text(stringResource(R.string.wishlist_access_name_prompt_later))
+            }
+            TextButton(onClick = onAddName, colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText)) {
+                Text(stringResource(R.string.wishlist_access_name_prompt_add))
             }
         }
+    }
+}
+
+/** Owners never learn about reservations; the server does not tell this screen about them at all. */
+@Composable
+private fun ReservationsNote() {
+    val colors = GiftiaryTheme.colors
+    Row(
+        modifier = Modifier.padding(top = GiftiarySpacing.xxl),
+        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_gift_glyph),
+            contentDescription = null,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(18.dp),
+            tint = colors.textSecondary,
+        )
+        Text(text = stringResource(R.string.wishlist_access_reservations_note), style = GiftiaryType.body, color = colors.textSecondary)
     }
 }
 
