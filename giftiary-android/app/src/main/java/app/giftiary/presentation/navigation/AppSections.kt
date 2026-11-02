@@ -26,7 +26,7 @@ val WidthClass.hasNavigationRail: Boolean get() = this != WidthClass.COMPACT
 
 /**
  * The section every signed-in destination belongs to, so the rail marks its parent: details and
- * editors their list's section, occasions Home (where they are planned), sharing Wishlists.
+ * editors their list's section, occasions and Profile Home (where they are opened), sharing Wishlists.
  */
 internal val routeSections: Map<KClass<*>, AppSection> = mapOf(
     HomeRoute::class to AppSection.HOME,
@@ -35,6 +35,8 @@ internal val routeSections: Map<KClass<*>, AppSection> = mapOf(
     AddOccasionRoute::class to AppSection.HOME,
     EditOccasionRoute::class to AppSection.HOME,
     OccasionPlanRoute::class to AppSection.HOME,
+    ProfileRoute::class to AppSection.HOME,
+    EditProfileRoute::class to AppSection.HOME,
     PeopleRoute::class to AppSection.PEOPLE,
     PersonDetailRoute::class to AppSection.PEOPLE,
     AddPersonRoute::class to AppSection.PEOPLE,
@@ -66,7 +68,7 @@ internal fun NavDestination.section(): AppSection? =
 
 /**
  * The routes that show the phone navigation unit (DS-04): the four section roots and the screens
- * browsed from them. Task flows, Settings, sharing and system screens hide it, so a form is never
+ * browsed from them. Task flows, Profile, Settings, sharing and system screens hide it, so a form is never
  * left half-done by a tap on the bar. Mark as given is the exception the approved board draws: a
  * short confirmation over the idea, with the bar behind it.
  */

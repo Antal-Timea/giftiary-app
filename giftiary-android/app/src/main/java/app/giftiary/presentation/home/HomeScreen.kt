@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -47,6 +48,7 @@ import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.presentation.components.EditorialHero
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryTextAction
+import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
@@ -76,10 +78,10 @@ fun HomeScreen(
     onOpenAllGifts: () -> Unit,
     onOpenOwnOccasions: () -> Unit,
     onOpenSyncAttention: () -> Unit,
-    onOpenSettings: () -> Unit,
+    // The signed-in account's email, which gives the profile entry its initial.
+    accountEmail: String?,
+    onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier,
-    // Off when the navigation rail leads to Settings.
-    showSettingsLink: Boolean = true,
     widthClass: WidthClass = LocalWidthClass.current,
     today: LocalDate = LocalDate.now(),
 ) {
@@ -105,6 +107,7 @@ fun HomeScreen(
                 onOpenSyncAttention = onOpenSyncAttention,
                 reminderCard = reminderCard,
                 reminderActions = reminderActions,
+                profileEntry = { ProfileEntry(accountEmail, onOpenProfile) },
                 modifier = Modifier.padding(contentPadding).windowInsetsPadding(WindowInsets.statusBars),
             )
             return@Scaffold
@@ -117,7 +120,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .giftiaryReadableWidth(),
         ) {
-            HomeHero(today = today, onOpenSettings = onOpenSettings.takeIf { showSettingsLink })
+            HomeHero(today = today, profileEntry = { ProfileEntry(accountEmail, onOpenProfile) })
             SyncStatusLine(
                 content = syncStatus,
                 onOpenAttention = onOpenSyncAttention,
@@ -149,7 +152,7 @@ fun HomeScreen(
  * exists, the yellow ground holds the composition on its own (R4: no reference photography).
  */
 @Composable
-private fun HomeHero(today: LocalDate, onOpenSettings: (() -> Unit)?) {
+private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
     val colors = GiftiaryTheme.colors
     EditorialHero(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -166,7 +169,7 @@ private fun HomeHero(today: LocalDate, onOpenSettings: (() -> Unit)?) {
                     style = GiftiaryType.wordmark,
                     color = colors.textPrimary,
                 )
-                if (onOpenSettings != null) SettingsCircle(onOpenSettings)
+                profileEntry()
             }
             Column(modifier = Modifier.padding(top = 11.dp).widthIn(max = 180.dp)) {
                 Text(
@@ -202,30 +205,36 @@ private fun HomeHero(today: LocalDate, onOpenSettings: (() -> Unit)?) {
 }
 
 /**
- * Where the approved board has the profile avatar. Profile is not built yet, so the circle opens
- * Settings, which holds the profile, reminders and sign-out.
+ * The approved hero's profile entry: the account's monogram, opening Profile, where Settings and
+ * signing out are. The initial comes from the email, the one name the device always has.
  */
 @Composable
-private fun SettingsCircle(onClick: () -> Unit) {
-    val colors = GiftiaryTheme.colors
+private fun ProfileEntry(email: String?, onClick: () -> Unit) {
+    val label = stringResource(R.string.home_open_profile)
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(GiftiaryShapes.pill)
-            .clickable(onClickLabel = null, role = Role.Button, onClick = onClick),
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier.size(34.dp).background(colors.surfaceContextQuiet, GiftiaryShapes.pill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_nav_settings),
-                contentDescription = stringResource(R.string.settings_title),
-                modifier = Modifier.size(18.dp),
-                tint = colors.textPrimary,
-            )
-        }
+        GiftiaryAvatar(
+            name = email.orEmpty(),
+            size = 36.dp,
+            photo = if (email.isNullOrBlank()) {
+                {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_people),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = GiftiaryTheme.colors.textPrimary,
+                    )
+                }
+            } else {
+                null
+            },
+        )
     }
 }
 
@@ -314,6 +323,7 @@ private fun WideHome(
     onOpenSyncAttention: () -> Unit,
     reminderCard: ReminderCardState,
     reminderActions: ReminderCardActions,
+    profileEntry: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -322,7 +332,7 @@ private fun WideHome(
             .giftiaryWideWidth()
             .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
     ) {
-        WideHeader()
+        WideHeader(profileEntry)
         Spacer(Modifier.height(GiftiarySpacing.xxl))
         Row(
             modifier = Modifier.weight(1f),
@@ -350,13 +360,17 @@ private fun WideHome(
 }
 
 @Composable
-private fun WideHeader() {
+private fun WideHeader(profileEntry: @Composable () -> Unit) {
     val colors = GiftiaryTheme.colors
-    Text(
-        text = stringResource(R.string.app_name).uppercase(),
-        style = GiftiaryType.wordmark,
-        color = colors.textSecondary,
-    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.app_name).uppercase(),
+            modifier = Modifier.weight(1f),
+            style = GiftiaryType.wordmark,
+            color = colors.textSecondary,
+        )
+        profileEntry()
+    }
     Spacer(Modifier.height(GiftiarySpacing.s))
     Text(
         text = stringResource(R.string.home_title),
@@ -398,8 +412,8 @@ private fun HomePreviewContent() {
         onOpenAllGifts = {},
         onOpenOwnOccasions = {},
         onOpenSyncAttention = {},
-        onOpenSettings = {},
-        showSettingsLink = LocalWidthClass.current == WidthClass.COMPACT,
+        accountEmail = "anna@example.com",
+        onOpenProfile = {},
     )
 }
 

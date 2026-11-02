@@ -20,6 +20,12 @@ data object SyncAttentionRoute
 data object SettingsRoute
 
 @Serializable
+data object ProfileRoute
+
+@Serializable
+data object EditProfileRoute
+
+@Serializable
 data class PersonDetailRoute(val personId: String)
 
 @Serializable

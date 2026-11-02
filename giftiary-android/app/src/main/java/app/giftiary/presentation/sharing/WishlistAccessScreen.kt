@@ -69,7 +69,7 @@ import java.time.Instant
 import java.util.UUID
 
 @Composable
-fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit, onOpenSettings: () -> Unit) {
+fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit, onEditName: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Also on returning from Settings, where the name may just have been added.
     LifecycleResumeEffect(viewModel) {
@@ -98,7 +98,7 @@ fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit,
             onRemoveConfirmed = viewModel::onRemoveConfirmed,
             onRemoveDismissed = viewModel::onRemoveDismissed,
             onMessageShown = viewModel::onMessageShown,
-            onAddName = onOpenSettings,
+            onAddName = onEditName,
             onNamePromptDismissed = viewModel::onNamePromptDismissed,
         ),
     )

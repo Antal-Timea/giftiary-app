@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,9 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +31,7 @@ import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,7 +104,10 @@ internal fun rememberProviderClick(viewModel: ProviderSignInViewModel): (AuthPro
     return viewModel::begin
 }
 
-/** "or", then one button per offered provider, with the provider flow's progress or error. Nothing without providers. */
+/**
+ * One button per offered provider, the provider flow's progress or error, then "or" before the
+ * email form below, as on the approved Sign in board. Nothing without providers.
+ */
 @Composable
 internal fun ProviderSignInSection(
     providers: List<AuthProvider>,
@@ -119,16 +119,6 @@ internal fun ProviderSignInSection(
     if (providers.isEmpty()) return
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.m)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = colors.divider)
-            Text(
-                text = stringResource(R.string.auth_or),
-                modifier = Modifier.padding(horizontal = GiftiarySpacing.m),
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.textMuted,
-            )
-            HorizontalDivider(modifier = Modifier.weight(1f), color = colors.divider)
-        }
         providers.forEach { provider ->
             GiftiarySecondaryButton(
                 text = stringResource(provider.labelRes()),
@@ -143,13 +133,16 @@ internal fun ProviderSignInSection(
             is ProviderSignInState.Failed -> stringResource(state.error.messageRes()) to colors.error
             ProviderSignInState.Idle, is ProviderSignInState.Launching -> null
         }
-        message?.let { (text, color) ->
+        message?.let { (text, color) -> AuthStatusText(text = text, color = color) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = colors.divider)
             Text(
-                text = text,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                style = MaterialTheme.typography.bodyMedium,
-                color = color,
+                text = stringResource(R.string.auth_or),
+                modifier = Modifier.padding(horizontal = GiftiarySpacing.m),
+                style = GiftiaryType.bodySmall,
+                color = colors.textMuted,
             )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = colors.divider)
         }
     }
 }

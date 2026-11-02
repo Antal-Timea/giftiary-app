@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.SyncStatus
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.home.ComingUpContent
+import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.home.HomeScreen
 import app.giftiary.presentation.home.ReminderCardActions
 import app.giftiary.presentation.home.RecentGiftsContent
@@ -138,8 +139,9 @@ class AdaptiveNavigationTest {
     }
 
     @Test
-    fun `Home's section buttons are gone, and phones keep a Settings link, which the rail replaces on wide windows`() {
-        var showSettings by mutableStateOf(true)
+    fun `Home's section buttons are gone, and its profile entry stays at every width, as the rail has no Profile`() {
+        var widthClass by mutableStateOf(WidthClass.COMPACT)
+        var profileOpened = 0
         compose.setContent {
             GiftiaryTheme {
                 HomeScreen(
@@ -153,18 +155,21 @@ class AdaptiveNavigationTest {
                     onOpenAllGifts = {},
                     onOpenOwnOccasions = {},
                     onOpenSyncAttention = {},
-                    onOpenSettings = {},
-                    showSettingsLink = showSettings,
+                    accountEmail = "anna@example.com",
+                    onOpenProfile = { profileOpened++ },
+                    widthClass = widthClass,
                 )
             }
         }
-        compose.onNodeWithContentDescription("Settings").assertExists()
         listOf("Gifts", "People", "Wishlists").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
-
-        showSettings = false
-        compose.waitForIdle()
-
         compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
+
+        WidthClass.entries.forEach {
+            widthClass = it
+            compose.waitForIdle()
+            compose.onNodeWithContentDescription("Your profile").performClick()
+        }
+        assertEquals(WidthClass.entries.size, profileOpened)
     }
 
     @Test

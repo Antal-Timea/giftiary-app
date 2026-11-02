@@ -4,12 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -20,7 +22,7 @@ import app.giftiary.presentation.sharing.PendingJoinViewModel
 import java.util.UUID
 
 @Composable
-fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
+fun GiftiaryNavHost(accountEmail: String?, onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val joinPending by hiltViewModel<PendingJoinViewModel>().isPending.collectAsStateWithLifecycle()
     // A join link opened now, or while signed out, opens the join screen; a fresh one each time,
@@ -46,7 +48,7 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             navController = navController,
             startDestination = HomeRoute,
         ) {
-            homeDestinations(navController, onSignOut)
+            homeDestinations(navController, accountEmail, onSignOut)
             peopleDestinations(navController)
             occasionDestinations(navController)
             giftDestinations(navController)
@@ -65,11 +67,16 @@ fun GiftiaryNavHost(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** Settings: a back arrow on phones, where it is opened from Home; none beside the rail, which leads away. */
+/**
+ * Settings' back circle. Opened from Profile it leads back there, beside the rail too; opened from
+ * the rail it is a section of its own, with nothing to go back to.
+ */
 @Composable
-internal fun NavHostController.sectionRootBack(): (() -> Unit)? {
+internal fun NavHostController.settingsBack(entry: NavBackStackEntry): (() -> Unit)? {
+    // Read once, while Settings is on top: what lies beneath it does not change.
+    val fromProfile = remember(entry) { previousBackStackEntry?.destination?.hasRoute<ProfileRoute>() == true }
     val back = popBackStackUnlessPaused()
-    return back.takeUnless { LocalWidthClass.current.hasNavigationRail }
+    return back.takeIf { fromProfile || !LocalWidthClass.current.hasNavigationRail }
 }
 
 /** Route ids are strings; a malformed one closes the destination instead of crashing. */

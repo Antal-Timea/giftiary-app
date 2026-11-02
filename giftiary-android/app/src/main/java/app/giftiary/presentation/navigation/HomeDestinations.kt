@@ -7,18 +7,19 @@ import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
-import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.home.ComingUpViewModel
 import app.giftiary.presentation.home.HomeScreen
 import app.giftiary.presentation.home.RecentGiftsViewModel
 import app.giftiary.presentation.home.ReminderCardViewModel
 import app.giftiary.presentation.home.rememberReminderCardActions
+import app.giftiary.presentation.profile.EditProfileScreen
+import app.giftiary.presentation.profile.ProfileScreen
 import app.giftiary.presentation.settings.SettingsScreen
 import app.giftiary.presentation.sync.SyncAttentionScreen
 import app.giftiary.presentation.sync.SyncStatusViewModel
 
-/** Home, the sync attention list and Settings. */
-internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, onSignOut: () -> Unit) {
+/** Home, the sync attention list, and the user's own Profile and Settings, opened from Home. */
+internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, accountEmail: String?, onSignOut: () -> Unit) {
     composable<HomeRoute> {
         val syncStatus by hiltViewModel<SyncStatusViewModel>().content.collectAsStateWithLifecycle()
         val comingUp by hiltViewModel<ComingUpViewModel>().content.collectAsStateWithLifecycle()
@@ -36,8 +37,8 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
             onOpenAllGifts = dropUnlessResumed { navController.navigateToSection(AppSection.GIFTS) },
             onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
             onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
-            onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
-            showSettingsLink = !LocalWidthClass.current.hasNavigationRail,
+            accountEmail = accountEmail,
+            onOpenProfile = dropUnlessResumed { navController.navigate(ProfileRoute) },
         )
     }
     composable<SyncAttentionRoute> {
@@ -46,11 +47,23 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
             onOpen = { item -> navController.navigate(routeOf(item)) },
         )
     }
-    composable<SettingsRoute> {
+    composable<ProfileRoute> {
+        ProfileScreen(
+            viewModel = hiltViewModel(),
+            onBack = navController.popBackStackUnlessPaused(),
+            onEditProfile = dropUnlessResumed { navController.navigate(EditProfileRoute) },
+            onOpenSettings = dropUnlessResumed { navController.navigate(SettingsRoute) },
+            onSignOut = onSignOut,
+        )
+    }
+    composable<EditProfileRoute> {
+        EditProfileScreen(viewModel = hiltViewModel(), onBack = navController.popBackStackUnlessPaused())
+    }
+    composable<SettingsRoute> { entry ->
         SettingsScreen(
             viewModel = hiltViewModel(),
             reminders = hiltViewModel(),
-            onBack = navController.sectionRootBack(),
+            onBack = navController.settingsBack(entry),
             onSignOut = onSignOut,
         )
     }

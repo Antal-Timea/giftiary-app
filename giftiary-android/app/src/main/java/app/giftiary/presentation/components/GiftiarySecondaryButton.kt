@@ -1,7 +1,6 @@
 package app.giftiary.presentation.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
@@ -17,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -36,8 +36,10 @@ fun GiftiarySecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    // Shown in its own colours, e.g. a sign-in provider's mark; decorative, as the text names it.
+    // Decorative, as the text names it. A sign-in provider's mark keeps its own colours (the
+    // unspecified tint); a line icon such as a pencil takes the text's.
     leadingIcon: Painter? = null,
+    leadingIconTint: Color = Color.Unspecified,
 ) {
     val colors = GiftiaryTheme.colors
     OutlinedButton(
@@ -53,7 +55,7 @@ fun GiftiarySecondaryButton(
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = GiftiarySpacing.m),
     ) {
         if (leadingIcon != null) {
-            Image(painter = leadingIcon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Icon(painter = leadingIcon, contentDescription = null, modifier = Modifier.size(20.dp), tint = leadingIconTint)
             Spacer(Modifier.width(GiftiarySpacing.m))
         }
         Text(text = text, style = GiftiaryType.actionSmall)
@@ -93,11 +95,21 @@ fun GiftiarySupportButton(
  * one standing alone in body text, such as a state's "Clear search".
  */
 @Composable
-fun GiftiaryTextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, underline: Boolean = false) {
+fun GiftiaryTextAction(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    underline: Boolean = false,
+    enabled: Boolean = true,
+) {
     TextButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp),
-        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
+        enabled = enabled,
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = GiftiaryTheme.colors.textPrimary,
+            disabledContentColor = GiftiaryTheme.colors.textMuted,
+        ),
         contentPadding = PaddingValues(horizontal = GiftiarySpacing.xs),
     ) {
         Text(

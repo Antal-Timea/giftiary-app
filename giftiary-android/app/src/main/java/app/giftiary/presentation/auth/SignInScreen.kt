@@ -1,26 +1,17 @@
 package app.giftiary.presentation.auth
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,11 +20,12 @@ import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
-import app.giftiary.presentation.components.GiftiarySecondaryButton
-import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTextAction
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 @Composable
 fun SignInScreen(
@@ -61,8 +53,12 @@ fun SignInScreen(
     )
 }
 
+/**
+ * The approved Sign in board: the welcome, the providers this build offers, then email and
+ * password, Forgot password, Sign in, and the way to a new account.
+ */
 @Composable
-private fun SignInContent(
+internal fun SignInContent(
     state: CredentialsUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -78,87 +74,64 @@ private fun SignInContent(
     val colors = GiftiaryTheme.colors
     // One sign-in at a time: email and provider buttons wait for each other.
     val providerBusy = providerState.isBusy
-    Scaffold(modifier = modifier) { contentPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .giftiaryReadableWidth()
-                .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.xxxl),
-        ) {
+    AuthPage(modifier) {
+        GiftiaryTaskHeader(
+            title = stringResource(R.string.auth_sign_in_title),
+            subtitle = stringResource(R.string.auth_sign_in_message),
+            onBack = null,
+        )
+        // An invite opened while signed out waits in memory and opens once signed in.
+        if (joinPending) {
             Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.textSecondary,
-            )
-            Spacer(Modifier.height(GiftiarySpacing.s))
-            Text(
-                text = stringResource(R.string.auth_sign_in_title),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.displaySmall,
+                text = stringResource(R.string.auth_join_pending),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.infoSurface, GiftiaryShapes.container)
+                    .padding(GiftiarySpacing.l),
+                style = GiftiaryType.bodySmall,
                 color = colors.textPrimary,
             )
-            Spacer(Modifier.height(GiftiarySpacing.m))
-            Text(
-                text = stringResource(R.string.auth_sign_in_message),
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.textSecondary,
-            )
-            // An invite opened while signed out waits in memory and opens once signed in.
-            if (joinPending) {
-                Spacer(Modifier.height(GiftiarySpacing.l))
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = GiftiaryShapes.container,
-                    color = colors.surfaceElevated,
-                ) {
-                    Text(
-                        text = stringResource(R.string.auth_join_pending),
-                        modifier = Modifier.padding(GiftiarySpacing.l),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textPrimary,
-                    )
-                }
-            }
-            Spacer(Modifier.height(GiftiarySpacing.xxl))
-            CredentialsFields(
-                state = state,
-                onEmailChange = onEmailChange,
-                onPasswordChange = onPasswordChange,
-                onSubmit = onSubmit,
-                showPasswordHint = false,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(GiftiarySpacing.xl))
-            GiftiaryPrimaryButton(
-                text = stringResource(R.string.auth_sign_in),
-                onClick = onSubmit,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !providerBusy,
-                loading = state.isSubmitting,
-            )
-            TextButton(
+        }
+        ProviderSignInSection(
+            providers = providers,
+            state = providerState,
+            onProvider = onProvider,
+            enabled = !state.isSubmitting,
+            modifier = Modifier.fillMaxWidth().padding(top = GiftiarySpacing.s),
+        )
+        CredentialsFields(
+            state = state,
+            onEmailChange = onEmailChange,
+            onPasswordChange = onPasswordChange,
+            onSubmit = onSubmit,
+            showPasswordHint = false,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+            GiftiaryTextAction(
+                text = stringResource(R.string.auth_forgot_password),
                 onClick = onForgotPassword,
-                modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isSubmitting && !providerBusy,
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
-            ) {
-                Text(stringResource(R.string.auth_forgot_password))
-            }
-            Spacer(Modifier.height(GiftiarySpacing.s))
-            ProviderSignInSection(
-                providers = providers,
-                state = providerState,
-                onProvider = onProvider,
-                enabled = !state.isSubmitting,
-                modifier = Modifier.fillMaxWidth().padding(bottom = GiftiarySpacing.xl),
             )
-            GiftiarySecondaryButton(
+        }
+        GiftiaryPrimaryButton(
+            text = stringResource(R.string.auth_sign_in),
+            onClick = onSubmit,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !providerBusy,
+            loading = state.isSubmitting,
+            trailingArrow = true,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = stringResource(R.string.auth_new_here), style = GiftiaryType.body, color = colors.textSecondary)
+            GiftiaryTextAction(
                 text = stringResource(R.string.auth_go_to_create_account),
                 onClick = onCreateAccount,
-                modifier = Modifier.fillMaxWidth(),
+                underline = true,
                 enabled = !state.isSubmitting && !providerBusy,
             )
         }
