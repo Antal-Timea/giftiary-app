@@ -1,8 +1,8 @@
 package app.giftiary.presentation.people
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,8 +20,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -36,6 +37,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Person
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryAddFab
 import app.giftiary.presentation.components.GiftiaryAddFabClearance
 import app.giftiary.presentation.components.GiftiaryAvatar
@@ -266,20 +268,16 @@ private fun EmptyPeople(onAddPerson: () -> Unit) {
             .padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.xl),
         verticalArrangement = Arrangement.Center,
     ) {
-        // The board's photograph is reference only; the branded glyph stands in for it.
-        Box(
+        // The approved small gift (G1-4), close up in the circle; decoration, as the title says it all.
+        Image(
+            painter = painterResource(GiftCutout.SMALL.image),
+            contentDescription = null,
             modifier = Modifier
                 .size(128.dp)
-                .background(colors.thumbnailFallback, GiftiaryShapes.pill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_gift_glyph),
-                contentDescription = null,
-                modifier = Modifier.size(52.dp),
-                tint = colors.textLabel,
-            )
-        }
+                .clip(GiftiaryShapes.pill)
+                .background(colors.thumbnailFallback)
+                .scale(EMPTY_MARK_ZOOM),
+        )
         Text(
             text = stringResource(R.string.people_empty_title),
             modifier = Modifier
@@ -349,6 +347,9 @@ private fun NoResults(query: String, allCount: Int, onClear: () -> Unit) {
 }
 
 private val AVATAR_SIZE = 48.dp
+
+// The circle crops tightly into the gift, as the approved empty-state mark does.
+private const val EMPTY_MARK_ZOOM = 1.3f
 
 // Also used by the list-detail previews in PeopleListDetail.kt.
 internal val previewPeople = listOf(

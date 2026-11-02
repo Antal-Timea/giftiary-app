@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -23,22 +25,26 @@ import app.giftiary.presentation.theme.GiftiaryType
 
 /**
  * The page every auth screen is set on, as on the approved Sign in board: ivory, the task gutter,
- * scrolling above the keyboard. Screens start it with a `GiftiaryTaskHeader`.
+ * scrolling above the keyboard. Screens start it with a `GiftiaryTaskHeader`. A [decorated] page
+ * has the board's gift cut-outs behind it.
  */
 @Composable
-internal fun AuthPage(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+internal fun AuthPage(modifier: Modifier = Modifier, decorated: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     Scaffold(modifier = modifier, containerColor = GiftiaryTheme.colors.background) { contentPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .giftiaryReadableWidth()
-                .padding(horizontal = GiftiarySpacing.taskGutter, vertical = GiftiarySpacing.browseGutter),
-            verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
-            content = content,
-        )
+        val page = @Composable {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .giftiaryReadableWidth()
+                    .padding(horizontal = GiftiarySpacing.taskGutter, vertical = GiftiarySpacing.browseGutter),
+                verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+                content = content,
+            )
+        }
+        if (decorated) DecoratedPage(top = GiftCutout.LARGE, bottom = GiftCutout.SMALL, content = page) else page()
     }
 }
 

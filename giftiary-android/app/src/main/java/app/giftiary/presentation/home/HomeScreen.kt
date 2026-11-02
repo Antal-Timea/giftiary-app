@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -46,6 +48,7 @@ import app.giftiary.domain.model.UpcomingOccasion
 import app.giftiary.domain.model.turningAge
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.presentation.components.EditorialHero
+import app.giftiary.presentation.components.EditorialImage
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
 import app.giftiary.presentation.components.GiftiaryTextAction
 import app.giftiary.presentation.components.GiftiaryAvatar
@@ -147,14 +150,31 @@ fun HomeScreen(
 }
 
 /**
- * The warm editorial hero: the wordmark, the question and today's date, and the handwritten line.
- * Its right half is the slot of the approved editorial photograph; until that original asset
- * exists, the yellow ground holds the composition on its own (R4: no reference photography).
+ * The warm editorial hero: the approved photograph (G1-1), with the wordmark, the question and
+ * today's date, and the handwritten line set on it.
  */
 @Composable
 private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
     val colors = GiftiaryTheme.colors
-    EditorialHero(modifier = Modifier.fillMaxWidth()) {
+    EditorialHero(
+        modifier = Modifier.fillMaxWidth(),
+        image = {
+            EditorialImage(R.drawable.giftiary_home_hero)
+            // The photograph's flowers sit on the left, under the words: a wash of the hero's own
+            // yellow keeps them readable without touching the gift on the right.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to colors.heroFallback.copy(alpha = 0.9f),
+                            0.5f to colors.heroFallback.copy(alpha = 0.7f),
+                            0.75f to Color.Transparent,
+                        ),
+                    ),
+            )
+        },
+    ) {
         Column(
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars)

@@ -1,16 +1,22 @@
 package app.giftiary.presentation.components
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
@@ -114,9 +120,9 @@ fun GiftThumbnail(
 private const val GLYPH_RATIO = 22f / 52f
 
 /**
- * The full-bleed editorial hero with a 32dp bottom radius. Until the [image] loads, or while no
- * approved photography exists, the warm yellow fallback stands in for it; [content] is set
- * directly on top. The image fills whatever height the caller or the content gives the hero.
+ * The full-bleed editorial hero with a 32dp bottom radius. The warm yellow fallback lies under the
+ * [image], so nothing else shows while it draws; [content] is set directly on top. The image fills
+ * whatever height the caller or the content gives the hero.
  */
 @Composable
 fun EditorialHero(
@@ -135,3 +141,67 @@ fun EditorialHero(
         content()
     }
 }
+
+/**
+ * A bundled editorial photograph filling its slot, cropped like CSS `cover` around [alignment].
+ * Screen readers skip it: the words set on or beside it carry the meaning.
+ */
+@Composable
+fun EditorialImage(@DrawableRes image: Int, modifier: Modifier = Modifier, alignment: Alignment = Alignment.Center) {
+    Image(
+        painter = painterResource(image),
+        contentDescription = null,
+        modifier = modifier.fillMaxSize(),
+        alignment = alignment,
+        contentScale = ContentScale.Crop,
+    )
+}
+
+/**
+ * The bundled gift cut-outs of the approved boards: decoration and brand imagery only, never a
+ * stand-in for a gift, idea or wish of the user's.
+ */
+enum class GiftCutout(@DrawableRes val image: Int) {
+    LARGE(R.drawable.giftiary_gift_cutout_large),
+    SMALL(R.drawable.giftiary_gift_cutout_small),
+}
+
+/**
+ * A page with faint gift cut-outs behind it, as the approved creation and account boards draw
+ * them: [top] in the top end corner and [bottom] in the bottom start corner, each partly off the
+ * screen. They stay put while the page scrolls over them, and screen readers skip them.
+ */
+@Composable
+fun DecoratedPage(
+    top: GiftCutout,
+    modifier: Modifier = Modifier,
+    bottom: GiftCutout? = null,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier.fillMaxSize()) {
+        val topSize = if (top == GiftCutout.LARGE) 240.dp else 200.dp
+        Image(
+            painter = painterResource(top.image),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = topSize * 0.4f, y = -topSize * 0.12f)
+                .size(topSize)
+                .alpha(if (top == GiftCutout.LARGE) 0.45f else 0.4f),
+        )
+        if (bottom != null) {
+            Image(
+                painter = painterResource(bottom.image),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .offset(x = -BOTTOM_SIZE * 0.4f, y = BOTTOM_SIZE * 0.25f)
+                    .size(BOTTOM_SIZE)
+                    .alpha(0.32f),
+            )
+        }
+        content()
+    }
+}
+
+private val BOTTOM_SIZE = 220.dp

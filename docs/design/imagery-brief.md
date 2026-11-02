@@ -1,7 +1,37 @@
 # Production imagery brief
 
-Status: brief only, 2026-11-01. No image has been generated yet, and nothing in this document goes into
-the app until the owner approves it.
+Status: brief written 2026-11-01. **Group 1 is produced and shipped (Phase 5):** the owner approved four
+newly generated original images in the project conversation on 2026-11-02, and they are the app's only
+bundled photography. They were generated new from this brief. No recovered asset was used as an input,
+and the recovered files still must never ship.
+
+## Production assets (Group 1)
+
+All four are in `giftiary-android/app/src/main/res/drawable-nodpi/`. Each was exported from the
+owner-approved file at its native size, as WebP, with no crop, upscaling or retouching. G1-1 and G1-2 are
+lossy WebP at quality 85 with no alpha. G1-3 and G1-4 are lossy WebP at quality 90 with lossless alpha.
+No generator metadata is embedded.
+
+| Role | Resource | Size | Approved | Used on |
+|---|---|---|---|---|
+| G1-1 Home editorial hero | `giftiary_home_hero` | 1351 × 1164, no alpha | 2026-11-02 | Home hero (compact and medium; also under the Quick Add sheet and on Home offline, which show Home itself) |
+| G1-2 Onboarding Share | `giftiary_onboarding_share` | 1122 × 1402, no alpha | 2026-11-02 | Onboarding Share hero |
+| G1-3 Large supporting cut-out | `giftiary_gift_cutout_large` | 1254 × 1254, alpha | 2026-11-02 | Onboarding Remember (full strength); corner decoration on Sign in, Add/Edit gift, Add/Edit gift idea, Add/Edit person, Add/Edit wish |
+| G1-4 Small supporting cut-out | `giftiary_gift_cutout_small` | 1254 × 1254, alpha | 2026-11-02 | Onboarding Plan ring; People empty mark; corner decoration on Create/Edit list and Profile, and bottom-start on Sign in and Add/Edit gift |
+
+Notes on how the approved images are used:
+- The sources are smaller than the target sizes below (for example 1351 px, not 1600 px), so they keep
+  their native size; upscaling would add nothing.
+- The approved images are a single kraft gift with a teal satin bow. They replace the recovered
+  references' multi-gift arrangements, as the "may vary" rows allow.
+- G1-1 has its flowers on the left, under the Home words. A horizontal wash of the hero's own yellow
+  (`heroFallback`) over the left half keeps the text readable; the image itself is not altered.
+- G1-2 fills its frame with the gift, leaving no empty ground above it for the title. The Share
+  chapter therefore shows the image first and the words below, the order Remember already uses.
+- The cut-outs have clean edges rather than the feathered fade described for G1-3/G1-4. They sit
+  directly on the ivory page, with no plate behind them.
+- Every use is decorative and silent to screen readers. Group 2 and Group 3 are unchanged: these
+  images never stand in for a person, gift, idea, wish or list.
 
 ## Why this exists
 
@@ -73,8 +103,8 @@ These come from DS-06 ("photography, not illustration") and the recovered refere
 
 ## Group 1: bundled images to generate (4)
 
-All four go in `giftiary-android/app/src/main/res/drawable-nodpi/` as WebP, with names to be decided by
-the implementing phase. A single high-resolution file per image is enough. The size is set by the
+All four go in `giftiary-android/app/src/main/res/drawable-nodpi/` as WebP (final names: see
+"Production assets" above). A single high-resolution file per image is enough. The size is set by the
 largest phone use at xxxhdpi (4×), and Coil/Compose scale it down.
 
 ### G1-1. Home editorial hero
