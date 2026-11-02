@@ -36,6 +36,10 @@ class FakeGiftIdeaRepository : GiftIdeaRepository {
     var lastSaved: GiftIdeaDetails? = null
         private set
 
+    /** How often a conversion was asked for, whether or not it succeeded. */
+    var markAsGivenCalls = 0
+        private set
+
     /** The arguments of each successful conversion. */
     val conversions = mutableListOf<Pair<LocalDate, Money?>>()
 
@@ -99,6 +103,7 @@ class FakeGiftIdeaRepository : GiftIdeaRepository {
     }
 
     override suspend fun markAsGiven(id: UUID, givenAt: LocalDate, price: Money?): Gift {
+        markAsGivenCalls++
         writeFailure?.let { throw it }
         if (id in givenIds) throw GiftIdeaAlreadyGivenException(id)
         val entry = entries.value.find { it.idea.id == id } ?: throw GiftIdeaNotFoundException(id)

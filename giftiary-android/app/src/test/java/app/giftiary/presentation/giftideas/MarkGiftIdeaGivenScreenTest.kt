@@ -113,7 +113,7 @@ class MarkGiftIdeaGivenScreenTest {
 
     @Test
     fun `a failed save says so, keeps the input, and can be tried again`() {
-        show(ready.copy(writeError = MarkGivenError.FAILED))
+        show(ready.copy(writeFailed = true))
 
         compose.onNodeWithText("Could not record the gift. Please try again.").assertExists()
         compose.onNodeWithText("42990").assertExists()
@@ -122,10 +122,14 @@ class MarkGiftIdeaGivenScreenTest {
     }
 
     @Test
-    fun `an idea given meanwhile is said plainly`() {
-        show(ready.copy(writeError = MarkGivenError.ALREADY_GIVEN))
+    fun `an idea given meanwhile is said plainly, with nothing left to save but a way out`() {
+        show(ready.copy(status = MarkGivenStatus.ALREADY_GIVEN))
 
         compose.onNodeWithText("This idea has already been given.").assertExists()
+        compose.onNodeWithText("Save to gift history").assertDoesNotExist()
+        compose.onNodeWithText("When did you give it?").assertDoesNotExist()
+        compose.onNodeWithText("Cancel").performClick()
+        assertEquals(listOf("cancel"), events)
     }
 
     @Test
