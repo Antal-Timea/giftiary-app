@@ -1,27 +1,19 @@
 package app.giftiary.presentation.wishlists
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,11 +21,17 @@ import app.giftiary.R
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Wish
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.LoadingContent
-import app.giftiary.presentation.components.MessageContent
-import app.giftiary.presentation.gifts.DetailField
-import app.giftiary.presentation.gifts.ProductLink
+import app.giftiary.presentation.components.GiftiaryDivider
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTaskStatus
+import app.giftiary.presentation.components.OptionsMenu
+import app.giftiary.presentation.components.PendingSyncStatus
+import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.DetailContextCard
+import app.giftiary.presentation.gifts.DetailFactRow
+import app.giftiary.presentation.gifts.DetailFactValue
+import app.giftiary.presentation.gifts.DetailLinkValue
+import app.giftiary.presentation.gifts.DetailNote
 import app.giftiary.presentation.gifts.giftPrice
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -84,32 +82,20 @@ fun WishDetailScreen(
     val loaded = state.content as? WishDetailContent.Loaded
     Scaffold(
         modifier = modifier,
-        topBar = {
-            GiftiaryTopBar(
-                title = loaded?.wish?.name.orEmpty(),
-                onBack = onBack,
-                actions = {
-                    if (loaded != null) {
-                        TextButton(
-                            onClick = { onEdit(loaded.wish.id) },
-                            colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
-                        ) {
-                            Text(stringResource(R.string.gift_edit))
-                        }
-                    }
-                },
-            )
-        },
+        containerColor = GiftiaryTheme.colors.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (val content = state.content) {
-            WishDetailContent.Loading, WishDetailContent.Deleted -> LoadingContent(contentModifier)
-            WishDetailContent.NotFound -> MessageContent(stringResource(R.string.wish_not_found), contentModifier)
-            WishDetailContent.LoadFailed -> MessageContent(stringResource(R.string.wish_load_failed), contentModifier)
+            WishDetailContent.Loading, WishDetailContent.Deleted -> GiftiaryTaskStatus(null, onBack, contentModifier)
+            WishDetailContent.NotFound -> GiftiaryTaskStatus(stringResource(R.string.wish_not_found), onBack, contentModifier)
+            WishDetailContent.LoadFailed -> GiftiaryTaskStatus(stringResource(R.string.wish_load_failed), onBack, contentModifier)
             is WishDetailContent.Loaded -> WishDetails(
                 content = content,
+                waitingToSync = state.waitingToSync,
                 busy = state.actions.isBusy,
+                onBack = onBack,
+                onEdit = { onEdit(content.wish.id) },
                 onDeleteRequested = onDeleteRequested,
                 modifier = contentModifier,
             )
@@ -127,10 +113,19 @@ fun WishDetailScreen(
     }
 }
 
+/**
+ * There is no Wish detail board, so this follows the gift idea boards as far as a wish has the
+ * same things: the title, the list it is on in place of the person, the facts and the note.
+ * A wish has no photo and no next step of its own, so there is no hero and no primary action;
+ * editing and deleting wait in the options. What guests reserve is never shown to the owner.
+ */
 @Composable
 private fun WishDetails(
     content: WishDetailContent.Loaded,
+    waitingToSync: Boolean,
     busy: Boolean,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
     onDeleteRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -139,24 +134,42 @@ private fun WishDetails(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.s),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            .giftiaryReadableWidth()
+            .padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.xxl),
     ) {
-        content.wishlistName?.let { DetailField(label = stringResource(R.string.wish_on_wishlist), value = it) }
-        wish.estimatedPrice?.let { DetailField(label = stringResource(R.string.wish_editor_price), value = giftPrice(it)) }
-        wish.productUrl?.let { ProductLink(it) }
-        wish.note?.let { DetailField(label = stringResource(R.string.gift_note), value = it) }
-        // Deliberately quiet, as on the other detail screens.
-        TextButton(
-            onClick = onDeleteRequested,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !busy,
-            colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textSecondary),
-        ) {
-            Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = null)
-            Spacer(Modifier.width(GiftiarySpacing.s))
-            Text(stringResource(R.string.wish_delete))
+        GiftiaryTaskHeader(
+            title = wish.name,
+            subtitle = null,
+            onBack = onBack,
+            eyebrow = stringResource(R.string.wish_eyebrow).uppercase(),
+            menu = {
+                OptionsMenu(R.drawable.ic_more_vertical, stringResource(R.string.wish_more, wish.name)) {
+                    Option(stringResource(R.string.wish_edit), R.drawable.ic_edit, onEdit, enabled = !busy)
+                    Option(stringResource(R.string.wish_delete), R.drawable.ic_delete, onDeleteRequested, enabled = !busy, quiet = true)
+                }
+            },
+        )
+        // Back already leads to the list, so the card names it without leading anywhere.
+        content.wishlistName?.let { name ->
+            DetailContextCard(
+                name = name,
+                title = stringResource(R.string.wish_on_list, name),
+                modifier = Modifier.padding(top = GiftiarySpacing.l),
+            )
         }
+        if (waitingToSync) PendingSyncStatus(modifier = Modifier.padding(top = GiftiarySpacing.m))
+        Column(modifier = Modifier.padding(top = GiftiarySpacing.s).fillMaxWidth()) {
+            wish.estimatedPrice?.let {
+                DetailFactRow(stringResource(R.string.wish_editor_approx_price)) {
+                    DetailFactValue(stringResource(R.string.wish_price_estimate, giftPrice(it)))
+                }
+            }
+            wish.productUrl?.let { url ->
+                if (wish.estimatedPrice != null) GiftiaryDivider()
+                DetailFactRow(stringResource(R.string.gift_product_url)) { DetailLinkValue(url) }
+            }
+        }
+        wish.note?.takeIf { it.isNotBlank() }?.let { DetailNote(it) }
     }
 }
 

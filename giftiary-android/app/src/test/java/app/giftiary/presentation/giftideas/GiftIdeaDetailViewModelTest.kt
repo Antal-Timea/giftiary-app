@@ -77,4 +77,18 @@ class GiftIdeaDetailViewModelTest {
 
     private fun loadedStatus(viewModel: GiftIdeaDetailViewModel): GiftIdeaStatus =
         (viewModel.uiState.value.content as GiftIdeaDetailContent.Loaded).entry.idea.status
+
+    @Test
+    fun `waiting to sync follows the idea's own queued change and is never assumed`() = runTest {
+        repository.givenIdeas(scarf)
+        val viewModel = GiftIdeaDetailViewModel(scarf.idea.id, repository)
+        keepSubscribed(viewModel.uiState)
+        assertFalse(viewModel.uiState.value.waitingToSync)
+
+        repository.waitingToSync.value = setOf(scarf.idea.id)
+        assertTrue(viewModel.uiState.value.waitingToSync)
+
+        repository.waitingToSync.value = setOf(UUID.randomUUID())
+        assertFalse(viewModel.uiState.value.waitingToSync)
+    }
 }

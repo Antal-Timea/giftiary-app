@@ -37,6 +37,9 @@ interface WishlistRepository {
     /** The wish as it changes; null while it does not exist, is deleted or is not the account's. */
     fun observeWish(id: UUID): Flow<Wish?>
 
+    /** Whether a change to the wish itself, saved on this device, has yet to reach the account. */
+    fun observeWishWaitingToSync(id: UUID): Flow<Boolean>
+
     /** Null if the wishlist does not exist, is deleted or is not the account's. */
     suspend fun getWishlist(id: UUID): Wishlist?
 

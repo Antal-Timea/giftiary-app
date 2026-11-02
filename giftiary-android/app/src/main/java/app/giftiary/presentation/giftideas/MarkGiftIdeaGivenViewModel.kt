@@ -3,6 +3,8 @@ package app.giftiary.presentation.giftideas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.DefaultCurrency
+import app.giftiary.domain.model.Money
+import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.repository.GiftIdeaAlreadyGivenException
 import app.giftiary.domain.repository.GiftIdeaNotFoundException
 import app.giftiary.domain.repository.GiftIdeaRepository
@@ -54,6 +56,8 @@ class MarkGiftIdeaGivenViewModel @AssistedInject constructor(
                             status = MarkGivenStatus.READY,
                             ideaName = entry.idea.name,
                             recipientName = entry.recipient?.name,
+                            occasion = entry.occasion,
+                            estimate = entry.idea.estimatedPrice,
                             price = price?.let { PriceFormat.formatForInput(it, Locale.getDefault()) }.orEmpty(),
                             currencyCode = price?.currencyCode ?: DefaultCurrency.CODE,
                         )
@@ -73,10 +77,6 @@ class MarkGiftIdeaGivenViewModel @AssistedInject constructor(
 
     fun onPriceChange(price: String) {
         _uiState.update { it.copy(price = price, priceError = null) }
-    }
-
-    fun onErrorShown() {
-        _uiState.update { it.copy(writeError = null) }
     }
 
     fun confirm() {
@@ -118,6 +118,9 @@ data class MarkGivenUiState(
     val status: MarkGivenStatus = MarkGivenStatus.LOADING,
     val ideaName: String = "",
     val recipientName: String? = null,
+    val occasion: Occasion? = null,
+    /** Shown beside the final price for reference; the price field starts from what was paid, if known. */
+    val estimate: Money? = null,
     val price: String = "",
     val currencyCode: String = DefaultCurrency.CODE,
     val priceError: PriceError? = null,

@@ -63,6 +63,10 @@ class GiftIdeaRepositoryImpl @Inject constructor(
         giftIdeaDao.observeActiveById(id, ownerUserId).map { it?.toDomain(ownerUserId) }
     }
 
+    override fun observeWaitingToSync(id: UUID): Flow<Boolean> = activeOwner.scoped(false) { ownerUserId ->
+        database.syncOperationDao().observeWaiting(ownerUserId, SyncEntityType.GIFT_IDEA, id)
+    }
+
     override suspend fun getGiftIdea(id: UUID): GiftIdeaEntry? = observeGiftIdea(id).first()
 
     override suspend fun addGiftIdea(details: GiftIdeaDetails): GiftIdea {

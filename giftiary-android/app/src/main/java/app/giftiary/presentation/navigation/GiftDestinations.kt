@@ -1,6 +1,7 @@
 package app.giftiary.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavController
@@ -8,6 +9,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.toRoute
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.presentation.giftideas.GiftIdeaDetailScreen
@@ -101,7 +103,10 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
             )
         }
     }
-    composable<MarkGiftIdeaGivenRoute> { entry ->
+    // A dialog destination: the idea it marks, and the navigation bar, stay in view behind the sheet.
+    dialog<MarkGiftIdeaGivenRoute>(
+        dialogProperties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) { entry ->
         WithUuid(entry.toRoute<MarkGiftIdeaGivenRoute>().giftIdeaId, navController) { giftIdeaId ->
             MarkGiftIdeaGivenScreen(
                 viewModel = hiltViewModel<MarkGiftIdeaGivenViewModel, MarkGiftIdeaGivenViewModel.Factory> { factory ->
@@ -151,6 +156,7 @@ private fun GiftIdeaDetail(
         onDeleted = onDeleted,
         onEditGiftIdea = { id -> navController.navigate(EditGiftIdeaRoute(id.toString())) },
         onMarkAsGiven = { id -> navController.navigate(MarkGiftIdeaGivenRoute(id.toString())) },
+        onOpenPerson = { id -> navController.navigate(PersonDetailRoute(id.toString())) },
     )
 }
 

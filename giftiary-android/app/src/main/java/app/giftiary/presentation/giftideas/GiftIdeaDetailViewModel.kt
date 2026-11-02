@@ -35,12 +35,15 @@ class GiftIdeaDetailViewModel @AssistedInject constructor(
         }
         .catch { emit(GiftIdeaDetailContent.LoadFailed) }
 
+    private val waitingToSync = repository.observeWaitingToSync(giftIdeaId).catch { emit(false) }
+
     val uiState: StateFlow<GiftIdeaDetailUiState> =
-        combine(idea, actions) { content, actions ->
+        combine(idea, actions, waitingToSync) { content, actions, waiting ->
             // Once deleted, the idea is gone from Room too; keep reporting the deletion, not "not found".
             GiftIdeaDetailUiState(
                 content = if (actions.deleted) GiftIdeaDetailContent.Deleted else content,
                 actions = actions,
+                waitingToSync = waiting,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -101,6 +104,8 @@ class GiftIdeaDetailViewModel @AssistedInject constructor(
 data class GiftIdeaDetailUiState(
     val content: GiftIdeaDetailContent = GiftIdeaDetailContent.Loading,
     val actions: GiftIdeaDetailActions = GiftIdeaDetailActions(),
+    /** Saved on this device, not yet in the account; never inferred from the absence of an error. */
+    val waitingToSync: Boolean = false,
 )
 
 data class GiftIdeaDetailActions(

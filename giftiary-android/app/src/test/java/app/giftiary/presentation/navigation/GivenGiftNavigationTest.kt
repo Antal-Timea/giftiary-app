@@ -6,8 +6,10 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,7 +38,7 @@ class GivenGiftNavigationTest {
                 composable<HomeRoute> { Text("Home") }
                 composable<GiftHistoryRoute> { Text("Gifts") }
                 composable<GiftIdeaDetailRoute> { Text("Idea") }
-                composable<MarkGiftIdeaGivenRoute> { Text("Mark as given") }
+                dialog<MarkGiftIdeaGivenRoute> { Text("Mark as given") }
                 composable<GiftDetailRoute> { Text("Gift") }
             }
         }
@@ -73,5 +75,23 @@ class GivenGiftNavigationTest {
         assertEquals(listOf(HomeRoute::class, GiftHistoryRoute::class, GiftDetailRoute::class), stack())
         compose.runOnIdle { navController.popBackStack() }
         assertEquals(listOf(HomeRoute::class, GiftHistoryRoute::class), stack())
+    }
+
+    @Test
+    fun `marking as given is a sheet over the idea, which keeps the navigation bar behind it`() {
+        compose.setContent {
+            navController = rememberNavController()
+            NavHost(navController = navController, startDestination = HomeRoute) {
+                composable<HomeRoute> { Text("Home") }
+                giftDestinations(navController)
+            }
+        }
+
+        compose.runOnIdle {
+            val marking = navController.graph.findNode<MarkGiftIdeaGivenRoute>()!!
+            assertEquals("the idea stays drawn behind it", "dialog", marking.navigatorName)
+            assertTrue(marking.showsNavigationBar())
+            assertEquals("composable", navController.graph.findNode<GiftIdeaDetailRoute>()!!.navigatorName)
+        }
     }
 }

@@ -11,6 +11,7 @@ import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.data.photos.GiftPhotoFiles
+import app.giftiary.data.sync.BlockReason
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -589,5 +590,20 @@ class GiftIdeaRepositoryImplTest {
         )
         database.personDao().insert(stranger)
         return stranger
+    }
+
+    @Test
+    fun `an idea waits to sync while its own change is queued, not while it is blocked`() = runTest {
+        val idea = ideas.addGiftIdea(ideaFor(anna.id))
+        val other = ideas.addGiftIdea(ideaFor(anna.id))
+        assertTrue(ideas.observeWaitingToSync(idea.id).first())
+
+        val operation = syncDao.findForEntity(SyncEntityType.GIFT_IDEA, idea.id)!!
+        syncDao.update(operation.copy(blockedReason = BlockReason.REJECTED.name))
+        assertFalse("a blocked change needs attention instead", ideas.observeWaitingToSync(idea.id).first())
+
+        syncDao.delete(operation)
+        assertFalse("another idea's change is not this one's", ideas.observeWaitingToSync(idea.id).first())
+        assertTrue(ideas.observeWaitingToSync(other.id).first())
     }
 }
