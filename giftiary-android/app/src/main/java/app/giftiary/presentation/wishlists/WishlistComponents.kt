@@ -1,6 +1,5 @@
 package app.giftiary.presentation.wishlists
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,17 +13,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +33,6 @@ import app.giftiary.R
 import app.giftiary.domain.model.Money
 import app.giftiary.presentation.components.GiftThumbnail
 import app.giftiary.presentation.components.GiftiaryBackButton
-import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.monogramInitial
 import app.giftiary.presentation.gifts.giftPrice
 import app.giftiary.presentation.theme.GiftiaryShapes
@@ -140,55 +130,6 @@ internal fun WishlistHeader(
                 below()
             }
         }
-    }
-}
-
-/** A list or wish's secondary actions behind one quiet 48dp button. */
-@Composable
-internal fun OptionsMenu(
-    @DrawableRes icon: Int,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-    items: @Composable OptionsMenuScope.() -> Unit,
-) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    val colors = GiftiaryTheme.colors
-    Box(modifier = modifier) {
-        IconButton(
-            onClick = { open = true },
-            modifier = Modifier.size(48.dp),
-            colors = IconButtonDefaults.iconButtonColors(contentColor = colors.textLabel),
-        ) {
-            Icon(painter = painterResource(icon), contentDescription = contentDescription, modifier = Modifier.size(18.dp))
-        }
-        DropdownMenu(
-            expanded = open,
-            onDismissRequest = { open = false },
-            shape = GiftiaryShapes.photoCard,
-            containerColor = colors.surfaceElevated,
-        ) {
-            OptionsMenuScope { open = false }.items()
-        }
-    }
-}
-
-internal class OptionsMenuScope(private val close: () -> Unit) {
-
-    /** [quiet] for a destructive action, kept below the others. */
-    @Composable
-    fun Option(text: String, @DrawableRes icon: Int, onClick: () -> Unit, enabled: Boolean = true, quiet: Boolean = false) {
-        val colors = GiftiaryTheme.colors
-        val color = if (quiet) colors.textMuted else colors.textPrimary
-        if (quiet) GiftiaryDivider()
-        DropdownMenuItem(
-            text = { Text(text, style = GiftiaryType.actionSmall, color = color) },
-            onClick = {
-                close()
-                onClick()
-            },
-            enabled = enabled,
-            leadingIcon = { Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp), tint = color) },
-        )
     }
 }
 

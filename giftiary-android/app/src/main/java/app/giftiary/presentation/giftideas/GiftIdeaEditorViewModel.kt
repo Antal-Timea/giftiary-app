@@ -129,6 +129,31 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(writeError = null) }
     }
 
+    fun onDeleteRequested() {
+        _uiState.update { if (target is GiftIdeaEditorTarget.Existing && it.status == GiftIdeaEditorStatus.EDITING) it.copy(confirmingDelete = true) else it }
+    }
+
+    fun onDeleteDismissed() {
+        _uiState.update { it.copy(confirmingDelete = false) }
+    }
+
+    fun onDeleteConfirmed() {
+        val giftIdeaId = (target as? GiftIdeaEditorTarget.Existing)?.giftIdeaId ?: return
+        if (_uiState.value.status != GiftIdeaEditorStatus.EDITING || _uiState.value.isBusy) return
+
+        _uiState.update { it.copy(confirmingDelete = false, isBusy = true, isDeleting = true, writeError = null) }
+        viewModelScope.launch {
+            try {
+                giftIdeaRepository.deleteGiftIdea(giftIdeaId)
+                _uiState.update { it.copy(status = GiftIdeaEditorStatus.DELETED) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isBusy = false, isDeleting = false, writeError = GiftIdeaWriteError.DELETE_FAILED) }
+            }
+        }
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.status != GiftIdeaEditorStatus.EDITING || state.isBusy) return
@@ -270,6 +295,7 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
                 occasionId = idea.occasionId,
                 historicalOccasion = entry.occasion,
                 name = idea.name,
+                savedName = idea.name,
                 ideaStatus = idea.status,
                 estimatedPrice = idea.estimatedPrice?.let { PriceFormat.formatForInput(it, locale) }.orEmpty(),
                 estimatedCurrencyCode = idea.estimatedPrice?.currencyCode ?: DefaultCurrency.CODE,
@@ -321,9 +347,14 @@ data class GiftIdeaEditorUiState(
     val errors: Set<GiftIdeaInputError> = emptySet(),
     val estimatedPriceError: PriceError? = null,
     val actualPriceError: PriceError? = null,
-    /** A save is in progress; further saves are ignored. */
+    /** A save or delete is in progress; further ones are ignored. */
     val isBusy: Boolean = false,
+    /** The write in progress is a delete, not a save. */
+    val isDeleting: Boolean = false,
     val writeError: GiftIdeaWriteError? = null,
+    /** The name as stored, which the delete confirmation names even while [name] is being edited. */
+    val savedName: String = "",
+    val confirmingDelete: Boolean = false,
 ) {
     val recipientOptions: List<Person> get() = personChoices(activePeople, historicalRecipient, recipientId)
 
@@ -351,6 +382,9 @@ enum class GiftIdeaEditorStatus {
 
     /** The idea was stored locally; the screen should close. */
     CLOSED,
+
+    /** The idea was deleted; the screen should close, along with the idea's page. */
+    DELETED,
 }
 
 enum class GiftIdeaWriteError {
@@ -361,4 +395,6 @@ enum class GiftIdeaWriteError {
 
     /** The chosen occasion was deleted meanwhile or does not belong to the recipient. */
     OCCASION_UNAVAILABLE,
+
+    DELETE_FAILED,
 }

@@ -110,4 +110,67 @@ class PersonEditorViewModelTest {
 
         assertEquals(EditorStatus.NOT_FOUND, viewModel.uiState.value.status)
     }
+
+    @Test
+    fun `a new person offers no delete`() {
+        val viewModel = viewModel()
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertFalse(viewModel.uiState.value.confirmingDelete)
+        assertEquals(EditorStatus.EDITING, viewModel.uiState.value.status)
+    }
+
+    @Test
+    fun `deleting asks first, and dismissing keeps the person and the edits`() = runTest {
+        val anna = person("Anna")
+        repository.givenPeople(anna)
+        val viewModel = viewModel(anna.id)
+        viewModel.onNameChange("Anna K.")
+
+        viewModel.onDeleteRequested()
+        assertTrue(viewModel.uiState.value.confirmingDelete)
+        assertEquals("the confirmation names the stored person", "Anna", viewModel.uiState.value.savedName)
+        viewModel.onDeleteDismissed()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.confirmingDelete)
+        assertEquals(EditorStatus.EDITING, state.status)
+        assertEquals("Anna K.", state.name)
+        assertEquals(listOf(anna), repository.currentPeople)
+    }
+
+    @Test
+    fun `confirming deletes the person and closes as deleted`() = runTest {
+        val anna = person("Anna")
+        repository.givenPeople(anna)
+        val viewModel = viewModel(anna.id)
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertEquals(EditorStatus.DELETED, viewModel.uiState.value.status)
+        assertTrue(repository.currentPeople.isEmpty())
+    }
+
+    @Test
+    fun `a failed delete stays open with the edits and reports it`() = runTest {
+        val anna = person("Anna")
+        repository.givenPeople(anna)
+        val viewModel = viewModel(anna.id)
+        viewModel.onNameChange("Anna K.")
+        repository.writeFailure = IOException("disk full")
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        val state = viewModel.uiState.value
+        assertEquals(EditorStatus.EDITING, state.status)
+        assertTrue(state.deleteFailed)
+        assertFalse(state.isBusy)
+        assertEquals("Anna K.", state.name)
+        viewModel.onDeleteErrorShown()
+        assertFalse(viewModel.uiState.value.deleteFailed)
+    }
 }

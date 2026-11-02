@@ -44,6 +44,7 @@ internal fun NavGraphBuilder.peopleDestinations(navController: NavHostController
                     factory.create(personId)
                 },
                 onClose = navController.popBackStackUnlessPaused(),
+                onDeleted = dropUnlessResumed { navController.leaveDeletedEditor<PersonDetailRoute>() },
             )
         }
     }

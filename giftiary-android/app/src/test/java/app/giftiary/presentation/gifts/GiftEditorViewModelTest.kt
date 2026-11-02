@@ -467,4 +467,66 @@ class GiftEditorViewModelTest {
         assertTrue(saved != old)
         assertEquals("new shot", photos.stored.getValue(saved).decodeToString())
     }
+
+    @Test
+    fun `a new gift offers no delete`() {
+        val viewModel = viewModel()
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertFalse(viewModel.uiState.value.confirmingDelete)
+        assertEquals(GiftEditorStatus.EDITING, viewModel.uiState.value.status)
+    }
+
+    @Test
+    fun `deleting a gift asks first, and dismissing keeps it and the edits`() {
+        val gift = giftEntry(giftDetails(GiftDirection.GIVEN, anna, "Book"), anna)
+        gifts.givenGifts(gift)
+        val viewModel = viewModel(GiftEditorTarget.Existing(gift.gift.id))
+        viewModel.onNameChange("Novel")
+
+        viewModel.onDeleteRequested()
+        assertTrue(viewModel.uiState.value.confirmingDelete)
+        assertEquals("Book", viewModel.uiState.value.savedName)
+        viewModel.onDeleteDismissed()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.confirmingDelete)
+        assertEquals(GiftEditorStatus.EDITING, state.status)
+        assertEquals("Novel", state.name)
+        assertEquals(listOf(gift), gifts.currentGifts)
+    }
+
+    @Test
+    fun `confirming deletes the gift and closes as deleted`() {
+        val gift = giftEntry(giftDetails(GiftDirection.GIVEN, anna, "Book"), anna)
+        gifts.givenGifts(gift)
+        val viewModel = viewModel(GiftEditorTarget.Existing(gift.gift.id))
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        assertEquals(GiftEditorStatus.DELETED, viewModel.uiState.value.status)
+        assertTrue(gifts.currentGifts.isEmpty())
+    }
+
+    @Test
+    fun `a failed gift delete stays open with the edits and reports it`() {
+        val gift = giftEntry(giftDetails(GiftDirection.GIVEN, anna, "Book"), anna)
+        gifts.givenGifts(gift)
+        val viewModel = viewModel(GiftEditorTarget.Existing(gift.gift.id))
+        viewModel.onNameChange("Novel")
+        gifts.writeFailure = IOException("disk full")
+
+        viewModel.onDeleteRequested()
+        viewModel.onDeleteConfirmed()
+
+        val state = viewModel.uiState.value
+        assertEquals(GiftEditorStatus.EDITING, state.status)
+        assertEquals(GiftWriteError.DELETE_FAILED, state.writeError)
+        assertFalse(state.isBusy)
+        assertFalse(state.isDeleting)
+        assertEquals("Novel", state.name)
+    }
 }

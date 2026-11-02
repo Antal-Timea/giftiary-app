@@ -50,6 +50,7 @@ import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.PendingSyncStatus
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiaryShapes

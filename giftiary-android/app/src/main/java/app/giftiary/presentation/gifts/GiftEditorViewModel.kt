@@ -128,6 +128,31 @@ class GiftEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(writeError = null) }
     }
 
+    fun onDeleteRequested() {
+        _uiState.update { if (target is GiftEditorTarget.Existing && it.status == GiftEditorStatus.EDITING) it.copy(confirmingDelete = true) else it }
+    }
+
+    fun onDeleteDismissed() {
+        _uiState.update { it.copy(confirmingDelete = false) }
+    }
+
+    fun onDeleteConfirmed() {
+        val giftId = (target as? GiftEditorTarget.Existing)?.giftId ?: return
+        if (_uiState.value.status != GiftEditorStatus.EDITING || _uiState.value.isBusy) return
+
+        _uiState.update { it.copy(confirmingDelete = false, isBusy = true, isDeleting = true, writeError = null) }
+        viewModelScope.launch {
+            try {
+                giftRepository.deleteGift(giftId)
+                _uiState.update { it.copy(status = GiftEditorStatus.DELETED) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isBusy = false, isDeleting = false, writeError = GiftWriteError.DELETE_FAILED) }
+            }
+        }
+    }
+
     /** [source]: the content URI the photo picker returned. */
     fun onPhotoPicked(source: String) {
         if (_uiState.value.photoBusy) return
@@ -314,6 +339,7 @@ class GiftEditorViewModel @AssistedInject constructor(
                 occasionId = gift.occasionId,
                 historicalOccasion = entry.occasion,
                 name = gift.name,
+                savedName = gift.name,
                 givenAt = gift.givenAt,
                 price = gift.price?.let { PriceFormat.formatForInput(it, Locale.getDefault()) }.orEmpty(),
                 currencyCode = gift.price?.currencyCode ?: DefaultCurrency.CODE,
@@ -371,9 +397,14 @@ data class GiftEditorUiState(
     val historicalOccasion: Occasion? = null,
     val errors: Set<GiftInputError> = emptySet(),
     val priceError: PriceError? = null,
-    /** A save is in progress; further saves are ignored. */
+    /** A save or delete is in progress; further ones are ignored. */
     val isBusy: Boolean = false,
+    /** The write in progress is a delete, not a save. */
+    val isDeleting: Boolean = false,
     val writeError: GiftWriteError? = null,
+    /** The name as stored, which the delete confirmation names even while [name] is being edited. */
+    val savedName: String = "",
+    val confirmingDelete: Boolean = false,
     /** The photo the gift will be saved with; null for none. */
     val photoPath: String? = null,
     /** Its image, once read; null while loading or if it is not available now. */
@@ -406,6 +437,9 @@ enum class GiftEditorStatus {
 
     /** The gift was stored locally; the screen should close. */
     CLOSED,
+
+    /** The gift was deleted; the screen should close, along with the gift's page. */
+    DELETED,
 }
 
 enum class GiftPhotoError {
@@ -427,4 +461,6 @@ enum class GiftWriteError {
 
     /** The picked photo is no longer on this device; pick it again. */
     PHOTO_UNAVAILABLE,
+
+    DELETE_FAILED,
 }

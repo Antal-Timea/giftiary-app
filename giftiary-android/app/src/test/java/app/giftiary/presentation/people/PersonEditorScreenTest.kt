@@ -51,6 +51,12 @@ class PersonEditorScreenTest {
                     onRelationshipChange = { actions += "relationship $it" },
                     onSave = { actions += "save" },
                     onSaveErrorShown = {},
+                    deletion = PersonEditorDeletion(
+                        onRequested = { actions += "delete" },
+                        onDismissed = { actions += "dismiss" },
+                        onConfirmed = { actions += "confirm" },
+                        onErrorShown = { actions += "delete error shown" },
+                    ),
                 )
             }
         }
@@ -99,12 +105,54 @@ class PersonEditorScreenTest {
     }
 
     @Test
-    fun `there is no person photo to pretend, and deleting stays on the person's page`() {
+    fun `there is no person photo to pretend`() {
         show(PersonEditorUiState(isNewPerson = false, status = EditorStatus.EDITING, name = "Peter"))
 
-        listOf("Add photo", "Important dates", "Birthday", "Delete", "Delete person").forEach {
+        listOf("Add photo", "Important dates", "Birthday").forEach {
             compose.onNodeWithText(it, substring = true).assertDoesNotExist()
         }
+    }
+
+    @Test
+    fun `adding offers no delete`() {
+        show(PersonEditorUiState(isNewPerson = true, status = EditorStatus.EDITING, name = "Peter"))
+
+        compose.onNodeWithContentDescription("More options").assertDoesNotExist()
+        compose.onNodeWithText("Delete", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `editing keeps delete in the header's options, not beside Save`() {
+        show(PersonEditorUiState(isNewPerson = false, status = EditorStatus.EDITING, name = "Pete", savedName = "Peter"))
+
+        compose.onNodeWithText("Delete", substring = true).assertDoesNotExist()
+        val more = compose.onNodeWithContentDescription("More options").getBoundsInRoot()
+        assertTrue("the options sit in the header, above the title", more.bottom <= top("Edit person"))
+
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Delete Peter").performClick()
+        assertEquals(listOf("delete"), actions)
+    }
+
+    @Test
+    fun `the confirmation names the person, and cancel and delete reach the editor`() {
+        show(PersonEditorUiState(isNewPerson = false, status = EditorStatus.EDITING, name = "Pete", savedName = "Peter", confirmingDelete = true))
+
+        compose.onNodeWithText("Delete Peter?").assertExists()
+        compose.onNodeWithText("They will be removed from your people.").assertExists()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.onNodeWithText("Delete").performClick()
+        assertEquals(listOf("dismiss", "confirm"), actions)
+    }
+
+    @Test
+    fun `a failed delete is said and the form stays`() {
+        show(PersonEditorUiState(isNewPerson = false, status = EditorStatus.EDITING, name = "Peter", savedName = "Peter", deleteFailed = true))
+
+        compose.onNodeWithText("Could not delete. Please try again.").assertExists()
+        compose.onNodeWithText("Save person").assertExists()
+        compose.mainClock.advanceTimeBy(10_000)
+        assertTrue("the error is marked shown", "delete error shown" in actions)
     }
 
     @Test
@@ -123,7 +171,7 @@ class PersonEditorScreenTest {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
                 GiftiaryTheme {
-                    PersonEditorScreen(PersonEditorUiState(isNewPerson = true, status = EditorStatus.EDITING), {}, {}, {}, {}, {})
+                    PersonEditorScreen(PersonEditorUiState(isNewPerson = true, status = EditorStatus.EDITING), {}, {}, {}, {}, {}, PersonEditorDeletion({}, {}, {}, {}))
                 }
             }
         }

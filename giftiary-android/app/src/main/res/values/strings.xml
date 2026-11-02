@@ -560,6 +560,7 @@ big stories</string>
     <string name="lists_only_you">Only you</string>
     <string name="lists_shared_subtitle">Lists people have shared with you.</string>
     <string name="lists_join_description">Join a wishlist with an invite link</string>
+    <string name="task_more">More options</string>
     <string name="wishlist_more">Options for %1$s</string>
     <string name="wishlist_edit">Edit list</string>
     <string name="wishlist_sharing_invited_only">Seen only by people you invite</string>
