@@ -219,6 +219,7 @@ nagy történetek</string>
         <item quantity="other">%1$d közös ajándék</item>
     </plurals>
     <string name="person_detail_edit">%1$s szerkesztése</string>
+    <string name="person_detail_more">Továbbiak: %1$s</string>
     <string name="person_detail_plan_gift">Ajándék tervezése</string>
     <string name="person_detail_gift_ideas_subtitle">Jövőbeli lehetőségek, még nem adtad oda</string>
     <string name="gifts_filter_ideas">Ötletek</string>

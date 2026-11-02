@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.performScrollTo
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.OccasionType
+import app.giftiary.domain.model.Wishlist
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
@@ -29,7 +31,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 import java.time.LocalDate
+import java.util.UUID
 
 /** The phone Person detail: its no-photo hero, the next occasion, its sections and what each action opens. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -44,6 +48,7 @@ class PersonDetailScreenTest {
     private val today = LocalDate.of(2026, 9, 20)
     private val birthday = occasion(peter.id, OccasionDetails(OccasionType.BIRTHDAY, null, 12, 10, 1985, true))
     private val nameDay = occasion(peter.id, OccasionDetails(OccasionType.NAME_DAY, null, 29, 6, null, true))
+    private val christmasList = PersonWishlist(Wishlist(UUID.randomUUID(), peter.id, "Christmas", Instant.EPOCH, Instant.EPOCH), 2)
     private val actions = mutableListOf<String>()
     private var deletion by mutableStateOf(PersonDeletion())
 
@@ -78,7 +83,8 @@ class PersonDetailScreenTest {
         occasions: List<Occasion> = listOf(birthday, nameDay),
         ideas: List<GiftIdeaEntry> = emptyList(),
         gifts: List<GiftEntry> = emptyList(),
-    ) = PersonDetailUiState.Loaded(peter, occasions, ideas, gifts, emptyList())
+        wishlists: List<PersonWishlist> = emptyList(),
+    ) = PersonDetailUiState.Loaded(peter, occasions, ideas, gifts, wishlists)
 
     @Test
     fun `without a photo the hero carries the monogram, the name and relationship, with back and edit`() {
@@ -107,30 +113,6 @@ class PersonDetailScreenTest {
     }
 
     @Test
-    fun `with no occasions there is no occasion card, and adding one stays at hand`() {
-        showDetail(loaded(occasions = emptyList()))
-
-        compose.onNodeWithText("Plan gift").assertDoesNotExist()
-        compose.onNodeWithText("No occasions yet").assertExists()
-        compose.onNodeWithText("Add occasion").performClick()
-        assertEquals(listOf("add occasion"), actions)
-    }
-
-    @Test
-    fun `ideas, occasions and wishlists keep their rows and add actions`() {
-        val idea = ideaEntry(ideaDetails(peter, name = "Hiking poles"), peter)
-        showDetail(loaded(ideas = listOf(idea)))
-
-        compose.onNodeWithText("Future possibilities, not yet given").assertExists()
-        compose.onNodeWithText("Hiking poles").performClick()
-        compose.onNodeWithText("Add idea").performClick()
-        compose.onNodeWithText("Name day").performScrollTo().performClick()
-        compose.onNodeWithText("Add wishlist").performScrollTo().performClick()
-
-        assertEquals(listOf("idea Hiking poles", "add idea", "edit occasion NAME_DAY", "add wishlist"), actions)
-    }
-
-    @Test
     fun `the history groups the gifts by year and occasion, newest first, as memory cards`() {
         val headphones = giftEntry(giftDetails(person = peter, name = "Headphones", givenAt = LocalDate.of(2026, 3, 1)), peter)
         val tickets = giftEntry(giftDetails(GiftDirection.RECEIVED, peter, "Concert tickets", LocalDate.of(2026, 2, 1)), peter)
@@ -150,9 +132,68 @@ class PersonDetailScreenTest {
     }
 
     @Test
-    fun `deleting the person asks first`() {
+    fun `the page keeps the approved order of hero, occasion, gift ideas and history, with nothing between`() {
+        val idea = ideaEntry(ideaDetails(peter, name = "Hiking poles"), peter)
+        val gift = giftEntry(giftDetails(person = peter, name = "Headphones"), peter)
+        showDetail(loaded(ideas = listOf(idea), gifts = listOf(gift), wishlists = listOf(christmasList)))
+
+        val order = listOf("Husband", "Birthday · October 12", "Gift ideas", "Hiking poles", "History with Peter", "Headphones")
+        val tops = order.map { compose.onNodeWithText(it).getBoundsInRoot().top }
+        assertEquals("top to bottom: $order", tops.sorted(), tops)
+        // Occasions, wishlists and deleting are secondary: in the More sheet, not on the page.
+        listOf("Occasions", "Name day", "Wishlists", "Christmas", "Add occasion", "Add wishlist", "Delete Peter").forEach {
+            compose.onNodeWithText(it).assertDoesNotExist()
+        }
+        compose.onNodeWithContentDescription("More for Peter").assertExists()
+        compose.onNodeWithText("Hiking poles").performClick()
+        compose.onNodeWithText("Add idea").performClick()
+        assertEquals(listOf("idea Hiking poles", "add idea"), actions)
+    }
+
+    @Test
+    fun `More holds the occasions, and each choice closes it`() {
         showDetail(loaded())
 
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("OCCASIONS").assertExists()
+        compose.onNodeWithText("Name day").performClick()
+        compose.onNodeWithText("OCCASIONS").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("Add occasion").performClick()
+
+        assertEquals(listOf("edit occasion NAME_DAY", "add occasion"), actions)
+    }
+
+    @Test
+    fun `with no occasions there is no occasion card, and More still adds one`() {
+        showDetail(loaded(occasions = emptyList()))
+
+        compose.onNodeWithText("Plan gift").assertDoesNotExist()
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("No occasions yet").assertExists()
+        compose.onNodeWithText("Add occasion").performClick()
+
+        assertEquals(listOf("add occasion"), actions)
+    }
+
+    @Test
+    fun `More holds the person's wishlists and adds one`() {
+        showDetail(loaded(wishlists = listOf(christmasList)))
+
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("Christmas").performClick()
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("Add wishlist").performClick()
+
+        assertEquals(listOf("wishlist", "add wishlist"), actions)
+    }
+
+    @Test
+    fun `deleting the person is in More, last, and asks first`() {
+        showDetail(loaded())
+
+        compose.onNodeWithContentDescription("More for Peter").performClick()
         compose.onNodeWithText("Delete Peter").performScrollTo().performClick()
         compose.onNodeWithText("Delete Peter?").assertExists()
         compose.onNodeWithText("Delete").performClick()
