@@ -220,6 +220,7 @@ big stories</string>
         <item quantity="other">%1$d gifts shared together</item>
     </plurals>
     <string name="person_detail_edit">Edit %1$s</string>
+    <string name="person_detail_more">More for %1$s</string>
     <string name="person_detail_plan_gift">Plan gift</string>
     <string name="person_detail_gift_ideas_subtitle">Future possibilities, not yet given</string>
     <string name="gifts_filter_ideas">Ideas</string>
