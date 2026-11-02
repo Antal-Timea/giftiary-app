@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -54,6 +55,9 @@ fun GiftiaryTaskHeader(
     modifier: Modifier = Modifier,
     // Secondary actions, such as deleting what is edited, kept beside the back circle and away from Save.
     menu: (@Composable () -> Unit)? = null,
+    // Share & Invite drops the wordmark and names the list it shares between title and standfirst.
+    wordmark: Boolean = true,
+    context: (@Composable () -> Unit)? = null,
 ) {
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier.fillMaxWidth()) {
@@ -62,20 +66,23 @@ fun GiftiaryTaskHeader(
             Spacer(Modifier.weight(1f))
             menu?.invoke()
         }
-        Text(
-            text = stringResource(R.string.app_name).uppercase(),
-            modifier = Modifier.padding(top = GiftiarySpacing.browseGutter),
-            style = GiftiaryType.wordmark,
-            color = colors.textLabel,
-        )
+        if (wordmark) {
+            Text(
+                text = stringResource(R.string.app_name).uppercase(),
+                modifier = Modifier.padding(top = GiftiarySpacing.browseGutter),
+                style = GiftiaryType.wordmark,
+                color = colors.textLabel,
+            )
+        }
         Text(
             text = title,
             modifier = Modifier
-                .padding(top = GiftiarySpacing.s)
+                .padding(top = if (wordmark) GiftiarySpacing.s else GiftiarySpacing.browseGutter)
                 .semantics { heading() },
             style = GiftiaryType.display,
             color = colors.textPrimary,
         )
+        if (context != null) Box(Modifier.padding(top = GiftiarySpacing.s)) { context() }
         Text(
             text = subtitle,
             modifier = Modifier.padding(top = GiftiarySpacing.s),
