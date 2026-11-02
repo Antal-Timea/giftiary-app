@@ -25,10 +25,9 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.LoadingContent
-import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -71,19 +70,19 @@ fun PersonEditorScreen(
         }
     }
 
-    val title = if (state.isNewPerson) R.string.person_editor_add_title else R.string.person_editor_edit_title
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(title), onBack = onBack) },
+        containerColor = GiftiaryTheme.colors.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (state.status) {
-            EditorStatus.LOADING -> LoadingContent(contentModifier)
-            EditorStatus.NOT_FOUND -> MessageContent(stringResource(R.string.person_editor_not_found), contentModifier)
-            EditorStatus.LOAD_FAILED -> MessageContent(stringResource(R.string.person_editor_load_failed), contentModifier)
+            EditorStatus.LOADING -> GiftiaryTaskStatus(null, onBack, contentModifier)
+            EditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.person_editor_not_found), onBack, contentModifier)
+            EditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.person_editor_load_failed), onBack, contentModifier)
             EditorStatus.EDITING, EditorStatus.SAVED -> PersonForm(
                 state = state,
+                onBack = onBack,
                 onNameChange = onNameChange,
                 onRelationshipChange = onRelationshipChange,
                 onSave = onSave,
@@ -93,9 +92,15 @@ fun PersonEditorScreen(
     }
 }
 
+/**
+ * The approved Add a person layout, less what a person cannot hold yet: there is no person photo,
+ * so no photo picker or pretend upload, and dates are occasions, added from the person's page once
+ * they exist.
+ */
 @Composable
 private fun PersonForm(
     state: PersonEditorUiState,
+    onBack: () -> Unit,
     onNameChange: (String) -> Unit,
     onRelationshipChange: (String) -> Unit,
     onSave: () -> Unit,
@@ -108,42 +113,52 @@ private fun PersonForm(
             .verticalScroll(rememberScrollState())
             .imePadding()
             .giftiaryReadableWidth()
-            .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            .padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.xxl),
     ) {
-        GiftiaryTextField(
-            value = state.name,
-            onValueChange = onNameChange,
-            label = stringResource(R.string.person_editor_name),
-            modifier = Modifier.fillMaxWidth(),
-            errorMessage = if (state.showNameRequired) stringResource(R.string.person_editor_name_required) else null,
-            enabled = canEdit,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words,
-                imeAction = ImeAction.Next,
-            ),
+        GiftiaryTaskHeader(
+            title = stringResource(if (state.isNewPerson) R.string.person_editor_add_title else R.string.person_editor_edit_title),
+            subtitle = stringResource(if (state.isNewPerson) R.string.person_editor_add_subtitle else R.string.person_editor_edit_subtitle),
+            onBack = onBack,
         )
-        GiftiaryTextField(
-            value = state.relationship,
-            onValueChange = onRelationshipChange,
-            label = stringResource(R.string.person_editor_relationship),
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = stringResource(R.string.person_editor_relationship_hint),
-            enabled = canEdit,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = { onSave() }),
-        )
+        Column(
+            modifier = Modifier.padding(top = GiftiarySpacing.section),
+            verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.fieldGroup),
+        ) {
+            GiftiaryTextField(
+                value = state.name,
+                onValueChange = onNameChange,
+                label = stringResource(R.string.person_editor_name),
+                modifier = Modifier.fillMaxWidth(),
+                errorMessage = if (state.showNameRequired) stringResource(R.string.person_editor_name_required) else null,
+                enabled = canEdit,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Next,
+                ),
+            )
+            GiftiaryTextField(
+                value = state.relationship,
+                onValueChange = onRelationshipChange,
+                label = stringResource(R.string.person_editor_relationship),
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = stringResource(R.string.person_editor_relationship_hint),
+                enabled = canEdit,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { onSave() }),
+            )
+        }
         GiftiaryPrimaryButton(
             text = stringResource(R.string.person_editor_save),
             onClick = onSave,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = GiftiarySpacing.s),
+                .padding(top = GiftiarySpacing.xxl),
             enabled = state.status == EditorStatus.EDITING,
             loading = state.isSaving,
+            trailingArrow = true,
         )
     }
 }

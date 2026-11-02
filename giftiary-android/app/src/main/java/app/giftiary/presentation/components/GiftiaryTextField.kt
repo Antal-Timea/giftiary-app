@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -36,14 +37,15 @@ import app.giftiary.presentation.theme.GiftiaryType
 
 /**
  * Giftiary input, single-line unless [singleLine] is off. The label sits above the field, as in
- * the approved forms. An [errorMessage] gives the field a coral border and is written below it
- * with a mark, so errors are never communicated by color alone.
+ * the approved forms; a null [label] is for a field a heading right above already names, which
+ * the caller then gives that name in semantics. An [errorMessage] gives the field a coral border
+ * and is written below it with a mark, so errors are never communicated by color alone.
  */
 @Composable
 fun GiftiaryTextField(
     value: String,
     onValueChange: (String) -> Unit,
-    label: String,
+    label: String?,
     modifier: Modifier = Modifier,
     placeholder: String? = null,
     errorMessage: String? = null,
@@ -54,6 +56,8 @@ fun GiftiaryTextField(
     minLines: Int = 1,
     suffix: String? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    // Decorative, as the label names the field, e.g. a link mark.
+    leadingIcon: Painter? = null,
 ) {
     GiftiaryInput(
         value = value,
@@ -68,6 +72,7 @@ fun GiftiaryTextField(
         singleLine = singleLine,
         minLines = minLines,
         suffix = suffix?.let { { Text(it, style = GiftiaryType.fieldValue) } },
+        leadingIcon = leadingIcon?.let { { Icon(painter = it, contentDescription = null, modifier = Modifier.size(16.dp)) } },
         visualTransformation = visualTransformation,
     )
 }
@@ -160,7 +165,7 @@ internal fun GiftiaryInput(
 }
 
 @Composable
-private fun FieldError(message: String) {
+internal fun FieldError(message: String) {
     val colors = GiftiaryTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Icon(

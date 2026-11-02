@@ -43,15 +43,16 @@ import java.time.LocalDate
 // Tall enough for the whole phone form, labels above fields, to fit without scrolling.
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "w1280dp-h1400dp")
+@Config(sdk = [34], qualifiers = "w1280dp-h3000dp")
 class GiftEditorLayoutTest {
 
     @get:Rule
     val compose = createComposeRule()
 
     private val anna = person("Anna")
+    // Editing, so a phone shows the details too.
     private val editing = GiftEditorUiState(
-        isNew = true,
+        isNew = false,
         status = GiftEditorStatus.EDITING,
         givenAt = LocalDate.of(2026, 3, 12),
         direction = GiftDirection.GIVEN,
@@ -66,18 +67,19 @@ class GiftEditorLayoutTest {
     )
 
     // The form from top to bottom on a phone; on a wide window the same parts, split into columns.
-    private val directionLabel = "Given"
-    private val personLabel = "Recipient"
-    private val nameLabel = "Gift"
+    private val directionStep = "Did you give or receive it?"
+    private val personStep = "Who was it for?"
+    private val nameStep = "What was the gift?"
     private val occasionLabel = "Occasion"
     private val dateLabel = "Date"
-    private val priceLabel = "Price (optional)"
-    private val linkLabel = "Product link (optional)"
-    private val noteLabel = "Note (optional)"
+    private val priceLabel = "Price"
     private val photoLabel = "Photo"
-    private val save = "Save"
-    private val leftColumn = listOf(directionLabel, personLabel, nameLabel, occasionLabel, dateLabel)
-    private val rightColumn = listOf(priceLabel, linkLabel, noteLabel, photoLabel)
+    private val noteLabel = "Note"
+    private val linkLabel = "Product link"
+    private val toggle = "Fewer details"
+    private val save = "Save gift"
+    private val leftColumn = listOf(directionStep, personStep, nameStep)
+    private val rightColumn = listOf(occasionLabel, dateLabel, priceLabel, photoLabel, noteLabel, linkLabel)
 
     private var state by mutableStateOf(editing)
     private var widthClass by mutableStateOf(WidthClass.COMPACT)
@@ -95,6 +97,7 @@ class GiftEditorLayoutTest {
                         actions = GiftEditorActions(
                             onBack = { count() },
                             onOpenPeople = { count() },
+                            onAddPerson = { count() },
                             onDirectionChange = { count() },
                             onPersonChange = { count() },
                             onOccasionChange = { count() },
@@ -127,7 +130,7 @@ class GiftEditorLayoutTest {
     private val DpRect.widthDp: Dp get() = right - left
 
     private fun assertTopToBottom(texts: List<String>) {
-        val tops = texts.map { if (it == save) button(it).top else label(it).top }
+        val tops = texts.map { if (it == save || it == toggle) button(it).top else label(it).top }
         assertEquals("top to bottom: $texts", tops.sorted(), tops)
     }
 
@@ -141,7 +144,7 @@ class GiftEditorLayoutTest {
     fun `a phone keeps one column, in the usual order, with a full-width save button`() {
         showEditor(WidthClass.COMPACT)
 
-        assertTopToBottom(leftColumn + rightColumn + save)
+        assertTopToBottom(leftColumn + toggle + rightColumn + save)
         // The usual margins on both sides.
         assertNear(GiftiarySpacing.xl, button(save).left, "save start")
         assertNear(411.dp - GiftiarySpacing.xl * 2, button(save).widthDp, "save width")
@@ -151,7 +154,7 @@ class GiftEditorLayoutTest {
     fun `a medium window shows the same column at a readable, centred width`() {
         showEditor(WidthClass.MEDIUM)
 
-        assertTopToBottom(leftColumn + rightColumn + save)
+        assertTopToBottom(leftColumn + toggle + rightColumn + save)
         // The readable measure, centred in the window, less the usual margins.
         assertNear(centredStart(800.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl, button(save).left, "save start")
         assertNear(GiftiaryLayout.readableMaxWidth - GiftiarySpacing.xl * 2, button(save).widthDp, "save width")
@@ -163,9 +166,10 @@ class GiftEditorLayoutTest {
 
         assertTopToBottom(leftColumn)
         assertTopToBottom(rightColumn)
-        val name = label(nameLabel)
+        val name = label(nameStep)
         rightColumn.forEach { assertTrue("$it in the right column", label(it).left > name.left + 400.dp) }
-        assertTrue("the right column starts at the top, beside the direction", label(priceLabel).top < label(personLabel).top)
+        assertTrue("the right column starts at the top, beside the direction", label(occasionLabel).top < label(personStep).top)
+        compose.onNodeWithText(toggle).assertDoesNotExist()
 
         val saveButton = button(save)
         val lowestField = (leftColumn + rightColumn).maxOf { label(it).bottom }
@@ -194,8 +198,8 @@ class GiftEditorLayoutTest {
         val nameError = label("Enter what the gift was")
         val priceError = label("Enter a valid price")
         assertTrue("name error in the left column", nameError.right < priceError.left)
-        assertTrue("name error under the name", nameError.top > label(nameLabel).top && nameError.top < label(occasionLabel).top)
-        assertTrue("price error under the price", priceError.top > label(priceLabel).top && priceError.top < label(linkLabel).top)
+        assertTrue("name error under the name", nameError.top > label(nameStep).top)
+        assertTrue("price error under the price", priceError.top > label(priceLabel).top && priceError.top < label(photoLabel).top)
     }
 
     @Test
@@ -206,7 +210,7 @@ class GiftEditorLayoutTest {
         // The readable measure, not the wide one, centred in the window, then the usual margin.
         assertNear(centredStart(1200.dp, GiftiaryLayout.readableMaxWidth) + GiftiarySpacing.xl, message.left, "message start")
         compose.onNodeWithText("Go to People").assertExists()
-        compose.onNodeWithText(priceLabel).assertDoesNotExist()
+        compose.onNodeWithText(priceLabel, useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithText(save).assertDoesNotExist()
     }
 
@@ -218,6 +222,7 @@ class GiftEditorLayoutTest {
         widthClass = WidthClass.EXPANDED
         compose.waitForIdle()
 
+        // Search, name, occasion, date, price, note and link.
         assertEquals(7, compact.size)
         assertEquals(compact, fieldValuesInOrder())
     }

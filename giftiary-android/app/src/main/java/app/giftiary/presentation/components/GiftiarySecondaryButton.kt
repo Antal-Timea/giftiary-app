@@ -62,14 +62,14 @@ fun GiftiarySecondaryButton(
 
 /**
  * A full-width aqua action that supports the form rather than finishing it, such as
- * "Add more details (optional)". [trailingIcon] is decorative, e.g. a disclosure chevron.
+ * "Add more details (optional)". [leadingIcon] is decorative, e.g. a disclosure chevron.
  */
 @Composable
 fun GiftiarySupportButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    trailingIcon: Painter? = null,
+    leadingIcon: Painter? = null,
 ) {
     val colors = GiftiaryTheme.colors
     Button(
@@ -80,11 +80,11 @@ fun GiftiarySupportButton(
         elevation = null,
         contentPadding = PaddingValues(GiftiarySpacing.l),
     ) {
-        Text(text = text, style = GiftiaryType.body.copy(fontWeight = FontWeight.Bold))
-        if (trailingIcon != null) {
+        if (leadingIcon != null) {
+            Icon(painter = leadingIcon, contentDescription = null, modifier = Modifier.size(13.dp))
             Spacer(Modifier.width(7.dp))
-            Icon(painter = trailingIcon, contentDescription = null, modifier = Modifier.size(13.dp))
         }
+        Text(text = text, style = GiftiaryType.body.copy(fontWeight = FontWeight.Bold))
     }
 }
 

@@ -30,6 +30,8 @@ fun <T> GiftiaryDropdownField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     errorMessage: String? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    placeholder: String? = null,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(
@@ -47,6 +49,8 @@ fun <T> GiftiaryDropdownField(
             enabled = enabled,
             readOnly = true,
             errorMessage = errorMessage,
+            leadingIcon = leadingIcon,
+            placeholder = placeholder,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
         )
         ExposedDropdownMenu(
