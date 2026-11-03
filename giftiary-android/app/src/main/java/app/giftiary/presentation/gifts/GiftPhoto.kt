@@ -21,7 +21,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -213,7 +212,7 @@ private fun PhotoSourceDialog(onTakePhoto: () -> Unit, onChooseFromGallery: () -
 private fun PhotoSource(label: String, onClick: () -> Unit) {
     Text(
         text = label,
-        style = MaterialTheme.typography.bodyLarge,
+        style = GiftiaryType.body,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = onClick)
@@ -245,7 +244,7 @@ private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
     } else {
         Text(
             text = stringResource(R.string.gift_photo_unavailable),
-            style = MaterialTheme.typography.bodyMedium,
+            style = GiftiaryType.bodySmall,
             color = GiftiaryTheme.colors.textSecondary,
         )
     }

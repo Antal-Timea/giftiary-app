@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.giftiary.R
@@ -42,6 +43,7 @@ private fun lora(size: Float, weight: FontWeight, lineHeight: Float? = null) = T
     fontWeight = weight,
     fontSize = size.sp,
     lineHeight = lineHeight?.let { (size * it).sp } ?: TextStyle.Default.lineHeight,
+    hyphens = Hyphens.Auto,
 )
 
 private fun publicSans(size: Float, weight: FontWeight, lineHeight: Float? = null, letterSpacing: Float = 0f) = TextStyle(
@@ -50,6 +52,7 @@ private fun publicSans(size: Float, weight: FontWeight, lineHeight: Float? = nul
     fontSize = size.sp,
     lineHeight = lineHeight?.let { (size * it).sp } ?: TextStyle.Default.lineHeight,
     letterSpacing = letterSpacing.em,
+    hyphens = Hyphens.Auto,
 )
 
 /**
@@ -118,15 +121,15 @@ object GiftiaryType {
     val number = lora(23f, FontWeight.Bold, lineHeight = 1f)
     val numberUnit = publicSans(8.5f, FontWeight.Bold, letterSpacing = 0.1f)
 
-    val handwriting = TextStyle(fontFamily = Caveat, fontWeight = FontWeight.Medium, fontSize = 21.sp)
+    val handwriting = TextStyle(fontFamily = Caveat, fontWeight = FontWeight.Medium, fontSize = 21.sp, hyphens = Hyphens.Auto)
 }
 
 private val base = Typography()
 
-private fun TextStyle.lora(weight: FontWeight) = copy(fontFamily = Lora, fontWeight = weight)
+private fun TextStyle.lora(weight: FontWeight) = copy(fontFamily = Lora, fontWeight = weight, hyphens = Hyphens.Auto)
 
 private fun TextStyle.publicSans(weight: FontWeight = FontWeight.Normal) =
-    copy(fontFamily = PublicSans, fontWeight = weight)
+    copy(fontFamily = PublicSans, fontWeight = weight, hyphens = Hyphens.Auto)
 
 /**
  * Material slots, so existing screens and unstyled Material components pick the approved faces:

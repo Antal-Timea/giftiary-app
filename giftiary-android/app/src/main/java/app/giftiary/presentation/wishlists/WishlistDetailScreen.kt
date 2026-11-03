@@ -2,7 +2,6 @@ package app.giftiary.presentation.wishlists
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,6 +51,7 @@ import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.PendingSyncStatus
+import app.giftiary.presentation.components.TrailingActionRow
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -246,33 +246,39 @@ private fun wishCount(count: Int): String =
 private fun SharingLine(onManage: () -> Unit) {
     val colors = GiftiaryTheme.colors
     val manageDescription = stringResource(R.string.wishlist_sharing_manage_description)
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .background(colors.supportSurface, GiftiaryShapes.pill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(painterResource(R.drawable.ic_people), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textPrimary)
-        }
-        Spacer(Modifier.width(GiftiarySpacing.s))
-        Text(
-            text = stringResource(R.string.wishlist_sharing_invited_only),
-            modifier = Modifier.weight(1f),
-            style = GiftiaryType.label,
-            color = colors.textLabel,
-        )
-        TextButton(
-            onClick = onManage,
-            modifier = Modifier
-                .trimVertical(12.dp)
-                .heightIn(min = 48.dp)
-                .offset(x = GiftiarySpacing.s)
-                .semantics { contentDescription = manageDescription },
-            colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
-            contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
-        ) {
-            Text(stringResource(R.string.wishlist_sharing_manage), style = GiftiaryType.label)
+    TrailingActionRow(
+        modifier = Modifier.fillMaxWidth(),
+        action = {
+            TextButton(
+                onClick = onManage,
+                modifier = Modifier
+                    .trimVertical(12.dp)
+                    .heightIn(min = 48.dp)
+                    .offset(x = GiftiarySpacing.s)
+                    .semantics { contentDescription = manageDescription },
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
+                contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
+            ) {
+                Text(stringResource(R.string.wishlist_sharing_manage), style = GiftiaryType.label)
+            }
+        },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .background(colors.supportSurface, GiftiaryShapes.pill),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(painterResource(R.drawable.ic_people), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textPrimary)
+            }
+            Spacer(Modifier.width(GiftiarySpacing.s))
+            Text(
+                text = stringResource(R.string.wishlist_sharing_invited_only),
+                modifier = Modifier.weight(1f),
+                style = GiftiaryType.label,
+                color = colors.textLabel,
+            )
         }
     }
 }
@@ -281,32 +287,31 @@ private fun SharingLine(onManage: () -> Unit) {
 private fun WishesHeading(onAddWish: () -> Unit) {
     val colors = GiftiaryTheme.colors
     val addDescription = stringResource(R.string.wish_add_description)
-    Row(
+    TrailingActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.m, top = GiftiarySpacing.fieldGroup),
-        verticalAlignment = Alignment.CenterVertically,
+        action = {
+            TextButton(
+                onClick = onAddWish,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = addDescription },
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryAction),
+                contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
+            ) {
+                Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.wish_add), style = GiftiaryType.label.copy(fontWeight = GiftiaryType.contentTitle.fontWeight))
+            }
+        },
     ) {
         Text(
             text = stringResource(R.string.wishlist_wishes),
-            modifier = Modifier
-                .weight(1f)
-                .semantics { heading() },
+            modifier = Modifier.semantics { heading() },
             style = GiftiaryType.sectionTitle,
             color = colors.textPrimary,
         )
-        TextButton(
-            onClick = onAddWish,
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .semantics { contentDescription = addDescription },
-            colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryAction),
-            contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
-        ) {
-            Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(13.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.wish_add), style = GiftiaryType.label.copy(fontWeight = GiftiaryType.contentTitle.fontWeight))
-        }
     }
 }
 

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -30,6 +29,7 @@ import app.giftiary.presentation.occasions.occasionTitle
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 @Composable
 @ReadOnlyComposable
@@ -49,7 +49,7 @@ fun GiftIdeaStatusTag(status: GiftIdeaStatus, modifier: Modifier = Modifier) {
         modifier = modifier
             .background(GiftiaryTheme.colors.surfaceContext, GiftiaryShapes.input)
             .padding(horizontal = GiftiarySpacing.s, vertical = GiftiarySpacing.xs / 2),
-        style = MaterialTheme.typography.labelMedium,
+        style = GiftiaryType.chip,
         color = GiftiaryTheme.colors.textPrimary,
     )
 }
@@ -110,7 +110,7 @@ fun GiftIdeaRow(
             .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
         verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs),
     ) {
-        Text(text = idea.name, style = MaterialTheme.typography.titleMedium, color = colors.textPrimary)
+        Text(text = idea.name, style = GiftiaryType.contentTitle, color = colors.textPrimary)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
             itemVerticalAlignment = Alignment.CenterVertically,
@@ -125,7 +125,7 @@ fun GiftIdeaRow(
             if (details.isNotEmpty()) {
                 Text(
                     text = details.joinToString(separator = " · "),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = GiftiaryType.bodySmall,
                     color = colors.textSecondary,
                 )
             }

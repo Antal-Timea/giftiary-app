@@ -2,6 +2,7 @@ package app.giftiary.presentation.people
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -306,7 +308,7 @@ private fun PersonHero(person: Person, onBack: (() -> Unit)?, onEdit: () -> Unit
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(HERO_HEIGHT)
+            .heightIn(min = HERO_HEIGHT)
             .clip(GiftiaryShapes.hero)
             .background(colors.surfaceContext),
     ) {
@@ -318,11 +320,13 @@ private fun PersonHero(person: Person, onBack: (() -> Unit)?, onEdit: () -> Unit
                 .background(colors.surfaceContextQuiet, GiftiaryShapes.pill),
             contentAlignment = Alignment.Center,
         ) {
+            // Sized to its circle, not to the text size: the name is written in the hero, and the
+            // monogram only gives it a face.
+            val monogramSize = with(LocalDensity.current) { MONOGRAM_SIZE.toSp() }
             Text(
                 text = monogramInitial(person.name),
-                // The name is written in the hero; the monogram only gives it a face.
                 modifier = Modifier.clearAndSetSemantics {},
-                style = GiftiaryType.display.copy(fontSize = 104.sp, lineHeight = 104.sp),
+                style = GiftiaryType.display.copy(fontSize = monogramSize, lineHeight = monogramSize),
                 color = colors.textPrimary,
             )
         }
@@ -342,7 +346,9 @@ private fun PersonHero(person: Person, onBack: (() -> Unit)?, onEdit: () -> Unit
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.xl),
+                // Below the hero buttons, so a long name at large text makes the hero taller instead.
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = HERO_BAR_HEIGHT, bottom = GiftiarySpacing.xl),
         ) {
             Text(
                 text = person.name,
@@ -644,6 +650,10 @@ private fun HistoryGroup(group: HistoryGroup, giftPhotos: Map<String, LoadedPhot
 }
 
 private val HERO_HEIGHT = 266.dp
+private val MONOGRAM_SIZE = 104.dp
+
+// The hero buttons' 48dp targets and their vertical padding.
+private val HERO_BAR_HEIGHT = 64.dp
 
 private val previewPerson = Person(UUID.randomUUID(), "Anna Kovács", "Sister", null, null, Instant.EPOCH, Instant.EPOCH)
 

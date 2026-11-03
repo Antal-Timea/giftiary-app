@@ -10,19 +10,24 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Wish
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.WithFontScale
+import app.giftiary.testing.lineCount
 import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.UUID
+import org.robolectric.annotation.GraphicsMode
 
 /** The owner's wishlist: identity, sharing, the wishes, and where every owner action went. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -42,29 +47,32 @@ class WishlistDetailScreenTest {
     private val actions = mutableListOf<String>()
     private var state by mutableStateOf(WishlistDetailUiState())
     private var shown = false
+    private var fontScale = 1f
 
     private fun show(state: WishlistDetailUiState) {
         this.state = state
         if (shown) return
         shown = true
         compose.setContent {
-            GiftiaryTheme {
-                WishlistDetailScreen(
-                    state = this.state,
-                    actions = WishlistDetailScreenActions(
-                        onBack = { actions += "back" },
-                        onEditList = { actions += "edit list" },
-                        onOpenPerson = { actions += "person" },
-                        onAddWish = { actions += "add wish" },
-                        onOpenWish = { id -> actions += "open ${name(id)}" },
-                        onEditWish = { id -> actions += "edit ${name(id)}" },
-                        onShare = { actions += "share" },
-                        onDeleteRequested = { actions += "delete requested" },
-                        onDeleteConfirmed = { actions += "delete confirmed" },
-                        onDeleteDismissed = { actions += "delete dismissed" },
-                        onWriteErrorShown = { actions += "error shown" },
-                    ),
-                )
+            WithFontScale(fontScale) {
+                GiftiaryTheme {
+                    WishlistDetailScreen(
+                        state = this.state,
+                        actions = WishlistDetailScreenActions(
+                            onBack = { actions += "back" },
+                            onEditList = { actions += "edit list" },
+                            onOpenPerson = { actions += "person" },
+                            onAddWish = { actions += "add wish" },
+                            onOpenWish = { id -> actions += "open ${name(id)}" },
+                            onEditWish = { id -> actions += "edit ${name(id)}" },
+                            onShare = { actions += "share" },
+                            onDeleteRequested = { actions += "delete requested" },
+                            onDeleteConfirmed = { actions += "delete confirmed" },
+                            onDeleteDismissed = { actions += "delete dismissed" },
+                            onWriteErrorShown = { actions += "error shown" },
+                        ),
+                    )
+                }
             }
         }
     }
@@ -88,6 +96,28 @@ class WishlistDetailScreenTest {
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         compose.onNodeWithText("My wishlist").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         compose.onNodeWithText("Wishes").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    // Real text measurement, so a squeezed or clipped word shows.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian at large text the heading, sharing line and a wish's link keep their words whole`() {
+        fontScale = 2f
+        show(own(headphones))
+
+        val width = compose.onRoot().getBoundsInRoot().right
+        // Each moves under its text rather than squeezing it.
+        listOf("Kívánságok", "Kezelés", "Kívánság hozzáadása").forEach {
+            val text = compose.onNodeWithText(it, useUnmergedTree = true)
+            assertEquals(it, 1, text.lineCount())
+            assertTrue("$it inside the screen", text.getBoundsInRoot().right <= width)
+        }
+        // The link wraps under the price, whole, and does not reach into the price's line.
+        val link = compose.onNodeWithText("Link megnyitása", useUnmergedTree = true)
+        assertTrue("link on at most two lines", link.lineCount() <= 2)
+        val price = compose.onNodeWithText("kb.", substring = true, useUnmergedTree = true).getBoundsInRoot()
+        assertTrue("link under the price", link.getBoundsInRoot().top >= price.bottom)
     }
 
     @Test

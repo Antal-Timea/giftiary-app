@@ -2,10 +2,12 @@ package app.giftiary.presentation.sync
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
@@ -136,6 +138,22 @@ class SyncAttentionScreenTest {
         action("Open Birthday").performClick()
         action("Dismiss the note about Scarf").performClick()
         assertEquals(listOf("open Anna", "dismiss Anna", "open OCCASION", "dismiss Scarf"), events)
+    }
+
+    @Test
+    fun `Home's attention line is a 48dp button that opens the list once`() {
+        compose.setContent {
+            GiftiaryTheme { SyncStatusLine(loaded(replaced, duplicate), onOpenAttention = { events += "attention" }) }
+        }
+
+        val line = compose.onNode(hasText("2 items need your attention") and hasClickAction())
+        line.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        line.assert(SemanticsMatcher("open label") { it.config.getOrNull(SemanticsActions.OnClick)?.label == "Show what needs attention" })
+        val bounds = line.getBoundsInRoot()
+        assertTrue("a 48dp target", bounds.bottom - bounds.top >= 48.dp)
+        compose.onNodeWithText("3 changes saved on this device, waiting to sync").assertExists()
+        line.performClick()
+        assertEquals(listOf("attention"), events)
     }
 
     @Test

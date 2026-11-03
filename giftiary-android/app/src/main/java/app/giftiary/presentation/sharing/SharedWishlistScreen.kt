@@ -3,6 +3,7 @@ package app.giftiary.presentation.sharing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -339,10 +340,11 @@ private fun Reservation(
             }
             if (busy) ReservationProgress()
         }
-        ReservationLabel.RESERVED_BY_YOU -> Row(
+        // At large text Undo moves under the tag instead of being squeezed beside it.
+        ReservationLabel.RESERVED_BY_YOU -> FlowRow(
             modifier = Modifier.padding(top = GiftiarySpacing.s),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 modifier = Modifier
