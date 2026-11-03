@@ -142,8 +142,5 @@ sealed interface WishlistDetailContent {
         val owner: WishlistOwner,
         val openablePersonId: UUID?,
         val wishes: List<Wish>,
-    ) : WishlistDetailContent {
-        /** Only the user's own lists can be shared; one kept for a person stays private. */
-        val canShare: Boolean get() = wishlist.personId == null
-    }
+    ) : WishlistDetailContent
 }

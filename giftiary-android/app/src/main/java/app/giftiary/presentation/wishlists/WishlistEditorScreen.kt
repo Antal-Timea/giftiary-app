@@ -221,7 +221,7 @@ private fun WishlistForm(state: WishlistEditorUiState, actions: WishlistEditorAc
                     color = GiftiaryTheme.colors.textMuted,
                 )
             }
-            if (state.isNew) PrivacyNote(forPerson = state.selectedPerson != null)
+            if (state.isNew) PrivacyNote()
         }
         GiftiaryPrimaryButton(
             text = stringResource(if (state.isNew) R.string.wishlist_editor_create else R.string.wishlist_editor_save),
@@ -254,12 +254,9 @@ private fun OwnerField(owner: WishlistOwner) {
     )
 }
 
-/**
- * The board's "Only you" note. A new list is always private; only the user's own lists can be
- * shared later, so one kept for a person says it stays private instead.
- */
+/** The board's "Only you" note: a new list is always private, and any list can be shared later. */
 @Composable
-private fun PrivacyNote(forPerson: Boolean) {
+private fun PrivacyNote() {
     val colors = GiftiaryTheme.colors
     Row(
         modifier = Modifier
@@ -284,7 +281,7 @@ private fun PrivacyNote(forPerson: Boolean) {
                 color = colors.textPrimary,
             )
             Text(
-                text = stringResource(if (forPerson) R.string.wishlist_editor_private_person else R.string.wishlist_editor_private_own),
+                text = stringResource(R.string.wishlist_editor_private_own),
                 style = GiftiaryType.body,
                 color = colors.textPrimary,
             )

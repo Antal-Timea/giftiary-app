@@ -119,7 +119,8 @@ trigger works even though Supabase Auth (`supabase_auth_admin`) cannot call it d
 
 ## Wishlist sharing
 
-An owner shares an own wishlist (one without `person_id`) by invite; a signed-in user who redeems
+An owner shares any of their wishlists by invite, one kept for a person too (since
+`20261104100000_share_person_wishlists`; members never get the person). A signed-in user who redeems
 the invite becomes a member and can read the list and reserve its wishes. The three sharing tables
 have row level security on and **no policies and no client privileges**, so clients cannot read
 or write them directly and they are not part of Realtime. Everything goes through ten

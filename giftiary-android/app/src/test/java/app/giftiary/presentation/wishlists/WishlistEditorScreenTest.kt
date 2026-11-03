@@ -98,11 +98,11 @@ class WishlistEditorScreenTest {
     }
 
     @Test
-    fun `a list kept for someone says it stays private`() {
+    fun `a new list kept for someone starts private and can be shared later, like any list`() {
         show(creating.copy(personId = martin.id))
 
         compose.onNodeWithText("Martin").assertExists()
-        compose.onNodeWithText("Lists you keep for someone always stay private to you.").assertExists()
+        compose.onNodeWithText("New lists stay private. You can share this one whenever you like.").assertExists()
     }
 
     @Test

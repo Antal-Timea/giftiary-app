@@ -191,9 +191,8 @@ private fun LazyListScope.ownLists(content: WishlistsContent.Loaded, actions: Li
 }
 
 /**
- * [owner] is null for the user's own list. Whether an own list is shared is only known online, on
- * its sharing screen, so the row claims nothing about it; a list kept for a person can never be
- * shared, so it is only the user's.
+ * [owner] is null for the user's own list. Whether a list is shared is only known online, on its
+ * sharing screen, so the row claims nothing about it.
  */
 @Composable
 private fun OwnListRow(wishlist: Wishlist, owner: WishlistOwner?, wishCount: Int, onClick: () -> Unit) {
@@ -203,16 +202,6 @@ private fun OwnListRow(wishlist: Wishlist, owner: WishlistOwner?, wishCount: Int
         leading = { ListCover(wishlist.name) },
         trailing = { RowChevron() },
         supporting = {
-            if (owner != null) {
-                Row(
-                    modifier = Modifier.padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(painterResource(R.drawable.ic_lock), contentDescription = null, modifier = Modifier.size(12.dp), tint = colors.textLabel)
-                    Text(stringResource(R.string.lists_only_you), style = GiftiaryType.label.copy(fontWeight = GiftiaryType.metadata.fontWeight), color = colors.textLabel)
-                }
-            }
             Text(
                 text = listOfNotNull(owner?.let { wishlistOwnerText(it) }, wishCountText(wishCount)).joinToString(" · "),
                 style = GiftiaryType.metadata,
