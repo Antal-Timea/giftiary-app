@@ -539,7 +539,7 @@ big stories</string>
     <string name="account_deletion_finishing">Deleting your account…</string>
     <string name="account_deletion_not_finished">Your account couldn’t be removed from this device yet.</string>
     <string name="account_deleted_title">Account deleted</string>
-    <string name="account_deleted_message">Your Giftiary account and its data have been deleted.</string>
+    <string name="account_deleted_message">Your Giftiary account and its data have been deleted from Giftiary and from this device.</string>
     <string name="wishlist_access_name_prompt">Add your name so the people you invite know whose list this is.</string>
     <string name="wishlist_access_name_prompt_later">Not now</string>
     <string name="wishlist_access_name_prompt_add">Add name</string>
