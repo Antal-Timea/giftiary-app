@@ -5,7 +5,7 @@
 -- Two-session behaviour (locking, waiting, limits under concurrency) is in 10_wishlist_sharing_concurrency.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(121);
+select plan(136);
 
 -- ---- schema, privileges and function hardening ----
 
@@ -174,8 +174,8 @@ $$;
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 set local role authenticated;
 
-select throws_ok($$select public.create_wishlist_invite('10000000-0000-4000-8000-000000000003')$$,
-    'P0002', 'not available', 'a list kept for a person cannot be shared');
+select set_config('test.token_person', public.create_wishlist_invite('10000000-0000-4000-8000-000000000003') ->> 'token', true);
+select matches(current_setting('test.token_person'), '^[A-Za-z0-9_-]{43}$', 'a list kept for a person can be shared too');
 select throws_ok($$select public.create_wishlist_invite('10000000-0000-4000-8000-000000000001', 0)$$,
     '22023', null, 'an invite must last at least a day');
 select throws_ok($$select public.create_wishlist_invite('10000000-0000-4000-8000-000000000001', 15)$$,
@@ -443,19 +443,86 @@ select is(pg_temp.state('10000000-0000-4000-8000-000000000001', '20000000-0000-4
     'a cross-list row never shows as a reservation');
 select is(public.reserve_wish('20000000-0000-4000-8000-000000000005'), 'RESERVED_BY_ME', 'and is taken over by an eligible member');
 
--- ---- a list later kept for a person is no longer shared ----
+-- ---- a list later kept for a person stays shared, and never shows the person ----
 
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 update public.wishlists set person_id = 'a0000000-0000-4000-8000-0000000000f1', last_mutation_id = gen_random_uuid()
 where id = '10000000-0000-4000-8000-000000000005';
 select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
-select throws_ok($$select public.get_shared_wishlist('10000000-0000-4000-8000-000000000005')$$,
-    'P0002', 'not available', 'a list linked to a person is not available to members');
-select throws_ok($$select public.reserve_wish('20000000-0000-4000-8000-000000000006')$$,
-    'P0002', 'not available', 'nor are its wishes');
+select is(pg_temp.listed('10000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000006'), 1,
+    'a list linked to a person stays available to its members');
+select is(public.reserve_wish('20000000-0000-4000-8000-000000000006'), 'RESERVED_BY_ME', 'and so do its wishes');
 select is((select count(*)::int from jsonb_array_elements(public.get_shared_wishlists()) x
-           where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'), 0,
-    'and it leaves the member''s shared lists');
+           where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'), 1,
+    'and it stays among the member''s shared lists');
+select ok(position('a0000000-0000-4000-8000-0000000000f1' in
+              public.get_shared_wishlist('10000000-0000-4000-8000-000000000005')::text || public.get_shared_wishlists()::text) = 0,
+    'the person''s id is never part of what members get');
+
+-- ---- a member of a person's list reaches that list only ----
+
+-- Anna also has an occasion, an idea, a gift and a second list nobody joined.
+reset role;
+insert into public.occasions (last_mutation_id, id, owner_user_id, person_id, type, day, month, repeats_yearly)
+values (gen_random_uuid(), 'a0000000-0000-4000-8000-0000000000f2', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        'a0000000-0000-4000-8000-0000000000f1', 'BIRTHDAY', 12, 5, true);
+insert into public.gift_ideas (last_mutation_id, id, owner_user_id, recipient_person_id, name, status)
+values (gen_random_uuid(), 'a0000000-0000-4000-8000-0000000000f3', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        'a0000000-0000-4000-8000-0000000000f1', 'Secret idea', 'IDEA');
+insert into public.gifts (last_mutation_id, id, owner_user_id, direction, recipient_person_id, name, given_at)
+values (gen_random_uuid(), 'a0000000-0000-4000-8000-0000000000f4', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GIVEN',
+        'a0000000-0000-4000-8000-0000000000f1', 'Secret gift', '2026-05-12');
+insert into public.wishlists (id, owner_user_id, person_id, name, last_mutation_id)
+values ('10000000-0000-4000-8000-000000000006', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        'a0000000-0000-4000-8000-0000000000f1', 'Anna unjoined', gen_random_uuid());
+insert into public.wishes (id, owner_user_id, wishlist_id, name, last_mutation_id) values
+    ('20000000-0000-4000-8000-000000000007', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '10000000-0000-4000-8000-000000000006', 'Kite', gen_random_uuid()),
+    ('20000000-0000-4000-8000-000000000008', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', '10000000-0000-4000-8000-000000000003', 'Puzzle', gen_random_uuid());
+set local role authenticated;
+
+select pg_temp.as_user('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+select is(public.redeem_wishlist_invite(current_setting('test.token_person')) ->> 'wishlist_id', '10000000-0000-4000-8000-000000000003',
+    'a member joins a list kept for a person');
+select is(
+    (select string_agg(k, ',' order by k) from jsonb_object_keys(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')) k),
+    'name,owner_display_name,wishes,wishlist_id', 'the person''s list holds the same fields as any shared list');
+select is(
+    (select string_agg(distinct k, ',' order by k)
+     from jsonb_array_elements(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') -> 'wishes') w,
+          jsonb_object_keys(w) k),
+    'estimated_price_amount_minor,estimated_price_currency_code,name,note,product_url,reservation_state,wish_id',
+    'and its wishes the same display fields');
+select ok(
+    (select bool_and(position(secret in public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')::text
+                                        || public.get_shared_wishlists()::text) = 0)
+     from unnest(array['a0000000-0000-4000-8000-0000000000f1', 'Secret idea', 'Secret gift', 'Anna unjoined', 'Kite',
+                       '10000000-0000-4000-8000-000000000006']) secret),
+    'nothing of the person, their other list or its wishes reaches the member');
+select is(
+    (select count(*)::int from public.people) + (select count(*)::int from public.occasions)
+        + (select count(*)::int from public.gift_ideas) + (select count(*)::int from public.gifts),
+    0, 'the member reads none of the person''s rows directly');
+select is((select count(*)::int from public.wishlists) + (select count(*)::int from public.wishes), 0,
+    'nor any of the owner''s lists or wishes');
+select throws_ok($$select public.get_shared_wishlist('10000000-0000-4000-8000-000000000006')$$,
+    'P0002', 'not available', 'another list of the same person stays closed');
+select throws_ok($$select public.reserve_wish('20000000-0000-4000-8000-000000000007')$$,
+    'P0002', 'not available', 'its wishes cannot be reserved');
+select throws_ok($$select public.release_wish('20000000-0000-4000-8000-000000000007')$$,
+    'P0002', 'not available', 'or released');
+select is(jsonb_array_length(public.get_shared_wishlists()), 1, 'only the joined list is among the member''s shared lists');
+select is(public.reserve_wish('20000000-0000-4000-8000-000000000008'), 'RESERVED_BY_ME', 'reserving works as on any shared list');
+
+select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+select throws_ok($$select public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')$$,
+    'P0002', 'not available', 'the owner still cannot read the guest view of a person''s list');
+select throws_ok($$select public.reserve_wish('20000000-0000-4000-8000-000000000008')$$,
+    'P0002', 'not available', 'nor reserve on it');
+select is(
+    (select string_agg(distinct k, ',' order by k)
+     from jsonb_array_elements(public.list_wishlist_access('10000000-0000-4000-8000-000000000003') -> 'members') m,
+          jsonb_object_keys(m) k),
+    'display_name,joined_at,member_user_id', 'and sees its members, never their reservations');
 
 -- ---- the owner's sync data never moves ----
 

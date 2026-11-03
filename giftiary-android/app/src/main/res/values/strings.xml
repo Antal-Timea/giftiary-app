@@ -385,7 +385,6 @@ big stories</string>
     <string name="wishlist_editor_for_hint">Yourself or anyone you keep in Giftiary — they don’t need an account. This can’t be changed later.</string>
     <string name="wishlist_editor_for_fixed">Who a list is for can’t be changed.</string>
     <string name="wishlist_editor_private_own">New lists stay private. You can share this one whenever you like.</string>
-    <string name="wishlist_editor_private_person">Lists you keep for someone always stay private to you.</string>
     <string name="wishlist_editor_create">Create list</string>
     <string name="wishlist_editor_save">Save list</string>
     <string name="wishlist_save_failed">The wishlist could not be saved. Please try again.</string>

@@ -165,17 +165,15 @@ class WishlistDetailScreenTest {
     }
 
     @Test
-    fun `a list kept for a person cannot be shared, and opens that person`() {
+    fun `a list kept for a person is shared like any other, and opens that person`() {
         show(forPeter())
 
-        compose.onNodeWithContentDescription("Manage sharing").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Manage sharing").performClick()
         compose.onNodeWithContentDescription("Options for Peter’s wishlist").performClick()
-        compose.onNodeWithText("Share").assertDoesNotExist()
-        compose.onNodeWithText("Edit list").assertExists()
-        compose.onNodeWithText("Edit list").performClick()
+        compose.onNodeWithText("Share").performClick()
         compose.onNodeWithText("Peter · 1 wish").performClick()
 
-        assertEquals(listOf("edit list", "person"), actions)
+        assertEquals(listOf("share", "share", "person"), actions)
     }
 
     @Test

@@ -384,7 +384,6 @@ nagy történetek</string>
     <string name="wishlist_editor_for_hint">Te magad vagy bárki, akit a Giftiaryben számon tartasz – nekik nem kell fiók. Ez később nem módosítható.</string>
     <string name="wishlist_editor_for_fixed">Azt, hogy kinek a listája, nem lehet módosítani.</string>
     <string name="wishlist_editor_private_own">Az új listákat csak te látod. Ezt bármikor megoszthatod.</string>
-    <string name="wishlist_editor_private_person">A valakinek vezetett listákat mindig csak te látod.</string>
     <string name="wishlist_editor_create">Lista létrehozása</string>
     <string name="wishlist_editor_save">Lista mentése</string>
     <string name="wishlist_save_failed">A kívánságlista mentése nem sikerült. Próbáld újra.</string>

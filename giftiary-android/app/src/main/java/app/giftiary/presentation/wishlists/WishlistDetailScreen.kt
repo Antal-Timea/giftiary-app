@@ -194,13 +194,11 @@ private fun WishlistContents(
                 options = {
                     OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
                         Option(stringResource(R.string.wishlist_edit), R.drawable.ic_edit, { actions.onEditList(wishlist.id) })
-                        if (content.canShare) Option(stringResource(R.string.wishlist_share), R.drawable.ic_people, { actions.onShare(wishlist.id) })
+                        Option(stringResource(R.string.wishlist_share), R.drawable.ic_people, { actions.onShare(wishlist.id) })
                         Option(stringResource(R.string.wishlist_delete), R.drawable.ic_delete, actions.onDeleteRequested, enabled = !busy, quiet = true)
                     }
                 },
-                below = {
-                    if (content.canShare) SharingLine(onManage = { actions.onShare(wishlist.id) })
-                },
+                below = { SharingLine(onManage = { actions.onShare(wishlist.id) }) },
             )
         }
         if (waitingToSync) {

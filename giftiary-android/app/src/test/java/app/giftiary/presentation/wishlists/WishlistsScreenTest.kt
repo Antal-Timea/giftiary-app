@@ -105,15 +105,14 @@ class WishlistsScreenTest {
     }
 
     @Test
-    fun `counts come from the wishes, and only a list kept for a person claims to be private`() {
+    fun `counts come from the wishes, and no list claims whether it is shared`() {
         show(populated)
 
         compose.onNodeWithText("8 wishes").assertExists()
         compose.onNodeWithText("No wishes yet").assertExists()
         compose.onNodeWithText("For Martin · 1 wish").assertExists()
-        // Whether an own list is shared is only known online; the one privacy claim is the person list's.
-        compose.onNodeWithText("Only you").assertExists()
-        assertEquals(listOf(top("Martin’s wishlist"), top("Only you"), top("For Martin · 1 wish")).sorted(), listOf(top("Martin’s wishlist"), top("Only you"), top("For Martin · 1 wish")))
+        // Any list may be shared, and whether it is is only known online, on its sharing screen.
+        compose.onNodeWithText("Only you").assertDoesNotExist()
         compose.onNodeWithText("Shared with Peter").assertDoesNotExist()
     }
 
