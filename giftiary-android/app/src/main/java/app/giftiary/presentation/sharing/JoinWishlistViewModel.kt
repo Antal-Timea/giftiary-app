@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -17,7 +18,8 @@ import javax.inject.Inject
 
 /**
  * Joins a shared wishlist, from an opened link (taken from [PendingWishlistJoin] once, when the
- * screen opens) or from a pasted one. Tokens are kept in memory only, never in saved state.
+ * screen opens or while it is open) or from a pasted one. Tokens are kept in memory only, never in
+ * saved state.
  */
 @HiltViewModel
 class JoinWishlistViewModel @Inject constructor(
@@ -32,10 +34,15 @@ class JoinWishlistViewModel @Inject constructor(
     private var lastToken: InviteToken? = null
 
     init {
-        when (val join = pendingJoin.take()) {
-            is PendingJoin.Invite -> redeem(join.token)
-            PendingJoin.InvalidLink -> _state.update { it.copy(phase = JoinPhase.Failed(JoinFailure.INVALID_LINK)) }
-            null -> Unit
+        // Also a link opened while this screen is already open: no second screen opens for it.
+        viewModelScope.launch {
+            pendingJoin.isPending.filter { it }.collect {
+                when (val join = pendingJoin.take()) {
+                    is PendingJoin.Invite -> redeem(join.token)
+                    PendingJoin.InvalidLink -> _state.update { it.copy(phase = JoinPhase.Failed(JoinFailure.INVALID_LINK)) }
+                    null -> Unit
+                }
+            }
         }
     }
 
