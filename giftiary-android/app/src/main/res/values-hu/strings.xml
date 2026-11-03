@@ -38,6 +38,7 @@ nagy történetek</string>
     </plurals>
 
     <string name="own_occasions_title">Saját alkalmaid</string>
+    <string name="own_occasions_subtitle">Karácsony, évfordulók és más napok, amelyek a tieid, nem egy-egy emberé.</string>
     <string name="occasion_open">Megnyitás</string>
     <string name="occasion_edit">Szerkesztés</string>
     <string name="own_occasions_empty_title">Még nincs saját alkalmad</string>
@@ -45,6 +46,7 @@ nagy történetek</string>
     <string name="own_occasions_load_failed">A saját alkalmaid most nem jeleníthetők meg.</string>
 
     <string name="occasion_plan_no_ideas">Ehhez az alkalomhoz még nincs ötlet kapcsolva.</string>
+    <string name="occasion_plan_eyebrow">Alkalom</string>
     <string name="occasion_plan_ideas_unavailable">Az alkalom ötletei most nem jeleníthetők meg.</string>
 
     <string name="reminder_card_off">Kérj emlékeztetőt az alkalom napján és egy héttel előtte.</string>
@@ -71,7 +73,6 @@ nagy történetek</string>
 
     <string name="people_title">Emberek</string>
     <string name="people_add">Személy hozzáadása</string>
-    <string name="people_edit">Szerkesztés</string>
     <string name="people_empty_title">Még nincs senki a listán</string>
     <string name="people_empty_message">Adj hozzá valakit, aki fontos neked, és kezdd el megőrizni az ajándékokat, ötleteket és alkalmakat.</string>
     <string name="people_load_failed">Nem sikerült betölteni az embereket.</string>
@@ -120,6 +121,8 @@ nagy történetek</string>
 
     <string name="occasion_editor_add_title">Alkalom hozzáadása</string>
     <string name="occasion_editor_edit_title">Alkalom szerkesztése</string>
+    <string name="occasion_editor_add_subtitle">Jelölj meg egy napot, amelyre érdemes ajándékot tervezni.</string>
+    <string name="occasion_editor_edit_subtitle">Tartsd naprakészen ennek a napnak az adatait.</string>
     <string name="occasion_editor_type">Alkalom</string>
     <string name="occasion_editor_title">Megnevezés</string>
     <string name="occasion_editor_title_hint">pl. Ballagás</string>
@@ -128,6 +131,7 @@ nagy történetek</string>
     <string name="occasion_editor_year">Év</string>
     <string name="occasion_editor_year_optional">Év (nem kötelező)</string>
     <string name="occasion_editor_repeats_yearly">Minden évben ismétlődik</string>
+    <string name="occasion_editor_repeats_yearly_hint">Kapcsold ki egyszeri naphoz; ekkor meg kell adni az évet.</string>
     <string name="occasion_editor_save">Mentés</string>
     <string name="occasion_editor_delete">Alkalom törlése</string>
     <string name="occasion_editor_write_failed">Nem sikerült menteni a változást. Próbáld újra.</string>

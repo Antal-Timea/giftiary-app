@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import app.giftiary.R
 import app.giftiary.domain.model.Occasion
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -35,9 +34,8 @@ fun OccasionRow(occasion: Occasion, onClick: () -> Unit, @StringRes clickLabel: 
             style = MaterialTheme.typography.titleMedium,
             color = colors.textPrimary,
         )
-        val date = occasionDate(occasion)
         Text(
-            text = if (occasion.repeatsYearly) date else stringResource(R.string.occasion_date_one_time, date),
+            text = occasionDateLine(occasion),
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
         )
