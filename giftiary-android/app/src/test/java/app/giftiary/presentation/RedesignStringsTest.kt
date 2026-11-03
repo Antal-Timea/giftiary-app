@@ -34,7 +34,7 @@ class RedesignStringsTest {
             R.string.gifts_no_results_title, R.string.gifts_no_results_message, R.string.gift_detail_more,
             R.string.lists_title, R.string.lists_subtitle, R.string.lists_section_yours, R.string.lists_only_you,
             R.string.lists_shared_subtitle, R.string.lists_join_description, R.string.wishlist_more, R.string.wishlist_edit,
-            R.string.wishlist_sharing_invited_only, R.string.wishlist_sharing_manage, R.string.wishlist_sharing_manage_description,
+            R.string.wishlist_sharing,
             R.string.wish_add_description, R.string.wish_price_estimate, R.string.wish_view_link, R.string.wish_more,
             R.string.wish_edit, R.string.shared_wish_get, R.string.shared_wish_get_description, R.string.shared_wish_getting,
             R.string.shared_wish_undo, R.string.shared_wish_undo_description,

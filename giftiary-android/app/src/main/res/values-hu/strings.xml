@@ -436,17 +436,16 @@ nagy történetek</string>
         <item quantity="other">%d kívánság</item>
     </plurals>
     <!-- Wishlist sharing -->
-    <string name="wishlist_share">Megosztás</string>
     <string name="wishlist_access_title">Lista megosztása</string>
-    <string name="wishlist_access_intro">Akiket meghívsz, ezt a kívánságlistát és a kívánságait látják, semmi mást a tieidből.</string>
+    <string name="wishlist_access_intro">Akiket meghívsz, csak ezt a kívánságlistát és a kívánságait látják.</string>
     <string name="wishlist_access_create_invite">Megosztás valakivel</string>
     <string name="wishlist_access_new_invite_title">Elkészült a meghívó link</string>
-    <string name="wishlist_access_new_invite_message">Oszd meg azokkal, akiket meghívnál. Érvényes eddig: %1$s. Csak most, amíg ez a képernyő nyitva van, osztható meg.</string>
+    <string name="wishlist_access_new_invite_message">Küldd el azoknak, akiket meghívnál. Érvényes eddig: %1$s. A linket csak most, amíg ez a képernyő nyitva van, tudod megosztani.</string>
     <string name="wishlist_access_share_link">Link megosztása</string>
     <string name="wishlist_access_share_text">Csatlakozz a kívánságlistámhoz (%1$s) a Giftiaryben: %2$s</string>
     <string name="wishlist_access_share_text_unnamed">Csatlakozz a kívánságlistámhoz a Giftiaryben: %1$s</string>
     <string name="wishlist_access_share_chooser">Meghívó link megosztása</string>
-    <string name="wishlist_access_invites">Élő meghívók</string>
+    <string name="wishlist_access_invites">Aktív meghívók</string>
     <string name="wishlist_access_invite">Meghívó link</string>
     <string name="wishlist_access_invite_dates">Létrehozva: %1$s · érvényes eddig: %2$s</string>
     <string name="wishlist_access_revoke_description">Meghívó visszavonása (létrehozva: %1$s)</string>
@@ -457,11 +456,11 @@ nagy történetek</string>
     <string name="wishlist_access_remove_description">%1$s eltávolítása</string>
     <string name="wishlist_access_member_more">%1$s – további lehetőségek</string>
     <string name="wishlist_access_invite_more">Meghívó (létrehozva: %1$s) – további lehetőségek</string>
-    <string name="wishlist_access_reservations_note">Akikkel megosztod, közösen tervezhetnek – a foglalások rejtve maradnak a lista tulajdonosa elől.</string>
+    <string name="wishlist_access_reservations_note">Közösen tervezhetik az ajándékot. Te nem látod, mit foglalnak le, így a meglepetés megmarad.</string>
     <string name="wishlist_access_remove_dialog_title">Eltávolítod: %1$s?</string>
     <string name="wishlist_access_remove_dialog_message">Többé nem látja ezt a kívánságlistát. Később újra meghívhatod.</string>
     <string name="wishlist_access_unavailable">Ez a kívánságlista még nem osztható meg. Az új kívánságlista a szinkronizálás után osztható meg.</string>
-    <string name="wishlist_access_invite_limit">Ennek a kívánságlistának már a megengedett legtöbb élő meghívója van. Vonj vissza egyet, hogy újat hozhass létre.</string>
+    <string name="wishlist_access_invite_limit">Ehhez a listához már nem hozhatsz létre több aktív meghívót. Vonj vissza egyet, hogy újat készíthess.</string>
     <string name="sharing_member_fallback">Giftiary-felhasználó</string>
     <string name="sharing_network_error">Nem sikerült elérni a Giftiaryt. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
     <string name="sharing_server_error">Valami hiba történt. Próbáld újra.</string>
@@ -583,9 +582,7 @@ nagy történetek</string>
     <string name="task_more">További lehetőségek</string>
     <string name="wishlist_more">%1$s – további lehetőségek</string>
     <string name="wishlist_edit">Lista szerkesztése</string>
-    <string name="wishlist_sharing_invited_only">Csak az általad meghívottak látják</string>
-    <string name="wishlist_sharing_manage">Kezelés</string>
-    <string name="wishlist_sharing_manage_description">Megosztás kezelése</string>
+    <string name="wishlist_sharing">Megosztás</string>
     <string name="wish_add_description">Kívánság hozzáadása ehhez a listához</string>
     <string name="wish_price_estimate">kb. %1$s</string>
     <string name="wish_view_link">Link megnyitása</string>

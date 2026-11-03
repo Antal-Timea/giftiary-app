@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -194,11 +193,10 @@ private fun WishlistContents(
                 options = {
                     OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
                         Option(stringResource(R.string.wishlist_edit), R.drawable.ic_edit, { actions.onEditList(wishlist.id) })
-                        Option(stringResource(R.string.wishlist_share), R.drawable.ic_people, { actions.onShare(wishlist.id) })
                         Option(stringResource(R.string.wishlist_delete), R.drawable.ic_delete, actions.onDeleteRequested, enabled = !busy, quiet = true)
                     }
                 },
-                below = { SharingLine(onManage = { actions.onShare(wishlist.id) }) },
+                below = { SharingAction(onClick = { actions.onShare(wishlist.id) }) },
             )
         }
         if (waitingToSync) {
@@ -237,47 +235,31 @@ private fun wishCount(count: Int): String =
     }
 
 /**
- * Who has joined is only known online, on the sharing screen, so this line states the rule rather
- * than a list of people it could get wrong offline.
+ * The list's one way into sharing. Who has joined is only known online, on the sharing screen, so
+ * the header names the action rather than a list of people it could get wrong offline.
  */
 @Composable
-private fun SharingLine(onManage: () -> Unit) {
+private fun SharingAction(onClick: () -> Unit) {
     val colors = GiftiaryTheme.colors
-    val manageDescription = stringResource(R.string.wishlist_sharing_manage_description)
-    TrailingActionRow(
-        modifier = Modifier.fillMaxWidth(),
-        action = {
-            TextButton(
-                onClick = onManage,
-                modifier = Modifier
-                    .trimVertical(12.dp)
-                    .heightIn(min = 48.dp)
-                    .offset(x = GiftiarySpacing.s)
-                    .semantics { contentDescription = manageDescription },
-                colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
-                contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
-            ) {
-                Text(stringResource(R.string.wishlist_sharing_manage), style = GiftiaryType.label)
-            }
-        },
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier
+            .trimVertical(12.dp)
+            .heightIn(min = 48.dp)
+            .offset(x = -GiftiarySpacing.s),
+        colors = ButtonDefaults.textButtonColors(contentColor = colors.textPrimary),
+        contentPadding = PaddingValues(horizontal = GiftiarySpacing.s),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .background(colors.supportSurface, GiftiaryShapes.pill),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(painterResource(R.drawable.ic_people), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textPrimary)
-            }
-            Spacer(Modifier.width(GiftiarySpacing.s))
-            Text(
-                text = stringResource(R.string.wishlist_sharing_invited_only),
-                modifier = Modifier.weight(1f),
-                style = GiftiaryType.label,
-                color = colors.textLabel,
-            )
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .background(colors.supportSurface, GiftiaryShapes.pill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(painterResource(R.drawable.ic_people), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textPrimary)
         }
+        Spacer(Modifier.width(GiftiarySpacing.s))
+        Text(stringResource(R.string.wishlist_sharing), style = GiftiaryType.label)
     }
 }
 

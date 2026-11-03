@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -91,7 +92,7 @@ class WishlistDetailScreenTest {
     fun `the list reads identity, sharing, then its wishes in order`() {
         show(own(headphones, coffee))
 
-        val order = listOf("My wishlist", "Your wishlist · 2 wishes", "Seen only by people you invite", "Wishes", "Wireless headphones", "Coffee subscription")
+        val order = listOf("My wishlist", "Your wishlist · 2 wishes", "Sharing", "Wishes", "Wireless headphones", "Coffee subscription")
         val tops = order.map(::top)
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         compose.onNodeWithText("My wishlist").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
@@ -108,7 +109,7 @@ class WishlistDetailScreenTest {
 
         val width = compose.onRoot().getBoundsInRoot().right
         // Each moves under its text rather than squeezing it.
-        listOf("Kívánságok", "Kezelés", "Kívánság hozzáadása").forEach {
+        listOf("Kívánságok", "Megosztás", "Kívánság hozzáadása").forEach {
             val text = compose.onNodeWithText(it, useUnmergedTree = true)
             assertEquals(it, 1, text.lineCount())
             assertTrue("$it inside the screen", text.getBoundsInRoot().right <= width)
@@ -150,30 +151,27 @@ class WishlistDetailScreenTest {
     }
 
     @Test
-    fun `editing, sharing and deleting the list wait in its options, and Manage shares too`() {
+    fun `sharing is the header's one action, while editing and deleting wait in the list's options`() {
         show(own(headphones))
 
+        compose.onNodeWithText("Sharing").assertHasClickAction().performClick()
         compose.onNodeWithContentDescription("Options for My wishlist").performClick()
         compose.onNodeWithText("Edit list").performClick()
         compose.onNodeWithContentDescription("Options for My wishlist").performClick()
-        compose.onNodeWithText("Share").performClick()
-        compose.onNodeWithContentDescription("Options for My wishlist").performClick()
+        compose.onNodeWithText("Share").assertDoesNotExist()
         compose.onNodeWithText("Delete wishlist").performClick()
-        compose.onNodeWithContentDescription("Manage sharing").performClick()
 
-        assertEquals(listOf("edit list", "share", "delete requested", "share"), actions)
+        assertEquals(listOf("share", "edit list", "delete requested"), actions)
     }
 
     @Test
     fun `a list kept for a person is shared like any other, and opens that person`() {
         show(forPeter())
 
-        compose.onNodeWithContentDescription("Manage sharing").performClick()
-        compose.onNodeWithContentDescription("Options for Peter’s wishlist").performClick()
-        compose.onNodeWithText("Share").performClick()
+        compose.onNodeWithText("Sharing").performClick()
         compose.onNodeWithText("Peter · 1 wish").performClick()
 
-        assertEquals(listOf("share", "share", "person"), actions)
+        assertEquals(listOf("share", "person"), actions)
     }
 
     @Test
