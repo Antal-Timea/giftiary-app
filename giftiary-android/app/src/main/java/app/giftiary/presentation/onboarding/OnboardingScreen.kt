@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -35,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
@@ -102,22 +103,29 @@ internal fun OnboardingContent(
             .windowInsetsPadding(WindowInsets.navigationBars)
             .giftiaryReadableWidth(),
     ) {
-        // The chapter scrolls when large text needs it; the progress and Continue stay below it.
-        Column(
+        // The chapter scrolls only when even its smallest image leaves the words too little room
+        // (a small screen, large text); the progress and Continue stay below it.
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .fillMaxWidth(),
         ) {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                // The supporting image takes what the text leaves of a phone screen, never less than a band.
-                val imageHeight = (maxWidth * 1.1f).coerceIn(160.dp, 460.dp)
-                Column {
-                    when (chapter) {
-                        OnboardingChapter.REMEMBER -> Remember(imageHeight, onSkip)
-                        OnboardingChapter.PLAN -> Plan(imageHeight, onSkip)
-                        OnboardingChapter.SHARE -> Share(imageHeight, onSkip)
-                    }
+            val viewportHeight = maxHeight
+            val largestImage = (maxWidth * 1.1f).coerceIn(MIN_IMAGE_HEIGHT, MAX_IMAGE_HEIGHT)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                when (chapter) {
+                    OnboardingChapter.REMEMBER -> ChapterColumn(viewportHeight, MIN_IMAGE_HEIGHT, largestImage) { Remember(onSkip) }
+                    OnboardingChapter.PLAN -> ChapterColumn(viewportHeight, MIN_IMAGE_HEIGHT, largestImage) { Plan(onSkip) }
+                    // The hero also holds the top row, which sits on the photograph.
+                    OnboardingChapter.SHARE -> ChapterColumn(
+                        viewportHeight,
+                        MIN_IMAGE_HEIGHT + GiftiarySpacing.xxxl,
+                        largestImage + GiftiarySpacing.xxxl,
+                    ) { Share(onSkip) }
                 }
             }
         }
@@ -137,17 +145,42 @@ internal fun OnboardingContent(
     }
 }
 
+/**
+ * The chapter top to bottom, its image (the child with [IMAGE]) taking the height the rest leaves
+ * of the screen, between [minImage] and [maxImage]: on a wide phone a width-sized image would push
+ * the words off the screen. Only past [minImage] is the chapter taller than the screen.
+ */
+@Composable
+private fun ChapterColumn(viewportHeight: Dp, minImage: Dp, maxImage: Dp, content: @Composable () -> Unit) {
+    Layout(content) { measurables, constraints ->
+        val loose = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+        val image = measurables.single { it.layoutId == IMAGE }
+        val rest = measurables.filter { it !== image }.associateWith { it.measure(loose) }
+        val imageHeight = (viewportHeight.roundToPx() - rest.values.sumOf { it.height })
+            .coerceIn(minImage.roundToPx(), maxImage.roundToPx())
+        val imagePlaceable = image.measure(loose.copy(minHeight = imageHeight, maxHeight = imageHeight))
+        val placeables = measurables.map { if (it === image) imagePlaceable else rest.getValue(it) }
+        layout(constraints.maxWidth, placeables.sumOf { it.height }) {
+            var y = 0
+            placeables.forEach {
+                it.placeRelative(0, y)
+                y += it.height
+            }
+        }
+    }
+}
+
 /** Remember: the image first, straight on the page, then the words. */
 @Composable
-private fun ColumnScope.Remember(imageHeight: Dp, onSkip: () -> Unit) {
+private fun Remember(onSkip: () -> Unit) {
     TopRow(onSkip)
     // G1-3 at full strength: the kept gift, whole, the chapter's picture rather than decoration.
     Image(
         painter = painterResource(OnboardingChapter.REMEMBER.image),
         contentDescription = null,
         modifier = Modifier
+            .layoutId(IMAGE)
             .fillMaxWidth()
-            .height(imageHeight)
             .padding(horizontal = GiftiarySpacing.l),
     )
     Words(OnboardingChapter.REMEMBER, showTitle = true)
@@ -155,19 +188,19 @@ private fun ColumnScope.Remember(imageHeight: Dp, onSkip: () -> Unit) {
 
 /** Plan: the words first, then the round image leaving the screen to the right. */
 @Composable
-private fun ColumnScope.Plan(imageHeight: Dp, onSkip: () -> Unit) {
+private fun Plan(onSkip: () -> Unit) {
     val colors = GiftiaryTheme.colors
     TopRow(onSkip)
     Heading(OnboardingChapter.PLAN)
     // G1-4 inside the aqua ring, close up, the circle leaving the screen to the right.
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
+            .layoutId(IMAGE)
             .fillMaxWidth()
-            .height(imageHeight)
             .padding(vertical = GiftiarySpacing.l),
         contentAlignment = Alignment.CenterEnd,
     ) {
-        val diameter = imageHeight - GiftiarySpacing.xxl
+        val diameter = maxHeight + GiftiarySpacing.l * 2 - GiftiarySpacing.xxl
         Box(
             modifier = Modifier
                 .size(diameter)
@@ -194,12 +227,12 @@ private fun ColumnScope.Plan(imageHeight: Dp, onSkip: () -> Unit) {
  * photograph fills its frame with the gift, so the words follow it instead of covering it.
  */
 @Composable
-private fun ColumnScope.Share(imageHeight: Dp, onSkip: () -> Unit) {
+private fun Share(onSkip: () -> Unit) {
     // G1-2, centred: the gift, the hands and the coral marks all stay in the frame.
     EditorialHero(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(imageHeight + GiftiarySpacing.xxxl),
+            .layoutId(IMAGE)
+            .fillMaxWidth(),
         image = { EditorialImage(OnboardingChapter.SHARE.image) },
     ) {
         TopRow(onSkip)
@@ -311,3 +344,9 @@ private fun OnboardingPreview() {
 
 // The board shows the Plan gift close up, filling the ring rather than floating in it.
 private const val PLAN_ZOOM = 1.25f
+
+private const val IMAGE = "image"
+
+// The image never shrinks below a band, and on a tablet never grows past what the words can follow.
+private val MIN_IMAGE_HEIGHT = 160.dp
+private val MAX_IMAGE_HEIGHT = 460.dp

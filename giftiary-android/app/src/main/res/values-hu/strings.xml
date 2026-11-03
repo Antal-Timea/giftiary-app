@@ -606,10 +606,10 @@ nagy történetek</string>
     <string name="onboarding_remember_body">Őrizd meg, mit adtál, mit kaptál, és kik voltak ott abban a pillanatban.</string>
     <string name="onboarding_plan_eyebrow">Tervezz</string>
     <string name="onboarding_plan_title">Légy felkészült azokra, akik fontosak.</string>
-    <string name="onboarding_plan_body">Tartsd számon a fontos alkalmakat, és őrizd az ajándékötleteket, amíg el nem jön a megfelelő pillanat.</string>
+    <string name="onboarding_plan_body">Tartsd számon a fontos alkalmakat, és őrizd meg az ajándékötleteket a megfelelő pillanatig.</string>
     <string name="onboarding_share_eyebrow">Ossz meg</string>
     <string name="onboarding_share_title">Oszd meg a kívánságaidat. A meglepetés megmarad.</string>
-    <string name="onboarding_share_body">Készíts kívánságlistákat, oszd meg őket azokkal, akiket szeretsz, és kerüld el, hogy ugyanazt az ajándékot kétszer vegyék meg.</string>
+    <string name="onboarding_share_body">Készíts kívánságlistákat, oszd meg őket a szeretteiddel, és senki sem veszi meg kétszer ugyanazt.</string>
     <string name="onboarding_share_privacy">A foglalások rejtve maradnak a lista tulajdonosa elől.</string>
     <string name="auth_new_here">Új vagy a Giftiaryben?</string>
     <string name="home_open_profile">Profilod</string>

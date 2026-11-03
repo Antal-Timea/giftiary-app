@@ -23,9 +23,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Remember, Plan, Share; Continue, Skip and Back, each with one outcome. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
+// Real text measurement, so whether a chapter fits the screen is measured, not guessed.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w390dp-h844dp")
 class OnboardingScreenTest {
@@ -40,6 +43,18 @@ class OnboardingScreenTest {
     }
 
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+
+    /** How far the chapter can scroll: 0 when it fits the screen. */
+    private fun scrollRange(): Float = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+        .fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].maxValue()
+
+    private fun assertEveryChapterFits(next: String) {
+        show()
+        repeat(3) { chapter ->
+            assertEquals("chapter ${chapter + 1} fits without scrolling", 0f, scrollRange())
+            if (chapter < 2) compose.onNodeWithText(next).performClick()
+        }
+    }
 
     private fun assertChapter(position: Int, title: String) {
         compose.onNodeWithText(title).assertExists()
@@ -107,6 +122,32 @@ class OnboardingScreenTest {
         assertEquals(R.drawable.giftiary_gift_cutout_large, OnboardingChapter.REMEMBER.image)
         assertEquals(R.drawable.giftiary_gift_cutout_small, OnboardingChapter.PLAN.image)
         assertEquals(R.drawable.giftiary_onboarding_share, OnboardingChapter.SHARE.image)
+    }
+
+    // A wide phone (e.g. 412×892) less its status and navigation bars, where a width-sized image
+    // used to push the words off the screen.
+    @Test
+    @Config(qualifiers = "w412dp-h790dp")
+    fun `on a wide phone every chapter fits without scrolling`() = assertEveryChapterFits("Continue")
+
+    // A common phone, less its status and navigation bars.
+    @Test
+    @Config(qualifiers = "w360dp-h720dp")
+    fun `on a common phone every chapter fits without scrolling`() = assertEveryChapterFits("Continue")
+
+    @Test
+    @Config(qualifiers = "hu-w360dp-h720dp")
+    fun `in Hungarian on a common phone every chapter fits without scrolling`() = assertEveryChapterFits("Tovább")
+
+    @Test
+    @Config(qualifiers = "w320dp-h520dp")
+    fun `a small screen scrolls the chapter but keeps Continue and the progress on screen`() {
+        show()
+
+        assertTrue("the chapter scrolls", scrollRange() > 0f)
+        val root = compose.onRoot().getBoundsInRoot()
+        assertTrue(compose.onNodeWithText("Continue").getBoundsInRoot().bottom <= root.bottom)
+        compose.onNodeWithContentDescription("Step 1 of 3").assertExists()
     }
 
     @Test
