@@ -25,15 +25,7 @@ import java.util.UUID
 fun GiftiaryNavHost(accountEmail: String?, onSignOut: () -> Unit, modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val joinPending by hiltViewModel<PendingJoinViewModel>().isPending.collectAsStateWithLifecycle()
-    // A join link opened now, or while signed out, opens the join screen; a fresh one each time,
-    // since the screen takes the link when it opens.
-    LaunchedEffect(joinPending) {
-        if (joinPending) {
-            navController.navigate(JoinWishlistRoute) {
-                popUpTo<JoinWishlistRoute> { inclusive = true }
-            }
-        }
-    }
+    OpenJoinScreenForLink(navController, joinPending)
     // Outside the NavHost, so the rail and the bar stay put while destinations change beside them.
     val backStackEntry by navController.currentBackStackEntryAsState()
     var quickAddOpen by rememberSaveable { mutableStateOf(false) }
@@ -64,6 +56,20 @@ fun GiftiaryNavHost(accountEmail: String?, onSignOut: () -> Unit, modifier: Modi
                 navController.openQuickAdd(action)
             },
         )
+    }
+}
+
+/**
+ * A join link opened now, or while signed out, opens the join screen. A join screen already on top
+ * takes the link itself, e.g. one restored after the process was killed: replacing it would drop
+ * the join it has just started and leave an empty screen.
+ */
+@Composable
+internal fun OpenJoinScreenForLink(navController: NavHostController, joinPending: Boolean) {
+    LaunchedEffect(joinPending) {
+        if (joinPending && navController.currentDestination?.hasRoute<JoinWishlistRoute>() != true) {
+            navController.navigate(JoinWishlistRoute)
+        }
     }
 }
 

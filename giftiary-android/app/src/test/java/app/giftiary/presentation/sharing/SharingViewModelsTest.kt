@@ -531,6 +531,18 @@ class SharingViewModelsTest {
     }
 
     @Test
+    fun `a link opened while the join screen is open is joined there`() = runTest {
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+        assertEquals(JoinPhase.Idle, viewModel.state.value.phase)
+
+        pending.offer(PendingJoin.Invite(token))
+
+        assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
+        assertEquals(listOf(token), sharing.redeemedTokens)
+        assertNull("the link is consumed", pending.take())
+    }
+
+    @Test
     fun `an invalid opened link says so without asking the server`() = runTest {
         pending.offer(PendingJoin.InvalidLink)
 
@@ -573,6 +585,8 @@ class SharingViewModelsTest {
     @Test
     fun `unavailable is final and every refusal reads the same`() = runTest {
         listOf(SharingFailure.UNAVAILABLE, SharingFailure.INVITE_LIMIT).forEach { failure ->
+            // Each its own app run: a screen still open would take the next link itself.
+            val pending = PendingWishlistJoin()
             pending.offer(PendingJoin.Invite(token))
             sharing.failNext += failure
 
