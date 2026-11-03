@@ -94,8 +94,8 @@ class SharedWishlistScreenTest {
 
     private fun name(id: UUID) = listOf(headphones, coffee, backpack, unknown).first { it.id == id }.name
 
-    private fun loaded(vararg wishes: SharedWish, owner: String? = "Peter") =
-        OnlineState(OnlineContent.Loaded(SharedWishlist(UUID.randomUUID(), "Peter’s wishlist", owner, wishes.toList())))
+    private fun loaded(vararg wishes: SharedWish, owner: String? = "Peter", personName: String? = null) =
+        OnlineState(OnlineContent.Loaded(SharedWishlist(UUID.randomUUID(), "Peter’s wishlist", owner, wishes.toList(), personName)))
 
     private fun top(text: String) = compose.onNodeWithText(text).getBoundsInRoot().top
 
@@ -114,6 +114,22 @@ class SharedWishlistScreenTest {
         show(loaded(headphones, owner = null))
 
         compose.onNodeWithText("A Giftiary member · 1 wish").assertExists()
+    }
+
+    @Test
+    fun `a list kept for a person says whose it is, not who keeps it`() {
+        show(loaded(headphones, personName = "Alex"))
+
+        compose.onNodeWithText("Alex’s wishlist · 1 wish").assertExists()
+        compose.onNodeWithText("Peter · 1 wish").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "hu")
+    fun `in Hungarian a person's list reads as theirs`() {
+        show(loaded(headphones, personName = "Alex"))
+
+        compose.onNodeWithText("Alex kívánságlistája · 1 kívánság").assertExists()
     }
 
     @Test

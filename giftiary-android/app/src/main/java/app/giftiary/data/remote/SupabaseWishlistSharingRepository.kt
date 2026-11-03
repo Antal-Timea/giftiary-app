@@ -105,7 +105,13 @@ class SupabaseWishlistSharingRepository @Inject constructor(
             RemoteSharedWishlist.serializer(),
         )
         if (list.wishlistId != wishlistId) throw SharingException(SharingFailure.SERVER)
-        return SharedWishlist(list.wishlistId, list.name, displayName(list.ownerDisplayName), list.wishes.map(::sharedWish))
+        return SharedWishlist(
+            list.wishlistId,
+            list.name,
+            displayName(list.ownerDisplayName),
+            list.wishes.map(::sharedWish),
+            personName = displayName(list.personName),
+        )
     }
 
     override suspend fun leave(wishlistId: UUID) {

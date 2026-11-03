@@ -38,11 +38,13 @@ data class WishlistMember(val userId: UUID, val displayName: String?, val joined
 /** A wishlist someone else shared with the user. */
 data class SharedWishlistSummary(val id: UUID, val name: String, val ownerDisplayName: String?)
 
+/** [personName] names who a list kept for a person is for; null for the owner's own lists. */
 data class SharedWishlist(
     val id: UUID,
     val name: String,
     val ownerDisplayName: String?,
     val wishes: List<SharedWish>,
+    val personName: String? = null,
 )
 
 /**
