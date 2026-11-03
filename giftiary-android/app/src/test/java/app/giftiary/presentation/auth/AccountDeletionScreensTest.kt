@@ -71,12 +71,17 @@ class AccountDeletionScreensTest {
     }
 
     @Test
-    fun `deleted says where it was deleted, and Continue is the one action`() {
+    fun `deleted says it was removed from Giftiary and cleared from this device only, and Continue is the one action`() {
         show { AccountDeletedScreen(onContinue = { events += "continue" }) }
 
         heading("Account deleted").assertExists()
-        compose.onNodeWithText("Your Giftiary account and its data have been deleted from Giftiary and from this device.").assertExists()
+        // Scoped to Giftiary and this device: never every device.
+        compose.onNodeWithText(
+            "Your Giftiary account has been deleted. Its data has been removed from Giftiary, and the local data " +
+                "for this account has been cleared from this device.",
+        ).assertExists()
         compose.onAllNodesWithText("all devices", substring = true, ignoreCase = true).assertCountEquals(0)
+        compose.onAllNodesWithText("@", substring = true).assertCountEquals(0)
         compose.onAllNodes(hasClickAction()).assertCountEquals(1)
         compose.onNode(hasText("Continue") and hasClickAction()).performClick()
 
@@ -106,7 +111,10 @@ class AccountDeletionScreensTest {
 
         compose.onNode(hasText("Tovább") and hasClickAction()).performClick()
         assertEquals(listOf("continue"), events)
-        val message = compose.onNodeWithText("erről az eszközről", substring = true).getBoundsInRoot()
+        val message = compose.onNodeWithText(
+            "A Giftiary-fiókodat töröltük. A hozzá tartozó adatokat eltávolítottuk a Giftiaryből, és a fiók helyi " +
+                "adatait töröltük erről az eszközről.",
+        ).getBoundsInRoot()
         assertTrue(message.right <= compose.onRoot().getBoundsInRoot().right)
     }
 }
