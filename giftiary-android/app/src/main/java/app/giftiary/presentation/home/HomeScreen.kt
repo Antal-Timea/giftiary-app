@@ -178,7 +178,8 @@ private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
         Column(
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .height(HERO_HEIGHT)
+                // At least the approved height; large text makes it taller rather than clipping the date.
+                .heightIn(min = HERO_HEIGHT)
                 .fillMaxWidth()
                 .padding(start = 20.dp, end = GiftiarySpacing.s, top = GiftiarySpacing.s, bottom = 22.dp),
         ) {
@@ -209,7 +210,9 @@ private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = stringResource(R.string.home_script),
-                    modifier = Modifier.rotate(-2f),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .rotate(-2f),
                     style = GiftiaryType.handwriting,
                     color = colors.textLabel,
                 )

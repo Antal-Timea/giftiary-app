@@ -3,7 +3,7 @@ package app.giftiary.presentation.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -122,10 +122,10 @@ internal fun SignInContent(
             loading = state.isSubmitting,
             trailingArrow = true,
         )
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = stringResource(R.string.auth_new_here), style = GiftiaryType.body, color = colors.textSecondary)
             GiftiaryTextAction(

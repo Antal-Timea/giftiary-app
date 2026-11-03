@@ -13,20 +13,26 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.WithFontScale
+import app.giftiary.testing.lineCount
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.UUID
+import org.robolectric.annotation.GraphicsMode
 
 /** A list shared with the user: the owner's context, no owner controls, and the guest's reservations. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -47,6 +53,7 @@ class SharedWishlistScreenTest {
     private var reservations by mutableStateOf(ReservationActions())
     private var leaving by mutableStateOf(LeaveState())
     private var shown = false
+    private var fontScale = 1f
 
     private fun show(
         state: OnlineState<SharedWishlist>,
@@ -59,26 +66,28 @@ class SharedWishlistScreenTest {
         if (shown) return
         shown = true
         compose.setContent {
-            GiftiaryTheme {
-                SharedWishlistScreen(
-                    state = this.state,
-                    leaving = this.leaving,
-                    reservations = this.reservations,
-                    actions = SharedWishlistActions(
-                        onBack = { actions += "back" },
-                        onRetry = { actions += "retry" },
-                        onRefreshFailureShown = {},
-                        onLeaveRequested = { actions += "leave requested" },
-                        onLeaveConfirmed = { actions += "leave confirmed" },
-                        onLeaveDismissed = {},
-                        onLeaveFailureShown = {},
-                        onReserve = { id -> actions += "reserve ${name(id)}" },
-                        onReleaseRequested = { id -> actions += "release ${name(id)}" },
-                        onReleaseConfirmed = { actions += "release confirmed" },
-                        onReleaseDismissed = {},
-                        onReservationMessageShown = {},
-                    ),
-                )
+            WithFontScale(fontScale) {
+                GiftiaryTheme {
+                    SharedWishlistScreen(
+                        state = this.state,
+                        leaving = this.leaving,
+                        reservations = this.reservations,
+                        actions = SharedWishlistActions(
+                            onBack = { actions += "back" },
+                            onRetry = { actions += "retry" },
+                            onRefreshFailureShown = {},
+                            onLeaveRequested = { actions += "leave requested" },
+                            onLeaveConfirmed = { actions += "leave confirmed" },
+                            onLeaveDismissed = {},
+                            onLeaveFailureShown = {},
+                            onReserve = { id -> actions += "reserve ${name(id)}" },
+                            onReleaseRequested = { id -> actions += "release ${name(id)}" },
+                            onReleaseConfirmed = { actions += "release confirmed" },
+                            onReleaseDismissed = {},
+                            onReservationMessageShown = {},
+                        ),
+                    )
+                }
             }
         }
     }
@@ -132,6 +141,23 @@ class SharedWishlistScreenTest {
         compose.onNodeWithContentDescription("I’ll get Wireless headphones").performClick()
         compose.onNodeWithContentDescription("Undo: you’re no longer getting Coffee subscription").performClick()
         assertEquals(listOf("reserve Wireless headphones", "release Coffee subscription"), actions)
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    // Real text measurement, so a squeezed or clipped word shows.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian at large text Undo stays a whole word beside or under its tag`() {
+        fontScale = 2f
+        show(loaded(coffee))
+
+        val undo = compose.onNode(hasText("Visszavonás") and hasClickAction())
+        assertEquals(1, compose.onNodeWithText("Visszavonás", useUnmergedTree = true).lineCount())
+        val bounds = undo.getBoundsInRoot()
+        assertTrue("inside the screen", bounds.right <= compose.onRoot().getBoundsInRoot().right)
+        assertTrue("a 48dp target", bounds.bottom - bounds.top >= 48.dp)
+        undo.performClick()
+        assertEquals(listOf("release Coffee subscription"), actions)
     }
 
     @Test

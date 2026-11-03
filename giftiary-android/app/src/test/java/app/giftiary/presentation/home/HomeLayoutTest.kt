@@ -8,17 +8,28 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
+import app.giftiary.domain.model.OccasionPlan
+import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.model.SyncStatus
+import app.giftiary.domain.model.UpcomingOccasion
+import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.sync.SyncStatusContent
 import app.giftiary.presentation.theme.GiftiaryLayout
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.WithFontScale
 import app.giftiary.testing.assertNear
+import app.giftiary.testing.assertNoClippedText
 import app.giftiary.testing.centredStart
+import app.giftiary.testing.lineCount
+import app.giftiary.testing.occasion
+import app.giftiary.testing.person
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -26,6 +37,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Where Home puts its parts at each width class, measured on the laid-out screen. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -47,25 +59,29 @@ class HomeLayoutTest {
         width: Dp,
         widthClass: WidthClass,
         reminderCard: ReminderCardState = ReminderCardState.Off,
+        comingUp: ComingUpContent = ComingUpContent.Loaded(emptyList()),
+        fontScale: Float = 1f,
     ) {
         compose.setContent {
-            GiftiaryTheme {
-                Box(Modifier.width(width).fillMaxHeight()) {
-                    HomeScreen(
-                        syncStatus = SyncStatusContent.Loaded(SyncStatus(waitingCount = 0, attention = emptyList())),
-                        comingUp = ComingUpContent.Loaded(emptyList()),
-                        onOpenComingUp = {},
-                        reminderCard = reminderCard,
-                        reminderActions = ReminderCardActions({}, {}, {}, {}),
-                        recentGifts = RecentGiftsContent.Loaded(emptyList()),
-                        onOpenGift = {},
-                        onOpenAllGifts = {},
-                        onOpenOwnOccasions = {},
-                        onOpenSyncAttention = {},
-                        accountEmail = "anna@example.com",
-                        onOpenProfile = {},
-                        widthClass = widthClass,
-                    )
+            WithFontScale(fontScale) {
+                GiftiaryTheme {
+                    Box(Modifier.width(width).fillMaxHeight()) {
+                        HomeScreen(
+                            syncStatus = SyncStatusContent.Loaded(SyncStatus(waitingCount = 0, attention = emptyList())),
+                            comingUp = comingUp,
+                            onOpenComingUp = {},
+                            reminderCard = reminderCard,
+                            reminderActions = ReminderCardActions({}, {}, {}, {}),
+                            recentGifts = RecentGiftsContent.Loaded(emptyList()),
+                            onOpenGift = {},
+                            onOpenAllGifts = {},
+                            onOpenOwnOccasions = {},
+                            onOpenSyncAttention = {},
+                            accountEmail = "anna@example.com",
+                            onOpenProfile = {},
+                            widthClass = widthClass,
+                        )
+                    }
                 }
             }
         }
@@ -88,6 +104,22 @@ class HomeLayoutTest {
         assertTrue("profile in the hero", profile.bottom < bounds(title).bottom && profile.right > 300.dp)
         assertNear(48.dp, profile.right - profile.left, "profile target width")
         compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    // Real text measurement, so a squeezed or clipped word shows.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian at large text the hero grows instead of clipping, and a plan keeps what is bought`() {
+        val anna = person("Anna")
+        val birthday = occasion(anna.id, OccasionDetails(OccasionType.BIRTHDAY, null, 3, 11, 1990, true))
+        val today = ComingUpItem(UpcomingOccasion(birthday, anna, LocalDate.of(2026, 11, 3), 0, 36), OccasionPlan(ideas = 2, bought = 1))
+        showHome(width = 390.dp, widthClass = WidthClass.COMPACT, comingUp = ComingUpContent.Loaded(listOf(today)), fontScale = 2f)
+
+        compose.onRoot(useUnmergedTree = true).assertNoClippedText()
+        assertEquals(1, compose.onNodeWithText("1 megvéve", useUnmergedTree = true).lineCount())
+        val ideas = compose.onNodeWithText("2 ötlet", useUnmergedTree = true).getBoundsInRoot()
+        assertTrue("bought under the ideas", compose.onNodeWithText("1 megvéve", useUnmergedTree = true).getBoundsInRoot().top >= ideas.bottom)
     }
 
     @Test

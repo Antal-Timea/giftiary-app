@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +15,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 @Composable
 fun LoadingContent(modifier: Modifier = Modifier) {
@@ -46,14 +46,14 @@ fun MessageContent(
             Text(
                 text = title,
                 modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineSmall,
+                style = GiftiaryType.sheetTitle,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
             )
         }
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
+            style = GiftiaryType.body,
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )

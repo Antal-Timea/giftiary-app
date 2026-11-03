@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,6 +14,7 @@ import app.giftiary.R
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 /** A full-screen failure with nothing else to show, and a way to try again when that may help. */
 @Composable
@@ -28,7 +28,7 @@ internal fun FailureContent(message: String, onRetry: (() -> Unit)?, modifier: M
     ) {
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
+            style = GiftiaryType.body,
             color = GiftiaryTheme.colors.textSecondary,
             textAlign = TextAlign.Center,
         )

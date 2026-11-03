@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +40,7 @@ import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
+import kotlin.math.roundToInt
 
 /** Who a wishlist is for, as shown to the user. */
 sealed interface WishlistOwner {
@@ -181,7 +183,8 @@ private fun WishMeta(price: Money?, productUrl: String?) {
     if (price == null && productUrl == null) return
     val colors = GiftiaryTheme.colors
     val uriHandler = LocalUriHandler.current
-    Row(modifier = Modifier.padding(top = GiftiarySpacing.xs), verticalAlignment = Alignment.CenterVertically) {
+    // The link wraps under the price at large text rather than being squeezed to a letter per line.
+    FlowRow(modifier = Modifier.padding(top = GiftiarySpacing.xs), itemVerticalAlignment = Alignment.CenterVertically) {
         price?.let { Text(stringResource(R.string.wish_price_estimate, giftPrice(it)), style = GiftiaryType.metadata, color = colors.textMuted) }
         if (price != null && productUrl != null) {
             Text(" · ", modifier = Modifier.clearAndSetSemantics {}, style = GiftiaryType.metadata, color = colors.textMuted)
@@ -211,10 +214,13 @@ internal val WISH_THUMBNAIL = 72.dp
 
 /**
  * Lays a 48dp target out as if it were [inset] shorter at top and bottom, as the boards' small
- * inline actions do with negative margins: the whole target still takes touches.
+ * inline actions do with negative margins: the whole target still takes touches. The inset is
+ * the boards' at the default text size; larger text keeps more of the target in the layout, so
+ * the words never reach into the line above or below.
  */
 internal fun Modifier.trimVertical(inset: Dp): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints)
-    val trim = inset.roundToPx()
-    layout(placeable.width, (placeable.height - 2 * trim).coerceAtLeast(0)) { placeable.place(0, -trim) }
+    val content = (placeable.height - 2 * inset.toPx()) * fontScale
+    val trim = ((placeable.height - content) / 2).coerceIn(0f, inset.toPx()).roundToInt()
+    layout(placeable.width, placeable.height - 2 * trim) { placeable.place(0, -trim) }
 }

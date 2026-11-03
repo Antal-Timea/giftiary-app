@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import kotlinx.coroutines.delay
 
 /**
@@ -49,7 +49,7 @@ fun StartupScreen(modifier: Modifier = Modifier) {
         ) {
             Text(
                 text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displaySmall,
+                style = GiftiaryType.display,
                 color = colors.textPrimary,
             )
             Box(Modifier.size(24.dp)) {

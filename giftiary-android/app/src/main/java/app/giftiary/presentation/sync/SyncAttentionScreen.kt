@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -224,12 +223,18 @@ fun SyncStatusLine(content: SyncStatusContent, onOpenAttention: () -> Unit, modi
         val attention = status.attention.size
         if (attention > 0) {
             val label = stringResource(R.string.sync_status_open_attention)
-            Text(
-                text = pluralStringResource(R.plurals.sync_status_attention, attention, attention),
-                modifier = Modifier.clickable(onClickLabel = label, role = Role.Button, onClick = onOpenAttention),
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.primaryActionText,
-            )
+            Box(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clickable(onClickLabel = label, role = Role.Button, onClick = onOpenAttention),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = pluralStringResource(R.plurals.sync_status_attention, attention, attention),
+                    style = GiftiaryType.actionSmall,
+                    color = colors.primaryActionText,
+                )
+            }
         }
         val waiting = status.waitingCount
         Text(
@@ -238,7 +243,7 @@ fun SyncStatusLine(content: SyncStatusContent, onOpenAttention: () -> Unit, modi
             } else {
                 stringResource(R.string.sync_status_nothing_waiting)
             },
-            style = MaterialTheme.typography.bodyMedium,
+            style = GiftiaryType.bodySmall,
             color = colors.textSecondary,
         )
     }

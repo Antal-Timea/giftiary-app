@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Money
@@ -16,11 +17,14 @@ import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.WithFontScale
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
+import app.giftiary.testing.lineCount
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +32,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
+import org.robolectric.annotation.GraphicsMode
 
 /** The phone Gift history: header, search, direction filters, the year and month groups, and its states. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -50,21 +55,25 @@ class GiftHistoryScreenTest {
     private var showAddButton by mutableStateOf(false)
     private var shown = false
 
+    private var fontScale = 1f
+
     private fun show(state: GiftHistoryUiState, showAddButton: Boolean = false) {
         this.state = state
         this.showAddButton = showAddButton
         if (shown) return
         shown = true
         compose.setContent {
-            GiftiaryTheme {
-                GiftHistoryScreen(
-                    state = this.state,
-                    onFilterChange = { actions += "filter $it" },
-                    onQueryChange = { actions += "query '$it'" },
-                    onAddGift = { actions += "add" },
-                    onOpenGift = { actions += "open ${it.gift.name}" },
-                    showAddButton = this.showAddButton,
-                )
+            WithFontScale(fontScale) {
+                GiftiaryTheme {
+                    GiftHistoryScreen(
+                        state = this.state,
+                        onFilterChange = { actions += "filter $it" },
+                        onQueryChange = { actions += "query '$it'" },
+                        onAddGift = { actions += "add" },
+                        onOpenGift = { actions += "open ${it.gift.name}" },
+                        showAddButton = this.showAddButton,
+                    )
+                }
             }
         }
     }
@@ -121,6 +130,24 @@ class GiftHistoryScreenTest {
         compose.onNodeWithText("All").performClick()
 
         assertEquals(listOf("filter RECEIVED", "filter ALL"), actions)
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    // Real text measurement, so a squeezed or clipped word shows.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian at large text the filters wrap, each label whole and still selectable`() {
+        fontScale = 2f
+        show(loaded(watch).copy(filter = GiftFilter.RECEIVED))
+
+        val width = compose.onRoot().getBoundsInRoot().right
+        listOf("Összes", "Adott", "Kapott").forEach {
+            assertEquals(it, 1, compose.onNodeWithText(it, useUnmergedTree = true).lineCount())
+            assertTrue("$it inside the screen", compose.onNodeWithText(it).getBoundsInRoot().right <= width)
+        }
+        compose.onNodeWithText("Kapott").assertIsSelected()
+        compose.onNodeWithText("Adott").performClick()
+        assertEquals(listOf("filter GIVEN"), actions)
     }
 
     @Test

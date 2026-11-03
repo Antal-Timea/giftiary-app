@@ -14,12 +14,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.data.auth.RecoveryFailure
 import app.giftiary.data.auth.RecoveryState
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.lineCount
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -27,6 +29,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** The auth screens in the Sign in board's order, with the same actions and answers as before. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -207,6 +210,8 @@ class AuthScreensTest {
 
     @Test
     @Config(qualifiers = "hu-w390dp-h1600dp")
+    // Real text measurement, so a squeezed or clipped word shows.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun `Hungarian sign-in at large text stays inside the screen`() {
         compose.setContent {
             val density = LocalDensity.current
@@ -220,7 +225,10 @@ class AuthScreensTest {
         val width = compose.onRoot().getBoundsInRoot().right
         listOf("Üdv a Giftiaryben", "Új vagy a Giftiaryben?", "Fiók létrehozása").forEach {
             val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
-            assertTrue("$it fits: ${bounds.right} <= $width", bounds.right <= width)
+            assertTrue("$it fits: ${bounds.left} >= 0, ${bounds.right} <= $width", bounds.left >= 0.dp && bounds.right <= width)
         }
+        // The link moves under the question rather than being squeezed beside it.
+        assertEquals(1, compose.onNodeWithText("Fiók létrehozása", useUnmergedTree = true).lineCount())
+        assertEquals(1, compose.onNodeWithText("Új vagy a Giftiaryben?", useUnmergedTree = true).lineCount())
     }
 }

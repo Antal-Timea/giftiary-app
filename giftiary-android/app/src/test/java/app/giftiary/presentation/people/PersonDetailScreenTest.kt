@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -19,6 +20,7 @@ import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.WithFontScale
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
 import app.giftiary.testing.ideaDetails
@@ -26,6 +28,7 @@ import app.giftiary.testing.ideaEntry
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +37,7 @@ import org.robolectric.annotation.Config
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import org.robolectric.annotation.GraphicsMode
 
 /** The phone Person detail: its no-photo hero, the next occasion, its sections and what each action opens. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -52,29 +56,31 @@ class PersonDetailScreenTest {
     private val actions = mutableListOf<String>()
     private var deletion by mutableStateOf(PersonDeletion())
 
-    private fun showDetail(state: PersonDetailUiState.Loaded) {
+    private fun showDetail(state: PersonDetailUiState.Loaded, fontScale: Float = 1f) {
         compose.setContent {
-            GiftiaryTheme {
-                PersonDetailScreen(
-                    state = state,
-                    onBack = { actions += "back" },
-                    onEditPerson = { actions += "edit ${it.name}" },
-                    onAddOccasion = { actions += "add occasion" },
-                    onEditOccasion = { actions += "edit occasion ${it.type}" },
-                    onPlanGift = { actions += "plan ${it.type}" },
-                    onAddGift = { actions += "add gift" },
-                    onOpenGift = { actions += "gift ${it.gift.name}" },
-                    onAddGiftIdea = { actions += "add idea" },
-                    onOpenGiftIdea = { actions += "idea ${it.idea.name}" },
-                    onAddWishlist = { actions += "add wishlist" },
-                    onOpenWishlist = { actions += "wishlist" },
-                    onDeleteRequested = { deletion = PersonDeletion(confirming = true) },
-                    onDeleteConfirmed = { actions += "deleted" },
-                    onDeleteDismissed = { deletion = PersonDeletion() },
-                    onDeleteErrorShown = {},
-                    deletion = deletion,
-                    today = today,
-                )
+            WithFontScale(fontScale) {
+                GiftiaryTheme {
+                    PersonDetailScreen(
+                        state = state,
+                        onBack = { actions += "back" },
+                        onEditPerson = { actions += "edit ${it.name}" },
+                        onAddOccasion = { actions += "add occasion" },
+                        onEditOccasion = { actions += "edit occasion ${it.type}" },
+                        onPlanGift = { actions += "plan ${it.type}" },
+                        onAddGift = { actions += "add gift" },
+                        onOpenGift = { actions += "gift ${it.gift.name}" },
+                        onAddGiftIdea = { actions += "add idea" },
+                        onOpenGiftIdea = { actions += "idea ${it.idea.name}" },
+                        onAddWishlist = { actions += "add wishlist" },
+                        onOpenWishlist = { actions += "wishlist" },
+                        onDeleteRequested = { deletion = PersonDeletion(confirming = true) },
+                        onDeleteConfirmed = { actions += "deleted" },
+                        onDeleteDismissed = { deletion = PersonDeletion() },
+                        onDeleteErrorShown = {},
+                        deletion = deletion,
+                        today = today,
+                    )
+                }
             }
         }
     }
@@ -97,6 +103,19 @@ class PersonDetailScreenTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithContentDescription("Edit Peter").performClick()
         assertEquals(listOf("back", "edit Peter"), actions)
+    }
+
+    @Test
+    // Real text measurement, so a squeezed or clipped word shows.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `at large text a long name grows the hero under its buttons instead of running into them`() {
+        val name = "Kovácsné Szabó Erzsébet Mária Terézia Katalin Ilona"
+        showDetail(PersonDetailUiState.Loaded(person(name, relationship = "Nagymama"), emptyList(), emptyList(), emptyList(), emptyList()), fontScale = 2f)
+
+        val title = compose.onNodeWithText(name).getBoundsInRoot()
+        val back = compose.onNodeWithContentDescription("Back").getBoundsInRoot()
+        assertTrue("name ${title.top} below the buttons ${back.bottom}", title.top >= back.bottom)
+        compose.onNodeWithText("Nagymama").assertIsDisplayed()
     }
 
     @Test

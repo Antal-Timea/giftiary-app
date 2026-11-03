@@ -7,22 +7,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -102,23 +103,22 @@ private fun ComingUpRow(item: ComingUpItem, showRelationship: Boolean, onClick: 
         upcoming.turningAge?.let { stringResource(R.string.coming_up_turns, it) },
     ).joinToString(" · ")
     val bought = item.plan?.bought ?: 0
+    // Teal once something for the occasion is bought, coral while it is not; the words say which.
+    val accent = if (bought > 0) colors.directionReceived else colors.primaryAction
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .clickable(onClickLabel = stringResource(R.string.people_open), onClick = onClick)
             .heightIn(min = 48.dp)
-            .padding(vertical = GiftiarySpacing.s),
+            .padding(vertical = GiftiarySpacing.s)
+            // Drawn rather than measured, so the bar follows the row however its text wraps.
+            .drawBehind {
+                drawRoundRect(accent, size = Size(ACCENT_WIDTH.toPx(), size.height), cornerRadius = CornerRadius(2.dp.toPx()))
+            },
         horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Teal once something for the occasion is bought, coral while it is not; the words say which.
-        Spacer(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight()
-                .background(if (bought > 0) colors.directionReceived else colors.primaryAction, RoundedCornerShape(2.dp)),
-        )
+        Spacer(Modifier.width(ACCENT_WIDTH))
         GiftiaryAvatar(name = upcoming.person?.name ?: occasion, size = 40.dp, onContext = true)
         Column(modifier = Modifier.weight(1f)) {
             Text(text = upcoming.person?.name ?: occasion, style = GiftiaryType.actionLarge, color = colors.textPrimary)
@@ -148,10 +148,10 @@ private fun ComingUpRow(item: ComingUpItem, showRelationship: Boolean, onClick: 
 fun PlanLine(plan: OccasionPlan?, modifier: Modifier = Modifier) {
     val colors = GiftiaryTheme.colors
     val ideas = plan?.ideas ?: 0
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
         if (ideas == 0) {
             PlanStatus(R.drawable.ic_plan_open, stringResource(R.string.coming_up_no_ideas), colors.primaryAction)
-            return@Row
+            return@FlowRow
         }
         Text(
             text = pluralStringResource(R.plurals.coming_up_ideas, ideas, ideas),
@@ -195,6 +195,8 @@ fun DaysCountdown(days: Int, modifier: Modifier = Modifier, large: Boolean = fal
         )
     }
 }
+
+private val ACCENT_WIDTH = 3.dp
 
 // 34sp on Person detail's occasion card against the 23sp of a row.
 private const val LARGE_NUMBER_SCALE = 34f / 23f

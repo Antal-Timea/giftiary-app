@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -238,7 +239,7 @@ private fun HistoryHeader() {
 /** All, then the two directions, each with its arrow so the choice never rests on colour alone. */
 @Composable
 private fun Filters(selected: GiftFilter, onFilterChange: (GiftFilter) -> Unit) {
-    Row(
+    FlowRow(
         modifier = Modifier.padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = GiftiarySpacing.s),
         horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
     ) {

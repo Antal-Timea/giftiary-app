@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.Occasion
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 /** An occasion in a list, by its title and date; [clickLabel] says what tapping it does. */
 @Composable
@@ -31,12 +31,12 @@ fun OccasionRow(occasion: Occasion, onClick: () -> Unit, @StringRes clickLabel: 
     ) {
         Text(
             text = occasionTitle(occasion),
-            style = MaterialTheme.typography.titleMedium,
+            style = GiftiaryType.rowTitle,
             color = colors.textPrimary,
         )
         Text(
             text = occasionDateLine(occasion),
-            style = MaterialTheme.typography.bodyMedium,
+            style = GiftiaryType.bodySmall,
             color = colors.textSecondary,
         )
     }
