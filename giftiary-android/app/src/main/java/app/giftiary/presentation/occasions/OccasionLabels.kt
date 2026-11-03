@@ -35,6 +35,14 @@ fun occasionTitle(occasion: Occasion): String =
 fun occasionDate(occasion: Occasion): String =
     OccasionDateFormatter.format(occasion.day, occasion.month, occasion.year, currentLocale())
 
+/** An occasion's date as a list shows it, with a one-time occasion marked as such. */
+@Composable
+@ReadOnlyComposable
+fun occasionDateLine(occasion: Occasion): String {
+    val date = occasionDate(occasion)
+    return if (occasion.repeatsYearly) date else stringResource(R.string.occasion_date_one_time, date)
+}
+
 /** The day and month an occasion returns on each year, e.g. "October 12": a birth year is not repeated. */
 @Composable
 @ReadOnlyComposable

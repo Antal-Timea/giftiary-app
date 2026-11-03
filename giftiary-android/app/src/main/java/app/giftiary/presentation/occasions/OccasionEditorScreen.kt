@@ -3,34 +3,27 @@ package app.giftiary.presentation.occasions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
@@ -42,15 +35,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.usecase.OccasionInputError
+import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryDropdownField
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
+import app.giftiary.presentation.components.GiftiaryTaskHeader
+import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
-import app.giftiary.presentation.components.GiftiaryTopBar
-import app.giftiary.presentation.components.LoadingContent
-import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.OptionsMenu
+import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 
 @Composable
 fun OccasionEditorScreen(
@@ -111,23 +108,23 @@ fun OccasionEditorScreen(
         }
     }
 
-    val title = if (state.isNew) R.string.occasion_editor_add_title else R.string.occasion_editor_edit_title
     Scaffold(
         modifier = modifier,
-        topBar = { GiftiaryTopBar(title = stringResource(title), onBack = actions.onBack) },
+        containerColor = GiftiaryTheme.colors.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
         when (state.status) {
-            OccasionEditorStatus.LOADING -> LoadingContent(contentModifier)
+            OccasionEditorStatus.LOADING -> GiftiaryTaskStatus(null, actions.onBack, contentModifier)
             OccasionEditorStatus.NOT_FOUND ->
-                MessageContent(stringResource(R.string.occasion_editor_not_found), contentModifier)
+                GiftiaryTaskStatus(stringResource(R.string.occasion_editor_not_found), actions.onBack, contentModifier)
             OccasionEditorStatus.PERSON_NOT_FOUND ->
-                MessageContent(stringResource(R.string.person_editor_not_found), contentModifier)
+                GiftiaryTaskStatus(stringResource(R.string.person_editor_not_found), actions.onBack, contentModifier)
             OccasionEditorStatus.LOAD_FAILED ->
-                MessageContent(stringResource(R.string.occasion_editor_load_failed), contentModifier)
-            OccasionEditorStatus.EDITING, OccasionEditorStatus.CLOSED ->
+                GiftiaryTaskStatus(stringResource(R.string.occasion_editor_load_failed), actions.onBack, contentModifier)
+            OccasionEditorStatus.EDITING, OccasionEditorStatus.CLOSED -> DecoratedPage(top = GiftCutout.LARGE) {
                 OccasionForm(state = state, actions = actions, modifier = contentModifier)
+            }
         }
     }
 
@@ -144,6 +141,11 @@ fun OccasionEditorScreen(
     }
 }
 
+/**
+ * Add and Edit occasion, by analogy with the approved editors (there is no board): the task
+ * header with Delete in its menu, the fields, and one Save. The date stays day, month and year,
+ * as the year may be unknown.
+ */
 @Composable
 private fun OccasionForm(
     state: OccasionEditorUiState,
@@ -156,90 +158,105 @@ private fun OccasionForm(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .imePadding()
-            .padding(horizontal = GiftiarySpacing.xl, vertical = GiftiarySpacing.l),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+            .giftiaryReadableWidth()
+            .padding(start = GiftiarySpacing.taskGutter, end = GiftiarySpacing.taskGutter, top = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.xxl),
     ) {
-        GiftiaryDropdownField(
-            label = stringResource(R.string.occasion_editor_type),
-            options = state.typeOptions,
-            selected = state.type,
-            optionLabel = { occasionTypeLabel(it) },
-            onSelect = actions.onTypeChange,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit,
+        GiftiaryTaskHeader(
+            title = stringResource(if (state.isNew) R.string.occasion_editor_add_title else R.string.occasion_editor_edit_title),
+            subtitle = stringResource(if (state.isNew) R.string.occasion_editor_add_subtitle else R.string.occasion_editor_edit_subtitle),
+            onBack = actions.onBack,
+            menu = if (state.isNew) null else {
+                {
+                    OptionsMenu(R.drawable.ic_more, stringResource(R.string.task_more)) {
+                        Option(stringResource(R.string.occasion_editor_delete), R.drawable.ic_delete, actions.onDeleteRequested, enabled = canEdit)
+                    }
+                }
+            },
         )
-        if (state.showsTitle) {
-            GiftiaryTextField(
-                value = state.title,
-                onValueChange = actions.onTitleChange,
-                label = stringResource(R.string.occasion_editor_title),
+        Column(
+            modifier = Modifier.padding(top = GiftiarySpacing.section),
+            verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.fieldGroup),
+        ) {
+            GiftiaryDropdownField(
+                label = stringResource(R.string.occasion_editor_type),
+                options = state.typeOptions,
+                selected = state.type,
+                optionLabel = { occasionTypeLabel(it) },
+                onSelect = actions.onTypeChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = stringResource(R.string.occasion_editor_title_hint),
-                errorMessage = errorText(state, OccasionInputError.TITLE_REQUIRED),
                 enabled = canEdit,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Next,
+            )
+            if (state.showsTitle) {
+                GiftiaryTextField(
+                    value = state.title,
+                    onValueChange = actions.onTitleChange,
+                    label = stringResource(R.string.occasion_editor_title),
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = stringResource(R.string.occasion_editor_title_hint),
+                    errorMessage = errorText(state, OccasionInputError.TITLE_REQUIRED),
+                    enabled = canEdit,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Next,
+                    ),
+                )
+            }
+            GiftiaryTextField(
+                value = state.day,
+                onValueChange = actions.onDayChange,
+                label = stringResource(R.string.occasion_editor_day),
+                modifier = Modifier.fillMaxWidth(),
+                errorMessage = errorText(state, OccasionInputError.DAY_REQUIRED, OccasionInputError.DAY_NOT_IN_MONTH),
+                enabled = canEdit,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            )
+            GiftiaryDropdownField(
+                label = stringResource(R.string.occasion_editor_month),
+                options = MONTHS,
+                selected = state.month,
+                optionLabel = { monthName(it) },
+                onSelect = actions.onMonthChange,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = canEdit,
+                errorMessage = errorText(state, OccasionInputError.MONTH_REQUIRED),
+            )
+            GiftiaryTextField(
+                value = state.year,
+                onValueChange = actions.onYearChange,
+                label = stringResource(
+                    if (state.yearRequired) R.string.occasion_editor_year else R.string.occasion_editor_year_optional,
                 ),
-            )
-        }
-        GiftiaryTextField(
-            value = state.day,
-            onValueChange = actions.onDayChange,
-            label = stringResource(R.string.occasion_editor_day),
-            modifier = Modifier.fillMaxWidth(),
-            errorMessage = errorText(state, OccasionInputError.DAY_REQUIRED, OccasionInputError.DAY_NOT_IN_MONTH),
-            enabled = canEdit,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-        )
-        GiftiaryDropdownField(
-            label = stringResource(R.string.occasion_editor_month),
-            options = MONTHS,
-            selected = state.month,
-            optionLabel = { monthName(it) },
-            onSelect = actions.onMonthChange,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = canEdit,
-            errorMessage = errorText(state, OccasionInputError.MONTH_REQUIRED),
-        )
-        GiftiaryTextField(
-            value = state.year,
-            onValueChange = actions.onYearChange,
-            label = stringResource(
-                if (state.yearRequired) R.string.occasion_editor_year else R.string.occasion_editor_year_optional,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-            errorMessage = errorText(
-                state,
-                OccasionInputError.NOT_A_LEAP_YEAR,
-                OccasionInputError.YEAR_REQUIRED,
-                OccasionInputError.INVALID_YEAR,
-            ),
-            enabled = canEdit,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-        )
-        if (state.showsRepeatsYearly) {
-            RepeatsYearlyRow(
-                checked = state.repeatsYearly,
-                onCheckedChange = actions.onRepeatsYearlyChange,
+                modifier = Modifier.fillMaxWidth(),
+                errorMessage = errorText(
+                    state,
+                    OccasionInputError.NOT_A_LEAP_YEAR,
+                    OccasionInputError.YEAR_REQUIRED,
+                    OccasionInputError.INVALID_YEAR,
+                ),
                 enabled = canEdit,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             )
+            if (state.showsRepeatsYearly) {
+                RepeatsYearlyRow(
+                    checked = state.repeatsYearly,
+                    onCheckedChange = actions.onRepeatsYearlyChange,
+                    enabled = canEdit,
+                )
+            }
         }
         GiftiaryPrimaryButton(
             text = stringResource(R.string.occasion_editor_save),
             onClick = actions.onSave,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = GiftiarySpacing.s),
+                .padding(top = GiftiarySpacing.xxl),
             enabled = state.status == OccasionEditorStatus.EDITING,
             loading = state.isBusy,
         )
-        if (!state.isNew) {
-            DeleteOccasionButton(onClick = actions.onDeleteRequested, enabled = canEdit)
-        }
     }
 }
 
+/** Styled as the Settings switches: teal, as coral is kept for creating. */
 @Composable
 private fun RepeatsYearlyRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean) {
     val colors = GiftiaryTheme.colors
@@ -248,42 +265,35 @@ private fun RepeatsYearlyRow(checked: Boolean, onCheckedChange: (Boolean) -> Uni
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange),
+        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(R.string.occasion_editor_repeats_yearly),
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.textPrimary,
-        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.occasion_editor_repeats_yearly),
+                style = GiftiaryType.actionLarge,
+                color = if (enabled) colors.textPrimary else colors.textMuted,
+            )
+            Text(
+                text = stringResource(R.string.occasion_editor_repeats_yearly_hint),
+                style = GiftiaryType.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
         // The whole row is the toggle, so the switch itself takes no clicks or focus.
         Switch(
             checked = checked,
             onCheckedChange = null,
             enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = colors.onPrimaryAction,
-                checkedTrackColor = colors.primaryAction,
+                checkedThumbColor = colors.background,
+                checkedTrackColor = colors.support,
+                checkedBorderColor = colors.support,
                 uncheckedThumbColor = colors.textMuted,
-                uncheckedTrackColor = colors.inputSurface,
-                uncheckedBorderColor = colors.border,
+                uncheckedTrackColor = colors.background,
+                uncheckedBorderColor = colors.borderStrong,
             ),
         )
-    }
-}
-
-@Composable
-private fun DeleteOccasionButton(onClick: () -> Unit, enabled: Boolean) {
-    // Deliberately quiet: deleting should not compete with saving.
-    TextButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        enabled = enabled,
-        colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textSecondary),
-    ) {
-        Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = null)
-        Spacer(Modifier.width(GiftiarySpacing.s))
-        Text(stringResource(R.string.occasion_editor_delete))
     }
 }
 
