@@ -140,7 +140,8 @@ or write them directly and they are not part of Realtime. Everything goes throug
 | `release_wish(p_wish_id)` | guest | `AVAILABLE`, `RESERVED_BY_ME` or `RESERVED_BY_OTHER` |
 
 - **Invites.** A token is 32 random bytes (pgcrypto), sent once to the owner as unpadded
-  base64url; only its SHA-256 is stored. The app shares it as `giftiary://wishlist/join#<token>`.
+  base64url; only its SHA-256 is stored. The app shares it as `https://giftiary.app/join/#<token>`
+  (and still opens the older `giftiary://wishlist/join#<token>`); the fragment never reaches a server.
   An invite lasts 1–14 days (7 by default); a list has at most 5 open invites and 50 members, both
   serialized per list with a transaction-scoped advisory lock taken only by create and redeem.
 - **Uniform refusal.** Every access failure (no such invite, list or member, an expired or

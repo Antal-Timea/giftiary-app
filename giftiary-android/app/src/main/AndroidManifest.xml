@@ -55,7 +55,19 @@
                     android:path="/recovery"
                     android:scheme="giftiary" />
             </intent-filter>
-            <!-- Wishlist invites: giftiary://wishlist/join#<token> (see JOIN_LINK_SCHEME). -->
+            <!-- Wishlist invites: https://giftiary.app/join/#<token> (see JOIN_LINK_HOST). Opens the
+                 app directly only once giftiary.app serves an assetlinks.json for the release
+                 certificate; until then the browser shows the site's /join/ page. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="giftiary.app"
+                    android:path="/join/"
+                    android:scheme="https" />
+            </intent-filter>
+            <!-- Wishlist invites shared before HTTPS links: giftiary://wishlist/join#<token>. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
