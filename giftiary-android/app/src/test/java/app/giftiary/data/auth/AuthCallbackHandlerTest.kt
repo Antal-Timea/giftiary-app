@@ -89,6 +89,7 @@ class AuthCallbackHandlerTest {
 
         assertFalse(handler.handle(view("giftiary://auth/recovery?code=one-time")))
         assertFalse(handler.handle(view("giftiary://wishlist/join#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE")))
+        assertFalse(handler.handle(view("https://giftiary.app/join/#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE")))
         assertFalse(handler.handle(Intent(Intent.ACTION_MAIN)))
         assertTrue(auth.completeCalls.isEmpty())
     }

@@ -137,8 +137,9 @@ Record the device, Android version, build and result of each row.
 ### Tester notes for Gate A
 
 - Open recovery links on the phone that asked for them.
-- An invite link may not be clickable in some messengers: paste the whole message into
-  Wishlists → Shared with you → Join.
+- An invite link opens Giftiary directly only once its App Link is verified (Gate B); until then
+  it opens the giftiary.app/join/ page in the browser. Pasting the whole message into
+  Wishlists → Shared with you → Join always works.
 - Settings → Delete account deletes the account and its data at once and cannot be undone. Only
   the device it is done on is cleared; the account's other devices keep their local copy (no longer
   reachable in the app once they are signed out).
@@ -162,6 +163,13 @@ All of Gate A passed on the build to upload, then:
 - [ ] **Data safety (human):** form completed from `docs/legal/data-safety-draft.md`, every
       `[VERIFY]` item resolved first.
 - [ ] Play Console app with package `app.giftiary` (permanent once uploaded), Play App Signing.
+- [ ] **Invite App Link (human):** take the SHA-256 certificate fingerprint of the **Play app
+      signing key** (Play Console → Test and release → App integrity; add the upload key's too if
+      directly installed release builds must open links). Publish
+      `https://giftiary.app/.well-known/assetlinks.json` for package `app.giftiary` with relation
+      `delegate_permission/common.handle_all_urls` and exactly those fingerprints, never a debug
+      one. Then check `adb shell pm get-app-links app.giftiary` shows `giftiary.app: verified`
+      and that tapping an invite in Gmail opens the app.
 - [ ] Content rating questionnaire, target audience.
 - [ ] App access: a dedicated demo account and instructions for Play review.
 - [ ] Minimal store listing: name, short and full description, 512×512 icon, feature graphic,

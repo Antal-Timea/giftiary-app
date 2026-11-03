@@ -59,6 +59,7 @@ class AuthCallbackTest {
             "giftiary://auth/recovery?code=abc",
             "giftiary://auth/elsewhere?code=abc",
             "giftiary://wishlist/join#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE",
+            "https://giftiary.app/join/#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE",
             "gifty://auth/callback?code=abc",
             "https://auth/callback?code=abc",
         ).forEach { link -> assertNull(link, authCallbackOf(view(link))) }
@@ -73,6 +74,7 @@ class AuthCallbackTest {
         // An error next to a recovery code still opens the recovery flow, never the callback.
         assertTrue(incomingLinkOf(view("giftiary://auth/recovery?code=abc&error=server_error")) is IncomingLink.Recovery)
         assertTrue(incomingLinkOf(view("giftiary://wishlist/join#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE")) is IncomingLink.Join)
+        assertTrue(incomingLinkOf(view("https://giftiary.app/join/#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE")) is IncomingLink.Join)
     }
 
     private fun view(link: String) = Intent(Intent.ACTION_VIEW, Uri.parse(link))

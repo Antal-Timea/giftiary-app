@@ -25,19 +25,27 @@ class WishlistJoinLinkTest {
     private val token = InviteToken.of(TOKEN)!!
 
     @Test
-    fun `the link carries the token in its fragment`() {
-        assertEquals("giftiary://wishlist/join#$TOKEN", joinLink(token))
+    fun `a new invite is an https link on giftiary app, its token in the fragment the browser never sends`() {
+        assertEquals("https://giftiary.app/join/#$TOKEN", joinLink(token))
+        assertEquals("/join/", Uri.parse(joinLink(token)).path)
+        assertNull(Uri.parse(joinLink(token)).query)
     }
 
     @Test
-    fun `an opened join link yields its token`() {
+    fun `an opened join link yields its token, the https and the legacy kind alike`() {
         assertEquals(PendingJoin.Invite(token), pendingJoinOf(view(joinLink(token))))
+        assertEquals(PendingJoin.Invite(token), pendingJoinOf(view("HTTPS://Giftiary.App/join/#$TOKEN")))
+        assertEquals(PendingJoin.Invite(token), pendingJoinOf(view(LEGACY)))
         assertEquals(PendingJoin.Invite(token), pendingJoinOf(view("GIFTIARY://Wishlist/join#$TOKEN")))
     }
 
     @Test
     fun `a join link without a usable token is an invalid join, not ignored`() {
         listOf(
+            "https://giftiary.app/join/",
+            "https://giftiary.app/join/#",
+            "https://giftiary.app/join/#tooShort",
+            "https://giftiary.app/join/#${TOKEN}x",
             "giftiary://wishlist/join",
             "giftiary://wishlist/join#",
             "giftiary://wishlist/join#tooShort",
@@ -56,22 +64,47 @@ class WishlistJoinLinkTest {
             "giftiary://wishlist/join?token=$TOKEN",
             "gifty://wishlist/join#$TOKEN",
             "https://wishlist/join#$TOKEN",
+            "http://giftiary.app/join/#$TOKEN",
+            "https://www.giftiary.app/join/#$TOKEN",
+            "https://giftiary.app.example.com/join/#$TOKEN",
+            "https://example.com/join/#$TOKEN",
+            "https://someone@giftiary.app/join/#$TOKEN",
+            "https://giftiary.app:8443/join/#$TOKEN",
+            "https://giftiary.app/join#$TOKEN",
+            "https://giftiary.app/join/x#$TOKEN",
+            "https://giftiary.app/join/$TOKEN",
+            "https://giftiary.app/wishlist/join/#$TOKEN",
+            "https://giftiary.app/#$TOKEN",
+            "https://giftiary.app/join/?token=$TOKEN",
+            "https://giftiary.app/join/?x=1#$TOKEN",
+            "https://giftiary.app/privacy/#$TOKEN",
         ).forEach { link -> assertNull(link, pendingJoinOf(view(link))) }
         assertNull(pendingJoinOf(Intent(Intent.ACTION_MAIN)))
         assertNull(pendingJoinOf(Intent(Intent.ACTION_SEND, Uri.parse(joinLink(token)))))
     }
 
     @Test
-    fun `the system opens join links and the auth callback in the app, nothing else of the scheme`() {
+    fun `the system opens join links and the auth callback in the app, nothing else of the scheme or site`() {
         assertEquals(listOf(MainActivity::class.java.name), handlersOf(joinLink(token)))
+        assertEquals(listOf(MainActivity::class.java.name), handlersOf(LEGACY))
         assertEquals(listOf(MainActivity::class.java.name), handlersOf("$AUTH_CALLBACK_URL?code=one-time"))
         assertTrue(handlersOf("giftiary://wishlist/elsewhere#$TOKEN").isEmpty())
         assertTrue(handlersOf("giftiary://other/join#$TOKEN").isEmpty())
+        listOf(
+            "https://giftiary.app/",
+            "https://giftiary.app/privacy/",
+            "https://giftiary.app/join",
+            "https://giftiary.app/join/more",
+            "http://giftiary.app/join/#$TOKEN",
+            "https://www.giftiary.app/join/#$TOKEN",
+        ).forEach { link -> assertTrue(link, handlersOf(link).isEmpty()) }
     }
 
     @Test
     fun `a pasted link, message or bare token yields the token`() {
         assertEquals(token, inviteTokenOfPastedText(joinLink(token)))
+        assertEquals(token, inviteTokenOfPastedText(LEGACY))
+        assertEquals(token, inviteTokenOfPastedText("Csatlakozz a kívánságlistámhoz a Giftiaryben: ${joinLink(token)}"))
         assertEquals(token, inviteTokenOfPastedText("  $TOKEN\n"))
         assertEquals(token, inviteTokenOfPastedText("Join my wishlist “Birthday” on Giftiary: ${joinLink(token)}"))
         assertEquals(token, inviteTokenOfPastedText("Giftiary://WISHLIST/join#$TOKEN."))
@@ -87,6 +120,10 @@ class WishlistJoinLinkTest {
             "giftiary://wishlist/join#${TOKEN}A",
             "giftiary://auth/callback#$TOKEN",
             "https://example.com/#$TOKEN",
+            "https://example.com/join/#$TOKEN",
+            "http://giftiary.app/join/#$TOKEN",
+            "https://giftiary.app/join#$TOKEN",
+            "https://giftiary.app/join/#${TOKEN}A",
         ).forEach { text -> assertNull(text, inviteTokenOfPastedText(text)) }
     }
 
@@ -120,5 +157,6 @@ class WishlistJoinLinkTest {
 
     private companion object {
         const val TOKEN = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE"
+        const val LEGACY = "giftiary://wishlist/join#$TOKEN"
     }
 }

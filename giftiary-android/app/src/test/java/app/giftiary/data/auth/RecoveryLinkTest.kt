@@ -51,6 +51,7 @@ class RecoveryLinkTest {
         listOf(
             "giftiary://auth/callback?code=abc",
             "giftiary://wishlist/join#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE",
+            "https://giftiary.app/join/#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE",
             "giftiary://other/recovery?code=abc",
             "gifty://auth/recovery?code=abc",
             "giftiary://auth/recovery/extra?code=abc",
@@ -64,6 +65,7 @@ class RecoveryLinkTest {
         assertTrue(incomingLinkOf(view("giftiary://auth/recovery")) == IncomingLink.Recovery(RecoveryLink.Invalid))
         assertEquals(IncomingLink.Other, incomingLinkOf(view("giftiary://auth/callback?code=abc")))
         assertTrue(incomingLinkOf(view("giftiary://wishlist/join#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE")) is IncomingLink.Join)
+        assertTrue(incomingLinkOf(view("https://giftiary.app/join/#AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCdE")) is IncomingLink.Join)
         assertNull(pendingJoinOf(view("giftiary://auth/recovery?code=abc")))
     }
 
