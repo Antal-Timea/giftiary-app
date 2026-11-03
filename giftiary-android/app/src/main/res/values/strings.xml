@@ -437,9 +437,8 @@ big stories</string>
         <item quantity="other">%d wishes</item>
     </plurals>
     <!-- Wishlist sharing -->
-    <string name="wishlist_share">Share</string>
     <string name="wishlist_access_title">Share wishlist</string>
-    <string name="wishlist_access_intro">People you invite can see this wishlist and its wishes, nothing else of yours.</string>
+    <string name="wishlist_access_intro">People you invite see only this wishlist and its wishes.</string>
     <string name="wishlist_access_create_invite">Share with someone</string>
     <string name="wishlist_access_new_invite_title">Invite link ready</string>
     <string name="wishlist_access_new_invite_message">Share it with the people you’d like to invite. It works until %1$s and can only be shared now, while this screen is open.</string>
@@ -458,7 +457,7 @@ big stories</string>
     <string name="wishlist_access_remove_description">Remove %1$s</string>
     <string name="wishlist_access_member_more">Options for %1$s</string>
     <string name="wishlist_access_invite_more">Options for the invite created %1$s</string>
-    <string name="wishlist_access_reservations_note">People you share with can plan together — gift reservations stay hidden from the list’s owner.</string>
+    <string name="wishlist_access_reservations_note">They can plan gifts together. You won’t see what they reserve, so the surprise stays.</string>
     <string name="wishlist_access_remove_dialog_title">Remove %1$s?</string>
     <string name="wishlist_access_remove_dialog_message">They will no longer see this wishlist. You can invite them again later.</string>
     <string name="wishlist_access_unavailable">This wishlist can’t be shared yet. A new wishlist can be shared once it has synced.</string>
@@ -585,9 +584,7 @@ big stories</string>
     <string name="task_more">More options</string>
     <string name="wishlist_more">Options for %1$s</string>
     <string name="wishlist_edit">Edit list</string>
-    <string name="wishlist_sharing_invited_only">Seen only by people you invite</string>
-    <string name="wishlist_sharing_manage">Manage</string>
-    <string name="wishlist_sharing_manage_description">Manage sharing</string>
+    <string name="wishlist_sharing">Sharing</string>
     <string name="wish_add_description">Add a wish to this wishlist</string>
     <string name="wish_price_estimate">~%1$s</string>
     <string name="wish_view_link">View link</string>

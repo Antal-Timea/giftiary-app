@@ -87,7 +87,7 @@ class WishlistAccessScreenTest {
         val order = listOf(
             "Share wishlist", "Peter’s wishlist", "People with access", "Anna", "A Giftiary member", "Share with someone",
             "Open invites", "Invite link",
-            "People you share with can plan together — gift reservations stay hidden from the list’s owner.",
+            "They can plan gifts together. You won’t see what they reserve, so the surprise stays.",
         )
         val tops = order.map(::top)
         assertEquals("top to bottom: $order", tops.sorted(), tops)
