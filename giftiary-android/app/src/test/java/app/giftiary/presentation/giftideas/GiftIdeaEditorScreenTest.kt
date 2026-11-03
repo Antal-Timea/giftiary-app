@@ -5,7 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -168,6 +171,16 @@ class GiftIdeaEditorScreenTest {
         compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Delete gift idea").performClick()
         assertEquals(listOf("delete"), events)
+    }
+
+    @Test
+    fun `while an edit is saved, Save and Delete cannot be pressed again`() {
+        show(editing.copy(isBusy = true))
+
+        compose.onNode(hasText("Save idea") and hasClickAction()).assertIsNotEnabled().performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Delete gift idea").assertIsNotEnabled().performClick()
+        assertEquals(emptyList<String>(), events)
     }
 
     @Test

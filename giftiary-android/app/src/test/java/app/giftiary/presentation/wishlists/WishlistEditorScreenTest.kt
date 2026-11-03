@@ -5,8 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -134,6 +139,24 @@ class WishlistEditorScreenTest {
         compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Delete wishlist").performClick()
         assertEquals(listOf("delete"), events)
+    }
+
+    @Test
+    fun `editing offers no cover or photo, as lists have none`() {
+        show(editing)
+
+        compose.onAllNodesWithText("cover", substring = true, ignoreCase = true).assertCountEquals(0)
+        compose.onAllNodesWithText("photo", substring = true, ignoreCase = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `while an edit is saved, Save and Delete cannot be pressed again`() {
+        show(editing.copy(isSaving = true))
+
+        compose.onNode(hasText("Save list") and hasClickAction()).assertIsNotEnabled().performClick()
+        compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Delete wishlist").assertIsNotEnabled().performClick()
+        assertEquals(emptyList<String>(), events)
     }
 
     @Test

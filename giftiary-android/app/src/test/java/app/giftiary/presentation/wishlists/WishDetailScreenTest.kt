@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -132,6 +133,16 @@ class WishDetailScreenTest {
         compose.onNodeWithText("Delete").performClick()
 
         assertEquals(listOf("edit", "delete", "dismiss", "confirm"), events)
+    }
+
+    @Test
+    fun `while a deletion is stored, edit and delete cannot be chosen`() {
+        show(loaded(full).copy(actions = WishDetailActions(isBusy = true)))
+
+        compose.onNodeWithContentDescription("Options for Wireless headphones").performClick()
+        compose.onNodeWithText("Edit wish").assertIsNotEnabled().performClick()
+        compose.onNodeWithText("Delete wish").assertIsNotEnabled().performClick()
+        assertEquals(emptyList<String>(), events)
     }
 
     @Test
