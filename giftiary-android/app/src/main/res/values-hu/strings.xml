@@ -351,6 +351,8 @@ nagy történetek</string>
     <string name="sync_attention_unavailable">Ez a változás nem jut el a fiókodba.</string>
     <string name="sync_attention_open">Megnyitás</string>
     <string name="sync_attention_dismiss">Elvetés</string>
+    <string name="sync_attention_open_label">Megnyitás: %1$s</string>
+    <string name="sync_attention_dismiss_label">Jelzés elvetése: %1$s</string>
     <string name="sync_item_person">Személy</string>
     <string name="sync_item_occasion">Alkalom</string>
     <string name="sync_item_gift_idea">Ajándékötlet</string>

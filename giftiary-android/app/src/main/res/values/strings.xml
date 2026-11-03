@@ -352,6 +352,8 @@ big stories</string>
     <string name="sync_attention_unavailable">This change cannot reach your account.</string>
     <string name="sync_attention_open">Open</string>
     <string name="sync_attention_dismiss">Dismiss</string>
+    <string name="sync_attention_open_label">Open %1$s</string>
+    <string name="sync_attention_dismiss_label">Dismiss the note about %1$s</string>
     <string name="sync_item_person">Person</string>
     <string name="sync_item_occasion">Occasion</string>
     <string name="sync_item_gift_idea">Gift idea</string>
