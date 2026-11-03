@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,6 +36,10 @@ import app.giftiary.presentation.theme.GiftiaryType
 /**
  * Who or what a detail belongs to, on aqua under the title: the person an idea is for, the list a
  * wish is on. With [onClick] it leads there, and says so with a chevron.
+ *
+ * The [trailing] status sits beside the text while the title still fits on one line and no word of
+ * [supporting] has to break; otherwise it moves below the text, so large text or a long translation
+ * is never squeezed into a column a few letters wide.
  */
 @Composable
 fun DetailContextCard(
@@ -47,7 +52,21 @@ fun DetailContextCard(
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = GiftiaryTheme.colors
-    Row(
+    Layout(
+        content = {
+            GiftiaryAvatar(name = name, size = 42.dp, modifier = Modifier.layoutId(ContextSlot.Avatar))
+            Text(text = title, modifier = Modifier.layoutId(ContextSlot.Title), style = GiftiaryType.rowTitle, color = colors.textPrimary)
+            supporting?.let {
+                Text(text = it, modifier = Modifier.layoutId(ContextSlot.Supporting), style = GiftiaryType.bodySmall, color = colors.textSecondary)
+            }
+            Row(
+                modifier = Modifier.layoutId(ContextSlot.Trailing),
+                horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
+                verticalAlignment = Alignment.CenterVertically,
+                content = trailing,
+            )
+            if (onClick != null) Box(Modifier.layoutId(ContextSlot.Chevron)) { RowChevron() }
+        },
         modifier = modifier
             .fillMaxWidth()
             .background(colors.infoSurface, GiftiaryShapes.container)
@@ -55,18 +74,49 @@ fun DetailContextCard(
             .semantics(mergeDescendants = true) {}
             .heightIn(min = 64.dp)
             .padding(start = 14.dp, end = GiftiarySpacing.m, top = GiftiarySpacing.m, bottom = GiftiarySpacing.m),
-        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.m),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        GiftiaryAvatar(name = name, size = 42.dp)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = GiftiaryType.rowTitle, color = colors.textPrimary)
-            supporting?.let { Text(text = it, style = GiftiaryType.bodySmall, color = colors.textSecondary) }
+    ) { measurables, constraints ->
+        fun slot(id: ContextSlot) = measurables.firstOrNull { it.layoutId == id }
+        val width = constraints.maxWidth
+        val gap = GiftiarySpacing.m.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val avatar = slot(ContextSlot.Avatar)!!.measure(loose)
+        val chevron = slot(ContextSlot.Chevron)?.measure(loose)
+        val chevronSpace = chevron?.let { it.width + gap } ?: 0
+        val titleMeasurable = slot(ContextSlot.Title)!!
+        val supportingMeasurable = slot(ContextSlot.Supporting)
+        val trailingMeasurable = slot(ContextSlot.Trailing)!!
+        val trailingWidth = trailingMeasurable.maxIntrinsicWidth(Constraints.Infinity)
+        val besideText = width - avatar.width - gap - chevronSpace - (if (trailingWidth > 0) trailingWidth + gap else 0)
+        val sideBySide = trailingWidth == 0 || (
+            titleMeasurable.maxIntrinsicWidth(Constraints.Infinity) <= besideText &&
+                (supportingMeasurable?.minIntrinsicWidth(Constraints.Infinity) ?: 0) <= besideText
+            )
+        val textWidth = if (sideBySide) besideText else width - avatar.width - gap - chevronSpace
+        val textConstraints = loose.copy(maxWidth = textWidth.coerceAtLeast(0))
+        val title = titleMeasurable.measure(textConstraints)
+        val supportingLine = supportingMeasurable?.measure(textConstraints)
+        val trailingItem = trailingMeasurable.measure(if (sideBySide) loose else textConstraints)
+        val textHeight = title.height + (supportingLine?.height ?: 0)
+        val stackGap = if (sideBySide || trailingItem.height == 0) 0 else GiftiarySpacing.s.roundToPx()
+        val block = if (sideBySide) textHeight else textHeight + stackGap + trailingItem.height
+        val height = maxOf(block, avatar.height, trailingItem.height, chevron?.height ?: 0, constraints.minHeight)
+        val textX = avatar.width + gap
+        layout(width, height) {
+            avatar.place(0, (height - avatar.height) / 2)
+            val top = (height - block) / 2
+            title.place(textX, top)
+            supportingLine?.place(textX, top + title.height)
+            if (sideBySide) {
+                trailingItem.place(textX + textWidth + gap, (height - trailingItem.height) / 2)
+            } else {
+                trailingItem.place(textX, top + textHeight + stackGap)
+            }
+            chevron?.let { it.place(width - it.width, (height - it.height) / 2) }
         }
-        trailing()
-        if (onClick != null) RowChevron()
     }
 }
+
+private enum class ContextSlot { Avatar, Title, Supporting, Trailing, Chevron }
 
 /**
  * One fact of a detail: its name on the left, the value on the right, as on the gift idea boards.
