@@ -3,6 +3,7 @@ package app.giftiary.presentation.gifts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -15,11 +16,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.presentation.components.GiftiaryAvatar
@@ -65,20 +68,49 @@ fun DetailContextCard(
     }
 }
 
-/** One fact of a detail: its name on the left, the value on the right, as on the gift idea boards. */
+/**
+ * One fact of a detail: its name on the left, the value on the right, as on the gift idea boards.
+ * When the name would not fit on one line beside the value (large text, long translations) the
+ * value moves below it, still on the right, so the name is never squeezed into a column that splits
+ * its words.
+ */
 @Composable
 fun DetailFactRow(label: String, modifier: Modifier = Modifier, value: @Composable () -> Unit) {
-    Row(
+    Layout(
+        content = {
+            Text(text = label, style = GiftiaryType.fieldValue, color = GiftiaryTheme.colors.textLabel)
+            Box { value() }
+        },
         modifier = modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {}
             .heightIn(min = 56.dp)
             .padding(vertical = GiftiarySpacing.s),
-        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = label, modifier = Modifier.weight(1f), style = GiftiaryType.fieldValue, color = GiftiaryTheme.colors.textLabel)
-        value()
+    ) { measurables, constraints ->
+        val (labelMeasurable, valueMeasurable) = measurables
+        val width = constraints.maxWidth
+        val gap = GiftiarySpacing.l.roundToPx()
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val value = valueMeasurable.measure(loose)
+        val sideBySide = labelMeasurable.maxIntrinsicWidth(Constraints.Infinity) + gap + value.width <= width
+        if (sideBySide) {
+            val label = labelMeasurable.measure(loose.copy(maxWidth = width - gap - value.width))
+            val height = maxOf(label.height, value.height, constraints.minHeight)
+            layout(width, height) {
+                label.place(0, (height - label.height) / 2)
+                value.place(width - value.width, (height - value.height) / 2)
+            }
+        } else {
+            val label = labelMeasurable.measure(loose)
+            val stackGap = GiftiarySpacing.xs.roundToPx()
+            val content = label.height + stackGap + value.height
+            val height = maxOf(content, constraints.minHeight)
+            val top = (height - content) / 2
+            layout(width, height) {
+                label.place(0, top)
+                value.place(width - value.width, top + label.height + stackGap)
+            }
+        }
     }
 }
 
