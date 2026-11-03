@@ -608,10 +608,10 @@ big stories</string>
     <string name="onboarding_remember_body">Remember what you gave, what you received, and who was part of the moment.</string>
     <string name="onboarding_plan_eyebrow">Plan</string>
     <string name="onboarding_plan_title">Be ready for the people who matter.</string>
-    <string name="onboarding_plan_body">Remember important occasions and keep gift ideas until the right moment arrives.</string>
+    <string name="onboarding_plan_body">Keep track of important occasions and save gift ideas for the right moment.</string>
     <string name="onboarding_share_eyebrow">Share</string>
     <string name="onboarding_share_title">Share wishes. Keep the surprise.</string>
-    <string name="onboarding_share_body">Create wishlists, share them with the people you love, and avoid buying the same gift twice.</string>
+    <string name="onboarding_share_body">Create wishlists and share them with the people you love, so no gift is bought twice.</string>
     <string name="onboarding_share_privacy">Reservations stay hidden from the list owner.</string>
     <string name="auth_new_here">New to Giftiary?</string>
     <string name="home_open_profile">Your profile</string>
