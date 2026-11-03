@@ -58,6 +58,8 @@ data class RemoteSharedWishlist(
     val name: String,
     @SerialName("owner_display_name") val ownerDisplayName: String?,
     val wishes: List<RemoteSharedWish>,
+    // Absent from servers before Sharing 2D.
+    @SerialName("person_name") val personName: String? = null,
 )
 
 @Serializable

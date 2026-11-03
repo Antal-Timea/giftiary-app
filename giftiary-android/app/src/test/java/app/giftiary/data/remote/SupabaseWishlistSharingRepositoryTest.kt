@@ -294,12 +294,22 @@ class SupabaseWishlistSharingRepositoryTest {
         val list = repository.sharedWishlist(LIST)
 
         assertEquals("Bea", list.ownerDisplayName)
+        assertNull("an own list, or a server before person names, names no one", list.personName)
         assertEquals(listOf(INVITE, MEMBER), list.wishes.map { it.id })
         assertEquals(Money(12990, "HUF"), list.wishes[0].estimatedPrice)
         assertEquals(ReservationState.RESERVED_BY_OTHER, list.wishes[0].reservation)
         // A state this version does not know is not guessed at.
         assertNull(list.wishes[1].reservation)
         assertRpc("get_shared_wishlist", """{"p_wishlist_id":"$LIST"}""")
+    }
+
+    @Test
+    fun `a list kept for a person carries that person's name only, blank as none`() = runTest {
+        answer = { respondJson("""{"wishlist_id":"$LIST","name":"x","owner_display_name":"Bea","person_name":" Alex ","wishes":[]}""") }
+        assertEquals("Alex", repository.sharedWishlist(LIST).personName)
+
+        answer = { respondJson("""{"wishlist_id":"$LIST","name":"x","owner_display_name":"Bea","person_name":"  ","wishes":[]}""") }
+        assertNull(repository.sharedWishlist(LIST).personName)
     }
 
     @Test

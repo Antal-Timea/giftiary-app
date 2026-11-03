@@ -222,7 +222,9 @@ private fun SharedWishes(
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
-    val owner = memberName(wishlist.ownerDisplayName)
+    // A list kept for a person reads as theirs; the owner's own list names its owner.
+    val whose = wishlist.personName?.let { stringResource(R.string.shared_wishlist_for_person, it) }
+        ?: memberName(wishlist.ownerDisplayName)
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -232,9 +234,9 @@ private fun SharedWishes(
         item {
             WishlistHeader(
                 title = wishlist.name,
-                meta = listOf(owner, wishCount(wishlist.wishes.size)).joinToString(" · "),
+                meta = listOf(whose, wishCount(wishlist.wishes.size)).joinToString(" · "),
                 onBack = actions.onBack,
-                leading = { GiftiaryAvatar(name = owner, size = 56.dp) },
+                leading = { GiftiaryAvatar(name = wishlist.personName ?: memberName(wishlist.ownerDisplayName), size = 56.dp) },
                 options = {
                     OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
                         Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true)

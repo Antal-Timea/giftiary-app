@@ -5,7 +5,7 @@
 -- Two-session behaviour (locking, waiting, limits under concurrency) is in 10_wishlist_sharing_concurrency.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(136);
+select plan(140);
 
 -- ---- schema, privileges and function hardening ----
 
@@ -445,6 +445,9 @@ select is(public.reserve_wish('20000000-0000-4000-8000-000000000005'), 'RESERVED
 
 -- ---- a list later kept for a person stays shared, and never shows the person ----
 
+select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+select ok(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') -> 'person_name' = 'null'::jsonb,
+    'the owner''s own list is for no one');
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 update public.wishlists set person_id = 'a0000000-0000-4000-8000-0000000000f1', last_mutation_id = gen_random_uuid()
 where id = '10000000-0000-4000-8000-000000000005';
@@ -458,11 +461,15 @@ select is((select count(*)::int from jsonb_array_elements(public.get_shared_wish
 select ok(position('a0000000-0000-4000-8000-0000000000f1' in
               public.get_shared_wishlist('10000000-0000-4000-8000-000000000005')::text || public.get_shared_wishlists()::text) = 0,
     'the person''s id is never part of what members get');
+select is(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') ->> 'person_name', 'Anna',
+    'but who the list is for is named');
 
 -- ---- a member of a person's list reaches that list only ----
 
--- Anna also has an occasion, an idea, a gift and a second list nobody joined.
+-- Anna also has a relationship, a photo, an occasion, an idea, a gift and a second list nobody joined.
 reset role;
+update public.people set relationship = 'Secret sister', photo_path = 'users/secret/anna.jpg', last_mutation_id = gen_random_uuid()
+where id = 'a0000000-0000-4000-8000-0000000000f1';
 insert into public.occasions (last_mutation_id, id, owner_user_id, person_id, type, day, month, repeats_yearly)
 values (gen_random_uuid(), 'a0000000-0000-4000-8000-0000000000f2', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         'a0000000-0000-4000-8000-0000000000f1', 'BIRTHDAY', 12, 5, true);
@@ -485,7 +492,9 @@ select is(public.redeem_wishlist_invite(current_setting('test.token_person')) ->
     'a member joins a list kept for a person');
 select is(
     (select string_agg(k, ',' order by k) from jsonb_object_keys(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')) k),
-    'name,owner_display_name,wishes,wishlist_id', 'the person''s list holds the same fields as any shared list');
+    'name,owner_display_name,person_name,wishes,wishlist_id', 'the person''s list adds only the person''s name to a shared list''s fields');
+select is(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') ->> 'person_name', 'Anna',
+    'members see who the list is for');
 select is(
     (select string_agg(distinct k, ',' order by k)
      from jsonb_array_elements(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') -> 'wishes') w,
@@ -495,7 +504,8 @@ select is(
 select ok(
     (select bool_and(position(secret in public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')::text
                                         || public.get_shared_wishlists()::text) = 0)
-     from unnest(array['a0000000-0000-4000-8000-0000000000f1', 'Secret idea', 'Secret gift', 'Anna unjoined', 'Kite',
+     from unnest(array['a0000000-0000-4000-8000-0000000000f1', 'Secret sister', 'users/secret/anna.jpg',
+                       'Secret idea', 'Secret gift', 'Anna unjoined', 'Kite',
                        '10000000-0000-4000-8000-000000000006']) secret),
     'nothing of the person, their other list or its wishes reaches the member');
 select is(
@@ -552,6 +562,15 @@ reset role;
 set local role anon;
 select throws_ok($$select * from public.wish_reservations$$, '42501', null, 'anon cannot read reservations');
 select throws_ok($$select public.reserve_wish('20000000-0000-4000-8000-000000000001')$$, '42501', null, 'anon cannot call a sharing function');
+reset role;
+
+-- A deleted person is no longer named.
+update public.people set deleted_at = now(), last_mutation_id = gen_random_uuid()
+where id = 'a0000000-0000-4000-8000-0000000000f1';
+set local role authenticated;
+select pg_temp.as_user('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+select ok(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') -> 'person_name' = 'null'::jsonb,
+    'a deleted person''s list names no one');
 reset role;
 
 select * from finish();
