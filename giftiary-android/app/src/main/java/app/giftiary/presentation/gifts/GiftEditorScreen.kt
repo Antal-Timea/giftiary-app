@@ -198,7 +198,9 @@ fun GiftEditorScreen(
             GiftEditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.gift_not_found), actions.onBack, contentModifier)
             GiftEditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.gift_load_failed), actions.onBack, contentModifier)
             GiftEditorStatus.EDITING, GiftEditorStatus.CLOSED, GiftEditorStatus.DELETED ->
-                DecoratedPage(top = GiftCutout.LARGE, bottom = GiftCutout.SMALL) {
+                // Editing opens with every detail, which runs down over the bottom corner; there
+                // the second gift would sit behind the fields, so only quick capture keeps it.
+                DecoratedPage(top = GiftCutout.LARGE, bottom = if (state.isNew) GiftCutout.SMALL else null) {
                     GiftForm(state = state, actions = actions, widthClass = widthClass, modifier = contentModifier)
                 }
         }
