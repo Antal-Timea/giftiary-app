@@ -537,7 +537,7 @@ nagy történetek</string>
     <string name="account_deletion_finishing">A fiókod törlése folyamatban…</string>
     <string name="account_deletion_not_finished">A fiókodat még nem sikerült eltávolítani erről az eszközről.</string>
     <string name="account_deleted_title">Fiók törölve</string>
-    <string name="account_deleted_message">A Giftiary-fiókodat és az adatait töröltük.</string>
+    <string name="account_deleted_message">A Giftiary-fiókodat és az adatait töröltük a Giftiaryből és erről az eszközről.</string>
     <string name="wishlist_access_name_prompt">Add meg a neved, hogy a meghívottak tudják, kinek a listája ez.</string>
     <string name="wishlist_access_name_prompt_later">Most nem</string>
     <string name="wishlist_access_name_prompt_add">Név megadása</string>
