@@ -96,7 +96,7 @@ class SupabaseWishlistSharingRepository @Inject constructor(
 
     override suspend fun sharedWishlists(): List<SharedWishlistSummary> =
         rpc("get_shared_wishlists", JsonObject(emptyMap()), ListSerializer(RemoteSharedWishlistSummary.serializer()))
-            .map { SharedWishlistSummary(it.wishlistId, it.name, displayName(it.ownerDisplayName)) }
+            .map { SharedWishlistSummary(it.wishlistId, it.name, displayName(it.ownerDisplayName), displayName(it.personName)) }
 
     override suspend fun sharedWishlist(wishlistId: UUID): SharedWishlist {
         val list = rpc(

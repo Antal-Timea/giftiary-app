@@ -472,6 +472,7 @@ big stories</string>
     <string name="shared_wishlist_unavailable">This wishlist isn’t available.</string>
     <string name="shared_wishlist_no_wishes">No wishes on this list yet.</string>
     <string name="shared_wishlist_for_person">%1$s’s wishlist</string>
+    <string name="shared_wishlist_for_person_short">For %1$s</string>
     <string name="shared_wishlist_leave">Leave this wishlist</string>
     <string name="shared_wishlist_leave_dialog_title">Leave %1$s?</string>
     <string name="shared_wishlist_leave_dialog_message">You will no longer see this wishlist. You can join again with a new invite.</string>

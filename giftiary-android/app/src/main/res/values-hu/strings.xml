@@ -471,6 +471,7 @@ nagy történetek</string>
     <string name="shared_wishlist_unavailable">Ez a kívánságlista nem érhető el.</string>
     <string name="shared_wishlist_no_wishes">Ezen a listán még nincs kívánság.</string>
     <string name="shared_wishlist_for_person">%1$s kívánságlistája</string>
+    <string name="shared_wishlist_for_person_short">%1$s részére</string>
     <string name="shared_wishlist_leave">Kilépés a kívánságlistából</string>
     <string name="shared_wishlist_leave_dialog_title">Kilépsz innen: %1$s?</string>
     <string name="shared_wishlist_leave_dialog_message">Többé nem látod ezt a kívánságlistát. Új meghívóval később újra csatlakozhatsz.</string>
