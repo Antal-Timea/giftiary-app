@@ -3,7 +3,7 @@
 -- failure keeps every row, and a token of the deleted account can neither read nor recreate data.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(61);
+select plan(62);
 
 -- ---- function hardening and privileges ----
 
@@ -71,6 +71,8 @@ values (gen_random_uuid(), 'a0000000-0000-4000-8000-000000000006', 'aaaaaaaa-aaa
 insert into public.wishlist_invites (wishlist_id, owner_user_id, token_hash, expires_at)
 values ('a0000000-0000-4000-8000-000000000005', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         decode(repeat('ab', 32), 'hex'), now() + interval '7 days');
+insert into public.wishlist_recipient_invites (wishlist_id, owner_user_id, recipient_email, expires_at)
+values ('a0000000-0000-4000-8000-000000000005', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'bob@example.test', now() + interval '14 days');
 
 -- Bob: a person of his own, a member of Alice's list holding a reservation on her wish.
 insert into public.people (last_mutation_id, id, owner_user_id, name)
@@ -91,6 +93,9 @@ insert into public.wishes (last_mutation_id, id, owner_user_id, wishlist_id, nam
 insert into public.wishlist_members (wishlist_id, owner_user_id, member_user_id) values
     ('c0000000-0000-4000-8000-000000000005', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
     ('c0000000-0000-4000-8000-000000000005', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+-- Carol invited Alice by email: Carol's row, which Alice's deletion must leave as it was.
+insert into public.wishlist_recipient_invites (wishlist_id, owner_user_id, recipient_email, expires_at)
+values ('c0000000-0000-4000-8000-000000000005', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'alice@example.test', now() + interval '14 days');
 insert into public.wish_reservations (wish_id, wishlist_id, reserver_user_id, membership_id)
 select v.wish_id::uuid, m.wishlist_id, m.member_user_id, m.membership_id
 from public.wishlist_members m
@@ -108,6 +113,7 @@ create function pg_temp.alices_rows() returns int language sql as $$
           + (select count(*) from public.wishlists where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.wishes where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.wishlist_invites where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+          + (select count(*) from public.wishlist_recipient_invites where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.sync_mutations where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.wishlist_members
              where member_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' or owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
@@ -121,6 +127,7 @@ create function pg_temp.others_rows() returns int language sql as $$
           + (select count(*) from public.wishlists where owner_user_id <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.wishes where owner_user_id <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.sync_mutations where owner_user_id <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+          + (select count(*) from public.wishlist_recipient_invites where owner_user_id <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.wishlist_members
              where member_user_id <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' and owner_user_id <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
           + (select count(*) from public.wish_reservations
@@ -135,7 +142,7 @@ grant execute on function pg_temp.as_user(uuid) to authenticated, anon;
 -- One row per table for Alice (11 public tables and the auth user), with her ledger entries and both
 -- sharing directions: person, occasion, idea, gift, list, wish, invite, 6 ledger entries, 2 member
 -- rows (Bob on hers, she on Carol's), 2 reservations (Bob's on hers, hers on Carol's), profile, user.
-select is(pg_temp.alices_rows(), 19, 'Alice has a row in every table before her deletion');
+select is(pg_temp.alices_rows(), 20, 'Alice has a row in every table before her deletion');
 select cmp_ok(pg_temp.others_rows(), '>', 0, 'Bob and Carol have rows of their own');
 
 -- ---- linked_user_id is closed to clients ----
@@ -177,7 +184,7 @@ select throws_ok($$select private.delete_account('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaa
 select throws_ok($$select public.delete_my_account('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')$$,
     '42883', null, 'nor pass Alice''s id to the public one');
 reset role;
-select is(pg_temp.alices_rows(), 19, 'after every attempt Alice still has all her rows');
+select is(pg_temp.alices_rows(), 20, 'after every attempt Alice still has all her rows');
 
 -- ---- a failure at the very end keeps every row ----
 
@@ -189,7 +196,7 @@ select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 set local role authenticated;
 select throws_ok($$select public.delete_my_account()$$, '23503', null, 'a failure deleting the auth user fails the whole call');
 reset role;
-select is(pg_temp.alices_rows(), 19, 'and every row of Alice is still there');
+select is(pg_temp.alices_rows(), 20, 'and every row of Alice is still there');
 select is((select linked_user_id from public.people where id = 'b0000000-0000-4000-8000-000000000001'),
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'the link of Bob''s person was rolled back too');
 select is((select count(*)::int from auth.sessions where user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 1, 'as was nothing of her session');
@@ -203,6 +210,8 @@ select lives_ok($$select public.delete_my_account()$$, 'Alice deletes her accoun
 reset role;
 
 select is(pg_temp.alices_rows(), 0, 'nothing of Alice is left in any table');
+select is((select status from public.wishlist_recipient_invites where recipient_email = 'alice@example.test'), 'pending',
+    'an invite addressed to her stays pending: its owner learns nothing from the deletion');
 select is((select count(*)::int from public.people where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 0, 'her people are gone');
 select is((select count(*)::int from public.gifts where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 0, 'her gifts are gone');
 select is((select count(*)::int from public.gift_ideas where owner_user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), 0, 'her ideas are gone');

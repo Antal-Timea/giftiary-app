@@ -160,6 +160,29 @@ or write them directly and they are not part of Realtime. Everything goes throug
 `tests/database/09_wishlist_sharing.test.sql` covers the access matrix and
 `10_wishlist_sharing_concurrency.test.sql` the concurrent cases (dblink).
 
+### Invites by email
+
+Next to links, an owner can invite an email address (`20261107100000_recipient_invites`,
+table `wishlist_recipient_invites`, RPC-only like the tables above):
+
+| Function | For | Returns |
+|---|---|---|
+| `create_recipient_invite(p_wishlist_id, p_email)` | owner | `{invite_id, recipient_email, state, created_at, expires_at}`; the pending one if the address already has one |
+| `list_recipient_invites(p_wishlist_id)` | owner | its invites, `state` `PENDING` or `NOT_ACCEPTED` (declined and expired alike); accepted and revoked ones are left out |
+| `revoke_recipient_invite(p_invite_id)` | owner | nothing; withdraws a pending invite or clears a not accepted one |
+| `get_my_invites()` | recipient | `[{invite_id, wishlist_name, owner_display_name, person_name, created_at, expires_at}]` |
+| `respond_to_invite(p_invite_id, p_accept)` | recipient | `{wishlist_id}` on accept, `{}` on decline |
+
+- **Matching.** An invite reaches a user only when their `auth.users` email is confirmed and,
+  trimmed and lowercased, equals the invite's; it is read at every call, never taken from the
+  client or the token's claims. The owner's functions never look at accounts, so an address with
+  an account and one without get the same answers.
+- **Limits.** 14 days; one pending invite per list and address; 20 pending per list and 30
+  created per owner in any 24 hours (`P0001`); `22023` an invalid or the owner's own address.
+- **Accepting** joins like a link: under the per-list lock, within 50 members, keeping an existing
+  membership and its reservations. No recipient id is stored; a recipient's account deletion leaves
+  the invites addressed to them unchanged, an owner's removes theirs.
+
 ## Account deletion
 
 `public.delete_my_account()` takes no argument and deletes the caller (`auth.uid()`), in one
