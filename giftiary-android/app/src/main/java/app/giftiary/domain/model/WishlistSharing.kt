@@ -1,6 +1,7 @@
 package app.giftiary.domain.model
 
 import java.time.Instant
+import java.util.Locale
 import java.util.UUID
 
 /**
@@ -64,3 +65,24 @@ data class SharedWish(
 )
 
 enum class ReservationState { AVAILABLE, RESERVED_BY_ME, RESERVED_BY_OTHER }
+
+/**
+ * An invite of an own wishlist to an email address. [state] is all the owner learns: pending, or
+ * not accepted (declined and expired alike), never whether the address has an account.
+ */
+data class EmailInvite(
+    val id: UUID,
+    val email: String,
+    val state: EmailInviteState,
+    val createdAt: Instant,
+    val expiresAt: Instant,
+)
+
+enum class EmailInviteState { PENDING, NOT_ACCEPTED }
+
+// The server's own check (create_recipient_invite), so what passes here is not refused as invalid.
+private val EMAIL_SHAPE = Regex("""[^@\s]+@[^@\s]+\.[^@\s]+""")
+
+/** The address as the server keeps it, trimmed and lowercased, or null if it is not one. */
+fun normalizedEmail(input: String): String? =
+    input.trim().lowercase(Locale.ROOT).takeIf { it.length <= 254 && EMAIL_SHAPE.matches(it) }
