@@ -1,6 +1,7 @@
 package app.giftiary.data.remote
 
 import app.giftiary.data.remote.dto.RemoteCreatedInvite
+import app.giftiary.data.remote.dto.RemoteEmailInvite
 import app.giftiary.data.remote.dto.RemoteRedeemedInvite
 import app.giftiary.data.remote.dto.RemoteSharedWish
 import app.giftiary.data.remote.dto.RemoteSharedWishlist
@@ -9,6 +10,8 @@ import app.giftiary.data.remote.dto.RemoteWishlistAccess
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
+import app.giftiary.domain.model.EmailInvite
+import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.ReservationState
@@ -87,6 +90,29 @@ class SupabaseWishlistSharingRepository @Inject constructor(
         )
     }
 
+    override suspend fun createEmailInvite(wishlistId: UUID, email: String): EmailInvite =
+        emailInvite(
+            rpc(
+                "create_recipient_invite",
+                buildJsonObject {
+                    put("p_wishlist_id", wishlistId.toString())
+                    put("p_email", email)
+                },
+                RemoteEmailInvite.serializer(),
+            ),
+        )
+
+    override suspend fun emailInvites(wishlistId: UUID): List<EmailInvite> =
+        rpc(
+            "list_recipient_invites",
+            buildJsonObject { put("p_wishlist_id", wishlistId.toString()) },
+            ListSerializer(RemoteEmailInvite.serializer()),
+        ).map(::emailInvite)
+
+    override suspend fun revokeEmailInvite(inviteId: UUID) {
+        rpc("revoke_recipient_invite", buildJsonObject { put("p_invite_id", inviteId.toString()) })
+    }
+
     override suspend fun redeem(token: InviteToken): UUID =
         rpc(
             "redeem_wishlist_invite",
@@ -156,6 +182,15 @@ class SupabaseWishlistSharingRepository @Inject constructor(
             throw SharingException(SharingFailure.SERVER)
         }
 
+    // A state this version does not know could be shown wrongly to the owner, so it is a failure.
+    private fun emailInvite(invite: RemoteEmailInvite) = EmailInvite(
+        id = invite.inviteId,
+        email = invite.recipientEmail,
+        state = EmailInviteState.entries.find { it.name == invite.state } ?: throw SharingException(SharingFailure.SERVER),
+        createdAt = invite.createdAt,
+        expiresAt = invite.expiresAt,
+    )
+
     private fun sharedWish(wish: RemoteSharedWish): SharedWish {
         val amount = wish.estimatedPriceAmountMinor
         val currency = wish.estimatedPriceCurrencyCode
@@ -188,6 +223,7 @@ class SupabaseWishlistSharingRepository @Inject constructor(
             else -> when ((e.cause as? PostgrestRestException)?.code) {
                 "P0002" -> SharingFailure.UNAVAILABLE
                 "P0001" -> SharingFailure.INVITE_LIMIT
+                "22023" -> SharingFailure.INVALID_INPUT
                 else -> SharingFailure.SERVER
             }
         }

@@ -1,6 +1,7 @@
 package app.giftiary.domain.repository
 
 import app.giftiary.domain.model.CreatedInvite
+import app.giftiary.domain.model.EmailInvite
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
@@ -24,6 +25,17 @@ interface WishlistSharingRepository {
     suspend fun access(wishlistId: UUID): WishlistAccess
 
     suspend fun removeMember(wishlistId: UUID, memberUserId: UUID)
+
+    /**
+     * Invites [email] (already normalized) to an own wishlist. The answer is the same whether the
+     * address has an account or not; for an address already pending, it is that invite.
+     */
+    suspend fun createEmailInvite(wishlistId: UUID, email: String): EmailInvite
+
+    suspend fun emailInvites(wishlistId: UUID): List<EmailInvite>
+
+    /** Withdraws a pending email invite, or clears a not accepted one from the owner's list. */
+    suspend fun revokeEmailInvite(inviteId: UUID)
 
     // Guest side.
 
@@ -54,8 +66,14 @@ enum class SharingFailure {
      */
     UNAVAILABLE,
 
-    /** An own wishlist already has the most open invites allowed. */
+    /**
+     * An own wishlist already has the most open invites allowed; for email invites also the most
+     * an owner may send in a day.
+     */
     INVITE_LIMIT,
+
+    /** The server refused the input, e.g. an invalid email address or the owner's own. */
+    INVALID_INPUT,
 
     /** No answer; trying again may work. */
     NETWORK,

@@ -41,6 +41,15 @@ data class RemoteMember(
 )
 
 @Serializable
+data class RemoteEmailInvite(
+    @SerialName("invite_id") val inviteId: UUID,
+    @SerialName("recipient_email") val recipientEmail: String,
+    val state: String,
+    @SerialName("created_at") val createdAt: Instant,
+    @SerialName("expires_at") val expiresAt: Instant,
+)
+
+@Serializable
 data class RemoteRedeemedInvite(
     @SerialName("wishlist_id") val wishlistId: UUID,
 )

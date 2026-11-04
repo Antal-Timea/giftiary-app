@@ -3,8 +3,10 @@ package app.giftiary.presentation.sharing
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.CreatedInvite
+import app.giftiary.domain.model.EmailInvite
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
+import app.giftiary.domain.model.normalizedEmail
 import app.giftiary.domain.repository.ProfileException
 import app.giftiary.domain.repository.ProfileRepository
 import app.giftiary.domain.repository.SharingException
@@ -33,6 +35,9 @@ import java.util.UUID
  *
  * A created invite's token exists only in this ViewModel, for sharing while the screen is open;
  * the server keeps a hash, so once the screen is gone the link cannot be shown again.
+ *
+ * Email invites are loaded on their own: if they cannot be (e.g. a server without them yet), the
+ * people with access and the links still are.
  */
 @HiltViewModel(assistedFactory = WishlistAccessViewModel.Factory::class)
 class WishlistAccessViewModel @AssistedInject constructor(
@@ -95,7 +100,69 @@ class WishlistAccessViewModel @AssistedInject constructor(
                     }
                 }
             }
+            val emailInvites = try {
+                EmailInvitesContent.Loaded(sharing.emailInvites(wishlistId))
+            } catch (e: SharingException) {
+                EmailInvitesContent.Failed(e.failure)
+            }
+            // A failed refresh keeps the invites shown; the access refresh already reports it.
+            _state.update { state ->
+                if (emailInvites is EmailInvitesContent.Failed && state.emailInvites is EmailInvitesContent.Loaded) {
+                    state
+                } else {
+                    state.copy(emailInvites = emailInvites)
+                }
+            }
         }
+    }
+
+    fun onEmailInviteOpened() {
+        _state.update { it.copy(emailForm = it.emailForm ?: EmailInviteForm()) }
+    }
+
+    fun onEmailChanged(text: String) {
+        _state.update { state -> state.copy(emailForm = state.emailForm?.copy(text = text, error = null)) }
+    }
+
+    fun onEmailInviteDismissed() {
+        _state.update { it.copy(emailForm = null) }
+    }
+
+    /**
+     * Sends the invite. Whatever the address, success reads the same: the server's answer says
+     * nothing about accounts, and neither does this screen.
+     */
+    fun onSendEmailInvite() {
+        val form = _state.value.emailForm ?: return
+        if (form.isSending) return
+        val email = normalizedEmail(form.text)
+        if (email == null) {
+            _state.update { it.copy(emailForm = form.copy(error = EmailInviteError.INVALID)) }
+            return
+        }
+        _state.update { it.copy(emailForm = form.copy(isSending = true, error = null)) }
+        viewModelScope.launch {
+            try {
+                val invite = sharing.createEmailInvite(wishlistId, email)
+                _state.update { it.copy(emailForm = null, invitedEmail = invite.email) }
+                load()
+            } catch (e: SharingException) {
+                val error = when (e.failure) {
+                    SharingFailure.INVALID_INPUT -> EmailInviteError.NOT_ALLOWED
+                    SharingFailure.INVITE_LIMIT -> EmailInviteError.LIMIT
+                    SharingFailure.UNAVAILABLE -> EmailInviteError.UNAVAILABLE
+                    SharingFailure.NETWORK -> EmailInviteError.NETWORK
+                    SharingFailure.SERVER -> EmailInviteError.SERVER
+                }
+                _state.update { state -> state.copy(emailForm = state.emailForm?.copy(isSending = false, error = error)) }
+            }
+        }
+    }
+
+    fun onRevokeEmailInvite(inviteId: UUID) = change(inviteId) { sharing.revokeEmailInvite(inviteId) }
+
+    fun onInvitedNoticeShown() {
+        _state.update { it.copy(invitedEmail = null) }
     }
 
     fun onCreateInvite() {
@@ -178,8 +245,28 @@ data class WishlistAccessUiState(
     val ownerNameMissing: Boolean = false,
     /** "Not now" for this screen; it does not come back until the screen is opened again. */
     val namePromptDismissed: Boolean = false,
+    val emailInvites: EmailInvitesContent = EmailInvitesContent.Loading,
+    /** The email invite being written; null while closed. */
+    val emailForm: EmailInviteForm? = null,
+    /** The address just invited, confirmed once. */
+    val invitedEmail: String? = null,
 ) {
     val showNamePrompt: Boolean get() = ownerNameMissing && !namePromptDismissed
+}
+
+data class EmailInviteForm(
+    val text: String = "",
+    val error: EmailInviteError? = null,
+    val isSending: Boolean = false,
+)
+
+/** Why an email invite was not sent; none of them says anything about an account. */
+enum class EmailInviteError { INVALID, NOT_ALLOWED, LIMIT, UNAVAILABLE, NETWORK, SERVER }
+
+sealed interface EmailInvitesContent {
+    data object Loading : EmailInvitesContent
+    data class Loaded(val invites: List<EmailInvite>) : EmailInvitesContent
+    data class Failed(val failure: SharingFailure) : EmailInvitesContent
 }
 
 sealed interface AccessContent {

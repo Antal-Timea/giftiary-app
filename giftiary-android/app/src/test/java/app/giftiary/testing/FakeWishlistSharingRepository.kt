@@ -1,6 +1,8 @@
 package app.giftiary.testing
 
 import app.giftiary.domain.model.CreatedInvite
+import app.giftiary.domain.model.EmailInvite
+import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
@@ -10,6 +12,7 @@ import app.giftiary.domain.repository.SharingException
 import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.domain.repository.WishlistSharingRepository
 import kotlinx.coroutines.CompletableDeferred
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -29,6 +32,11 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     var gate: CompletableDeferred<Unit>? = null
 
     val calls = mutableListOf<String>()
+
+    // Email invites keep their own calls and failures, so link and member tests stay as they are.
+    var emailInvites: List<EmailInvite> = emptyList()
+    val failEmailNext = ArrayDeque<SharingFailure>()
+    val emailCalls = mutableListOf<String>()
     val redeemedTokens = mutableListOf<InviteToken>()
 
     // The answer is what the server holds when the call is made, even if it is held back by the
@@ -50,6 +58,28 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     override suspend fun access(wishlistId: UUID) = answer("access") { access }
 
     override suspend fun removeMember(wishlistId: UUID, memberUserId: UUID) = answer("removeMember:$memberUserId") {}
+
+    override suspend fun createEmailInvite(wishlistId: UUID, email: String): EmailInvite {
+        emailCalls += "create:$email"
+        failEmailNext.removeFirstOrNull()?.let { throw SharingException(it) }
+        val now = Instant.parse("2026-10-17T10:00:00Z")
+        val invite = emailInvites.find { it.email == email && it.state == EmailInviteState.PENDING }
+            ?: EmailInvite(UUID.randomUUID(), email, EmailInviteState.PENDING, now, now.plusSeconds(14 * 86_400L))
+        if (invite !in emailInvites) emailInvites = emailInvites + invite
+        return invite
+    }
+
+    override suspend fun emailInvites(wishlistId: UUID): List<EmailInvite> {
+        emailCalls += "list"
+        failEmailNext.removeFirstOrNull()?.let { throw SharingException(it) }
+        return emailInvites
+    }
+
+    override suspend fun revokeEmailInvite(inviteId: UUID) {
+        emailCalls += "revoke:$inviteId"
+        failEmailNext.removeFirstOrNull()?.let { throw SharingException(it) }
+        emailInvites = emailInvites.filterNot { it.id == inviteId }
+    }
 
     override suspend fun redeem(token: InviteToken): UUID = answer("redeem") {
         redeemedTokens += token

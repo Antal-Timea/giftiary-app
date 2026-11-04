@@ -2,6 +2,8 @@ package app.giftiary.presentation.sharing
 
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
+import app.giftiary.domain.model.EmailInvite
+import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
@@ -44,6 +46,132 @@ class SharingViewModelsTest {
     private fun accessViewModel() = WishlistAccessViewModel(listId, sharing, FakeWishlistRepository(), profiles)
 
     // ---- owner access ----
+
+    @Test
+    fun `email invites load beside the access, and their failure leaves link sharing working`() = runTest {
+        sharing.access = WishlistAccess(listOf(invite), listOf(member))
+        sharing.failEmailNext += SharingFailure.SERVER
+
+        val viewModel = accessViewModel()
+
+        assertEquals(AccessContent.Loaded(sharing.access), viewModel.state.value.content)
+        assertEquals(EmailInvitesContent.Failed(SharingFailure.SERVER), viewModel.state.value.emailInvites)
+        sharing.createdInvite = CreatedInvite(invite.id, token, invite.expiresAt)
+        viewModel.onCreateInvite()
+        assertEquals(invite.id, viewModel.state.value.newInvite?.id)
+
+        viewModel.load()
+        assertEquals(EmailInvitesContent.Loaded(emptyList()), viewModel.state.value.emailInvites)
+    }
+
+    @Test
+    fun `an email invite is sent normalized, closes the form and is confirmed once`() = runTest {
+        val viewModel = accessViewModel()
+
+        viewModel.onEmailInviteOpened()
+        viewModel.onEmailChanged("  Bob@Example.COM ")
+        viewModel.onSendEmailInvite()
+
+        assertEquals(listOf("list", "create:bob@example.com", "list"), sharing.emailCalls)
+        assertNull(viewModel.state.value.emailForm)
+        assertEquals("bob@example.com", viewModel.state.value.invitedEmail)
+        val listed = (viewModel.state.value.emailInvites as EmailInvitesContent.Loaded).invites
+        assertEquals(listOf("bob@example.com" to EmailInviteState.PENDING), listed.map { it.email to it.state })
+        viewModel.onInvitedNoticeShown()
+        assertNull(viewModel.state.value.invitedEmail)
+    }
+
+    @Test
+    fun `inviting a pending address again reads exactly like a first invite`() = runTest {
+        val viewModel = accessViewModel()
+        fun send() {
+            viewModel.onEmailInviteOpened()
+            viewModel.onEmailChanged("bob@example.com")
+            viewModel.onSendEmailInvite()
+        }
+
+        send()
+        val first = viewModel.state.value
+        viewModel.onInvitedNoticeShown()
+        send()
+
+        assertEquals(first.invitedEmail, viewModel.state.value.invitedEmail)
+        assertEquals(first.emailInvites, viewModel.state.value.emailInvites)
+        assertNull(viewModel.state.value.emailForm)
+    }
+
+    @Test
+    fun `an address that is not one is refused before anything is sent`() = runTest {
+        val viewModel = accessViewModel()
+        viewModel.onEmailInviteOpened()
+
+        listOf("", "bob", "bob@example", "bob @example.com", "@example.com").forEach { text ->
+            viewModel.onEmailChanged(text)
+            viewModel.onSendEmailInvite()
+            assertEquals(text, EmailInviteError.INVALID, viewModel.state.value.emailForm?.error)
+        }
+        assertEquals(listOf("list"), sharing.emailCalls)
+
+        viewModel.onEmailChanged("bob@example.com")
+        assertNull("typing clears the error", viewModel.state.value.emailForm?.error)
+    }
+
+    @Test
+    fun `refusals keep the form open with what was typed, saying nothing about an account`() = runTest {
+        val viewModel = accessViewModel()
+        viewModel.onEmailInviteOpened()
+        viewModel.onEmailChanged("me@example.com")
+        val expected = listOf(
+            SharingFailure.INVALID_INPUT to EmailInviteError.NOT_ALLOWED,
+            SharingFailure.INVITE_LIMIT to EmailInviteError.LIMIT,
+            SharingFailure.UNAVAILABLE to EmailInviteError.UNAVAILABLE,
+            SharingFailure.NETWORK to EmailInviteError.NETWORK,
+            SharingFailure.SERVER to EmailInviteError.SERVER,
+        )
+
+        expected.forEach { (failure, error) ->
+            sharing.failEmailNext += failure
+            viewModel.onSendEmailInvite()
+            assertEquals(EmailInviteForm(text = "me@example.com", error = error), viewModel.state.value.emailForm)
+            assertNull(viewModel.state.value.invitedEmail)
+        }
+    }
+
+    @Test
+    fun `closing the form forgets what was typed`() = runTest {
+        val viewModel = accessViewModel()
+        viewModel.onEmailInviteOpened()
+        viewModel.onEmailChanged("bob@example.com")
+
+        viewModel.onEmailInviteDismissed()
+        assertNull(viewModel.state.value.emailForm)
+        viewModel.onEmailInviteOpened()
+        assertEquals(EmailInviteForm(), viewModel.state.value.emailForm)
+    }
+
+    @Test
+    fun `withdrawing an email invite asks the server and shows what it now holds`() = runTest {
+        val pendingInvite = EmailInvite(UUID.randomUUID(), "bob@example.com", EmailInviteState.PENDING, now, now)
+        sharing.emailInvites = listOf(pendingInvite)
+        val viewModel = accessViewModel()
+
+        viewModel.onRevokeEmailInvite(pendingInvite.id)
+
+        assertEquals(listOf("list", "revoke:${pendingInvite.id}", "list"), sharing.emailCalls)
+        assertEquals(EmailInvitesContent.Loaded(emptyList()), viewModel.state.value.emailInvites)
+        assertTrue(viewModel.state.value.changing.isEmpty())
+    }
+
+    @Test
+    fun `a failed email invite refresh keeps the invites shown`() = runTest {
+        sharing.emailInvites = listOf(EmailInvite(UUID.randomUUID(), "bob@example.com", EmailInviteState.NOT_ACCEPTED, now, now))
+        val viewModel = accessViewModel()
+        sharing.failEmailNext += SharingFailure.NETWORK
+
+        viewModel.load()
+
+        assertEquals(EmailInvitesContent.Loaded(sharing.emailInvites), viewModel.state.value.emailInvites)
+    }
 
     @Test
     fun `the access screen loads invites and members`() = runTest {

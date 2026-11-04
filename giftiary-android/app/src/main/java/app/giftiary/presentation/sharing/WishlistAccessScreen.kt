@@ -2,6 +2,7 @@ package app.giftiary.presentation.sharing
 
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -38,6 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +51,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
+import app.giftiary.domain.model.EmailInvite
+import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
@@ -57,6 +64,7 @@ import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
 import app.giftiary.presentation.components.GiftiaryTaskHeader
 import app.giftiary.presentation.components.GiftiaryTaskStatus
+import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.OptionsMenuScope
 import app.giftiary.presentation.components.giftiaryDashedOutline
@@ -100,6 +108,12 @@ fun WishlistAccessScreen(viewModel: WishlistAccessViewModel, onBack: () -> Unit,
             onMessageShown = viewModel::onMessageShown,
             onAddName = onEditName,
             onNamePromptDismissed = viewModel::onNamePromptDismissed,
+            onEmailInviteOpened = viewModel::onEmailInviteOpened,
+            onEmailChanged = viewModel::onEmailChanged,
+            onEmailInviteDismissed = viewModel::onEmailInviteDismissed,
+            onSendEmailInvite = viewModel::onSendEmailInvite,
+            onRevokeEmailInvite = viewModel::onRevokeEmailInvite,
+            onInvitedNoticeShown = viewModel::onInvitedNoticeShown,
         ),
     )
 }
@@ -124,6 +138,12 @@ class WishlistAccessActions(
     val onMessageShown: () -> Unit,
     val onAddName: () -> Unit,
     val onNamePromptDismissed: () -> Unit,
+    val onEmailInviteOpened: () -> Unit,
+    val onEmailChanged: (String) -> Unit,
+    val onEmailInviteDismissed: () -> Unit,
+    val onSendEmailInvite: () -> Unit,
+    val onRevokeEmailInvite: (UUID) -> Unit,
+    val onInvitedNoticeShown: () -> Unit,
 )
 
 @Composable
@@ -139,6 +159,13 @@ fun WishlistAccessScreen(
         if (message != null) {
             snackbarHostState.showSnackbar(message)
             actions.onMessageShown()
+        }
+    }
+    val invited = state.invitedEmail?.let { stringResource(R.string.wishlist_access_email_sent, it) }
+    LaunchedEffect(state.invitedEmail) {
+        if (invited != null) {
+            snackbarHostState.showSnackbar(invited)
+            actions.onInvitedNoticeShown()
         }
     }
     Scaffold(
@@ -178,11 +205,12 @@ fun WishlistAccessScreen(
 }
 
 /**
- * The approved Share & Invite: the list, the people with access and "Share with someone", then the
+ * The approved Share & Invite: the list, the people with access, the two ways to invite, then the
  * note on reservations. People are shown only as the server returns them: a name, or a neutral
- * label, and when they joined; nothing the user keeps about them, so no relationship line. Sharing
- * works through invite links, so "Share with someone" creates one, and the open links follow the
- * people with access. Removing, withdrawing and the rest stay behind each row's options.
+ * label, and when they joined; nothing the user keeps about them, so no relationship line. Inviting
+ * by email and sharing an invite link sit side by side as equals; the email invites and the open
+ * links follow, each in its own section. Removing, withdrawing and the rest stay behind each row's
+ * options.
  */
 @Composable
 private fun AccessContents(
@@ -244,13 +272,44 @@ private fun AccessContents(
                 )
             }
         }
+        // Neither waits for the name prompt: an invite can be made either way.
         item {
-            // Never waits for the name prompt: an invite can be created either way.
+            val form = state.emailForm
+            if (form != null) {
+                EmailInviteCard(form = form, actions = actions)
+            } else {
+                InviteAction(
+                    text = stringResource(R.string.wishlist_access_email_invite),
+                    icon = R.drawable.ic_mail,
+                    onClick = actions.onEmailInviteOpened,
+                )
+            }
+        }
+        item {
             val invite = state.newInvite
             if (invite != null) {
                 NewInviteCard(invite = invite, onShare = { actions.onShare(invite) })
             } else {
-                ShareWithSomeone(onClick = actions.onCreateInvite, creating = state.isCreating)
+                InviteAction(
+                    text = stringResource(R.string.wishlist_access_create_invite),
+                    icon = R.drawable.ic_link,
+                    onClick = actions.onCreateInvite,
+                    busy = state.isCreating,
+                )
+            }
+        }
+
+        when (val emailInvites = state.emailInvites) {
+            EmailInvitesContent.Loading -> Unit
+            is EmailInvitesContent.Failed -> item {
+                AccessHeading(stringResource(R.string.wishlist_access_email_invites))
+                EmailInvitesFailed(onRetry = actions.onRetry)
+            }
+            is EmailInvitesContent.Loaded -> if (emailInvites.invites.isNotEmpty()) {
+                item { AccessHeading(stringResource(R.string.wishlist_access_email_invites)) }
+                items(emailInvites.invites, key = { "email:${it.id}" }) { invite ->
+                    EmailInviteRow(invite = invite, changing = invite.id in state.changing, onRevoke = actions.onRevokeEmailInvite)
+                }
             }
         }
 
@@ -343,15 +402,15 @@ private fun AccessRow(
     }
 }
 
-/** The board's dashed coral "Share with someone"; it creates an invite link to share. */
+/** One of the two ways to invite, as the board's dashed coral row. */
 @Composable
-private fun ShareWithSomeone(onClick: () -> Unit, creating: Boolean) {
+private fun InviteAction(text: String, @DrawableRes icon: Int, onClick: () -> Unit, busy: Boolean = false) {
     val colors = GiftiaryTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 72.dp)
-            .clickable(enabled = !creating, role = Role.Button, onClick = onClick)
+            .clickable(enabled = !busy, role = Role.Button, onClick = onClick)
             .padding(vertical = GiftiarySpacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -361,14 +420,14 @@ private fun ShareWithSomeone(onClick: () -> Unit, creating: Boolean) {
                 .giftiaryDashedOutline(colors.primaryActionText, 24.dp),
             contentAlignment = Alignment.Center,
         ) {
-            if (creating) {
+            if (busy) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryActionText, strokeWidth = 2.dp)
             } else {
-                Icon(painterResource(R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(20.dp), tint = colors.primaryActionText)
+                Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp), tint = colors.primaryActionText)
             }
         }
         Text(
-            text = stringResource(R.string.wishlist_access_create_invite),
+            text = text,
             modifier = Modifier.padding(start = GiftiarySpacing.l),
             style = GiftiaryType.rowTitle,
             color = colors.primaryActionText,
@@ -377,7 +436,10 @@ private fun ShareWithSomeone(onClick: () -> Unit, creating: Boolean) {
 }
 
 @Composable
-private fun LinkMark() {
+private fun LinkMark() = InviteMark(R.drawable.ic_link)
+
+@Composable
+private fun InviteMark(@DrawableRes icon: Int) {
     val colors = GiftiaryTheme.colors
     Box(
         modifier = Modifier
@@ -385,8 +447,102 @@ private fun LinkMark() {
             .background(colors.surfaceContext, GiftiaryShapes.pill),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(R.drawable.ic_link), contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.textPrimary)
+        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.textPrimary)
     }
+}
+
+/** Writing an email invite, in place of its row: the address, a note on where it shows, send. */
+@Composable
+private fun EmailInviteCard(form: EmailInviteForm, actions: WishlistAccessActions) {
+    val colors = GiftiaryTheme.colors
+    Column(
+        modifier = Modifier
+            .padding(vertical = GiftiarySpacing.m)
+            .fillMaxWidth()
+            .background(colors.infoSurface, GiftiaryShapes.container)
+            .padding(GiftiarySpacing.l),
+        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
+    ) {
+        Text(
+            text = stringResource(R.string.wishlist_access_email_invite),
+            modifier = Modifier.semantics { heading() },
+            style = GiftiaryType.rowTitle,
+            color = colors.textPrimary,
+        )
+        GiftiaryTextField(
+            value = form.text,
+            onValueChange = actions.onEmailChanged,
+            label = stringResource(R.string.wishlist_access_email_label),
+            modifier = Modifier.fillMaxWidth(),
+            errorMessage = form.error?.let { emailErrorText(it) },
+            enabled = !form.isSending,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { actions.onSendEmailInvite() }),
+        )
+        Text(text = stringResource(R.string.wishlist_access_email_note), style = GiftiaryType.body, color = colors.textSecondary)
+        GiftiaryPrimaryButton(
+            text = stringResource(R.string.wishlist_access_email_send),
+            onClick = actions.onSendEmailInvite,
+            modifier = Modifier
+                .padding(top = GiftiarySpacing.xs)
+                .fillMaxWidth(),
+            loading = form.isSending,
+        )
+        TextButton(
+            onClick = actions.onEmailInviteDismissed,
+            modifier = Modifier.align(Alignment.End),
+            enabled = !form.isSending,
+            colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
+        ) {
+            Text(stringResource(R.string.action_cancel))
+        }
+    }
+}
+
+/** An email invite: the address and pending or not accepted, which is all the owner is told. */
+@Composable
+private fun EmailInviteRow(invite: EmailInvite, changing: Boolean, onRevoke: (UUID) -> Unit) {
+    val pending = invite.state == EmailInviteState.PENDING
+    AccessRow(
+        leading = { InviteMark(R.drawable.ic_mail) },
+        title = invite.email,
+        detail = if (pending) {
+            stringResource(R.string.wishlist_access_email_pending, sharingDate(invite.expiresAt))
+        } else {
+            stringResource(R.string.wishlist_access_email_not_accepted)
+        },
+        optionsDescription = stringResource(R.string.wishlist_access_email_more, invite.email),
+    ) {
+        Option(
+            text = stringResource(
+                if (pending) R.string.wishlist_access_email_withdraw else R.string.wishlist_access_email_clear,
+                invite.email,
+            ),
+            icon = R.drawable.ic_close,
+            onClick = { onRevoke(invite.id) },
+            enabled = !changing,
+        )
+    }
+}
+
+@Composable
+private fun EmailInvitesFailed(onRetry: () -> Unit) {
+    Column {
+        QuietLine(stringResource(R.string.wishlist_access_email_failed))
+        TextButton(onClick = onRetry, colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.primaryActionText)) {
+            Text(stringResource(R.string.sharing_retry))
+        }
+    }
+}
+
+@Composable
+private fun emailErrorText(error: EmailInviteError): String = when (error) {
+    EmailInviteError.INVALID -> stringResource(R.string.wishlist_access_email_invalid)
+    EmailInviteError.NOT_ALLOWED -> stringResource(R.string.wishlist_access_email_not_allowed)
+    EmailInviteError.LIMIT -> stringResource(R.string.wishlist_access_email_limit)
+    EmailInviteError.UNAVAILABLE -> stringResource(R.string.wishlist_access_unavailable)
+    EmailInviteError.NETWORK -> retryableFailureText(SharingFailure.NETWORK)
+    EmailInviteError.SERVER -> retryableFailureText(SharingFailure.SERVER)
 }
 
 @Composable
@@ -494,9 +650,15 @@ private fun WishlistAccessPreview() {
                     ),
                 ),
                 newInvite = CreatedInvite(invite.id, InviteToken.of("A".repeat(43))!!, invite.expiresAt),
+                emailInvites = EmailInvitesContent.Loaded(
+                    listOf(
+                        EmailInvite(UUID.randomUUID(), "anna@example.com", EmailInviteState.PENDING, now, now.plusSeconds(14 * 86_400)),
+                        EmailInvite(UUID.randomUUID(), "peter@example.com", EmailInviteState.NOT_ACCEPTED, now, now),
+                    ),
+                ),
             ),
             wishlistName = "Birthday 2027",
-            actions = WishlistAccessActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
+            actions = WishlistAccessActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
         )
     }
 }
