@@ -12,6 +12,8 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -121,6 +123,22 @@ class WishlistsScreenTest {
         val tops = order.map(::top)
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         compose.onNodeWithText("Invitations").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun `each invitation sits on a card of its own, the joined lists do not`() {
+        show(populated, invitations = twoInvites)
+
+        val cards = compose.onAllNodesWithTag(INVITATION_CARD_TAG, useUnmergedTree = true)
+        cards.assertCountEquals(2)
+        listOf("Birthday" to 0, "Christmas" to 1).forEach { (name, index) ->
+            val card = cards[index].getBoundsInRoot()
+            val title = compose.onNodeWithText(name).getBoundsInRoot()
+            val accept = compose.onNodeWithContentDescription("Accept the invitation to $name").getBoundsInRoot()
+            assertTrue("$name inside its card", title.top >= card.top && accept.bottom <= card.bottom)
+        }
+        val lastCard = cards[1].getBoundsInRoot()
+        assertTrue("joined lists below the cards", top("Peter’s wishlist") >= lastCard.bottom)
     }
 
     @Test

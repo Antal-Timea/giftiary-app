@@ -439,10 +439,10 @@ nagy történetek</string>
     <string name="wishlist_access_title">Lista megosztása</string>
     <string name="wishlist_access_intro">Akiket meghívsz, csak ezt a kívánságlistát és a kívánságait látják.</string>
     <string name="wishlist_access_create_invite">Meghívó link megosztása</string>
-    <string name="wishlist_access_email_invite">Meghívás emailben</string>
+    <string name="wishlist_access_email_invite">Meghívás email-cím alapján</string>
     <string name="wishlist_access_email_label">Email-cím</string>
-    <string name="wishlist_access_email_note">A meghívót a Giftiaryben találja meg, ha ezzel a címmel jelentkezik be.</string>
-    <string name="wishlist_access_email_send">Meghívó küldése</string>
+    <string name="wishlist_access_email_note">Emailt nem küldünk. A meghívó a Giftiaryben jelenik meg annak, aki ezzel a címmel jelentkezik be.</string>
+    <string name="wishlist_access_email_send">Meghívó mentése</string>
     <string name="wishlist_access_email_sent">Meghívó elmentve: %1$s.</string>
     <string name="wishlist_access_email_invalid">Adj meg egy érvényes email-címet.</string>
     <string name="wishlist_access_email_not_allowed">Ez a cím nem hívható meg. Saját magadat nem hívhatod meg.</string>
