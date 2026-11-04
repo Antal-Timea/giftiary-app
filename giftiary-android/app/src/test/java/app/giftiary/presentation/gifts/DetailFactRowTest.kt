@@ -16,9 +16,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.giftiary.presentation.theme.GiftiaryTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -74,6 +76,17 @@ class DetailFactRowTest {
         assertNear((label.top + label.bottom) / 2, (value.top + value.bottom) / 2)
         assertNear(compose.onRoot().getBoundsInRoot().right - 24.dp, value.right)
         assertEquals(1, text("Approximate price").lineCount())
+    }
+
+    @Test
+    fun `a fact value is set at the board's 14,5 bold, quieter than an action`() {
+        show { DetailFactRow("Approximate price") { DetailFactValue("~10,000 HUF") } }
+
+        val results = mutableListOf<TextLayoutResult>()
+        text("~10,000 HUF").fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action!!(results)
+        val style = results.single().layoutInput.style
+        assertEquals(14.5.sp, style.fontSize)
+        assertEquals(FontWeight.Bold, style.fontWeight)
     }
 
     @Test

@@ -3,6 +3,7 @@ package app.giftiary.presentation.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,11 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.domain.repository.AuthProvider
@@ -76,13 +79,7 @@ internal fun SignInContent(
     // One sign-in at a time: email and provider buttons wait for each other.
     val providerBusy = providerState.isBusy
     AuthPage(modifier, decorated = true) {
-        GiftiaryTaskHeader(
-            title = stringResource(R.string.auth_sign_in_title),
-            subtitle = stringResource(R.string.auth_sign_in_message),
-            onBack = null,
-            // The words stay clear of the corner gift, as on the board, however they wrap.
-            modifier = Modifier.padding(end = SIGN_IN_ART_CLEARANCE),
-        )
+        SignInHeader(title = stringResource(R.string.auth_sign_in_title), subtitle = stringResource(R.string.auth_sign_in_message))
         // An invite opened while signed out waits in memory and opens once signed in.
         if (joinPending) {
             Text(
@@ -160,5 +157,34 @@ private fun SignInPreview() {
     }
 }
 
+/**
+ * The header beside the corner gift, as on the board, while every word of the title fits there.
+ * When one does not (large text, a long translated word such as "Giftiaryben"), the header
+ * starts below the gift at full width instead, so no word is split and nothing runs under it.
+ */
+@Composable
+private fun SignInHeader(title: String, subtitle: String) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val measurer = rememberTextMeasurer()
+        val besideArt = maxWidth - SIGN_IN_ART_CLEARANCE
+        val longestWord = with(LocalDensity.current) {
+            title.split(' ').maxOf { measurer.measure(it, GiftiaryType.display, softWrap = false).size.width }.toDp()
+        }
+        GiftiaryTaskHeader(
+            title = title,
+            subtitle = subtitle,
+            onBack = null,
+            modifier = if (longestWord <= besideArt) {
+                Modifier.padding(end = SIGN_IN_ART_CLEARANCE)
+            } else {
+                Modifier.padding(top = SIGN_IN_ART_DEPTH)
+            },
+        )
+    }
+}
+
 /** How far the large corner gift of a decorated page reaches in from the page's gutter. */
 internal val SIGN_IN_ART_CLEARANCE = 120.dp
+
+/** How far it reaches down below the page's top padding. */
+internal val SIGN_IN_ART_DEPTH = 190.dp

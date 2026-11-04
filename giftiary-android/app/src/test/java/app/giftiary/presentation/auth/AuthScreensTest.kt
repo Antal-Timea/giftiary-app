@@ -1,11 +1,15 @@
 package app.giftiary.presentation.auth
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -14,7 +18,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.data.auth.RecoveryFailure
@@ -225,12 +231,52 @@ class AuthScreensTest {
         listOf(1f, 2f).forEach { scale ->
             fontScale = scale
             compose.waitForIdle()
-            // The large cut-out shows 60% of its 240dp from the screen's end edge.
-            val artStart = compose.onRoot().getBoundsInRoot().right - 144.dp
-            listOf("Welcome to Giftiary", "Keep your gift memories, plans and wishlists together.").forEach {
-                val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
-                assertTrue("$it at ${scale}x ends at ${bounds.right}, before $artStart", bounds.right <= artStart)
+            assertClearOfArt("Welcome to Giftiary", "Keep your gift memories, plans and wishlists together.")
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w360dp-h1600dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian at large text the brand stays whole and the title clear of the corner gift`() {
+        var fontScale by mutableFloatStateOf(1f)
+        var width by mutableStateOf(360.dp)
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = fontScale)) {
+                GiftiaryTheme {
+                    Box(Modifier.width(width)) {
+                        SignInContent(CredentialsUiState(), {}, {}, {}, {}, {}, AuthProvider.entries, ProviderSignInState.Idle, {})
+                    }
+                }
             }
+        }
+        listOf(360.dp, 390.dp).forEach { w ->
+            listOf(1f, 1.3f, 2f).forEach { scale ->
+                width = w
+                fontScale = scale
+                compose.waitForIdle()
+                val title = "Üdv a Giftiaryben"
+                val results = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithText(title, useUnmergedTree = true).fetchSemanticsNode()
+                    .config[SemanticsActions.GetTextLayoutResult].action!!(results)
+                val layout = results.single()
+                val lines = (0 until layout.lineCount).map { title.substring(layout.getLineStart(it), layout.getLineEnd(it)).trim() }
+                assertTrue("$w at ${scale}x: $lines", lines.any { it.endsWith("Giftiaryben") })
+                assertClearOfArt(title, right = w)
+            }
+        }
+    }
+
+    /**
+     * The large cut-out shows 60% of its 240dp from the screen's end edge and reaches about 210dp
+     * down: each text either ends before it or starts below it.
+     */
+    private fun assertClearOfArt(vararg texts: String, right: Dp = compose.onRoot().getBoundsInRoot().right) {
+        val artStart = right - 144.dp
+        texts.forEach {
+            val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
+            assertTrue("$it ends at ${bounds.right} before $artStart or starts below the art", bounds.right <= artStart || bounds.top >= 210.dp)
         }
     }
 
