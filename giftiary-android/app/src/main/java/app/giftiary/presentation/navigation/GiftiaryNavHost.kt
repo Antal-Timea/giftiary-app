@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import app.giftiary.presentation.components.LocalWidthClass
+import app.giftiary.presentation.sharing.InvitationsViewModel
 import app.giftiary.presentation.sharing.PendingJoinViewModel
 import java.util.UUID
 
@@ -26,6 +27,10 @@ fun GiftiaryNavHost(accountEmail: String?, onSignOut: () -> Unit, modifier: Modi
     val navController = rememberNavController()
     val joinPending by hiltViewModel<PendingJoinViewModel>().isPending.collectAsStateWithLifecycle()
     OpenJoinScreenForLink(navController, joinPending)
+    // Asked once as the account's app opens (this graph is keyed by account), then by Lists.
+    val invitations = hiltViewModel<InvitationsViewModel>()
+    val invitationCount by invitations.count.collectAsStateWithLifecycle()
+    LaunchedEffect(invitations) { invitations.refresh() }
     // Outside the NavHost, so the rail and the bar stay put while destinations change beside them.
     val backStackEntry by navController.currentBackStackEntryAsState()
     var quickAddOpen by rememberSaveable { mutableStateOf(false) }
@@ -35,6 +40,7 @@ fun GiftiaryNavHost(accountEmail: String?, onSignOut: () -> Unit, modifier: Modi
         modifier = modifier,
         showBar = backStackEntry?.destination?.showsNavigationBar() == true,
         onAdd = { quickAddOpen = true },
+        invitationCount = invitationCount,
     ) {
         NavHost(
             navController = navController,

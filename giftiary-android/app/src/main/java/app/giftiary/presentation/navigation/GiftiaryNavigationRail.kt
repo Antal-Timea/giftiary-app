@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -16,10 +18,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import app.giftiary.R
 import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -38,13 +45,15 @@ internal fun AdaptiveNavigationFrame(
     modifier: Modifier = Modifier,
     showBar: Boolean = false,
     onAdd: () -> Unit = {},
+    /** Invitations waiting, shown on the Wishlists section; nothing while none do. */
+    invitationCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     val hasRail = LocalWidthClass.current.hasNavigationRail
     val hasBar = showBar && !hasRail
     Row(modifier) {
         if (hasRail) {
-            GiftiaryNavigationRail(selected = selected, onSelect = onSelect)
+            GiftiaryNavigationRail(selected = selected, onSelect = onSelect, invitationCount = invitationCount)
         }
         Column(Modifier.weight(1f)) {
             // The bar keeps clear of the system navigation bar itself; screens above it must not too.
@@ -52,7 +61,7 @@ internal fun AdaptiveNavigationFrame(
                 content()
             }
             if (hasBar) {
-                GiftiaryNavigationBar(selected = selected, onSelect = onSelect, onAdd = onAdd)
+                GiftiaryNavigationBar(selected = selected, onSelect = onSelect, onAdd = onAdd, invitationCount = invitationCount)
             }
         }
     }
@@ -64,6 +73,7 @@ internal fun GiftiaryNavigationRail(
     selected: AppSection?,
     onSelect: (AppSection) -> Unit,
     modifier: Modifier = Modifier,
+    invitationCount: Int = 0,
 ) {
     NavigationRail(
         modifier = modifier.testTag(NAVIGATION_RAIL_TAG),
@@ -71,7 +81,7 @@ internal fun GiftiaryNavigationRail(
     ) {
         Spacer(Modifier.height(GiftiarySpacing.l))
         AppSection.entries.filter { it != AppSection.SETTINGS }.forEach { section ->
-            RailItem(section, selected == section, onSelect)
+            RailItem(section, selected == section, onSelect, badge = if (section == AppSection.WISHLISTS) invitationCount else 0)
         }
         Spacer(Modifier.weight(1f))
         RailItem(AppSection.SETTINGS, selected == AppSection.SETTINGS, onSelect)
@@ -80,13 +90,14 @@ internal fun GiftiaryNavigationRail(
 }
 
 @Composable
-private fun RailItem(section: AppSection, selected: Boolean, onSelect: (AppSection) -> Unit) {
+private fun RailItem(section: AppSection, selected: Boolean, onSelect: (AppSection) -> Unit, badge: Int = 0) {
     val colors = GiftiaryTheme.colors
     NavigationRailItem(
         selected = selected,
         onClick = { onSelect(section) },
+        modifier = Modifier.invitationsState(badge),
         // The label names the item; the icon only illustrates it.
-        icon = { Icon(painterResource(section.icon), contentDescription = null) },
+        icon = { WithInvitationBadge(badge) { Icon(painterResource(section.icon), contentDescription = null) } },
         // Long labels (e.g. "Kívánságlisták") wrap onto a second line rather than being cut.
         label = { Text(stringResource(section.label), textAlign = TextAlign.Center, maxLines = 2) },
         alwaysShowLabel = true,
@@ -98,6 +109,32 @@ private fun RailItem(section: AppSection, selected: Boolean, onSelect: (AppSecti
             unselectedTextColor = colors.navigationUnselected,
         ),
     )
+}
+
+/** A coral count over [icon] while invitations wait; screen readers hear it as the item's state. */
+@Composable
+internal fun WithInvitationBadge(count: Int, icon: @Composable () -> Unit) {
+    if (count <= 0) {
+        icon()
+        return
+    }
+    val colors = GiftiaryTheme.colors
+    BadgedBox(
+        badge = {
+            Badge(
+                modifier = Modifier.clearAndSetSemantics {},
+                containerColor = colors.primaryAction,
+                contentColor = colors.onPrimaryAction,
+            ) { Text(if (count > 99) "99+" else count.toString()) }
+        },
+    ) { icon() }
+}
+
+@Composable
+internal fun Modifier.invitationsState(count: Int): Modifier {
+    if (count <= 0) return this
+    val state = pluralStringResource(R.plurals.nav_invitations_badge, count, count)
+    return semantics { stateDescription = state }
 }
 
 @PreviewLightDark

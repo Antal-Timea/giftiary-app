@@ -3,6 +3,7 @@ package app.giftiary.domain.repository
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
 import app.giftiary.domain.model.InviteToken
+import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
@@ -43,6 +44,14 @@ interface WishlistSharingRepository {
     suspend fun redeem(token: InviteToken): UUID
 
     suspend fun sharedWishlists(): List<SharedWishlistSummary>
+
+    /** Open invitations to the user's confirmed address; none without one. */
+    suspend fun myInvites(): List<RecipientInvite>
+
+    /** Joins the invitation's wishlist and returns its id. */
+    suspend fun acceptInvite(inviteId: UUID): UUID
+
+    suspend fun declineInvite(inviteId: UUID)
 
     suspend fun sharedWishlist(wishlistId: UUID): SharedWishlist
 

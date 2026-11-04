@@ -57,6 +57,7 @@ fun GiftiaryNavigationBar(
     onSelect: (AppSection) -> Unit,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier,
+    invitationCount: Int = 0,
 ) {
     val colors = GiftiaryTheme.colors
     Box(modifier = modifier.fillMaxWidth()) {
@@ -75,7 +76,12 @@ fun GiftiaryNavigationBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BarItem.entries.forEach { item ->
-                NavigationItem(item = item, selected = item.section == selected, onClick = { onSelect(item.section) })
+                NavigationItem(
+                    item = item,
+                    selected = item.section == selected,
+                    onClick = { onSelect(item.section) },
+                    badge = if (item.section == AppSection.WISHLISTS) invitationCount else 0,
+                )
             }
         }
         GlobalAdd(onClick = onAdd, modifier = Modifier.align(Alignment.TopCenter))
@@ -83,24 +89,27 @@ fun GiftiaryNavigationBar(
 }
 
 @Composable
-private fun NavigationItem(item: BarItem, selected: Boolean, onClick: () -> Unit) {
+private fun NavigationItem(item: BarItem, selected: Boolean, onClick: () -> Unit, badge: Int = 0) {
     val colors = GiftiaryTheme.colors
     val tint = if (selected) colors.navigationSelected else colors.navigationUnselected
     Column(
         modifier = Modifier
             .clip(GiftiaryShapes.container)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .invitationsState(badge)
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
-        Icon(
-            imageVector = if (selected) item.selectedIcon else item.icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = tint,
-        )
+        WithInvitationBadge(badge) {
+            Icon(
+                imageVector = if (selected) item.selectedIcon else item.icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = tint,
+            )
+        }
         Text(
             text = stringResource(item.label),
             style = GiftiaryType.navigationLabel.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold),

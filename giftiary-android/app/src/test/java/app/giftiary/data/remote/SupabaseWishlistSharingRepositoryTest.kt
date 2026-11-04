@@ -5,6 +5,7 @@ import app.giftiary.data.remote.RemoteTestData.token
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.domain.model.EmailInvite
 import app.giftiary.domain.model.EmailInviteState
+import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.ReservationState
@@ -186,6 +187,56 @@ class SupabaseWishlistSharingRepositoryTest {
 
         answer = { respondError("P0002", status = HttpStatusCode.NotFound) }
         assertFailure(SharingFailure.UNAVAILABLE) { repository.emailInvites(LIST) }
+    }
+
+    @Test
+    fun `invitations carry exactly the inbox payload, names trimmed and blank as none`() = runTest {
+        answer = {
+            respondJson(
+                """[{"invite_id":"$INVITE","wishlist_name":"Birthday","owner_display_name":" Bea ","person_name":"Alex",
+                    "created_at":"2026-11-04T10:00:00+00:00","expires_at":"2026-11-18T10:00:00+00:00","wishlist_id":"$LIST"},
+                   {"invite_id":"$OTHER","wishlist_name":"Christmas","owner_display_name":"  ","person_name":null,
+                    "created_at":"2026-11-04T10:00:00+00:00","expires_at":"2026-11-18T10:00:00+00:00"}]""",
+            )
+        }
+
+        val invites = repository.myInvites()
+
+        assertEquals(
+            RecipientInvite(INVITE, "Birthday", "Bea", "Alex", Instant.parse("2026-11-04T10:00:00Z"), Instant.parse("2026-11-18T10:00:00Z")),
+            invites.first(),
+        )
+        assertEquals(listOf(null, null), invites.drop(1).flatMap { listOf(it.ownerDisplayName, it.personName) })
+        // Nothing beyond the payload is kept, not even a list id a server might add.
+        assertEquals(
+            listOf("id", "wishlistName", "ownerDisplayName", "personName", "createdAt", "expiresAt"),
+            RecipientInvite::class.java.declaredFields.map { it.name }.filterNot { it.startsWith("$") },
+        )
+        assertRpc("get_my_invites", "{}")
+    }
+
+    @Test
+    fun `accepting an invitation sends it with accept and returns the list joined`() = runTest {
+        answer = { respondJson("""{"wishlist_id":"$LIST"}""") }
+
+        assertEquals(LIST, repository.acceptInvite(INVITE))
+        assertRpc("respond_to_invite", """{"p_invite_id":"$INVITE","p_accept":true}""")
+    }
+
+    @Test
+    fun `declining an invitation sends it without accept`() = runTest {
+        answer = { respondJson("{}") }
+
+        repository.declineInvite(INVITE)
+        assertRpc("respond_to_invite", """{"p_invite_id":"$INVITE","p_accept":false}""")
+    }
+
+    @Test
+    fun `an invitation no longer open reads as unavailable`() = runTest {
+        answer = { respondError("P0002", status = HttpStatusCode.NotFound) }
+
+        assertFailure(SharingFailure.UNAVAILABLE) { repository.acceptInvite(INVITE) }
+        assertFailure(SharingFailure.UNAVAILABLE) { repository.declineInvite(INVITE) }
     }
 
     @Test
