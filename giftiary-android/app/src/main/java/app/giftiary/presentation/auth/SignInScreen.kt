@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.domain.repository.AuthProvider
@@ -79,6 +80,8 @@ internal fun SignInContent(
             title = stringResource(R.string.auth_sign_in_title),
             subtitle = stringResource(R.string.auth_sign_in_message),
             onBack = null,
+            // The words stay clear of the corner gift, as on the board, however they wrap.
+            modifier = Modifier.padding(end = SIGN_IN_ART_CLEARANCE),
         )
         // An invite opened while signed out waits in memory and opens once signed in.
         if (joinPending) {
@@ -156,3 +159,6 @@ private fun SignInPreview() {
         )
     }
 }
+
+/** How far the large corner gift of a decorated page reaches in from the page's gutter. */
+internal val SIGN_IN_ART_CLEARANCE = 120.dp

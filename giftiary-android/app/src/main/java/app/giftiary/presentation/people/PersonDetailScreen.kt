@@ -196,6 +196,7 @@ fun PersonDetailScreen(
                 onOpenGift = onOpenGift,
                 onAddGiftIdea = { onAddGiftIdea(state.person) },
                 onOpenGiftIdea = onOpenGiftIdea,
+                onAddOccasion = { onAddOccasion(state.person) },
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -240,6 +241,7 @@ private fun PersonDetailContent(
     onOpenGift: (GiftEntry) -> Unit,
     onAddGiftIdea: () -> Unit,
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
+    onAddOccasion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val next = remember(state.occasions, today) { nextOccasion(state.occasions, today) }
@@ -259,6 +261,16 @@ private fun PersonDetailContent(
                     onPlanGift = { onPlanGift(occasion) },
                     modifier = Modifier.padding(top = 10.dp),
                 )
+            }
+        }
+        // A new person has no dates yet: offer the first one here. Once there are some, they are
+        // managed from "More" with the person's other details.
+        if (state.occasions.isEmpty()) {
+            item {
+                Column(Modifier.padding(top = GiftiarySpacing.l)) {
+                    NoOccasions()
+                    AddAction(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion)
+                }
             }
         }
 

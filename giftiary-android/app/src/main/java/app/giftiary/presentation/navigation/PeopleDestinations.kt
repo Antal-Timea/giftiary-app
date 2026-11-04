@@ -2,6 +2,7 @@ package app.giftiary.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -18,7 +19,7 @@ import java.util.UUID
 internal fun NavGraphBuilder.peopleDestinations(navController: NavHostController) {
     composable<PeopleRoute> {
         PeopleScreen(
-            onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
+            onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute()) },
             onOpenPerson = { personId -> navController.navigate(PersonDetailRoute(personId.toString())) },
             // Beside the list on a wide window: one view model per person, kept in People's entry.
             personDetail = { personId -> PersonDetail(personId, navController, onBack = null, viewModelKey = "person-$personId") },
@@ -29,12 +30,23 @@ internal fun NavGraphBuilder.peopleDestinations(navController: NavHostController
             PersonDetail(personId, navController, onBack = navController.popBackStackUnlessPaused())
         }
     }
-    composable<AddPersonRoute> {
+    composable<AddPersonRoute> { entry ->
+        val openWhenSaved = entry.toRoute<AddPersonRoute>().openWhenSaved
         PersonEditorScreen(
             viewModel = hiltViewModel<PersonEditorViewModel, PersonEditorViewModel.Factory> { factory ->
                 factory.create(personId = null)
             },
             onClose = navController.popBackStackUnlessPaused(),
+            // The new person's page replaces the editor, so Back returns to where adding began;
+            // that page is where their occasions are added.
+            onCreated = if (openWhenSaved) {
+                { personId: UUID ->
+                    // As dropUnlessResumed does for the other exits: never twice, never from a page left behind.
+                    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) navController.openCreatedPerson(personId)
+                }
+            } else {
+                null
+            },
         )
     }
     composable<EditPersonRoute> { entry ->
@@ -76,4 +88,10 @@ private fun PersonDetail(
         // Beside the list, People forgets a selected person who is gone; on its own the screen closes.
         onDeleted = onBack ?: {},
     )
+}
+
+internal fun NavHostController.openCreatedPerson(personId: UUID) {
+    navigate(PersonDetailRoute(personId.toString())) {
+        popUpTo<AddPersonRoute> { inclusive = true }
+    }
 }

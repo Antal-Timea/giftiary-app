@@ -16,7 +16,7 @@ class SavePersonUseCaseTest {
     @Test
     fun `blank name is rejected without saving`() = runTest {
         listOf("", "   ", "\t\n").forEach { name ->
-            assertEquals(SavePersonResult.BLANK_NAME, savePerson.add(name, "Friend"))
+            assertEquals(SavePersonResult.BlankName, savePerson.add(name, "Friend"))
         }
         assertTrue(repository.currentPeople.isEmpty())
     }
@@ -25,8 +25,8 @@ class SavePersonUseCaseTest {
     fun `name and relationship are trimmed before saving`() = runTest {
         val result = savePerson.add("  Anna  ", "  Sister ")
 
-        assertEquals(SavePersonResult.SAVED, result)
         val saved = repository.currentPeople.single()
+        assertEquals("the new person is named, to be opened", SavePersonResult.Saved(saved.id), result)
         assertEquals("Anna", saved.name)
         assertEquals("Sister", saved.relationship)
     }
@@ -43,8 +43,8 @@ class SavePersonUseCaseTest {
         val anna = person("Anna", relationship = "Sister")
         repository.givenPeople(anna)
 
-        assertEquals(SavePersonResult.BLANK_NAME, savePerson.update(anna.id, " ", null))
-        assertEquals(SavePersonResult.SAVED, savePerson.update(anna.id, " Anna K. ", ""))
+        assertEquals(SavePersonResult.BlankName, savePerson.update(anna.id, " ", null))
+        assertEquals(SavePersonResult.Saved(anna.id), savePerson.update(anna.id, " Anna K. ", ""))
 
         val updated = repository.currentPeople.single()
         assertEquals("Anna K.", updated.name)

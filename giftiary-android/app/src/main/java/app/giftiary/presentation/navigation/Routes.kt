@@ -28,8 +28,9 @@ data object EditProfileRoute
 @Serializable
 data class PersonDetailRoute(val personId: String)
 
+/** [openWhenSaved]: show the new person, unless they were added on the way to something else. */
 @Serializable
-data object AddPersonRoute
+data class AddPersonRoute(val openWhenSaved: Boolean = true)
 
 @Serializable
 data class EditPersonRoute(val personId: String)

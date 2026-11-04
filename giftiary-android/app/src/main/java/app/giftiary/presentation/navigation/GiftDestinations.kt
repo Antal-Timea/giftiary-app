@@ -59,7 +59,7 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
             },
             onClose = navController.popBackStackUnlessPaused(),
             onOpenPeople = { navController.navigate(PeopleRoute) },
-            onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
+            onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute(openWhenSaved = false)) },
         )
     }
     composable<EditGiftRoute> { entry ->
@@ -70,7 +70,7 @@ internal fun NavGraphBuilder.giftDestinations(navController: NavHostController) 
                 },
                 onClose = navController.popBackStackUnlessPaused(),
                 onOpenPeople = { navController.navigate(PeopleRoute) },
-                onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute) },
+                onAddPerson = dropUnlessResumed { navController.navigate(AddPersonRoute(openWhenSaved = false)) },
                 onDeleted = dropUnlessResumed { navController.leaveDeletedEditor<GiftDetailRoute>() },
             )
         }

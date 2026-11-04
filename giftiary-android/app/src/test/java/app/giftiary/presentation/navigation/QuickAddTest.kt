@@ -92,7 +92,7 @@ class QuickAddTest {
         assertEquals(AddGiftRoute(direction = "GIVEN"), quickAddRoute(QuickAddAction.GIFT_GIVEN, null))
         assertEquals(AddGiftRoute(direction = "RECEIVED"), quickAddRoute(QuickAddAction.GIFT_RECEIVED, null))
         assertEquals(AddGiftIdeaRoute(), quickAddRoute(QuickAddAction.GIFT_IDEA, null))
-        assertEquals(AddPersonRoute, quickAddRoute(QuickAddAction.PERSON, null))
+        assertEquals(AddPersonRoute(openWhenSaved = true), quickAddRoute(QuickAddAction.PERSON, null))
         assertEquals(AddWishlistRoute(), quickAddRoute(QuickAddAction.LIST, null))
     }
 

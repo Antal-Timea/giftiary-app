@@ -35,17 +35,23 @@ import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import java.util.UUID
 
 @Composable
 fun PersonEditorScreen(
     viewModel: PersonEditorViewModel,
     onClose: () -> Unit,
     onDeleted: () -> Unit = onClose,
+    // Where a person just created goes next; without it the editor simply closes.
+    onCreated: ((UUID) -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.status) {
         when (state.status) {
-            EditorStatus.SAVED -> onClose()
+            EditorStatus.SAVED -> {
+                val created = state.savedPersonId?.takeIf { state.isNewPerson }
+                if (created != null && onCreated != null) onCreated(created) else onClose()
+            }
             EditorStatus.DELETED -> onDeleted()
             else -> Unit
         }

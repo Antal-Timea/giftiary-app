@@ -372,7 +372,7 @@ private fun EmptyHistory(onAddGift: () -> Unit) {
             modifier = Modifier
                 .padding(top = GiftiarySpacing.xl)
                 .semantics { heading() },
-            style = GiftiaryType.screenTitle,
+            style = GiftiaryType.sheetTitle,
             color = colors.textPrimary,
         )
         Text(

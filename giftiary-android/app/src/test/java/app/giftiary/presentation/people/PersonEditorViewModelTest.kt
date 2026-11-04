@@ -64,7 +64,9 @@ class PersonEditorViewModelTest {
         viewModel.save()
 
         assertEquals(EditorStatus.SAVED, viewModel.uiState.value.status)
-        assertEquals("Anna", repository.currentPeople.single().name)
+        val anna = repository.currentPeople.single()
+        assertEquals("Anna", anna.name)
+        assertEquals("the person to open next", anna.id, viewModel.uiState.value.savedPersonId)
     }
 
     @Test

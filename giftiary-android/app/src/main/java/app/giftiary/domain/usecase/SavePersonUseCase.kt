@@ -13,28 +13,28 @@ class SavePersonUseCase @Inject constructor(
 
     suspend fun add(name: String, relationship: String?): SavePersonResult =
         withValidInput(name, relationship) { validName, validRelationship ->
-            repository.addPerson(validName, validRelationship)
+            repository.addPerson(validName, validRelationship).id
         }
 
     /** @throws app.giftiary.domain.repository.PersonNotFoundException if the person no longer exists. */
     suspend fun update(id: UUID, name: String, relationship: String?): SavePersonResult =
         withValidInput(name, relationship) { validName, validRelationship ->
             repository.updatePerson(id, validName, validRelationship)
+            id
         }
 
     private suspend fun withValidInput(
         name: String,
         relationship: String?,
-        save: suspend (name: String, relationship: String?) -> Unit,
+        save: suspend (name: String, relationship: String?) -> UUID,
     ): SavePersonResult {
         val trimmedName = name.trim()
-        if (trimmedName.isEmpty()) return SavePersonResult.BLANK_NAME
-        save(trimmedName, relationship?.trim()?.ifEmpty { null })
-        return SavePersonResult.SAVED
+        if (trimmedName.isEmpty()) return SavePersonResult.BlankName
+        return SavePersonResult.Saved(save(trimmedName, relationship?.trim()?.ifEmpty { null }))
     }
 }
 
-enum class SavePersonResult {
-    SAVED,
-    BLANK_NAME,
+sealed interface SavePersonResult {
+    data class Saved(val personId: UUID) : SavePersonResult
+    data object BlankName : SavePersonResult
 }

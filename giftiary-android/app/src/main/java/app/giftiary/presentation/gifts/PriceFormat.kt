@@ -47,15 +47,27 @@ object PriceFormat {
         return ParseResult.Valid(Money(amountMinor, currencyCode))
     }
 
-    /** For display, e.g. "12 500 Ft" in Hungarian or "€12.50" in English. */
+    /**
+     * For display: the amount first, then the currency, e.g. "12 500 Ft" in Hungarian and
+     * "12,990 HUF" or "12.50 EUR" in English. Hungarian keeps its own currency formatting; elsewhere
+     * the locale's currency symbol would lead ("HUF12,990"), which is not how Giftiary shows prices.
+     */
     fun format(money: Money, locale: Locale): String {
         val fractionDigits = CurrencyMinorUnits.fractionDigits(money.currencyCode)
-        val formatter = NumberFormat.getCurrencyInstance(locale).apply {
-            currency = Currency.getInstance(money.currencyCode)
+        if (locale.language == HUNGARIAN) {
+            val formatter = NumberFormat.getCurrencyInstance(locale).apply {
+                currency = Currency.getInstance(money.currencyCode)
+                minimumFractionDigits = fractionDigits
+                maximumFractionDigits = fractionDigits
+            }
+            return formatter.format(money.toDecimal())
+        }
+        val amount = NumberFormat.getNumberInstance(locale).apply {
             minimumFractionDigits = fractionDigits
             maximumFractionDigits = fractionDigits
-        }
-        return formatter.format(money.toDecimal())
+        }.format(money.toDecimal())
+        // A no-break space, so the code never wraps away from its amount.
+        return "$amount\u00A0${money.currencyCode}"
     }
 
     /** For pre-filling the price field: plain digits with the locale's decimal separator, no grouping. */
@@ -65,6 +77,7 @@ object PriceFormat {
     private fun Money.toDecimal(): BigDecimal =
         BigDecimal.valueOf(amountMinor, CurrencyMinorUnits.fractionDigits(currencyCode))
 
+    private const val HUNGARIAN = "hu"
     private val AMOUNT = Regex("""[0-9]+([.,][0-9]+)?""")
     private const val MINUS_SIGNS = "-\u2212"
 }

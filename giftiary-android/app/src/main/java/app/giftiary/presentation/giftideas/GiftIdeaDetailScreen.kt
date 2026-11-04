@@ -342,9 +342,9 @@ private fun QuietStep(@DrawableRes icon: Int, text: String, onClick: () -> Unit,
         enabled = enabled,
         colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
     ) {
-        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(GiftiarySpacing.s))
-        Text(text = text, style = GiftiaryType.actionLarge)
+        Text(text = text, style = GiftiaryType.actionSmall)
     }
 }
 

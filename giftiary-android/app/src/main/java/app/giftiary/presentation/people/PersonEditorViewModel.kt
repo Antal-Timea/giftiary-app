@@ -95,8 +95,8 @@ class PersonEditorViewModel @AssistedInject constructor(
                 }
                 _uiState.update {
                     when (result) {
-                        SavePersonResult.SAVED -> it.copy(status = EditorStatus.SAVED)
-                        SavePersonResult.BLANK_NAME -> it.copy(isSaving = false, showNameRequired = true)
+                        is SavePersonResult.Saved -> it.copy(status = EditorStatus.SAVED, savedPersonId = result.personId)
+                        SavePersonResult.BlankName -> it.copy(isSaving = false, showNameRequired = true)
                     }
                 }
             } catch (e: CancellationException) {
@@ -142,6 +142,8 @@ class PersonEditorViewModel @AssistedInject constructor(
 data class PersonEditorUiState(
     val isNewPerson: Boolean,
     val status: EditorStatus,
+    /** The person just saved, once [status] is SAVED. */
+    val savedPersonId: UUID? = null,
     val name: String = "",
     val relationship: String = "",
     val showNameRequired: Boolean = false,

@@ -128,7 +128,7 @@ internal fun quickAddRoute(action: QuickAddAction, openWishlistId: String?): Any
     QuickAddAction.GIFT_RECEIVED -> AddGiftRoute(direction = GiftDirection.RECEIVED.name)
     QuickAddAction.GIFT_IDEA -> AddGiftIdeaRoute()
     QuickAddAction.WISH -> openWishlistId?.let(::AddWishRoute) ?: WishlistsRoute
-    QuickAddAction.PERSON -> AddPersonRoute
+    QuickAddAction.PERSON -> AddPersonRoute()
     QuickAddAction.LIST -> AddWishlistRoute()
 }
 
