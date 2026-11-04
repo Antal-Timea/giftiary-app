@@ -85,4 +85,53 @@ class GiftiaryNavigationBarTest {
         assertEquals(1, added)
         assertEquals(emptyList<AppSection>(), selected)
     }
+
+    @Test
+    fun `waiting invitations badge Lists and are heard as its state`() {
+        compose.setContent {
+            GiftiaryTheme {
+                GiftiaryNavigationBar(selected = AppSection.HOME, onSelect = {}, onAdd = {}, invitationCount = 2)
+            }
+        }
+
+        compose.onNodeWithText("2", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("Lists").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "2 invitations"))
+        compose.onNodeWithText("People").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+    }
+
+    @Test
+    fun `no invitations, no badge`() {
+        compose.setContent {
+            GiftiaryTheme {
+                GiftiaryNavigationBar(selected = AppSection.HOME, onSelect = {}, onAdd = {})
+            }
+        }
+
+        compose.onNodeWithText("Lists").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        compose.onNodeWithText("0", useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the rail badges Wishlists the same way`() {
+        compose.setContent {
+            GiftiaryTheme {
+                GiftiaryNavigationRail(selected = AppSection.HOME, onSelect = {}, invitationCount = 1)
+            }
+        }
+
+        compose.onNodeWithText("1", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("Wishlists").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "1 invitation"))
+    }
+
+    @Test
+    @Config(qualifiers = "hu")
+    fun `in Hungarian the badge is heard in Hungarian`() {
+        compose.setContent {
+            GiftiaryTheme {
+                GiftiaryNavigationBar(selected = AppSection.HOME, onSelect = {}, onAdd = {}, invitationCount = 3)
+            }
+        }
+
+        compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "3 meghívás")).assertExists()
+    }
 }

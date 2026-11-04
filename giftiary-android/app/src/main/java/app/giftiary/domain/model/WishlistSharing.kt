@@ -86,3 +86,16 @@ private val EMAIL_SHAPE = Regex("""[^@\s]+@[^@\s]+\.[^@\s]+""")
 /** The address as the server keeps it, trimmed and lowercased, or null if it is not one. */
 fun normalizedEmail(input: String): String? =
     input.trim().lowercase(Locale.ROOT).takeIf { it.length <= 254 && EMAIL_SHAPE.matches(it) }
+
+/**
+ * An open invitation to the user's confirmed address. Before it is accepted the user learns only
+ * this: the list's name, who sent it and whom the list is for, never the list itself.
+ */
+data class RecipientInvite(
+    val id: UUID,
+    val wishlistName: String,
+    val ownerDisplayName: String?,
+    val personName: String?,
+    val createdAt: Instant,
+    val expiresAt: Instant,
+)

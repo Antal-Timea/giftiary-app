@@ -2,6 +2,7 @@ package app.giftiary.data.remote
 
 import app.giftiary.data.remote.dto.RemoteCreatedInvite
 import app.giftiary.data.remote.dto.RemoteEmailInvite
+import app.giftiary.data.remote.dto.RemoteRecipientInvite
 import app.giftiary.data.remote.dto.RemoteRedeemedInvite
 import app.giftiary.data.remote.dto.RemoteSharedWish
 import app.giftiary.data.remote.dto.RemoteSharedWishlist
@@ -14,6 +15,7 @@ import app.giftiary.domain.model.EmailInvite
 import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.Money
+import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
@@ -123,6 +125,23 @@ class SupabaseWishlistSharingRepository @Inject constructor(
     override suspend fun sharedWishlists(): List<SharedWishlistSummary> =
         rpc("get_shared_wishlists", JsonObject(emptyMap()), ListSerializer(RemoteSharedWishlistSummary.serializer()))
             .map { SharedWishlistSummary(it.wishlistId, it.name, displayName(it.ownerDisplayName), displayName(it.personName)) }
+
+    override suspend fun myInvites(): List<RecipientInvite> =
+        rpc("get_my_invites", JsonObject(emptyMap()), ListSerializer(RemoteRecipientInvite.serializer())).map {
+            RecipientInvite(it.inviteId, it.wishlistName, displayName(it.ownerDisplayName), displayName(it.personName), it.createdAt, it.expiresAt)
+        }
+
+    override suspend fun acceptInvite(inviteId: UUID): UUID =
+        rpc("respond_to_invite", respondParameters(inviteId, accept = true), RemoteRedeemedInvite.serializer()).wishlistId
+
+    override suspend fun declineInvite(inviteId: UUID) {
+        rpc("respond_to_invite", respondParameters(inviteId, accept = false))
+    }
+
+    private fun respondParameters(inviteId: UUID, accept: Boolean) = buildJsonObject {
+        put("p_invite_id", inviteId.toString())
+        put("p_accept", accept)
+    }
 
     override suspend fun sharedWishlist(wishlistId: UUID): SharedWishlist {
         val list = rpc(

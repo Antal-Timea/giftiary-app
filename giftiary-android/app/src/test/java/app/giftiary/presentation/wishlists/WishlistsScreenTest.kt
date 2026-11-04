@@ -8,15 +8,21 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
+import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.sharing.InvitationMessage
+import app.giftiary.presentation.sharing.InvitationResponses
 import app.giftiary.presentation.sharing.OnlineContent
 import app.giftiary.presentation.sharing.OnlineState
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -28,6 +34,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 import java.util.UUID
 
 /** The phone Lists root: the user's lists, then those shared with them, and their states. */
@@ -56,16 +63,27 @@ class WishlistsScreenTest {
     private var content by mutableStateOf<WishlistsContent>(WishlistsContent.Loading)
     private var shared by mutableStateOf(OnlineState<List<SharedWishlistSummary>>())
     private var showAddButton by mutableStateOf(false)
+    private var invitations by mutableStateOf(OnlineState<List<RecipientInvite>>(OnlineContent.Loaded(emptyList())))
+    private var responses by mutableStateOf(InvitationResponses())
     private var shown = false
+
+    private val now = Instant.parse("2026-11-04T10:00:00Z")
+    private val birthdayInvite = RecipientInvite(UUID.randomUUID(), "Birthday", "Bea", "Alex", now, now)
+    private val christmasInvite = RecipientInvite(UUID.randomUUID(), "Christmas", null, null, now, now)
+    private val twoInvites = OnlineState(OnlineContent.Loaded(listOf(birthdayInvite, christmasInvite)))
 
     private fun show(
         content: WishlistsContent,
         shared: OnlineState<List<SharedWishlistSummary>> = sharedLoaded,
         showAddButton: Boolean = false,
+        invitations: OnlineState<List<RecipientInvite>> = OnlineState(OnlineContent.Loaded(emptyList())),
+        responses: InvitationResponses = InvitationResponses(),
     ) {
         this.content = content
         this.shared = shared
         this.showAddButton = showAddButton
+        this.invitations = invitations
+        this.responses = responses
         if (shown) return
         shown = true
         compose.setContent {
@@ -80,14 +98,107 @@ class WishlistsScreenTest {
                         onJoin = { actions += "join" },
                         onRetryShared = { actions += "retry" },
                         onSharedRefreshFailureShown = { actions += "refresh failure shown" },
+                        onAcceptInvite = { id -> actions += "accept ${listOf(birthdayInvite, christmasInvite).first { it.id == id }.wishlistName}" },
+                        onDeclineInvite = { id -> actions += "decline ${listOf(birthdayInvite, christmasInvite).first { it.id == id }.wishlistName}" },
+                        onRetryInvitations = { actions += "retry invitations" },
+                        onInvitationMessageShown = { actions += "invitation message shown" },
                     ),
                     showAddButton = this.showAddButton,
+                    invitations = this.invitations,
+                    responses = this.responses,
                 )
             }
         }
     }
 
     private fun top(text: String) = compose.onNodeWithText(text).getBoundsInRoot().top
+
+    @Test
+    fun `invitations head the shared section, above the lists already joined`() {
+        show(populated, invitations = twoInvites)
+
+        val order = listOf("Shared with you", "Invitations", "Birthday", "Christmas", "Peter’s wishlist", "Anna’s birthday")
+        val tops = order.map(::top)
+        assertEquals("top to bottom: $order", tops.sorted(), tops)
+        compose.onNodeWithText("Invitations").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test
+    fun `an invitation names whom the list is for and who sent it, a missing name neutrally`() {
+        show(populated, invitations = twoInvites)
+
+        compose.onNodeWithText("For Alex · From Bea").assertExists()
+        compose.onNodeWithText("From A Giftiary member").assertExists()
+    }
+
+    @Test
+    fun `accept and decline are explicit, named for their list`() {
+        show(populated, invitations = twoInvites)
+
+        compose.onNodeWithContentDescription("Accept the invitation to Birthday").performClick()
+        compose.onNodeWithContentDescription("Decline the invitation to Christmas").performClick()
+        assertEquals(listOf("accept Birthday", "decline Christmas"), actions)
+    }
+
+    @Test
+    fun `an invitation being answered cannot be answered again`() {
+        show(populated, invitations = twoInvites, responses = InvitationResponses(responding = setOf(birthdayInvite.id)))
+
+        compose.onNodeWithContentDescription("Accept the invitation to Birthday").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Decline the invitation to Birthday").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Accept the invitation to Christmas").assertIsEnabled()
+    }
+
+    @Test
+    fun `no invitations, or none loaded yet, shows no section`() {
+        show(populated)
+        compose.onNodeWithText("Invitations").assertDoesNotExist()
+
+        show(populated, invitations = OnlineState())
+        compose.onNodeWithText("Invitations").assertDoesNotExist()
+        compose.onNodeWithText("Peter’s wishlist").assertExists()
+    }
+
+    @Test
+    fun `invitations that could not be loaded leave the joined lists and offer a retry`() {
+        show(populated, invitations = OnlineState(OnlineContent.Failed(SharingFailure.NETWORK)))
+
+        compose.onNodeWithText("Invitations couldn’t be loaded.").assertExists()
+        compose.onNodeWithText("Peter’s wishlist").assertExists()
+        compose.onAllNodesWithText("Try again")[0].performClick()
+        assertEquals(listOf("retry invitations"), actions)
+    }
+
+    @Test
+    fun `an invitation no longer open is said so once`() {
+        show(populated, responses = InvitationResponses(message = InvitationMessage.GONE))
+
+        compose.onNodeWithText("This invitation is no longer available.").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    fun `in Hungarian at large text an invitation keeps its words and both actions on screen`() {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                GiftiaryTheme {
+                    WishlistsScreen(
+                        content = WishlistsContent.Loaded(emptyList(), emptyList()),
+                        shared = sharedLoaded,
+                        actions = ListsActions({}, {}, {}, {}, {}, {}),
+                        invitations = twoInvites,
+                    )
+                }
+            }
+        }
+
+        val width = compose.onRoot().getBoundsInRoot().right
+        listOf("Meghívások", "Alex részére · Küldte: Bea", "Elfogadás", "Elutasítás").forEach { text ->
+            val bounds = compose.onAllNodesWithText(text)[0].getBoundsInRoot()
+            assertTrue("$text fits: ${bounds.right} <= $width", bounds.right <= width)
+        }
+    }
 
     @Test
     fun `the root reads title, your lists, then the lists shared with you`() {

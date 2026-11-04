@@ -596,6 +596,18 @@ nagy történetek</string>
     <string name="lists_only_you">Csak te látod</string>
     <string name="lists_shared_subtitle">Listák, amelyeket mások megosztottak veled.</string>
     <string name="lists_join_description">Csatlakozás kívánságlistához meghívó linkkel</string>
+    <string name="lists_invitations_title">Meghívások</string>
+    <string name="lists_invitation_from">Küldte: %1$s</string>
+    <string name="lists_invitation_accept">Elfogadás</string>
+    <string name="lists_invitation_decline">Elutasítás</string>
+    <string name="lists_invitation_accept_description">Meghívás elfogadása: %1$s</string>
+    <string name="lists_invitation_decline_description">Meghívás elutasítása: %1$s</string>
+    <string name="lists_invitations_failed">A meghívásokat nem sikerült betölteni.</string>
+    <string name="lists_invitation_gone">Ez a meghívás már nem érhető el.</string>
+    <plurals name="nav_invitations_badge">
+        <item quantity="one">%d meghívás</item>
+        <item quantity="other">%d meghívás</item>
+    </plurals>
     <string name="task_more">További lehetőségek</string>
     <string name="wishlist_more">%1$s – további lehetőségek</string>
     <string name="wishlist_edit">Lista szerkesztése</string>

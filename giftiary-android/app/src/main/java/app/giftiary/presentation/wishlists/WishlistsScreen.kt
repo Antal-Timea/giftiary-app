@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,7 +43,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
+import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.SharedWishlistSummary
+import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.domain.model.Wishlist
 import app.giftiary.presentation.components.GiftiaryAddFab
 import app.giftiary.presentation.components.GiftiaryAddFabClearance
@@ -57,6 +60,9 @@ import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.RowChevron
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.navigation.hasNavigationRail
+import app.giftiary.presentation.sharing.InvitationMessage
+import app.giftiary.presentation.sharing.InvitationResponses
+import app.giftiary.presentation.sharing.InvitationsViewModel
 import app.giftiary.presentation.sharing.OnlineContent
 import app.giftiary.presentation.sharing.OnlineState
 import app.giftiary.presentation.sharing.SharedWishlistsViewModel
@@ -77,17 +83,31 @@ fun WishlistsScreen(
     onJoin: () -> Unit,
     viewModel: WishlistsViewModel = hiltViewModel(),
     sharedViewModel: SharedWishlistsViewModel = hiltViewModel(),
+    invitationsViewModel: InvitationsViewModel = hiltViewModel(),
 ) {
     val content by viewModel.content.collectAsStateWithLifecycle()
     val shared by sharedViewModel.state.collectAsStateWithLifecycle()
-    // Shared lists live on the server: every visit asks again, so one withdrawn meanwhile disappears.
-    LifecycleResumeEffect(sharedViewModel) {
+    val invitations by invitationsViewModel.invites.collectAsStateWithLifecycle()
+    val responses by invitationsViewModel.responses.collectAsStateWithLifecycle()
+    // Shared lists and invitations live on the server: every visit asks again, so one withdrawn
+    // meanwhile disappears.
+    LifecycleResumeEffect(sharedViewModel, invitationsViewModel) {
         sharedViewModel.refresh()
+        invitationsViewModel.refresh()
         onPauseOrDispose {}
+    }
+    // An accepted invitation opens its list at once; the shared lists below learn of it too.
+    LaunchedEffect(responses.accepted) {
+        val accepted = responses.accepted ?: return@LaunchedEffect
+        invitationsViewModel.onAcceptedOpened()
+        sharedViewModel.refresh()
+        onOpenShared(accepted)
     }
     WishlistsScreen(
         content = content,
         shared = shared,
+        invitations = invitations,
+        responses = responses,
         actions = ListsActions(
             onAddWishlist = onAddWishlist,
             onOpenWishlist = onOpenWishlist,
@@ -95,6 +115,10 @@ fun WishlistsScreen(
             onJoin = onJoin,
             onRetryShared = sharedViewModel::refresh,
             onSharedRefreshFailureShown = sharedViewModel::onRefreshFailureShown,
+            onAcceptInvite = invitationsViewModel::onAccept,
+            onDeclineInvite = invitationsViewModel::onDecline,
+            onRetryInvitations = invitationsViewModel::refresh,
+            onInvitationMessageShown = invitationsViewModel::onMessageShown,
         ),
     )
 }
@@ -106,11 +130,15 @@ class ListsActions(
     val onJoin: () -> Unit,
     val onRetryShared: () -> Unit,
     val onSharedRefreshFailureShown: () -> Unit,
+    val onAcceptInvite: (UUID) -> Unit = {},
+    val onDeclineInvite: (UUID) -> Unit = {},
+    val onRetryInvitations: () -> Unit = {},
+    val onInvitationMessageShown: () -> Unit = {},
 )
 
 /**
  * The user's own lists, kept on the device, and below them the lists shared with the user, read
- * from the server. Either can be shown without the other.
+ * from the server, headed by the invitations waiting for an answer. None needs another to show.
  */
 @Composable
 fun WishlistsScreen(
@@ -118,6 +146,8 @@ fun WishlistsScreen(
     shared: OnlineState<List<SharedWishlistSummary>>,
     actions: ListsActions,
     modifier: Modifier = Modifier,
+    invitations: OnlineState<List<RecipientInvite>> = OnlineState(OnlineContent.Loaded(emptyList())),
+    responses: InvitationResponses = InvitationResponses(),
     // Phones add a list through the global action; beside a rail there is none.
     showAddButton: Boolean = LocalWidthClass.current.hasNavigationRail,
 ) {
@@ -127,6 +157,13 @@ fun WishlistsScreen(
         if (refreshFailure != null) {
             snackbarHostState.showSnackbar(refreshFailure)
             actions.onSharedRefreshFailureShown()
+        }
+    }
+    val invitationMessage = responses.message?.let { invitationMessageText(it) }
+    LaunchedEffect(responses.message) {
+        if (invitationMessage != null) {
+            snackbarHostState.showSnackbar(invitationMessage)
+            actions.onInvitationMessageShown()
         }
     }
     Scaffold(
@@ -152,7 +189,7 @@ fun WishlistsScreen(
             ) {
                 item { ListsHeader() }
                 ownLists(content, actions)
-                sharedLists(shared, actions)
+                sharedLists(shared, invitations, responses.responding, actions)
             }
         }
     }
@@ -240,8 +277,14 @@ private fun EmptyLists(onAddWishlist: () -> Unit) {
     }
 }
 
-private fun LazyListScope.sharedLists(shared: OnlineState<List<SharedWishlistSummary>>, actions: ListsActions) {
+private fun LazyListScope.sharedLists(
+    shared: OnlineState<List<SharedWishlistSummary>>,
+    invitations: OnlineState<List<RecipientInvite>>,
+    responding: Set<UUID>,
+    actions: ListsActions,
+) {
     item { SharedHeading(onJoin = actions.onJoin) }
+    invitations(invitations, responding, actions)
     when (val content = shared.content) {
         OnlineContent.Loading -> item { SharedProgress() }
         is OnlineContent.Failed -> item {
@@ -298,6 +341,99 @@ private fun SharedHeading(onJoin: () -> Unit) {
             color = colors.textSecondary,
         )
     }
+}
+
+/**
+ * The invitations waiting for an answer, above the lists already joined. Loading shows nothing of
+ * its own, and a failure only a note: the joined lists below never wait for them.
+ */
+private fun LazyListScope.invitations(invitations: OnlineState<List<RecipientInvite>>, responding: Set<UUID>, actions: ListsActions) {
+    when (val content = invitations.content) {
+        OnlineContent.Loading -> Unit
+        is OnlineContent.Failed -> item {
+            SharedNote(stringResource(R.string.lists_invitations_failed)) {
+                GiftiaryTextAction(text = stringResource(R.string.sharing_retry), onClick = actions.onRetryInvitations, underline = true)
+            }
+        }
+        is OnlineContent.Loaded -> if (content.value.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.lists_invitations_title),
+                    modifier = Modifier
+                        .padding(start = GiftiarySpacing.browseGutter + 36.dp, end = GiftiarySpacing.browseGutter, top = GiftiarySpacing.l)
+                        .semantics { heading() },
+                    style = GiftiaryType.label,
+                    color = GiftiaryTheme.colors.textLabel,
+                )
+            }
+            itemsIndexed(content.value, key = { _, invite -> "invite-${invite.id}" }) { index, invite ->
+                if (index > 0) ListDivider(leading = 48.dp)
+                InvitationRow(
+                    invite = invite,
+                    responding = invite.id in responding,
+                    onAccept = { actions.onAcceptInvite(invite.id) },
+                    onDecline = { actions.onDeclineInvite(invite.id) },
+                )
+            }
+        }
+    }
+}
+
+/** An invitation: the list's name, whom it is for and who sent it, then Accept and Decline. */
+@Composable
+private fun InvitationRow(invite: RecipientInvite, responding: Boolean, onAccept: () -> Unit, onDecline: () -> Unit) {
+    val colors = GiftiaryTheme.colors
+    val sender = memberName(invite.ownerDisplayName)
+    val acceptDescription = stringResource(R.string.lists_invitation_accept_description, invite.wishlistName)
+    val declineDescription = stringResource(R.string.lists_invitation_decline_description, invite.wishlistName)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = GiftiarySpacing.browseGutter, vertical = 14.dp),
+    ) {
+        GiftiaryAvatar(name = invite.personName ?: sender)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 14.dp),
+        ) {
+            Text(text = invite.wishlistName, style = GiftiaryType.rowTitle, color = colors.textPrimary)
+            Text(
+                text = listOfNotNull(
+                    invite.personName?.let { stringResource(R.string.shared_wishlist_for_person_short, it) },
+                    stringResource(R.string.lists_invitation_from, sender),
+                ).joinToString(" · "),
+                style = GiftiaryType.label.copy(fontWeight = GiftiaryType.metadata.fontWeight),
+                color = colors.textLabel,
+            )
+            // Wraps under itself at large text rather than squeezing either action.
+            FlowRow(
+                modifier = Modifier.padding(top = GiftiarySpacing.s),
+                horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                GiftiaryPillButton(
+                    text = stringResource(R.string.lists_invitation_accept),
+                    onClick = onAccept,
+                    modifier = Modifier.semantics { contentDescription = acceptDescription },
+                    enabled = !responding,
+                )
+                GiftiaryTextAction(
+                    text = stringResource(R.string.lists_invitation_decline),
+                    onClick = onDecline,
+                    modifier = Modifier.semantics { contentDescription = declineDescription },
+                    enabled = !responding,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun invitationMessageText(message: InvitationMessage): String = when (message) {
+    InvitationMessage.GONE -> stringResource(R.string.lists_invitation_gone)
+    InvitationMessage.NETWORK -> retryableFailureText(SharingFailure.NETWORK)
+    InvitationMessage.SERVER -> retryableFailureText(SharingFailure.SERVER)
 }
 
 /** The server does not report how many wishes a shared list has, so the row does not say. */

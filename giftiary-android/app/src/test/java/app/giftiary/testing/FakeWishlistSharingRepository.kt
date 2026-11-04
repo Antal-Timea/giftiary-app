@@ -4,6 +4,7 @@ import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
 import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
+import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.model.SharedWishlistSummary
@@ -24,6 +25,8 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     var access = WishlistAccess(emptyList(), emptyList())
     var createdInvite: CreatedInvite? = null
     var sharedWishlists: List<SharedWishlistSummary> = emptyList()
+    var myInvites: List<RecipientInvite> = emptyList()
+    var acceptedWishlistId: UUID = UUID.randomUUID()
     var sharedWishlist: SharedWishlist? = null
     var redeemedWishlistId: UUID = UUID.randomUUID()
     var reserveAnswer = ReservationState.RESERVED_BY_ME
@@ -87,6 +90,17 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     }
 
     override suspend fun sharedWishlists() = answer("sharedWishlists") { sharedWishlists }
+
+    override suspend fun myInvites() = answer("myInvites") { myInvites }
+
+    override suspend fun acceptInvite(inviteId: UUID) = answer("accept:$inviteId") {
+        myInvites = myInvites.filterNot { it.id == inviteId }
+        acceptedWishlistId
+    }
+
+    override suspend fun declineInvite(inviteId: UUID) = answer("decline:$inviteId") {
+        myInvites = myInvites.filterNot { it.id == inviteId }
+    }
 
     override suspend fun sharedWishlist(wishlistId: UUID) = answer("sharedWishlist") { checkNotNull(sharedWishlist) }
 

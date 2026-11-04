@@ -50,6 +50,16 @@ data class RemoteEmailInvite(
 )
 
 @Serializable
+data class RemoteRecipientInvite(
+    @SerialName("invite_id") val inviteId: UUID,
+    @SerialName("wishlist_name") val wishlistName: String,
+    @SerialName("owner_display_name") val ownerDisplayName: String?,
+    @SerialName("person_name") val personName: String?,
+    @SerialName("created_at") val createdAt: Instant,
+    @SerialName("expires_at") val expiresAt: Instant,
+)
+
+@Serializable
 data class RemoteRedeemedInvite(
     @SerialName("wishlist_id") val wishlistId: UUID,
 )

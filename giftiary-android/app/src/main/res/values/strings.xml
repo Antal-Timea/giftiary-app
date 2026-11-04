@@ -598,6 +598,18 @@ big stories</string>
     <string name="lists_only_you">Only you</string>
     <string name="lists_shared_subtitle">Lists people have shared with you.</string>
     <string name="lists_join_description">Join a wishlist with an invite link</string>
+    <string name="lists_invitations_title">Invitations</string>
+    <string name="lists_invitation_from">From %1$s</string>
+    <string name="lists_invitation_accept">Accept</string>
+    <string name="lists_invitation_decline">Decline</string>
+    <string name="lists_invitation_accept_description">Accept the invitation to %1$s</string>
+    <string name="lists_invitation_decline_description">Decline the invitation to %1$s</string>
+    <string name="lists_invitations_failed">Invitations couldn’t be loaded.</string>
+    <string name="lists_invitation_gone">This invitation is no longer available.</string>
+    <plurals name="nav_invitations_badge">
+        <item quantity="one">%d invitation</item>
+        <item quantity="other">%d invitations</item>
+    </plurals>
     <string name="task_more">More options</string>
     <string name="wishlist_more">Options for %1$s</string>
     <string name="wishlist_edit">Edit list</string>
