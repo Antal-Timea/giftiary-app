@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -367,8 +368,7 @@ private fun LazyListScope.invitations(invitations: OnlineState<List<RecipientInv
                     color = GiftiaryTheme.colors.textLabel,
                 )
             }
-            itemsIndexed(content.value, key = { _, invite -> "invite-${invite.id}" }) { index, invite ->
-                if (index > 0) ListDivider(leading = 48.dp)
+            items(content.value, key = { invite -> "invite-${invite.id}" }) { invite ->
                 InvitationRow(
                     invite = invite,
                     responding = invite.id in responding,

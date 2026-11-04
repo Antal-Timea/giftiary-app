@@ -129,7 +129,7 @@ private fun NothingNeedsAttention(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .padding(top = GiftiarySpacing.xl)
                 .semantics { heading() },
-            style = GiftiaryType.screenTitle,
+            style = GiftiaryType.sheetTitle,
             color = colors.textPrimary,
         )
         Text(

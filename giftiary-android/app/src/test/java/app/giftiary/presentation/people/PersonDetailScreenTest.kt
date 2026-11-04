@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -84,6 +85,8 @@ class PersonDetailScreenTest {
             }
         }
     }
+
+    private fun top(text: String) = compose.onAllNodesWithText(text, useUnmergedTree = true)[0].getBoundsInRoot().top
 
     private fun loaded(
         occasions: List<Occasion> = listOf(birthday, nameDay),
@@ -185,15 +188,37 @@ class PersonDetailScreenTest {
     }
 
     @Test
-    fun `with no occasions there is no occasion card, and More still adds one`() {
+    fun `with no occasions the page itself offers the first one, under the hero, and More still adds one`() {
         showDetail(loaded(occasions = emptyList()))
 
         compose.onNodeWithText("Plan gift").assertDoesNotExist()
-        compose.onNodeWithContentDescription("More for Peter").performClick()
         compose.onNodeWithText("No occasions yet").assertExists()
+        assertTrue("under the hero", top("No occasions yet") > top("Peter") && top("Add occasion") < top("Gift ideas"))
         compose.onNodeWithText("Add occasion").performClick()
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onAllNodesWithText("Add occasion").assertCountEquals(2)[1].performClick()
 
-        assertEquals(listOf("add occasion"), actions)
+        assertEquals(listOf("add occasion", "add occasion"), actions)
+    }
+
+    @Test
+    fun `once there are occasions, adding more stays in More`() {
+        showDetail(loaded())
+
+        compose.onNodeWithText("No occasions yet").assertDoesNotExist()
+        compose.onNodeWithText("Add occasion").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h2000dp")
+    fun `in Hungarian at large text the first occasion offer fits the screen`() {
+        showDetail(loaded(occasions = emptyList()), fontScale = 2f)
+
+        val width = compose.onRoot().getBoundsInRoot().right
+        listOf("Még nincs alkalom", "Alkalom hozzáadása").forEach {
+            val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
+            assertTrue("$it fits: ${bounds.right} <= $width", bounds.right <= width)
+        }
     }
 
     @Test

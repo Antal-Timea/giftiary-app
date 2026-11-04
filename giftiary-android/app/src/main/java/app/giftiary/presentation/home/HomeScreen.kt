@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.model.Occasion
@@ -202,7 +203,7 @@ private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
                 Text(
                     text = today.format(DateTimeFormatter.ofPattern(stringResource(R.string.home_date_pattern), LocalConfiguration.current.locales[0])),
                     modifier = Modifier.padding(top = 7.dp),
-                    style = GiftiaryType.metadata.copy(fontWeight = GiftiaryType.label.fontWeight),
+                    style = GiftiaryType.metadata.copy(fontWeight = FontWeight.Medium),
                     color = colors.textPrimary,
                 )
             }

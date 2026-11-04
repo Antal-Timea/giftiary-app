@@ -3,7 +3,6 @@ package app.giftiary.presentation.gifts
 import app.giftiary.domain.model.Money
 import app.giftiary.presentation.gifts.PriceFormat.ParseResult
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
@@ -83,13 +82,13 @@ class PriceFormatTest {
     }
 
     @Test
-    fun `display follows the locale`() {
+    fun `display puts the amount first, Hungarian in its own way`() {
         assertEquals("12 500 Ft", PriceFormat.format(Money(12500, "HUF"), hungarian).normalizeSpaces())
         assertEquals("12,50 EUR", PriceFormat.format(Money(1250, "EUR"), hungarian).normalizeSpaces())
-        assertEquals("€12.50", PriceFormat.format(Money(1250, "EUR"), english))
-        // Whether a space follows the code differs between the JVM's and Android's locale data.
-        val englishForints = PriceFormat.format(Money(12500, "HUF"), english)
-        assertTrue(englishForints, englishForints.startsWith("HUF") && englishForints.endsWith("12,500"))
+        assertEquals("12,990\u00A0HUF", PriceFormat.format(Money(12990, "HUF"), english))
+        assertEquals("12.50\u00A0EUR", PriceFormat.format(Money(1250, "EUR"), english))
+        assertEquals("1,234,567.89\u00A0USD", PriceFormat.format(Money(123456789, "USD"), english))
+        assertEquals("0\u00A0JPY", PriceFormat.format(Money(0, "JPY"), english))
     }
 
     @Test

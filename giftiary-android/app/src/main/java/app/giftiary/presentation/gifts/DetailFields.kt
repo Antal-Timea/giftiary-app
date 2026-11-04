@@ -188,7 +188,7 @@ fun DetailLinkValue(url: String) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(painterResource(R.drawable.ic_open_link), contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.textPrimary)
-        Text(text = stringResource(R.string.wish_view_link), style = GiftiaryType.actionLarge, color = colors.textPrimary)
+        Text(text = stringResource(R.string.wish_view_link), style = GiftiaryType.actionSmall, color = colors.textPrimary)
     }
 }
 
@@ -198,7 +198,7 @@ fun DetailNote(note: String, modifier: Modifier = Modifier) {
     Text(
         text = note,
         modifier = modifier.padding(top = GiftiarySpacing.xl),
-        style = GiftiaryType.body.copy(fontSize = GiftiaryType.actionLarge.fontSize),
+        style = GiftiaryType.body,
         color = GiftiaryTheme.colors.textPrimary,
     )
 }

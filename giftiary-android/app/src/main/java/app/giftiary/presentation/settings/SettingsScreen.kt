@@ -166,7 +166,7 @@ private fun SettingsRow(
         title = title,
         supporting = supporting?.let { { SettingsSupportingText(it) } },
         trailing = trailing,
-        titleStyle = GiftiaryType.actionLarge,
+        titleStyle = GiftiaryType.contentTitle,
         contentPadding = PaddingValues(vertical = GiftiarySpacing.l),
         onClick = onClick,
     )
@@ -196,7 +196,7 @@ private fun ReminderRow(state: ReminderCardState, actions: ReminderCardActions) 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(text = stringResource(R.string.reminder_channel_name), style = GiftiaryType.actionLarge, color = colors.textPrimary)
+                Text(text = stringResource(R.string.reminder_channel_name), style = GiftiaryType.contentTitle, color = colors.textPrimary)
                 SettingsSupportingText(
                     stringResource(
                         when (state) {
@@ -251,7 +251,7 @@ internal fun PrivacyPolicyLink(modifier: Modifier = Modifier) {
                 tint = GiftiaryTheme.colors.textLabel,
             )
         },
-        titleStyle = GiftiaryType.actionLarge,
+        titleStyle = GiftiaryType.contentTitle,
         contentPadding = PaddingValues(vertical = GiftiarySpacing.l),
         // Without a browser there is nothing to open it in; that is not an app error.
         onClick = { runCatching { uriHandler.openUri(url) } },

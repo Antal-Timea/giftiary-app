@@ -2,6 +2,7 @@ package app.giftiary.presentation.auth
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
@@ -206,6 +207,31 @@ class AuthScreensTest {
         compose.onNodeWithText("Sign out").performClick()
 
         assertEquals(listOf("save", "leave", "retry", "sign out"), events)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h1600dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `the sign-in words stay clear of the corner gift, at large text too`() {
+        var fontScale by mutableFloatStateOf(1f)
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = fontScale)) {
+                GiftiaryTheme {
+                    SignInContent(CredentialsUiState(), {}, {}, {}, {}, {}, AuthProvider.entries, ProviderSignInState.Idle, {})
+                }
+            }
+        }
+        listOf(1f, 2f).forEach { scale ->
+            fontScale = scale
+            compose.waitForIdle()
+            // The large cut-out shows 60% of its 240dp from the screen's end edge.
+            val artStart = compose.onRoot().getBoundsInRoot().right - 144.dp
+            listOf("Welcome to Giftiary", "Keep your gift memories, plans and wishlists together.").forEach {
+                val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
+                assertTrue("$it at ${scale}x ends at ${bounds.right}, before $artStart", bounds.right <= artStart)
+            }
+        }
     }
 
     @Test
