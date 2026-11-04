@@ -267,11 +267,14 @@ private fun PersonDetailContent(
         // managed from "More" with the person's other details.
         if (state.occasions.isEmpty()) {
             item {
-                Column(Modifier.padding(top = GiftiarySpacing.l)) {
-                    NoOccasions()
-                    AddAction(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion)
-                }
+                DetailHeading(
+                    icon = R.drawable.ic_calendar,
+                    title = stringResource(R.string.person_detail_occasions),
+                    subtitle = stringResource(R.string.person_detail_no_occasions_message),
+                )
             }
+            item { EmptyLine(stringResource(R.string.person_detail_no_occasions_title)) }
+            item { AddAction(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion) }
         }
 
         item {

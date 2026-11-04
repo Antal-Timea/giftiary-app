@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -168,7 +169,7 @@ fun DetailFactRow(label: String, modifier: Modifier = Modifier, value: @Composab
 @Composable
 fun DetailFactValue(value: String, secondary: String? = null) {
     Column(horizontalAlignment = Alignment.End) {
-        Text(text = value, style = GiftiaryType.actionLarge, color = GiftiaryTheme.colors.textPrimary, textAlign = TextAlign.End)
+        Text(text = value, style = FactValue, color = GiftiaryTheme.colors.textPrimary, textAlign = TextAlign.End)
         secondary?.let { Text(text = it, style = GiftiaryType.metadata, color = GiftiaryTheme.colors.textMuted, textAlign = TextAlign.End) }
     }
 }
@@ -202,3 +203,6 @@ fun DetailNote(note: String, modifier: Modifier = Modifier) {
         color = GiftiaryTheme.colors.textPrimary,
     )
 }
+
+// The board's fact value: a content title in bold, quieter than an action.
+private val FactValue = GiftiaryType.contentTitle.copy(fontWeight = FontWeight.Bold)

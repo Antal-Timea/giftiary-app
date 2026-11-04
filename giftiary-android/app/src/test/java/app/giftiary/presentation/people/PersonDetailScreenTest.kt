@@ -3,14 +3,17 @@ package app.giftiary.presentation.people
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import app.giftiary.domain.model.GiftDirection
@@ -35,10 +38,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
-import org.robolectric.annotation.GraphicsMode
 
 /** The phone Person detail: its no-photo hero, the next occasion, its sections and what each action opens. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -194,6 +197,9 @@ class PersonDetailScreenTest {
         compose.onNodeWithText("Plan gift").assertDoesNotExist()
         compose.onNodeWithText("No occasions yet").assertExists()
         assertTrue("under the hero", top("No occasions yet") > top("Peter") && top("Add occasion") < top("Gift ideas"))
+        // A section of its own, headed like Gift ideas.
+        assertTrue("headed", top("Occasions") > top("Peter") && top("Occasions") < top("No occasions yet"))
+        compose.onNodeWithText("Occasions", useUnmergedTree = true).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         compose.onNodeWithText("Add occasion").performClick()
         compose.onNodeWithContentDescription("More for Peter").performClick()
         compose.onAllNodesWithText("Add occasion").assertCountEquals(2)[1].performClick()
