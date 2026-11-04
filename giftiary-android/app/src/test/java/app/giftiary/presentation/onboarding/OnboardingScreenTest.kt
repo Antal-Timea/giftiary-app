@@ -12,6 +12,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import app.giftiary.R
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -56,6 +60,12 @@ class OnboardingScreenTest {
         }
     }
 
+    private val pages get() = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+
+    private fun swipeLeft() = pages.performTouchInput { swipeLeft() }
+
+    private fun swipeRight() = pages.performTouchInput { swipeRight() }
+
     private fun assertChapter(position: Int, title: String) {
         compose.onNodeWithText(title).assertExists()
         compose.onNodeWithContentDescription("Step $position of 3").assertExists()
@@ -75,6 +85,42 @@ class OnboardingScreenTest {
         compose.onNodeWithText("Continue").assertDoesNotExist()
         assertEquals(0, done)
 
+        compose.onNodeWithText("Get started").performClick()
+        assertEquals(1, done)
+    }
+
+    @Test
+    fun `swiping left and right pages through the chapters, held at either end`() {
+        show()
+
+        swipeRight()
+        assertChapter(1, "Never forget a gift again.")
+        swipeLeft()
+        assertChapter(2, "Be ready for the people who matter.")
+        swipeLeft()
+        assertChapter(3, "Share wishes. Keep the surprise.")
+        compose.onNodeWithText("Get started").assertExists()
+        swipeLeft()
+        assertChapter(3, "Share wishes. Keep the surprise.")
+        assertEquals("only Get started finishes", 0, done)
+        swipeRight()
+        assertChapter(2, "Be ready for the people who matter.")
+        compose.onNodeWithText("Continue").assertExists()
+    }
+
+    @Test
+    fun `swipes, Continue and Back move the same pages`() {
+        show()
+
+        swipeLeft()
+        compose.onNodeWithText("Continue").performClick()
+        assertChapter(3, "Share wishes. Keep the surprise.")
+        back()
+        assertChapter(2, "Be ready for the people who matter.")
+        swipeRight()
+        assertChapter(1, "Never forget a gift again.")
+        compose.onNodeWithText("Continue").performClick()
+        swipeLeft()
         compose.onNodeWithText("Get started").performClick()
         assertEquals(1, done)
     }
@@ -148,6 +194,14 @@ class OnboardingScreenTest {
         val root = compose.onRoot().getBoundsInRoot()
         assertTrue(compose.onNodeWithText("Continue").getBoundsInRoot().bottom <= root.bottom)
         compose.onNodeWithContentDescription("Step 1 of 3").assertExists()
+
+        // An upright drag scrolls the chapter, never the pages; a sideways one still pages.
+        val chapter = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+        chapter.performTouchInput { swipeUp() }
+        assertTrue("scrolled", chapter.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f)
+        compose.onNodeWithContentDescription("Step 1 of 3").assertExists()
+        swipeLeft()
+        compose.onNodeWithContentDescription("Step 2 of 3").assertExists()
     }
 
     @Test

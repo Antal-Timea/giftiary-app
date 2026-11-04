@@ -20,15 +20,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +56,7 @@ import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
+import kotlinx.coroutines.launch
 
 /** The three approved chapters, in order, each with its owner-approved image. */
 enum class OnboardingChapter(
@@ -70,19 +71,28 @@ enum class OnboardingChapter(
 }
 
 /**
- * The introduction on a new installation. Continue moves one chapter on and the last one's Get
- * started finishes it; Skip finishes it from anywhere. Back returns a chapter and, from the first,
- * leaves the app as usual, so nothing can loop. Finishing leads to sign-in, and it is not shown
- * again.
+ * The introduction on a new installation. The chapters page sideways: a swipe or Continue moves one
+ * on, and only the last one's Get started finishes it; Skip finishes it from anywhere. Back returns
+ * a chapter and, from the first, leaves the app as usual, so nothing can loop. Finishing leads to
+ * sign-in, and it is not shown again.
  */
 @Composable
 fun OnboardingScreen(onDone: () -> Unit, modifier: Modifier = Modifier) {
-    var index by rememberSaveable { mutableIntStateOf(0) }
-    BackHandler(enabled = index > 0) { index-- }
-    val chapters = OnboardingChapter.entries
+    val pager = rememberPagerState { OnboardingChapter.entries.size }
+    val scope = rememberCoroutineScope()
+    BackHandler(enabled = pager.currentPage > 0) {
+        scope.launch { pager.animateScrollToPage(pager.currentPage - 1) }
+    }
     OnboardingContent(
-        chapter = chapters[index],
-        onContinue = { if (index == chapters.lastIndex) onDone() else index++ },
+        pager = pager,
+        // The page shown decides, so the button does what its label says.
+        onContinue = {
+            if (pager.currentPage == OnboardingChapter.entries.lastIndex) {
+                onDone()
+            } else {
+                scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+            }
+        },
         onSkip = onDone,
         modifier = modifier,
     )
@@ -90,12 +100,13 @@ fun OnboardingScreen(onDone: () -> Unit, modifier: Modifier = Modifier) {
 
 @Composable
 internal fun OnboardingContent(
-    chapter: OnboardingChapter,
+    pager: PagerState,
     onContinue: () -> Unit,
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
+    val chapter = OnboardingChapter.entries[pager.currentPage]
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -103,31 +114,14 @@ internal fun OnboardingContent(
             .windowInsetsPadding(WindowInsets.navigationBars)
             .giftiaryReadableWidth(),
     ) {
-        // The chapter scrolls only when even its smallest image leaves the words too little room
-        // (a small screen, large text); the progress and Continue stay below it.
-        BoxWithConstraints(
+        HorizontalPager(
+            state = pager,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-        ) {
-            val viewportHeight = maxHeight
-            val largestImage = (maxWidth * 1.1f).coerceIn(MIN_IMAGE_HEIGHT, MAX_IMAGE_HEIGHT)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                when (chapter) {
-                    OnboardingChapter.REMEMBER -> ChapterColumn(viewportHeight, MIN_IMAGE_HEIGHT, largestImage) { Remember(onSkip) }
-                    OnboardingChapter.PLAN -> ChapterColumn(viewportHeight, MIN_IMAGE_HEIGHT, largestImage) { Plan(onSkip) }
-                    // The hero also holds the top row, which sits on the photograph.
-                    OnboardingChapter.SHARE -> ChapterColumn(
-                        viewportHeight,
-                        MIN_IMAGE_HEIGHT + GiftiarySpacing.xxxl,
-                        largestImage + GiftiarySpacing.xxxl,
-                    ) { Share(onSkip) }
-                }
-            }
+            verticalAlignment = Alignment.Top,
+        ) { page ->
+            ChapterPage(OnboardingChapter.entries[page], onSkip)
         }
         Progress(
             position = chapter.ordinal + 1,
@@ -142,6 +136,34 @@ internal fun OnboardingContent(
                 .padding(GiftiarySpacing.taskGutter),
             trailingArrow = true,
         )
+    }
+}
+
+/**
+ * One chapter, filling its page. It scrolls only when even its smallest image leaves the words too
+ * little room (a small screen, large text); the pager takes sideways drags, the chapter upright ones.
+ */
+@Composable
+private fun ChapterPage(chapter: OnboardingChapter, onSkip: () -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val viewportHeight = maxHeight
+        val largestImage = (maxWidth * 1.1f).coerceIn(MIN_IMAGE_HEIGHT, MAX_IMAGE_HEIGHT)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            when (chapter) {
+                OnboardingChapter.REMEMBER -> ChapterColumn(viewportHeight, MIN_IMAGE_HEIGHT, largestImage) { Remember(onSkip) }
+                OnboardingChapter.PLAN -> ChapterColumn(viewportHeight, MIN_IMAGE_HEIGHT, largestImage) { Plan(onSkip) }
+                // The hero also holds the top row, which sits on the photograph.
+                OnboardingChapter.SHARE -> ChapterColumn(
+                    viewportHeight,
+                    MIN_IMAGE_HEIGHT + GiftiarySpacing.xxxl,
+                    largestImage + GiftiarySpacing.xxxl,
+                ) { Share(onSkip) }
+            }
+        }
     }
 }
 
@@ -338,7 +360,7 @@ private fun Progress(position: Int, count: Int, modifier: Modifier = Modifier) {
 @Composable
 private fun OnboardingPreview() {
     GiftiaryTheme {
-        OnboardingContent(OnboardingChapter.PLAN, {}, {})
+        OnboardingContent(rememberPagerState(initialPage = OnboardingChapter.PLAN.ordinal) { OnboardingChapter.entries.size }, {}, {})
     }
 }
 
