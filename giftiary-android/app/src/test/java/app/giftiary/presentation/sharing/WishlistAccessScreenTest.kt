@@ -15,6 +15,10 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.Density
+import org.robolectric.annotation.GraphicsMode
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
@@ -101,7 +105,7 @@ class WishlistAccessScreenTest {
         show(loaded)
 
         val order = listOf(
-            "Share wishlist", "Peter’s wishlist", "People with access", "Anna", "A Giftiary member", "Invite by email", "Share invite link",
+            "Share wishlist", "Peter’s wishlist", "People with access", "Anna", "A Giftiary member", "Invite by email address", "Share invite link",
             "Email invites", "bob@example.com", "eve@example.com", "Invite links", "Invite link",
             "They can plan gifts together. You won’t see what they reserve, so the surprise stays.",
         )
@@ -173,17 +177,17 @@ class WishlistAccessScreenTest {
         compose.onNodeWithText("Invite links").assertDoesNotExist()
         compose.onNodeWithText("Email invites").assertDoesNotExist()
         compose.onNodeWithText("Share invite link").assertExists()
-        compose.onNodeWithText("Invite by email").assertExists()
+        compose.onNodeWithText("Invite by email address").assertExists()
     }
 
     @Test
     fun `both ways to invite are equal buttons of their own`() {
         show(loaded)
 
-        compose.onNodeWithText("Invite by email").assertHasClickAction().performClick()
+        compose.onNodeWithText("Invite by email address").assertHasClickAction().performClick()
         compose.onNodeWithText("Share invite link").assertHasClickAction().performClick()
         assertEquals(listOf("email open", "create"), events)
-        val email = compose.onNodeWithText("Invite by email").getBoundsInRoot()
+        val email = compose.onNodeWithText("Invite by email address").getBoundsInRoot()
         val link = compose.onNodeWithText("Share invite link").getBoundsInRoot()
         assertEquals("same start", email.left, link.left)
     }
@@ -192,9 +196,9 @@ class WishlistAccessScreenTest {
     fun `the email form takes an address and sends or cancels`() {
         show(loaded.copy(emailForm = EmailInviteForm(text = "bob@")))
 
-        compose.onNodeWithText("They’ll find the invite in Giftiary when they sign in with this address.").assertExists()
+        compose.onNodeWithText("No email is sent. The invite appears in Giftiary for whoever signs in with this address.").assertExists()
         compose.onNodeWithText("bob@").performTextReplacement("bob@example.com")
-        compose.onNodeWithText("Send invite").performClick()
+        compose.onNodeWithText("Save invite").performClick()
         compose.onNodeWithText("Cancel").performClick()
         assertEquals(listOf("email bob@example.com", "email send", "email cancel"), events)
         compose.onNodeWithText("Share invite link").assertExists()
@@ -247,6 +251,34 @@ class WishlistAccessScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w320dp-h2000dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `a long address stays on one line, cut short, at large text, still named in full`() {
+        val long = EmailInvite(UUID.randomUUID(), "bartholomew.longname@gmail.com", EmailInviteState.PENDING, now, now.plusSeconds(86_400))
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                GiftiaryTheme {
+                    WishlistAccessScreen(
+                        state = loaded.copy(emailInvites = EmailInvitesContent.Loaded(listOf(long))),
+                        wishlistName = "Peter’s wishlist",
+                        actions = actions,
+                    )
+                }
+            }
+        }
+
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(long.email, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.single()
+        assertEquals(1, layout.lineCount)
+        assertTrue("cut short at this width", layout.isLineEllipsized(0))
+        assertTrue(compose.onNodeWithText(long.email, useUnmergedTree = true).getBoundsInRoot().right <= compose.onRoot().getBoundsInRoot().right)
+        compose.onNodeWithContentDescription("Options for the invite to ${long.email}").assertExists()
+    }
+
+    @Test
     fun `a sent invite is confirmed the same way for any address`() {
         show(loaded.copy(invitedEmail = "nobody@example.com"))
 
@@ -292,8 +324,9 @@ class WishlistAccessScreenTest {
 
         val width = compose.onRoot().getBoundsInRoot().right
         listOf(
-            "Lista megosztása", "Meghívó link megosztása", "Péter születésnapi kívánságlistája", "Meghívás emailben",
-            "Most nem küldhetsz több email-meghívót. Vonj vissza egyet, vagy próbáld újra holnap.", "Meghívó küldése",
+            "Lista megosztása", "Meghívó link megosztása", "Péter születésnapi kívánságlistája", "Meghívás email-cím alapján",
+            "Most nem küldhetsz több email-meghívót. Vonj vissza egyet, vagy próbáld újra holnap.", "Meghívó mentése",
+            "Emailt nem küldünk. A meghívó a Giftiaryben jelenik meg annak, aki ezzel a címmel jelentkezik be.",
         ).forEach {
             val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
             assertTrue("$it fits: ${bounds.right} <= $width", bounds.right <= width)

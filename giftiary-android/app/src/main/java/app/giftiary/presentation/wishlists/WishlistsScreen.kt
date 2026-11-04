@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -386,10 +387,15 @@ private fun InvitationRow(invite: RecipientInvite, responding: Boolean, onAccept
     val sender = memberName(invite.ownerDisplayName)
     val acceptDescription = stringResource(R.string.lists_invitation_accept_description, invite.wishlistName)
     val declineDescription = stringResource(R.string.lists_invitation_decline_description, invite.wishlistName)
+    // A quiet aqua card, as the app's other "something new for you" notes, sets an invitation apart
+    // from the lists already joined beneath it.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = GiftiarySpacing.browseGutter, vertical = 14.dp),
+            .padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.xs)
+            .background(colors.infoSurface, GiftiaryShapes.container)
+            .testTag(INVITATION_CARD_TAG)
+            .padding(GiftiarySpacing.l),
     ) {
         GiftiaryAvatar(name = invite.personName ?: sender)
         Column(
@@ -428,6 +434,8 @@ private fun InvitationRow(invite: RecipientInvite, responding: Boolean, onAccept
         }
     }
 }
+
+internal const val INVITATION_CARD_TAG = "invitation-card"
 
 @Composable
 private fun invitationMessageText(message: InvitationMessage): String = when (message) {

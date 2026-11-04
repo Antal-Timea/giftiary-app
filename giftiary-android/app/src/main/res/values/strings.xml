@@ -440,10 +440,10 @@ big stories</string>
     <string name="wishlist_access_title">Share wishlist</string>
     <string name="wishlist_access_intro">People you invite see only this wishlist and its wishes.</string>
     <string name="wishlist_access_create_invite">Share invite link</string>
-    <string name="wishlist_access_email_invite">Invite by email</string>
+    <string name="wishlist_access_email_invite">Invite by email address</string>
     <string name="wishlist_access_email_label">Email address</string>
-    <string name="wishlist_access_email_note">They’ll find the invite in Giftiary when they sign in with this address.</string>
-    <string name="wishlist_access_email_send">Send invite</string>
+    <string name="wishlist_access_email_note">No email is sent. The invite appears in Giftiary for whoever signs in with this address.</string>
+    <string name="wishlist_access_email_send">Save invite</string>
     <string name="wishlist_access_email_sent">Invite saved for %1$s.</string>
     <string name="wishlist_access_email_invalid">Enter a valid email address.</string>
     <string name="wishlist_access_email_not_allowed">This address can’t be invited. You can’t invite yourself.</string>

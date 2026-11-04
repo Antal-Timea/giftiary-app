@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -375,6 +376,7 @@ private fun AccessRow(
     title: String,
     detail: String,
     optionsDescription: String,
+    singleLineTitle: Boolean = false,
     options: @Composable OptionsMenuScope.() -> Unit,
 ) {
     val colors = GiftiaryTheme.colors
@@ -393,7 +395,19 @@ private fun AccessRow(
                     .padding(start = GiftiarySpacing.l),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text(text = title, style = GiftiaryType.rowTitle, color = colors.textPrimary)
+                if (singleLineTitle) {
+                    // Wrapped, an address breaks at its dots ("gmail" / ".com"); the options name it in full.
+                    Text(
+                        text = title,
+                        style = GiftiaryType.rowTitle,
+                        color = colors.textPrimary,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(text = title, style = GiftiaryType.rowTitle, color = colors.textPrimary)
+                }
                 Text(text = detail, style = GiftiaryType.body, color = colors.textSecondary)
             }
             OptionsMenu(R.drawable.ic_more_vertical, optionsDescription, items = options)
@@ -512,6 +526,7 @@ private fun EmailInviteRow(invite: EmailInvite, changing: Boolean, onRevoke: (UU
             stringResource(R.string.wishlist_access_email_not_accepted)
         },
         optionsDescription = stringResource(R.string.wishlist_access_email_more, invite.email),
+        singleLineTitle = true,
     ) {
         Option(
             text = stringResource(
