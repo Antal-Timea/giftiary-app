@@ -44,6 +44,7 @@ class WishlistsScreenTest {
     private val martins = wishlist("Martin’s wishlist", personId = UUID.randomUUID())
     private val peters = SharedWishlistSummary(UUID.randomUUID(), "Peter’s wishlist", "Peter")
     private val unnamed = SharedWishlistSummary(UUID.randomUUID(), "Anna’s birthday", null)
+    private val forAlex = SharedWishlistSummary(UUID.randomUUID(), "Birthday", "Bea", personName = "Alex")
     private val populated = WishlistsContent.Loaded(
         own = listOf(christmas, mine),
         forPeople = listOf(WishlistOfPerson(martins, "Martin")),
@@ -132,6 +133,23 @@ class WishlistsScreenTest {
         compose.onNodeWithText("Peter").assertExists()
         compose.onNodeWithText("A Giftiary member").assertExists()
         compose.onNodeWithText("Peter · ", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a shared list kept for a person names whom it is for instead of its owner`() {
+        show(populated, shared = OnlineState(OnlineContent.Loaded(listOf(forAlex, peters))))
+
+        compose.onNodeWithText("For Alex").assertExists()
+        compose.onNodeWithText("Bea").assertDoesNotExist()
+        compose.onNodeWithText("Peter").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    fun `in Hungarian a person's shared list reads as for them`() {
+        show(populated, shared = OnlineState(OnlineContent.Loaded(listOf(forAlex))))
+
+        compose.onNodeWithText("Alex részére").assertExists()
     }
 
     @Test

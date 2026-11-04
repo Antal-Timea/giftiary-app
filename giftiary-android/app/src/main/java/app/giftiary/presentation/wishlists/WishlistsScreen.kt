@@ -303,13 +303,15 @@ private fun SharedHeading(onJoin: () -> Unit) {
 /** The server does not report how many wishes a shared list has, so the row does not say. */
 @Composable
 private fun SharedListRow(wishlist: SharedWishlistSummary, onClick: () -> Unit) {
+    // A list kept for a person is named for them, as on the list itself; otherwise its owner.
     val owner = memberName(wishlist.ownerDisplayName)
+    val whose = wishlist.personName?.let { stringResource(R.string.shared_wishlist_for_person_short, it) } ?: owner
     GiftiaryRow(
         title = wishlist.name,
-        leading = { GiftiaryAvatar(name = owner) },
+        leading = { GiftiaryAvatar(name = wishlist.personName ?: owner) },
         trailing = { RowChevron() },
         supporting = {
-            Text(owner, style = GiftiaryType.label.copy(fontWeight = GiftiaryType.metadata.fontWeight), color = GiftiaryTheme.colors.textLabel)
+            Text(whose, style = GiftiaryType.label.copy(fontWeight = GiftiaryType.metadata.fontWeight), color = GiftiaryTheme.colors.textLabel)
         },
         contentPadding = PaddingValues(horizontal = GiftiarySpacing.browseGutter, vertical = 14.dp),
         onClickLabel = stringResource(R.string.wishlist_open),

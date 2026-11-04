@@ -5,7 +5,7 @@
 -- Two-session behaviour (locking, waiting, limits under concurrency) is in 10_wishlist_sharing_concurrency.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(140);
+select plan(144);
 
 -- ---- schema, privileges and function hardening ----
 
@@ -448,6 +448,9 @@ select is(public.reserve_wish('20000000-0000-4000-8000-000000000005'), 'RESERVED
 select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 select ok(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') -> 'person_name' = 'null'::jsonb,
     'the owner''s own list is for no one');
+select ok((select x -> 'person_name' = 'null'::jsonb from jsonb_array_elements(public.get_shared_wishlists()) x
+           where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'),
+    'and the summary says so too');
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 update public.wishlists set person_id = 'a0000000-0000-4000-8000-0000000000f1', last_mutation_id = gen_random_uuid()
 where id = '10000000-0000-4000-8000-000000000005';
@@ -463,6 +466,9 @@ select ok(position('a0000000-0000-4000-8000-0000000000f1' in
     'the person''s id is never part of what members get');
 select is(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') ->> 'person_name', 'Anna',
     'but who the list is for is named');
+select is((select x ->> 'person_name' from jsonb_array_elements(public.get_shared_wishlists()) x
+           where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'), 'Anna',
+    'in the summary as well');
 
 -- ---- a member of a person's list reaches that list only ----
 
@@ -495,6 +501,12 @@ select is(
     'name,owner_display_name,person_name,wishes,wishlist_id', 'the person''s list adds only the person''s name to a shared list''s fields');
 select is(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') ->> 'person_name', 'Anna',
     'members see who the list is for');
+select is(public.get_shared_wishlists(),
+    jsonb_build_array(jsonb_build_object('wishlist_id', '10000000-0000-4000-8000-000000000003', 'name', 'For Anna',
+        -- The owner's name is tested above; here it only completes the expected entry.
+        'owner_display_name', public.get_shared_wishlists() -> 0 -> 'owner_display_name',
+        'person_name', 'Anna')),
+    'the summary is exactly the list, its owner''s and its person''s names');
 select is(
     (select string_agg(distinct k, ',' order by k)
      from jsonb_array_elements(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') -> 'wishes') w,
@@ -571,6 +583,7 @@ set local role authenticated;
 select pg_temp.as_user('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
 select ok(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') -> 'person_name' = 'null'::jsonb,
     'a deleted person''s list names no one');
+select ok(public.get_shared_wishlists() -> 0 -> 'person_name' = 'null'::jsonb, 'nor does its summary');
 reset role;
 
 select * from finish();

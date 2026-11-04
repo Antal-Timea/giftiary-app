@@ -276,7 +276,20 @@ class SupabaseWishlistSharingRepositoryTest {
         assertEquals(LIST, lists.single().id)
         assertEquals("Birthday", lists.single().name)
         assertNull(lists.single().ownerDisplayName)
+        assertNull("an own list, or a server before person names, names no one", lists.single().personName)
         assertRpc("get_shared_wishlists", "{}")
+    }
+
+    @Test
+    fun `a shared list summary carries its person's name only, blank as none`() = runTest {
+        answer = {
+            respondJson(
+                """[{"wishlist_id":"$LIST","name":"Birthday","owner_display_name":"Bea","person_name":" Alex "},
+                   {"wishlist_id":"$OTHER","name":"Christmas","owner_display_name":"Bea","person_name":" "}]""",
+            )
+        }
+
+        assertEquals(listOf("Alex", null), repository.sharedWishlists().map { it.personName })
     }
 
     @Test

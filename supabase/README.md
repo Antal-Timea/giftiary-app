@@ -135,7 +135,7 @@ or write them directly and they are not part of Realtime. Everything goes throug
 | `remove_wishlist_member(p_wishlist_id, p_member_user_id)` | owner | nothing |
 | `redeem_wishlist_invite(p_token)` | guest | `{wishlist_id}`; joining again is not an error |
 | `leave_wishlist(p_wishlist_id)` | guest | nothing |
-| `get_shared_wishlists()` | guest | `[{wishlist_id, name, owner_display_name}]` |
+| `get_shared_wishlists()` | guest | `[{wishlist_id, name, owner_display_name, person_name}]` (`person_name` as in `get_shared_wishlist`) |
 | `get_shared_wishlist(p_wishlist_id)` | guest | the list, `person_name` (who a list kept for a person is for; null otherwise, never their id) and its wishes, each with `reservation_state` |
 | `reserve_wish(p_wish_id)` | guest | `RESERVED_BY_ME` or `RESERVED_BY_OTHER` |
 | `release_wish(p_wish_id)` | guest | `AVAILABLE`, `RESERVED_BY_ME` or `RESERVED_BY_OTHER` |

@@ -35,8 +35,11 @@ data class ActiveInvite(val id: UUID, val createdAt: Instant, val expiresAt: Ins
 /** [displayName] is null when the member has none; it is never replaced by their email. */
 data class WishlistMember(val userId: UUID, val displayName: String?, val joinedAt: Instant)
 
-/** A wishlist someone else shared with the user. */
-data class SharedWishlistSummary(val id: UUID, val name: String, val ownerDisplayName: String?)
+/**
+ * A wishlist someone else shared with the user. [personName] names who a list kept for a person is
+ * for; null for the owner's own lists.
+ */
+data class SharedWishlistSummary(val id: UUID, val name: String, val ownerDisplayName: String?, val personName: String? = null)
 
 /** [personName] names who a list kept for a person is for; null for the owner's own lists. */
 data class SharedWishlist(

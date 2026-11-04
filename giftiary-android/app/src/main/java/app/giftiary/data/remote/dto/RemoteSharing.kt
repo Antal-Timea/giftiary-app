@@ -50,6 +50,8 @@ data class RemoteSharedWishlistSummary(
     @SerialName("wishlist_id") val wishlistId: UUID,
     val name: String,
     @SerialName("owner_display_name") val ownerDisplayName: String?,
+    // Absent from servers before Sharing 2E.
+    @SerialName("person_name") val personName: String? = null,
 )
 
 @Serializable
