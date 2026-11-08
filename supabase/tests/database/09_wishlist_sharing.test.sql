@@ -474,7 +474,7 @@ select is((select x ->> 'person_name' from jsonb_array_elements(public.get_share
 
 -- Anna also has a relationship, a photo, an occasion, an idea, a gift and a second list nobody joined.
 reset role;
-update public.people set relationship = 'Secret sister', photo_path = 'users/secret/anna.jpg', last_mutation_id = gen_random_uuid()
+update public.people set relationship = 'Secret sister', photo_path = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/a0000000-0000-4000-8000-0000000000f9.jpg', last_mutation_id = gen_random_uuid()
 where id = 'a0000000-0000-4000-8000-0000000000f1';
 insert into public.occasions (last_mutation_id, id, owner_user_id, person_id, type, day, month, repeats_yearly)
 values (gen_random_uuid(), 'a0000000-0000-4000-8000-0000000000f2', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -516,7 +516,7 @@ select is(
 select ok(
     (select bool_and(position(secret in public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')::text
                                         || public.get_shared_wishlists()::text) = 0)
-     from unnest(array['a0000000-0000-4000-8000-0000000000f1', 'Secret sister', 'users/secret/anna.jpg',
+     from unnest(array['a0000000-0000-4000-8000-0000000000f1', 'Secret sister', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/a0000000-0000-4000-8000-0000000000f9.jpg',
                        'Secret idea', 'Secret gift', 'Anna unjoined', 'Kite',
                        '10000000-0000-4000-8000-000000000006']) secret),
     'nothing of the person, their other list or its wishes reaches the member');
