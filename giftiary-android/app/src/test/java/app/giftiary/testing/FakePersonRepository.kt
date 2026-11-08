@@ -26,6 +26,12 @@ class FakePersonRepository : PersonRepository {
 
     val currentPeople: List<Person> get() = people.value
 
+    /** Every [setPersonPhoto] call, as (person, photo). */
+    val photoWrites = mutableListOf<Pair<UUID, String?>>()
+
+    /** When set, [setPersonPhoto] throws it, after the details were stored. */
+    var photoWriteFailure: Exception? = null
+
     fun givenPeople(vararg person: Person) {
         people.value = person.toList()
     }
@@ -57,6 +63,8 @@ class FakePersonRepository : PersonRepository {
 
     override suspend fun setPersonPhoto(id: UUID, photoPath: String?) {
         writeFailure?.let { throw it }
+        photoWriteFailure?.let { throw it }
+        photoWrites += id to photoPath
         if (people.value.none { it.id == id }) throw PersonNotFoundException(id)
         people.update { list -> list.map { if (it.id == id) it.copy(photoPath = photoPath) else it } }
     }
@@ -71,11 +79,12 @@ fun person(
     name: String,
     relationship: String? = null,
     id: UUID = UUID.randomUUID(),
+    photoPath: String? = null,
 ) = Person(
     id = id,
     name = name,
     relationship = relationship,
-    photoPath = null,
+    photoPath = photoPath,
     linkedUserId = null,
     createdAt = Instant.EPOCH,
     updatedAt = Instant.EPOCH,

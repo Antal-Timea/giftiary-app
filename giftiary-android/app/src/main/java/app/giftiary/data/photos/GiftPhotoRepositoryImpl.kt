@@ -11,6 +11,7 @@ import app.giftiary.data.user.ActiveOwner
 import app.giftiary.data.user.scoped
 import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.GiftPhotoUnreadableException
+import app.giftiary.domain.repository.PhotoKind
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -33,17 +34,17 @@ class GiftPhotoRepositoryImpl @Inject constructor(
     private val activeOwner: ActiveOwner,
 ) : GiftPhotoRepository {
 
-    override suspend fun importPhoto(source: String): String {
+    override suspend fun importPhoto(source: String, kind: PhotoKind): String {
         val uri = source.toUri()
-        return import { context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException() }
+        return import(kind) { context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException() }
     }
 
     override fun newCaptureTarget(): String = captures.newTarget()
 
-    override suspend fun importCapture(target: String): String {
+    override suspend fun importCapture(target: String, kind: PhotoKind): String {
         val file = captures.fileFor(target) ?: throw GiftPhotoUnreadableException()
         try {
-            return import { file.inputStream() }
+            return import(kind) { file.inputStream() }
         } finally {
             withContext(NonCancellable + Dispatchers.IO) { file.delete() }
         }
@@ -54,11 +55,14 @@ class GiftPhotoRepositoryImpl @Inject constructor(
     }
 
     /** Processes the image [open] reads into a new photo of the active account. */
-    private suspend fun import(open: () -> InputStream): String {
+    private suspend fun import(kind: PhotoKind, open: () -> InputStream): String {
         val owner = activeOwner.requireOwnerId()
         return withContext(Dispatchers.IO) {
             val bytes = try {
-                processor.process(open)
+                when (kind) {
+                    PhotoKind.GIFT -> processor.process(open)
+                    PhotoKind.PERSON -> processor.processAvatar(open)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -80,6 +84,12 @@ class GiftPhotoRepositoryImpl @Inject constructor(
                 null
             }
         }
+    }
+
+    override suspend fun loadLocalPhoto(path: String): ByteArray? {
+        val owner = activeOwner.ownerId.value ?: return null
+        if (GiftPhotoFiles.ownerOf(path) != owner) return null
+        return withContext(Dispatchers.IO) { files.read(path) }
     }
 
     override fun observeUploadPending(path: String): Flow<Boolean> = activeOwner.scoped(false) { owner ->

@@ -20,11 +20,15 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -54,6 +58,21 @@ class PersonDetailViewModel @AssistedInject constructor(
     val giftPhotos: StateFlow<Map<String, LoadedPhoto>> = photos.photosOf(giftRepository.observeGiftsForPerson(personId))
         .catch { emit(emptyMap()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+
+    /**
+     * The person's photo for the hero, downloaded the first time if need be; null while there is
+     * none or it cannot be read now, so the hero keeps the monogram.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val personPhoto: StateFlow<LoadedPhoto?> = personRepository.observePerson(personId)
+        .map { it?.photoPath }
+        .distinctUntilChanged()
+        .transformLatest { path ->
+            emit(null)
+            if (path != null) emit(photos.loadPhoto(path)?.let(::LoadedPhoto))
+        }
+        .catch { emit(null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
     private val wishlists = combine(wishlistRepository.observeWishlists(), wishlistRepository.observeWishCounts()) { lists, counts ->
         lists.filter { it.personId == personId }.map { PersonWishlist(it, wishCount = counts[it.id] ?: 0) }

@@ -3,6 +3,7 @@ package app.giftiary.presentation.people
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.giftiary.domain.usecase.SavePersonUseCase
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.person
@@ -27,10 +28,11 @@ class PersonEditorExitTest {
     val compose = createComposeRule()
 
     private val repository = FakePersonRepository()
+    private val photos = FakeGiftPhotoRepository()
     private val exits = mutableListOf<String>()
 
     private fun show(personId: UUID?, opensCreated: Boolean): PersonEditorViewModel {
-        val viewModel = PersonEditorViewModel(personId, repository, SavePersonUseCase(repository))
+        val viewModel = PersonEditorViewModel(personId, repository, SavePersonUseCase(repository), photos)
         compose.setContent {
             GiftiaryTheme {
                 PersonEditorScreen(

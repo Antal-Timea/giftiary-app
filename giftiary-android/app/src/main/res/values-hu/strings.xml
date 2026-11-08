@@ -94,6 +94,9 @@ nagy történetek</string>
     <string name="person_editor_load_failed">Nem sikerült betölteni ezt a személyt.</string>
     <string name="person_editor_add_subtitle">Tartsd közel azokat, akik fontosak neked.</string>
     <string name="person_editor_edit_subtitle">Tartsd naprakészen, amit tudsz róla.</string>
+    <string name="person_photo_add">Fotó hozzáadása</string>
+    <string name="person_photo_change">Fotó cseréje</string>
+    <string name="person_photo_remove">Fotó eltávolítása</string>
 
     <string name="people_open">Megnyitás</string>
     <string name="people_subtitle">Az emberek az ajándékemlékeid mögött.</string>
