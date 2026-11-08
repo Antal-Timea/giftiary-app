@@ -85,7 +85,10 @@ class SyncRunnerTest {
     fun setUp() {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftiaryDatabase::class.java).build()
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {})
+        people = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
+        )
         occasions = OccasionRepositoryImpl(
             database, database.occasionDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
         )
@@ -1020,7 +1023,7 @@ class SyncRunnerTest {
         newPusher(),
         activeOwner,
         GiftPhotoSync(
-            database.photoTransferDao(), database.giftDao(), database.syncOperationDao(),
+            database.photoTransferDao(), database.giftDao(), database.personDao(), database.syncOperationDao(),
             GiftPhotoFiles(ApplicationProvider.getApplicationContext()), FakeGiftPhotoRemote(), clock,
         ),
     )

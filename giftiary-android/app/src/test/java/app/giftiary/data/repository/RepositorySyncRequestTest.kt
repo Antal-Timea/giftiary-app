@@ -70,7 +70,10 @@ class RepositorySyncRequestTest {
         requests = RecordingSyncRequester(database, owner)
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
         val activeOwner = FakeActiveOwner(owner)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, requests)
+        people = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, requests,
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
+        )
         occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), queue, activeOwner, clock, requests)
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue,

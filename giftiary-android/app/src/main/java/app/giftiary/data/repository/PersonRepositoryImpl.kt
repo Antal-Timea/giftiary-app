@@ -5,10 +5,13 @@ import app.giftiary.data.local.GiftiaryDatabase
 import app.giftiary.data.local.SyncOperationQueue
 import app.giftiary.data.local.dao.OccasionDao
 import app.giftiary.data.local.dao.PersonDao
+import app.giftiary.data.local.dao.PhotoTransferDao
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.mapper.toDomain
 import app.giftiary.data.local.mapper.toNewEntity
+import app.giftiary.data.photos.GiftPhotoFiles
+import app.giftiary.data.photos.queuePhotoChange
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.data.user.scoped
@@ -31,6 +34,8 @@ class PersonRepositoryImpl @Inject constructor(
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
     private val syncRequester: SyncRequester,
+    private val photoTransfers: PhotoTransferDao,
+    private val photoFiles: GiftPhotoFiles,
 ) : PersonRepository {
 
     override fun observePeople(): Flow<List<Person>> = activeOwner.scoped(emptyList()) { ownerUserId ->
@@ -44,14 +49,14 @@ class PersonRepositoryImpl @Inject constructor(
     override suspend fun getPerson(id: UUID): Person? =
         activeOwner.ownerId.value?.let { ownerUserId -> personDao.findActiveById(id, ownerUserId)?.toDomain() }
 
-    override suspend fun addPerson(name: String, relationship: String?): Person {
+    override suspend fun addPerson(name: String, relationship: String?, photoPath: String?): Person {
         val ownerUserId = activeOwner.requireOwnerId()
         val now = now()
         val person = Person(
             id = UUID.randomUUID(),
             name = name,
             relationship = relationship,
-            photoPath = null,
+            photoPath = photoPath,
             linkedUserId = null,
             createdAt = now,
             updatedAt = now,
@@ -59,6 +64,7 @@ class PersonRepositoryImpl @Inject constructor(
         val entity = person.toNewEntity(ownerUserId)
         database.withTransaction {
             personDao.insert(entity)
+            changePhoto(ownerUserId, entity.id, old = null, new = photoPath)
             syncQueue.enqueue(
                 entity.ownerUserId,
                 SyncEntityType.PERSON,
@@ -90,8 +96,24 @@ class PersonRepositoryImpl @Inject constructor(
         syncRequester.requestSync()
     }
 
+    override suspend fun setPersonPhoto(id: UUID, photoPath: String?) {
+        val ownerUserId = activeOwner.requireOwnerId()
+        var replaced: String? = null
+        database.withTransaction {
+            val existing = personDao.findActiveById(id, ownerUserId) ?: throw PersonNotFoundException(id)
+            if (existing.photoPath == photoPath) return@withTransaction
+
+            personDao.update(existing.copy(photoPath = photoPath, updatedAt = now()))
+            replaced = changePhoto(ownerUserId, id, old = existing.photoPath, new = photoPath)
+            syncQueue.enqueue(existing.ownerUserId, SyncEntityType.PERSON, id, SyncOperation.UPDATE, existing.remoteState)
+        }
+        replaced?.let(photoFiles::delete)
+        syncRequester.requestSync()
+    }
+
     override suspend fun deletePerson(id: UUID) {
         val ownerUserId = activeOwner.requireOwnerId()
+        var removed: String? = null
         database.withTransaction {
             val existing = personDao.findActiveById(id, ownerUserId) ?: return@withTransaction
             val deletedAt = now()
@@ -109,6 +131,9 @@ class PersonRepositoryImpl @Inject constructor(
                     occasion.remoteState,
                 )
             }
+            // As for a gift: the tombstone names no photo, and the photo's object goes once it is pushed.
+            if (existing.photoPath != null) personDao.update(existing.copy(photoPath = null))
+            removed = changePhoto(ownerUserId, id, old = existing.photoPath, new = null)
             personDao.softDelete(id, ownerUserId, deletedAt)
             syncQueue.enqueue(
                 existing.ownerUserId,
@@ -118,8 +143,12 @@ class PersonRepositoryImpl @Inject constructor(
                 existing.remoteState,
             )
         }
+        removed?.let(photoFiles::delete)
         syncRequester.requestSync()
     }
+
+    private suspend fun changePhoto(ownerUserId: UUID, personId: UUID, old: String?, new: String?): String? =
+        queuePhotoChange(photoTransfers, photoFiles, ownerUserId, SyncEntityType.PERSON, personId, old, new, now())
 
     // Room stores instants with millisecond precision; truncating keeps returned models equal
     // to what is read back later.

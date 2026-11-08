@@ -38,7 +38,7 @@ import app.giftiary.data.local.entity.WishlistEntity
         SyncConflictEntity::class,
         PhotoTransferEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(UuidConverter::class, TimeConverters::class, EnumConverters::class)

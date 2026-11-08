@@ -67,6 +67,8 @@ class PersonRepositoryImplTest {
             activeOwner = activeOwner,
             clock = clock,
             SyncRequester {},
+            photoTransfers = database.photoTransferDao(),
+            photoFiles = GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         occasionRepository = OccasionRepositoryImpl(
             database = database,

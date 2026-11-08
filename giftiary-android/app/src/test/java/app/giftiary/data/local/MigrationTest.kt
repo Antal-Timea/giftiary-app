@@ -385,6 +385,44 @@ class MigrationTest {
         }
     }
 
+    // ---- v6 to v7: a photo transfer belongs to a gift or a person ----
+
+    @Test
+    fun `v6 to v7 keeps every pending photo transfer as its gift's, and every other row`() = runTest {
+        val upload = "$alice/c0000000-0000-4000-8000-000000000001.jpg"
+        val delete = "$bob/c0000000-0000-4000-8000-000000000002.jpg"
+        val before = helper.createDatabase(DB_NAME, 6).use { db ->
+            insertFullGraph(db, wishOwners = true)
+            insert(db, "photo_transfer", transfer(upload, alice, GIFT_FROM_IDEA, "UPLOAD") + mapOf("attemptCount" to 3L, "lastErrorCode" to "NETWORK"))
+            insert(db, "photo_transfer", transfer(delete, bob, GIFT_RECEIVED, "DELETE"))
+            ALL_TABLES.associateWith { rows(db, "SELECT * FROM `$it` ORDER BY id") }
+        }
+
+        helper.runMigrationsAndValidate(DB_NAME, 7, true, MIGRATION_6_7).use { db ->
+            ALL_TABLES.forEach { table ->
+                assertEquals("rows of $table", before.getValue(table), rows(db, "SELECT * FROM `$table` ORDER BY id"))
+            }
+            assertEquals(
+                listOf(
+                    transfer(upload, alice, GIFT_FROM_IDEA, "UPLOAD", entity = "GIFT") + mapOf("attemptCount" to 3L, "lastErrorCode" to "NETWORK"),
+                    transfer(delete, bob, GIFT_RECEIVED, "DELETE", entity = "GIFT"),
+                ),
+                rows(db, "SELECT * FROM photo_transfer ORDER BY ownerUserId"),
+            )
+            assertEquals(
+                mapOf("index_photo_transfer_ownerUserId_createdAt" to (listOf("ownerUserId", "createdAt") to false)),
+                indexes(db, "photo_transfer"),
+            )
+        }
+    }
+
+    /** A v6 transfer row, or with [entity] the v7 row it becomes; column order as Room creates them. */
+    private fun transfer(path: String, owner: UUID, giftId: UUID, kind: String, entity: String? = null): Map<String, Any?> {
+        val ownership = if (entity == null) mapOf("giftId" to giftId.toString()) else mapOf("entityType" to entity, "entityId" to giftId.toString())
+        return mapOf("path" to path, "ownerUserId" to owner.toString()) + ownership +
+            mapOf("kind" to kind, "createdAt" to 1_700_000_500_000L, "attemptCount" to 0L, "lastErrorCode" to null)
+    }
+
     private fun assertNoDeferredForeignKeys(db: SupportSQLiteDatabase) {
         REBUILT_TABLES.forEach { table ->
             val sql = db.query("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table)).use {
@@ -574,7 +612,7 @@ class MigrationTest {
 
     private suspend fun withRoom(block: suspend (GiftiaryDatabase) -> Unit) {
         val room = Room.databaseBuilder(context, GiftiaryDatabase::class.java, DB_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
         try {
             block(room)

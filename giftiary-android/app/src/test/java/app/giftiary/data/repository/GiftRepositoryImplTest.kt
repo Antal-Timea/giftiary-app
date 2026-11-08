@@ -71,6 +71,7 @@ class GiftRepositoryImplTest {
         )
         people = PersonRepositoryImpl(
             database, database.personDao(), database.occasionDao(), syncQueue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         occasions = OccasionRepositoryImpl(
             database, database.occasionDao(), database.personDao(), syncQueue, activeOwner, clock, SyncRequester {},

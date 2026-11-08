@@ -72,7 +72,7 @@ class SyncRunner @Inject constructor(
                     continue
                 }
                 // Like a parent: the row may not name a photo the backend does not have yet.
-                if (operation.entityType == SyncEntityType.GIFT && photos.isUploadPending(owner, operation.entityId)) continue
+                if (photos.isUploadPending(owner, operation.entityType, operation.entityId)) continue
 
                 progress.pushed++
                 when (val outcome = pusher.push(account, operation.id)) {

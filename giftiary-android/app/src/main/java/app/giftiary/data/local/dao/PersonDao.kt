@@ -35,6 +35,10 @@ interface PersonDao {
     @Query("SELECT * FROM person WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): PersonEntity?
 
+    /** Every photo the owner's people name, deleted people included. */
+    @Query("SELECT photoPath FROM person WHERE ownerUserId = :ownerUserId AND photoPath IS NOT NULL")
+    suspend fun getPhotoPaths(ownerUserId: UUID): List<String>
+
     /** Whichever account's row has [id]; for sync, which must tell another account's row from none. */
     @Query("SELECT * FROM person WHERE id = :id")
     suspend fun findByIdForAnyOwner(id: UUID): PersonEntity?
