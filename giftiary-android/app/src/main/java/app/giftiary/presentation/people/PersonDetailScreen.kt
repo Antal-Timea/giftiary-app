@@ -2,15 +2,6 @@ package app.giftiary.presentation.people
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,17 +21,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,10 +68,11 @@ import app.giftiary.domain.usecase.occasionPlans
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.GiftiaryPillButton
+import app.giftiary.presentation.components.GiftiaryRow
 import app.giftiary.presentation.components.HeroCircleButton
-import app.giftiary.presentation.components.ListRow
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.MessageContent
+import app.giftiary.presentation.components.RowSupportingText
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.components.monogramInitial
 import app.giftiary.presentation.giftideas.GiftIdeaRow
@@ -78,7 +80,7 @@ import app.giftiary.presentation.gifts.GiftMemoryCard
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.home.DaysCountdown
 import app.giftiary.presentation.home.PlanLine
-import app.giftiary.presentation.occasions.OccasionRow
+import app.giftiary.presentation.occasions.occasionDateLine
 import app.giftiary.presentation.occasions.occasionDayMonth
 import app.giftiary.presentation.occasions.occasionTitle
 import app.giftiary.presentation.theme.GiftiaryShapes
@@ -197,6 +199,9 @@ fun PersonDetailScreen(
                 onAddGiftIdea = { onAddGiftIdea(state.person) },
                 onOpenGiftIdea = onOpenGiftIdea,
                 onAddOccasion = { onAddOccasion(state.person) },
+                onEditOccasion = onEditOccasion,
+                onAddWishlist = { onAddWishlist(state.person) },
+                onOpenWishlist = onOpenWishlist,
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -207,10 +212,6 @@ fun PersonDetailScreen(
         PersonMoreSheet(onDismiss = { moreOpen = false }) {
             PersonMoreContent(
                 state = state,
-                onAddOccasion = { moreOpen = false; onAddOccasion(state.person) },
-                onEditOccasion = { moreOpen = false; onEditOccasion(it) },
-                onAddWishlist = { moreOpen = false; onAddWishlist(state.person) },
-                onOpenWishlist = { moreOpen = false; onOpenWishlist(it) },
                 onDeleteRequested = { moreOpen = false; onDeleteRequested() },
             )
         }
@@ -242,6 +243,9 @@ private fun PersonDetailContent(
     onAddGiftIdea: () -> Unit,
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     onAddOccasion: () -> Unit,
+    onEditOccasion: (Occasion) -> Unit,
+    onAddWishlist: () -> Unit,
+    onOpenWishlist: (PersonWishlist) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val next = remember(state.occasions, today) { nextOccasion(state.occasions, today) }
@@ -263,19 +267,29 @@ private fun PersonDetailContent(
                 )
             }
         }
-        // A new person has no dates yet: offer the first one here. Once there are some, they are
-        // managed from "More" with the person's other details.
-        if (state.occasions.isEmpty()) {
-            item {
-                DetailHeading(
-                    icon = R.drawable.ic_calendar,
-                    title = stringResource(R.string.person_detail_occasions),
-                    subtitle = stringResource(R.string.person_detail_no_occasions_message),
-                )
-            }
-            item { EmptyLine(stringResource(R.string.person_detail_no_occasions_title)) }
-            item { AddAction(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion) }
+        item {
+            DetailHeading(
+                icon = R.drawable.ic_calendar,
+                title = stringResource(R.string.person_detail_occasions),
+                // A new person has no dates yet: say what they are for.
+                subtitle = if (state.occasions.isEmpty()) stringResource(R.string.person_detail_no_occasions_message) else null,
+            )
         }
+        if (state.occasions.isEmpty()) {
+            item { EmptyLine(stringResource(R.string.person_detail_no_occasions_title)) }
+        } else {
+            items(state.occasions, key = { it.id }) { occasion ->
+                // At the page's gutter, under the section heading, like the idea rows.
+                GiftiaryRow(
+                    title = occasionTitle(occasion),
+                    supporting = { RowSupportingText(occasionDateLine(occasion)) },
+                    onClickLabel = stringResource(R.string.occasion_edit),
+                    onClick = { onEditOccasion(occasion) },
+                )
+                GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter))
+            }
+        }
+        item { AddAction(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion) }
 
         item {
             DetailHeading(
@@ -293,6 +307,27 @@ private fun PersonDetailContent(
             }
         }
         item { AddAction(label = stringResource(R.string.person_detail_add_gift_idea), onClick = onAddGiftIdea) }
+
+        item { DetailHeading(icon = R.drawable.ic_nav_wishlists, title = stringResource(R.string.person_detail_wishlists)) }
+        if (state.wishlists.isEmpty()) {
+            item { EmptyLine(stringResource(R.string.person_detail_no_wishlists)) }
+        } else {
+            items(state.wishlists, key = { it.wishlist.id }) { entry ->
+                val count = if (entry.wishCount == 0) {
+                    stringResource(R.string.person_detail_wishlist_no_wishes)
+                } else {
+                    pluralStringResource(R.plurals.person_detail_wish_count, entry.wishCount, entry.wishCount)
+                }
+                GiftiaryRow(
+                    title = entry.wishlist.name,
+                    supporting = { RowSupportingText(count) },
+                    onClickLabel = stringResource(R.string.wishlist_open),
+                    onClick = { onOpenWishlist(entry) },
+                )
+                GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter))
+            }
+        }
+        item { AddAction(label = stringResource(R.string.person_detail_add_wishlist), onClick = onAddWishlist) }
 
         item {
             History(
@@ -399,10 +434,14 @@ private fun NextOccasionCard(
             .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = 18.dp, bottom = GiftiarySpacing.xl),
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            // The occasion and its date on lines of their own, so a long name or month never breaks
+            // mid-phrase beside the countdown.
+            Text(text = occasionTitle(occasion), style = GiftiaryType.sectionTitle, color = colors.textPrimary)
             Text(
-                text = "${occasionTitle(occasion)} · ${occasionDayMonth(occasion)}",
-                style = GiftiaryType.sectionTitle,
-                color = colors.textPrimary,
+                text = occasionDayMonth(occasion),
+                modifier = Modifier.padding(top = 2.dp),
+                style = GiftiaryType.body.copy(fontWeight = FontWeight.Medium),
+                color = colors.textSecondary,
             )
             PlanLine(plan, modifier = Modifier.padding(top = 6.dp))
             GiftiaryPillButton(
@@ -412,7 +451,7 @@ private fun NextOccasionCard(
                 trailingIcon = painterResource(R.drawable.ic_chevron_right),
             )
         }
-        DaysCountdown(days = days, large = true)
+        DaysCountdown(days = days, large = true, modifier = Modifier.padding(start = GiftiarySpacing.m))
     }
 }
 
@@ -431,7 +470,8 @@ private fun DetailHeading(@DrawableRes icon: Int, title: String, subtitle: Strin
                 .size(16.dp),
             tint = colors.textPrimary,
         )
-        Column {
+        // The gap keeps a descender of the title off the accents of its subtitle (Ajándékötletek).
+        Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs)) {
             Text(text = title, modifier = Modifier.semantics { heading() }, style = GiftiaryType.sectionTitle, color = colors.textPrimary)
             subtitle?.let { Text(text = it, style = GiftiaryType.bodySmall, color = colors.textSecondary) }
         }
@@ -446,18 +486,6 @@ private fun EmptyLine(text: String) {
         style = GiftiaryType.bodySmall,
         color = GiftiaryTheme.colors.textSecondary,
     )
-}
-
-@Composable
-private fun NoOccasions() {
-    val colors = GiftiaryTheme.colors
-    Column(
-        modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.s),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs),
-    ) {
-        Text(text = stringResource(R.string.person_detail_no_occasions_title), style = GiftiaryType.contentTitle, color = colors.textPrimary)
-        Text(text = stringResource(R.string.person_detail_no_occasions_message), style = GiftiaryType.bodySmall, color = colors.textSecondary)
-    }
 }
 
 /** "+ Add idea": the quiet coral add of a section, below its last row. */
@@ -512,10 +540,7 @@ private fun History(
     }
 }
 
-/**
- * The person's secondary actions, kept off the approved page: their occasions and wishlists, and
- * deleting them. The same bottom sheet as Quick Add.
- */
+/** The person's secondary actions, kept off the page: deleting them. The same bottom sheet as Quick Add. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PersonMoreSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
@@ -542,10 +567,6 @@ private fun PersonMoreSheet(onDismiss: () -> Unit, content: @Composable () -> Un
 @Composable
 internal fun PersonMoreContent(
     state: PersonDetailUiState.Loaded,
-    onAddOccasion: () -> Unit,
-    onEditOccasion: (Occasion) -> Unit,
-    onAddWishlist: () -> Unit,
-    onOpenWishlist: (PersonWishlist) -> Unit,
     onDeleteRequested: () -> Unit,
 ) {
     val colors = GiftiaryTheme.colors
@@ -562,33 +583,8 @@ internal fun PersonMoreContent(
             style = GiftiaryType.sheetTitle,
             color = colors.textPrimary,
         )
-        SheetGroupLabel(stringResource(R.string.person_detail_occasions))
-        if (state.occasions.isEmpty()) NoOccasions()
-        state.occasions.forEach { occasion ->
-            OccasionRow(occasion = occasion, onClick = { onEditOccasion(occasion) }, clickLabel = R.string.occasion_edit)
-            GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter))
-        }
-        AddAction(label = stringResource(R.string.person_detail_add_occasion), onClick = onAddOccasion)
-
-        SheetGroupLabel(stringResource(R.string.person_detail_wishlists))
-        if (state.wishlists.isEmpty()) EmptyLine(stringResource(R.string.person_detail_no_wishlists))
-        state.wishlists.forEach { entry ->
-            ListRow(
-                title = entry.wishlist.name,
-                detail = if (entry.wishCount == 0) {
-                    stringResource(R.string.person_detail_wishlist_no_wishes)
-                } else {
-                    pluralStringResource(R.plurals.person_detail_wish_count, entry.wishCount, entry.wishCount)
-                },
-                onClickLabel = stringResource(R.string.wishlist_open),
-                onClick = { onOpenWishlist(entry) },
-            )
-            GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter))
-        }
-        AddAction(label = stringResource(R.string.person_detail_add_wishlist), onClick = onAddWishlist)
-
         GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter, vertical = GiftiarySpacing.s))
-        // Muted, last and confirmed: deleting never competes with the rest.
+        // Muted and confirmed: deleting never competes with the page.
         TextButton(
             onClick = onDeleteRequested,
             modifier = Modifier.padding(horizontal = GiftiarySpacing.s),
@@ -599,18 +595,6 @@ internal fun PersonMoreContent(
             Text(stringResource(R.string.people_delete, state.person.name), style = GiftiaryType.actionSmall)
         }
     }
-}
-
-@Composable
-private fun SheetGroupLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        modifier = Modifier
-            .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = GiftiarySpacing.l, bottom = GiftiarySpacing.xs)
-            .semantics { heading() },
-        style = GiftiaryType.overline,
-        color = GiftiaryTheme.colors.textLabel,
-    )
 }
 
 internal data class HistoryGroup(val year: Int, val occasion: Occasion?, val gifts: List<GiftEntry>)

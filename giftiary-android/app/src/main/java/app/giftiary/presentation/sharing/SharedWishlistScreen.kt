@@ -222,9 +222,7 @@ private fun SharedWishes(
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
-    // A list kept for a person reads as theirs; the owner's own list names its owner.
-    val whose = wishlist.personName?.let { stringResource(R.string.shared_wishlist_for_person, it) }
-        ?: memberName(wishlist.ownerDisplayName)
+    val whose = sharedListWhose(wishlist.personName, wishlist.ownerDisplayName)
     LazyColumn(
         modifier = modifier
             .fillMaxSize()

@@ -103,7 +103,7 @@ class SharedWishlistScreenTest {
     fun `the list reads its owner's context, then the wishes in the owner's order`() {
         show(loaded(headphones, coffee, backpack))
 
-        val order = listOf("Peter’s wishlist", "Peter · 3 wishes", "Wishes", "Wireless headphones", "Coffee subscription", "Running backpack")
+        val order = listOf("Peter’s wishlist", "Shared by Peter · 3 wishes", "Wishes", "Wireless headphones", "Coffee subscription", "Running backpack")
         val tops = order.map(::top)
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         compose.onNodeWithText("Peter’s wishlist").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
@@ -113,23 +113,22 @@ class SharedWishlistScreenTest {
     fun `an owner without a name is a neutral member`() {
         show(loaded(headphones, owner = null))
 
-        compose.onNodeWithText("A Giftiary member · 1 wish").assertExists()
+        compose.onNodeWithText("Shared by A Giftiary member · 1 wish").assertExists()
     }
 
     @Test
-    fun `a list kept for a person says whose it is, not who keeps it`() {
+    fun `a list kept for a person says whom it is for and, apart, who shared it`() {
         show(loaded(headphones, personName = "Alex"))
 
-        compose.onNodeWithText("Alex’s wishlist · 1 wish").assertExists()
-        compose.onNodeWithText("Peter · 1 wish").assertDoesNotExist()
+        compose.onNodeWithText("For Alex · Shared by Peter · 1 wish").assertExists()
     }
 
     @Test
     @Config(qualifiers = "hu")
-    fun `in Hungarian a person's list reads as theirs`() {
+    fun `in Hungarian a person's list reads as for them, shared by its owner`() {
         show(loaded(headphones, personName = "Alex"))
 
-        compose.onNodeWithText("Alex kívánságlistája · 1 kívánság").assertExists()
+        compose.onNodeWithText("Alex részére · Megosztotta: Peter · 1 kívánság").assertExists()
     }
 
     @Test
@@ -183,7 +182,8 @@ class SharedWishlistScreenTest {
         compose.onNodeWithText("Reserved").assert(!hasClickAction())
         compose.onNodeWithText("I’ll get this").assertDoesNotExist()
         compose.onNodeWithText("Undo").assertDoesNotExist()
-        compose.onNodeWithText("by", substring = true).assertDoesNotExist()
+        // The header names who shared the list; the reservation itself names no one.
+        compose.onNodeWithText("Reserved by", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -229,7 +229,7 @@ class SharedWishlistScreenTest {
         show(loaded())
 
         compose.onNodeWithText("No wishes on this list yet.").assertExists()
-        compose.onNodeWithText("Peter · No wishes yet").assertExists()
+        compose.onNodeWithText("Shared by Peter · No wishes yet").assertExists()
     }
 
     @Test

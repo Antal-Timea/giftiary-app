@@ -1,6 +1,7 @@
 package app.giftiary.presentation.people
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.OccasionType
@@ -29,6 +31,7 @@ import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
 import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
+import app.giftiary.testing.lineCount
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
@@ -59,10 +62,12 @@ class PersonDetailScreenTest {
     private val christmasList = PersonWishlist(Wishlist(UUID.randomUUID(), peter.id, "Christmas", Instant.EPOCH, Instant.EPOCH), 2)
     private val actions = mutableListOf<String>()
     private var deletion by mutableStateOf(PersonDeletion())
+    private var fontScale by mutableFloatStateOf(1f)
 
-    private fun showDetail(state: PersonDetailUiState.Loaded, fontScale: Float = 1f) {
+    private fun showDetail(state: PersonDetailUiState.Loaded, fontScale: Float = 1f, today: LocalDate = this.today) {
+        this.fontScale = fontScale
         compose.setContent {
-            WithFontScale(fontScale) {
+            WithFontScale(this.fontScale) {
                 GiftiaryTheme {
                     PersonDetailScreen(
                         state = state,
@@ -129,7 +134,8 @@ class PersonDetailScreenTest {
         val idea = ideaEntry(ideaDetails(peter, name = "Earbuds").copy(occasionId = birthday.id), peter)
         showDetail(loaded(ideas = listOf(idea)))
 
-        compose.onNodeWithText("Birthday · October 12").assertExists()
+        compose.onAllNodesWithText("Birthday")[0].assertExists()
+        compose.onNodeWithText("October 12").assertExists()
         compose.onNodeWithText("22").assertExists()
         compose.onNodeWithText("1 idea").assertExists()
 
@@ -157,62 +163,61 @@ class PersonDetailScreenTest {
     }
 
     @Test
-    fun `the page keeps the approved order of hero, occasion, gift ideas and history, with nothing between`() {
+    fun `the page reads hero, next occasion, occasions, gift ideas, wishlists and history, each section ending in its add`() {
         val idea = ideaEntry(ideaDetails(peter, name = "Hiking poles"), peter)
         val gift = giftEntry(giftDetails(person = peter, name = "Headphones"), peter)
         showDetail(loaded(ideas = listOf(idea), gifts = listOf(gift), wishlists = listOf(christmasList)))
 
-        val order = listOf("Husband", "Birthday · October 12", "Gift ideas", "Hiking poles", "History with Peter", "Headphones")
+        val order = listOf(
+            "Husband", "October 12", "Occasions", "Name day", "Add occasion", "Gift ideas", "Hiking poles", "Add idea",
+            "Wishlists", "Christmas", "Add wishlist", "History with Peter", "Headphones",
+        )
         val tops = order.map { compose.onNodeWithText(it).getBoundsInRoot().top }
         assertEquals("top to bottom: $order", tops.sorted(), tops)
-        // Occasions, wishlists and deleting are secondary: in the More sheet, not on the page.
-        listOf("Occasions", "Name day", "Wishlists", "Christmas", "Add occasion", "Add wishlist", "Delete Peter").forEach {
-            compose.onNodeWithText(it).assertDoesNotExist()
+        listOf("Occasions", "Gift ideas", "Wishlists").forEach {
+            compose.onNodeWithText(it, useUnmergedTree = true).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         }
-        compose.onNodeWithContentDescription("More for Peter").assertExists()
-        compose.onNodeWithText("Hiking poles").performClick()
-        compose.onNodeWithText("Add idea").performClick()
-        assertEquals(listOf("idea Hiking poles", "add idea"), actions)
+        compose.onNodeWithText("Delete Peter").assertDoesNotExist()
     }
 
     @Test
-    fun `More holds the occasions, and each choice closes it`() {
-        showDetail(loaded())
+    fun `occasions and wishlists open from the page, and their adds are always there`() {
+        showDetail(loaded(wishlists = listOf(christmasList)))
 
-        compose.onNodeWithContentDescription("More for Peter").performClick()
-        compose.onNodeWithText("OCCASIONS").assertExists()
         compose.onNodeWithText("Name day").performClick()
-        compose.onNodeWithText("OCCASIONS").assertDoesNotExist()
-
-        compose.onNodeWithContentDescription("More for Peter").performClick()
         compose.onNodeWithText("Add occasion").performClick()
+        compose.onNodeWithText("Christmas").performClick()
+        compose.onNodeWithText("Add wishlist").performClick()
 
-        assertEquals(listOf("edit occasion NAME_DAY", "add occasion"), actions)
+        assertEquals(listOf("edit occasion NAME_DAY", "add occasion", "wishlist", "add wishlist"), actions)
     }
 
     @Test
-    fun `with no occasions the page itself offers the first one, under the hero, and More still adds one`() {
+    fun `with nothing yet each section says so and still ends in its add`() {
         showDetail(loaded(occasions = emptyList()))
 
         compose.onNodeWithText("Plan gift").assertDoesNotExist()
         compose.onNodeWithText("No occasions yet").assertExists()
-        assertTrue("under the hero", top("No occasions yet") > top("Peter") && top("Add occasion") < top("Gift ideas"))
-        // A section of its own, headed like Gift ideas.
+        compose.onNodeWithText("No wishlists for them yet.").assertExists()
         assertTrue("headed", top("Occasions") > top("Peter") && top("Occasions") < top("No occasions yet"))
-        compose.onNodeWithText("Occasions", useUnmergedTree = true).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        assertTrue("under the hero", top("Add occasion") < top("Gift ideas"))
         compose.onNodeWithText("Add occasion").performClick()
-        compose.onNodeWithContentDescription("More for Peter").performClick()
-        compose.onAllNodesWithText("Add occasion").assertCountEquals(2)[1].performClick()
+        compose.onNodeWithText("Add wishlist").performClick()
 
-        assertEquals(listOf("add occasion", "add occasion"), actions)
+        assertEquals(listOf("add occasion", "add wishlist"), actions)
     }
 
     @Test
-    fun `once there are occasions, adding more stays in More`() {
-        showDetail(loaded())
+    fun `More holds only the secondary action, deleting, not the page's adds`() {
+        showDetail(loaded(wishlists = listOf(christmasList)))
 
-        compose.onNodeWithText("No occasions yet").assertDoesNotExist()
-        compose.onNodeWithText("Add occasion").assertDoesNotExist()
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("Delete Peter").assertExists()
+        // Only the page's own adds, none repeated in the sheet.
+        compose.onAllNodesWithText("Add occasion").assertCountEquals(1)
+        compose.onAllNodesWithText("Add wishlist").assertCountEquals(1)
+        compose.onNodeWithText("OCCASIONS").assertDoesNotExist()
+        compose.onNodeWithText("WISHLISTS").assertDoesNotExist()
     }
 
     @Test
@@ -221,22 +226,68 @@ class PersonDetailScreenTest {
         showDetail(loaded(occasions = emptyList()), fontScale = 2f)
 
         val width = compose.onRoot().getBoundsInRoot().right
-        listOf("Még nincs alkalom", "Alkalom hozzáadása").forEach {
-            val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
+        listOf("Még nincs alkalom", "Alkalom hozzáadása", "Kívánságlista hozzáadása").forEach {
+            val bounds = compose.onNodeWithText(it, useUnmergedTree = true).performScrollTo().getBoundsInRoot()
             assertTrue("$it fits: ${bounds.right} <= $width", bounds.right <= width)
         }
     }
 
     @Test
-    fun `More holds the person's wishlists and adds one`() {
-        showDetail(loaded(wishlists = listOf(christmasList)))
+    @Config(qualifiers = "hu-w360dp-h3000dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian a section heading keeps clear of its subtitle, at large text too`() {
+        assertHeadingsClear("Ajándékötletek", "Jövőbeli lehetőségek, még nem adtad oda")
+    }
 
-        compose.onNodeWithContentDescription("More for Peter").performClick()
-        compose.onNodeWithText("Christmas").performClick()
-        compose.onNodeWithContentDescription("More for Peter").performClick()
-        compose.onNodeWithText("Add wishlist").performClick()
+    @Test
+    @Config(qualifiers = "w390dp-h3000dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in English a section heading keeps clear of its subtitle, at large text too`() {
+        assertHeadingsClear("Gift ideas", "Future possibilities, not yet given")
+    }
 
-        assertEquals(listOf("wishlist", "add wishlist"), actions)
+    private fun assertHeadingsClear(heading: String, subtitle: String) {
+        showDetail(loaded())
+        listOf(1f, 2f).forEach { scale ->
+            fontScale = scale
+            compose.waitForIdle()
+            val title = compose.onNodeWithText(heading, useUnmergedTree = true).getBoundsInRoot()
+            val line = compose.onNodeWithText(subtitle, useUnmergedTree = true).getBoundsInRoot()
+            // Line boxes that merely touch still let a descender meet the accents below it.
+            assertTrue("$heading at ${scale}x ends ${title.bottom}, subtitle starts ${line.top}", line.top - title.bottom >= 4.dp)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w360dp-h3000dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian the next occasion and its date sit whole beside the countdown, at 360dp`() {
+        assertNextOccasionClean()
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h3000dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian the next occasion and its date sit whole beside the countdown, at 390dp`() {
+        assertNextOccasionClean()
+    }
+
+    private fun assertNextOccasionClean() {
+        val birthday = occasion(peter.id, OccasionDetails(OccasionType.BIRTHDAY, null, 16, 11, null, true))
+        showDetail(loaded(occasions = listOf(birthday)), today = LocalDate.of(2026, 11, 8))
+        listOf(1f, 1.3f, 2f).forEach { scale ->
+            fontScale = scale
+            compose.waitForIdle()
+            val countdown = compose.onNodeWithText("8").getBoundsInRoot()
+            val planGift = top("Ajándék tervezése")
+            listOf("Születésnap", "november 16.").forEach {
+                // The card's own line, above its Plan gift; the occasion's row further down reads the same.
+                val node = compose.onAllNodesWithText(it, useUnmergedTree = true)[0]
+                assertTrue("$it is on the card", node.getBoundsInRoot().top < planGift)
+                assertEquals("$it at ${scale}x is one line", 1, node.lineCount())
+                assertTrue("$it at ${scale}x ends before the countdown", node.getBoundsInRoot().right <= countdown.left)
+            }
+        }
     }
 
     @Test

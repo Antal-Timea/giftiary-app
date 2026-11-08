@@ -28,3 +28,14 @@ internal fun sharingDate(instant: Instant): String {
         .withLocale(locale)
         .format(instant.atZone(ZoneId.systemDefault()))
 }
+
+/**
+ * Who a shared list is for and who shared it, never one standing in for the other: "For Áron ·
+ * Shared by Timi", or only "Shared by Timi" for the sharer's own list. The two are never matched
+ * by name.
+ */
+@Composable
+internal fun sharedListWhose(personName: String?, ownerDisplayName: String?): String = listOfNotNull(
+    personName?.let { stringResource(R.string.shared_wishlist_for_person_short, it) },
+    stringResource(R.string.shared_wishlist_shared_by, memberName(ownerDisplayName)),
+).joinToString(" · ")

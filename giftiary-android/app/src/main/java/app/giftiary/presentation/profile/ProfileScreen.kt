@@ -33,6 +33,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -128,16 +131,21 @@ private fun Identity(state: ProfileUiState, modifier: Modifier = Modifier) {
                 Text(
                     text = title,
                     modifier = Modifier.semantics { heading() },
-                    style = GiftiaryType.screenTitle,
+                    // Standing in for a name, an address is set smaller so more of it stays in view.
+                    style = if (state.displayName == null) GiftiaryType.sectionTitle.asEmail() else GiftiaryType.screenTitle,
                     color = colors.textPrimary,
+                    maxLines = if (state.displayName == null) 1 else Int.MAX_VALUE,
+                    overflow = if (state.displayName == null) TextOverflow.MiddleEllipsis else TextOverflow.Clip,
                 )
             }
             if (state.displayName != null && state.email != null) {
                 Text(
                     text = state.email,
                     modifier = Modifier.padding(top = GiftiarySpacing.xs),
-                    style = GiftiaryType.body,
+                    style = GiftiaryType.body.asEmail(),
                     color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
                 )
             }
         }
@@ -237,3 +245,9 @@ private fun ProfilePreview() {
         )
     }
 }
+
+/**
+ * An address is one line, shortened in the middle so its start and domain stay readable; it is
+ * never broken at "@" or ".com" like words. Its full text is still what is read out.
+ */
+private fun TextStyle.asEmail() = copy(hyphens = Hyphens.None)

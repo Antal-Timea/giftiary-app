@@ -69,6 +69,7 @@ import app.giftiary.presentation.sharing.OnlineContent
 import app.giftiary.presentation.sharing.OnlineState
 import app.giftiary.presentation.sharing.SharedWishlistsViewModel
 import app.giftiary.presentation.sharing.memberName
+import app.giftiary.presentation.sharing.sharedListWhose
 import app.giftiary.presentation.sharing.retryableFailureText
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -447,9 +448,8 @@ private fun invitationMessageText(message: InvitationMessage): String = when (me
 /** The server does not report how many wishes a shared list has, so the row does not say. */
 @Composable
 private fun SharedListRow(wishlist: SharedWishlistSummary, onClick: () -> Unit) {
-    // A list kept for a person is named for them, as on the list itself; otherwise its owner.
     val owner = memberName(wishlist.ownerDisplayName)
-    val whose = wishlist.personName?.let { stringResource(R.string.shared_wishlist_for_person_short, it) } ?: owner
+    val whose = sharedListWhose(wishlist.personName, wishlist.ownerDisplayName)
     GiftiaryRow(
         title = wishlist.name,
         leading = { GiftiaryAvatar(name = wishlist.personName ?: owner) },
