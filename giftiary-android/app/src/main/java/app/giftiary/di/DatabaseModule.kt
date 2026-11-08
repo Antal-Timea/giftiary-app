@@ -8,6 +8,7 @@ import app.giftiary.data.local.MIGRATION_2_3
 import app.giftiary.data.local.MIGRATION_3_4
 import app.giftiary.data.local.MIGRATION_4_5
 import app.giftiary.data.local.MIGRATION_5_6
+import app.giftiary.data.local.MIGRATION_6_7
 import app.giftiary.data.local.dao.AccountDataDao
 import app.giftiary.data.local.dao.GiftDao
 import app.giftiary.data.local.dao.GiftIdeaDao
@@ -33,7 +34,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): GiftiaryDatabase =
         Room.databaseBuilder(context, GiftiaryDatabase::class.java, GiftiaryDatabase.NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
 
     @Provides

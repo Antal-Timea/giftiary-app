@@ -289,3 +289,28 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         )
     }
 }
+
+/**
+ * A photo transfer may belong to a person as well as a gift. SQLite cannot rename and retype a
+ * column in place, so the table is rebuilt; every pending transfer is kept, as its gift's.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Room's v7 definitions, copied verbatim.
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `photo_transfer_new` (`path` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, " +
+                "`entityType` TEXT NOT NULL, `entityId` TEXT NOT NULL, `kind` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                "`attemptCount` INTEGER NOT NULL, `lastErrorCode` TEXT, PRIMARY KEY(`path`))",
+        )
+        db.execSQL(
+            "INSERT INTO `photo_transfer_new` (`path`, `ownerUserId`, `entityType`, `entityId`, `kind`, `createdAt`, " +
+                "`attemptCount`, `lastErrorCode`) SELECT `path`, `ownerUserId`, 'GIFT', `giftId`, `kind`, `createdAt`, " +
+                "`attemptCount`, `lastErrorCode` FROM `photo_transfer`",
+        )
+        db.execSQL("DROP TABLE `photo_transfer`")
+        db.execSQL("ALTER TABLE `photo_transfer_new` RENAME TO `photo_transfer`")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_photo_transfer_ownerUserId_createdAt` ON `photo_transfer` (`ownerUserId`, `createdAt`)",
+        )
+    }
+}

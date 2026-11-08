@@ -13,6 +13,7 @@ import app.giftiary.data.local.entity.RemoteState
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.reminders.DeviceNotificationAccess
 import app.giftiary.data.reminders.ReminderNotifier
 import app.giftiary.data.reminders.ReminderPreferences
@@ -277,6 +278,7 @@ class OwnerSessionTest {
             database, database.personDao(), database.occasionDao(),
             SyncOperationQueue(database.syncOperationDao(), Clock.systemUTC()), session, Clock.systemUTC(),
             SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         session.awaitState(OwnerSessionState.Ready(alice))
 

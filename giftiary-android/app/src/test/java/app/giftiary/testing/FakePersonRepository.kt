@@ -39,10 +39,10 @@ class FakePersonRepository : PersonRepository {
 
     override suspend fun getPerson(id: UUID): Person? = people.value.find { it.id == id }
 
-    override suspend fun addPerson(name: String, relationship: String?): Person {
+    override suspend fun addPerson(name: String, relationship: String?, photoPath: String?): Person {
         addGate?.await()
         writeFailure?.let { throw it }
-        val person = person(name = name, relationship = relationship)
+        val person = person(name = name, relationship = relationship).copy(photoPath = photoPath)
         people.update { it + person }
         return person
     }
@@ -53,6 +53,12 @@ class FakePersonRepository : PersonRepository {
         people.update { list ->
             list.map { if (it.id == id) it.copy(name = name, relationship = relationship) else it }
         }
+    }
+
+    override suspend fun setPersonPhoto(id: UUID, photoPath: String?) {
+        writeFailure?.let { throw it }
+        if (people.value.none { it.id == id }) throw PersonNotFoundException(id)
+        people.update { list -> list.map { if (it.id == id) it.copy(photoPath = photoPath) else it } }
     }
 
     override suspend fun deletePerson(id: UUID) {

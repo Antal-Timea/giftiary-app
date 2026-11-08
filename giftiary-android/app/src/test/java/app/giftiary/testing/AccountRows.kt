@@ -56,7 +56,7 @@ suspend fun GiftiaryDatabase.seedAccount(owner: UUID) {
     syncConflictDao().insert(
         SyncConflictEntity(UUID.randomUUID(), owner, SyncEntityType.PERSON, person.id, UUID.randomUUID(), 1, 2, "{}", NOW, null),
     )
-    photoTransferDao().put(PhotoTransferEntity("$owner/${UUID.randomUUID()}.jpg", owner, gift.id, PhotoTransferKind.UPLOAD, NOW, 0, null))
+    photoTransferDao().put(PhotoTransferEntity("$owner/${UUID.randomUUID()}.jpg", owner, SyncEntityType.GIFT, gift.id, PhotoTransferKind.UPLOAD, NOW, 0, null))
 }
 
 fun pendingCreate(owner: UUID?, type: SyncEntityType, entityId: UUID) = SyncOperationEntity(

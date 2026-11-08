@@ -72,7 +72,10 @@ class SyncReconcilerTest {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftiaryDatabase::class.java).build()
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
         val owner = FakeActiveOwner(alice)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, owner, clock, SyncRequester {})
+        people = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), queue, owner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
+        )
         occasions = OccasionRepositoryImpl(database, database.occasionDao(), database.personDao(), queue, owner, clock, SyncRequester {})
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue, owner, clock,

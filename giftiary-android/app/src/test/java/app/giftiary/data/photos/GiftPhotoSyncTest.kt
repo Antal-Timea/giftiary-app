@@ -71,7 +71,10 @@ class GiftPhotoSyncTest {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), GiftiaryDatabase::class.java).build()
         val queue = SyncOperationQueue(database.syncOperationDao(), clock)
         val activeOwner = FakeActiveOwner(alice)
-        people = PersonRepositoryImpl(database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {})
+        people = PersonRepositoryImpl(
+            database, database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
+            transfers, files,
+        )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
             transfers, files,
@@ -298,7 +301,7 @@ class GiftPhotoSyncTest {
 
     /** New instances over the same database and files, as after the process was restarted. */
     private fun restart() {
-        photos = GiftPhotoSync(transfers, database.giftDao(), database.syncOperationDao(), files, remote, clock)
+        photos = GiftPhotoSync(transfers, database.giftDao(), database.personDao(), database.syncOperationDao(), files, remote, clock)
         runner = SyncRunner(
             database.syncOperationDao(),
             SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),

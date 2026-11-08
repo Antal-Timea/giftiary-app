@@ -19,12 +19,27 @@ interface PersonRepository {
     /** Returns null if the person does not exist or has been deleted. */
     suspend fun getPerson(id: UUID): Person?
 
-    suspend fun addPerson(name: String, relationship: String?): Person
+    /**
+     * [photoPath] names a photo imported for this account on this device; it is uploaded before
+     * the person is synced.
+     *
+     * @throws GiftPhotoUnavailableException if the photo is not available on this device.
+     */
+    suspend fun addPerson(name: String, relationship: String?, photoPath: String? = null): Person
 
     /** @throws PersonNotFoundException if the person does not exist or has been deleted. */
     suspend fun updatePerson(id: UUID, name: String, relationship: String?)
 
-    /** Also deletes the person's occasions. Deleting a person that is already gone is a no-op. */
+    /**
+     * Replaces or removes (null) the person's photo. The old photo's object is deleted only once
+     * the person no longer naming it has been synced.
+     *
+     * @throws PersonNotFoundException if the person does not exist or has been deleted.
+     * @throws GiftPhotoUnavailableException if the photo is not available on this device.
+     */
+    suspend fun setPersonPhoto(id: UUID, photoPath: String?)
+
+    /** Also deletes the person's occasions and photo. Deleting a person that is already gone is a no-op. */
     suspend fun deletePerson(id: UUID)
 }
 

@@ -128,10 +128,11 @@ class ForegroundSyncCoordinatorTest {
         people = PersonRepositoryImpl(
             database, database.personDao(), database.occasionDao(), SyncOperationQueue(database.syncOperationDao(), clock),
             activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         backend = FakeBackend(database)
         photoSync = GiftPhotoSync(
-            database.photoTransferDao(), database.giftDao(), database.syncOperationDao(),
+            database.photoTransferDao(), database.giftDao(), database.personDao(), database.syncOperationDao(),
             GiftPhotoFiles(ApplicationProvider.getApplicationContext()), photoRemote, clock,
         )
         runner = SyncRunner(
@@ -1198,6 +1199,7 @@ class ForegroundSyncCoordinatorTest {
         val writer = PersonRepositoryImpl(
             database, database.personDao(), database.occasionDao(), SyncOperationQueue(database.syncOperationDao(), clock),
             activeOwner, clock, coordinator,
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         var queuedAtCatchUp = -1
         scheduler.onCatchUp = {
@@ -1228,6 +1230,7 @@ class ForegroundSyncCoordinatorTest {
         val writer = PersonRepositoryImpl(
             database, database.personDao(), database.occasionDao(), SyncOperationQueue(database.syncOperationDao(), clock),
             activeOwner, clock, coordinator,
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
 
         val anna = writer.addPerson("Anna", null)
