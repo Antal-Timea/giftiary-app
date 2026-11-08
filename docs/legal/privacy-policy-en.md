@@ -60,6 +60,7 @@ You type this data in yourself; nothing is read automatically from your device (
 ### 3.5. Sharing data
 
 - **Invites:** when you share one of your own wishlists, an invite is created. The server stores the invite's secret code only in an irreversible (hashed) form; the code itself appears only in the shared link. We also store when the invite was created, when it expires and, if applicable, when it was revoked.
+- **Email invites:** you can also invite someone to one of your own wishlists by entering their email address. The server then stores the invited email address (lowercased, with surrounding spaces removed), the list's identifier, the invite's status (pending, accepted, declined, revoked or expired), and when the invite was created, when it expires (14 days after creation) and when it was closed. We use the email address only to address the invitation to, and identify, the matching Giftiary account: the invite appears in the app only to someone who signs in with exactly that address as a confirmed email address, who can accept or decline it. Before accepting, they see the list's name, your display name and, if you keep the list for one of your people, that person's name. We do not send an invitation email when you enter the address, and we do not use the address for advertising or any other purpose. The invite does not store the invited account's identifier, and we do not tell you whether the address belongs to a Giftiary account. Only you see the invited email address, among your pending and not accepted invites.
 - **Memberships:** who joined a list, and when.
 - **Reservations:** which member reserved a wish.
 
@@ -166,6 +167,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   - Photos are not kept marked as deleted.
 - **Profile photo:** if you replace or remove it, the previous photo is deleted from the file storage right after the change. If that deletion fails (for example the connection drops), the leftover is deleted at a later profile photo change, or with the account.
 - **Expired and revoked invites:** kept as rows (with their expiry and revocation time) until the account is deleted.
+- **Email invites:** an invite's row, together with the invited email address, is kept even if you revoke it or remove it from your list, if the invitee accepts or declines it, if it expires, and after the list is deleted; there is currently no automatic permanent deletion. These rows are deleted when your account is deleted; deleting the invitee's account does not delete them.
 - **Signing out:**
   - Signing out is not deletion. On the device, the account's data and its gift and person photos stay stored but hidden, so that you can reach it again when you sign back in with the same account.
   - To remove the data from the device as well, delete the account, or clear the app's data / uninstall the app.
@@ -183,7 +185,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 
 - **On the server**, first all of the account's gift and person photos, and then its profile photos, are deleted from the file storage; then, in a single step, the following are permanently deleted:
   - all of your account's people, occasions, gift ideas, gifts, wishlists and wishes;
-  - your invites and the sync change log;
+  - your invites (your email invites included) and the sync change log;
   - your profile (display name and the reference to your profile photo);
   - your memberships and reservations on other people's lists, and every membership and reservation on your own lists;
   - finally the user account itself, together with its sign-in sessions and linked Google/Facebook identities.
@@ -191,6 +193,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   This data is not kept marked as deleted; it is actually removed. If deleting the account fails after the photos were deleted, some photos may already be gone; the account deletion can then be tried again.
 - **On the device you delete from:** the app removes the account's local data and photos, reminder settings and pending reminders, then signs you out. If the app stops part way, it finishes on its next start.
 - **On the account's other devices**, the data is **not deleted automatically**. Those devices will eventually be signed out, so the data is no longer available through the app in the normal way, but it may remain in their local database. You can remove it there by clearing the app's data or uninstalling the app.
+- Email invites that other users sent to your email address belong to their accounts, so deleting your account does not delete them (see section 11).
 - If another of your devices, still holding a valid sign-in, uploads a photo while the account is being deleted, that photo may remain in the file storage. No other user can access such a leftover photo, and we delete it through manual maintenance.
 - For backups, see section 11.
 

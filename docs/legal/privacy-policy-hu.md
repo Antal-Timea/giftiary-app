@@ -60,6 +60,7 @@ Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be autom
 ### 3.5. Megosztási adatok
 
 - **Meghívók:** amikor egy saját kívánságlistádat megosztod, meghívó jön létre. A meghívó titkos kódját a szerver csak visszafejthetetlen (hash-elt) formában tárolja; a kód csak a megosztott hivatkozásban szerepel. A meghívó létrehozásának, lejáratának és esetleges visszavonásának időpontját is tároljuk.
+- **E-mailes meghívók:** egy saját kívánságlistádra valakit az e-mail-címe megadásával is meghívhatsz. Ilyenkor a szerver tárolja a meghívott e-mail-címét (kisbetűsítve, a szóközök levágásával), a lista azonosítóját, a meghívó állapotát (függőben, elfogadva, elutasítva, visszavonva vagy lejárt), valamint a létrehozás, a lejárat (14 nappal a létrehozás után) és a lezárás időpontját. Az e-mail-címet kizárólag arra használjuk, hogy a meghívást a megfelelő Giftiary-fiókhoz címezzük és azonosítsuk: a meghívó csak annak jelenik meg az alkalmazásban, aki megerősített e-mail-címként pontosan ezzel a címmel jelentkezik be, és ő elfogadhatja vagy elutasíthatja. Elfogadás előtt a lista nevét, a megjelenített nevedet és – ha a listát egy személyed számára vezeted – a személy nevét látja. Az e-mail-cím megadásakor nem küldünk meghívó e-mailt, és a címet reklám- vagy más célra nem használjuk. A meghívóban a meghívott fiókjának azonosítóját nem tároljuk, és neked sem jelezzük, hogy a címhez tartozik-e Giftiary-fiók. A meghívott e-mail-címét a függő és el nem fogadott meghívóid között csak te látod.
 - **Tagságok:** ki csatlakozott egy listához, és mikor.
 - **Foglalások:** melyik tag foglalt le egy kívánságot.
 
@@ -166,6 +167,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   - A fotókat nem őrizzük „törölt” jelöléssel.
 - **Profilfotó:** ha lecseréled vagy eltávolítod, az előző fotó közvetlenül a változás után törlődik a fájltárolóból. Ha ez a törlés nem sikerül (például megszakad a kapcsolat), a maradványt egy későbbi profilfotó-cserénél, illetve a fiókkal együtt töröljük.
 - **Lejárt és visszavont meghívók:** sorokként (lejárati és visszavonási időponttal) a fiók törléséig megmaradnak.
+- **E-mailes meghívók:** a meghívó sora a meghívott e-mail-címével együtt akkor is megmarad, ha visszavonod vagy eltávolítod a listádról, ha a meghívott elfogadja vagy elutasítja, ha lejár, és a lista törlése után is; automatikus végleges törlés jelenleg nincs. Ezek a sorok a te fiókod törlésekor törlődnek; a meghívott fiókjának törlése nem törli őket.
 - **Kijelentkezés:**
   - A kijelentkezés nem törlés. A készüléken a fiók adatai, ajándék- és személyfotói rejtve, de tárolva maradnak, hogy ugyanazzal a fiókkal visszajelentkezve újra elérd őket.
   - Ha a készülékről is el szeretnéd távolítani az adatokat, töröld a fiókot, vagy töröld az alkalmazás adatait / távolítsd el az alkalmazást.
@@ -183,7 +185,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 
 - **A szerveren** először a fiók összes ajándék- és személyfotója, majd a profilfotói törlődnek a fájltárolóból, ezután egyetlen lépésben, véglegesen törlődik:
   - a fiókod összes személye, alkalma, ajándékötlete, ajándéka, kívánságlistája és kívánsága;
-  - a meghívóid és a szinkronizálás változásnaplója;
+  - a meghívóid (az e-mailes meghívóid is) és a szinkronizálás változásnaplója;
   - a profilod (megjelenített név és a profilfotód hivatkozása);
   - a te tagságaid és foglalásaid mások listáin, valamint a saját listáidhoz tartozó összes tagság és foglalás;
   - végül maga a felhasználói fiók, a bejelentkezési munkamenetekkel és a kapcsolt Google-/Facebook-identitásokkal együtt.
@@ -191,6 +193,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   Ezek az adatok nem „törölt” jelöléssel maradnak meg, hanem ténylegesen törlődnek. Ha a fotók törlése után a fiók törlése nem sikerül, néhány fotó már törlődhetett; a fióktörlés ilyenkor újra megpróbálható.
 - **Azon a készüléken, amelyen a törlést elvégzed:** az alkalmazás törli a fiók helyi adatait és fotóit, emlékeztető-beállításait és függő emlékeztetőit, majd kijelentkeztet. Ha az alkalmazás a folyamat közben leáll, a következő indításkor befejezi.
 - **A fiók többi eszközén** az adatok **nem törlődnek automatikusan**. Ezek az eszközök idővel kijelentkeznek, így az adatok a szokásos módon már nem érhetők el az alkalmazásban, de a helyi adatbázisukban megmaradhatnak. Ezeken az eszközökön az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
+- Azok az e-mailes meghívók, amelyeket más felhasználók a te e-mail-címedre küldtek, az ő fiókjukhoz tartoznak, ezért a fiókod törlése nem törli őket (lásd 11. pont).
 - Ha egy másik eszközöd a törlés idején még érvényes bejelentkezéssel fotót tölt fel, az a fájltárolóban maradhat. Az ilyen maradványfotót más felhasználó nem érheti el, és kézi karbantartással töröljük.
 - A biztonsági mentésekre a 11. pont vonatkozik.
 
