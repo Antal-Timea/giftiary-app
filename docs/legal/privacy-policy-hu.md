@@ -1,6 +1,6 @@
 # Giftiary – Adatkezelési tájékoztató
 
-**Hatályos:** 2026. október 28.
+**Hatályos:** 2026. november 8.
 
 Ez a tájékoztató azt írja le, hogyan kezeli a Giftiary Android-alkalmazás és a hozzá tartozó szolgáltatás a személyes adatokat. Az angol nyelvű változat tartalmilag megegyezik ezzel a szöveggel.
 
@@ -16,7 +16,7 @@ A Giftiary egy magánszemély által üzemeltetett alkalmazás. Adatvédelmi tis
 
 - A Giftiaryben az ajándékokra emlékezhetsz, azokat tervezheted és megoszthatod. Személyeket, alkalmakat, ajándékötleteket, ajándékokat és kívánságlistákat rögzíthetsz.
 - Az adataidat először a készülékeden tároljuk, majd fiókodhoz kötve szinkronizáljuk a szerverünkre, hogy több eszközön is elérd őket.
-- **Nem** használunk analitikát, reklámot, követést vagy hirdetési azonosítót, és **nem** gyűjtünk helyadatot, névjegyeket vagy fájlokat a készülékedről. Fotót csak akkor kezelünk, ha te csatolsz egyet egy ajándékhoz. Nincs fizetés az alkalmazásban.
+- **Nem** használunk analitikát, reklámot, követést vagy hirdetési azonosítót, és **nem** gyűjtünk helyadatot, névjegyeket vagy fájlokat a készülékedről. Fotót csak akkor kezelünk, ha te adsz hozzá egyet: egy ajándékhoz, egy személyhez vagy saját profilfotóként. Ebben a kiadásban minden fotó csak a te fiókodé, privát. Nincs fizetés az alkalmazásban.
 - Az adataidat nem adjuk el, és nem adjuk át reklámcélra.
 - A fiókodat az alkalmazásban bármikor törölheted (Beállítások → Fiók törlése).
 
@@ -43,7 +43,8 @@ Ha ugyanazzal az igazolt e-mail-címmel már van Giftiary-fiókod, a hitelesít�
 
 ### 3.3. Profil
 
-- **Megjelenített név (választható):** a Beállításokban adhatod meg. Csak azok látják, akikkel kívánságlistát osztasz meg, vagy akiknek a megosztott listájához csatlakoztál. Ha nem adsz meg nevet, helyette „Giftiary-tag” jellegű általános felirat jelenik meg.
+- **Megjelenített név (választható):** a profilodban (Profil szerkesztése) adhatod meg. Csak azok látják, akikkel kívánságlistát osztasz meg, vagy akiknek a megosztott listájához csatlakoztál. Ha nem adsz meg nevet, helyette „Giftiary-tag” jellegű általános felirat jelenik meg.
+- **Profilfotó (választható):** egy kép, amelyet a Profil szerkesztése oldalon a rendszer fotóválasztójával választasz ki, vagy a kameraalkalmazással készítesz. Négyzetesre vágjuk, 640 × 640 képpontosra méretezzük, JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait. **Csak te látod**: nem látják azok, akikkel kívánságlistát osztasz meg, és nem része a meghívóknak, tagságoknak vagy megosztott listáknak. Csak a szerverünkön tároljuk, a készülékeden nem marad meg; a cseréjéhez internetkapcsolat kell.
 
 ### 3.4. Az általad rögzített tartalom
 
@@ -52,6 +53,7 @@ Ha ugyanazzal az igazolt e-mail-címmel már van Giftiary-fiókod, a hitelesít�
 - **Ajándékötletek és ajándékok:** megnevezés, irány (adott vagy kapott ajándék), ki adta vagy kapta, alkalom, ár vagy becsült ár, termékhivatkozás, megjegyzés, állapot.
 - **Kívánságlisták és kívánságok:** a lista neve, a kívánság neve, megjegyzés, becsült ár, termékhivatkozás.
 - **Ajándékfotó (választható):** ajándékonként legfeljebb egy kép, amelyet te választasz ki a rendszer fotóválasztójával, vagy a készüléked kameraalkalmazásával készítesz. Mentés előtt kicsinyítjük (a hosszabb oldal legfeljebb 1600 képpont), JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait (például a helyadatot és az eszköz adatait).
+- **Személy fotója (választható):** az általad rögzített személyenként legfeljebb egy kép, amelyet ugyanígy választasz ki vagy készítesz. Négyzetesre vágjuk, 640 × 640 képpontosra méretezzük, JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait. Az ilyen fotó általában valaki mást ábrázol (lásd 5. pont).
 
 Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá. Ha új fényképet készítesz, a kameraalkalmazás csak a Giftiarynek adja át, amely a fentiek szerint feldolgozza, a kamera eredeti felvételét pedig azonnal törli; a galériádba mi nem mentjük.
 
@@ -74,12 +76,13 @@ A regisztráció megerősítéséhez és az elfelejtett jelszó visszaállítás
 ### 3.8. A készülékeden tárolt adatok
 
 - Az adataid helyi másolata az alkalmazás saját adatbázisában, hogy internet nélkül is működjön.
-- Az ajándékfotóid helyi másolata az alkalmazás saját tárhelyén.
+- Az ajándék- és személyfotóid helyi másolata az alkalmazás saját tárhelyén.
+- Egy épp kiválasztott profilfotó, csak a feltöltéséig. Ha nem sikerül feltölteni, és nem próbálod újra, az alkalmazás később automatikusan törli.
 - A bejelentkezési munkamenet (amíg be vagy jelentkezve).
 - Az emlékeztetők beállítása (be/ki) és az utolsó emlékeztető napja, fiókonként.
 - Egy ideiglenes jelölő, ha egy fióktörlés még nem fejeződött be a készüléken.
 
-Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, az ajándékfotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
+Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
 
 ### 3.9. Ha írsz nekünk
 
@@ -102,18 +105,20 @@ Az értesítések megjelenítéséhez az Android értesítési engedélyére van
 
 ## 5. Más személyekről rögzített adatok
 
-A Giftiaryben más emberekről is rögzíthetsz adatokat (például nevüket, születésnapjukat, a nekik szánt vagy tőlük kapott ajándékokat). Ezeket az adatokat kizárólag azért kezeljük, hogy a szolgáltatást neked nyújtsuk:
-- csak te látod őket, a megosztott kívánságlisták tartalmát kivéve (lásd 7. pont);
+A Giftiaryben más emberekről is rögzíthetsz adatokat (például nevüket, születésnapjukat, a nekik szánt vagy tőlük kapott ajándékokat, és ha szeretnéd, egy fotót róluk). Ezeket az adatokat kizárólag azért kezeljük, hogy a szolgáltatást neked nyújtsuk:
+- csak te látod őket, a megosztott kívánságlisták tartalmát kivéve (lásd 7. pont); egy személy fotóját soha senki más nem látja;
 - az érintetteket nem keressük meg és nem értesítjük;
 - az adataikat más célra nem használjuk.
 
-Kérjük, csak olyan adatot rögzíts, amelyre a saját, személyes ajándékszervezésedhez szükséged van. Ha valaki úgy véli, hogy a Giftiaryben adatot kezelünk róla, a 18. pontban leírt elérhetőségen fordulhat hozzánk.
+Kérjük, csak olyan adatot rögzíts, amelyre a saját, személyes ajándékszervezésedhez szükséged van, és valakiről csak akkor adj hozzá fotót, ha erre a magáncélra használhatod. Ha valaki úgy véli, hogy a Giftiaryben adatot kezelünk róla, a 18. pontban leírt elérhetőségen fordulhat hozzánk.
 
 ## 6. Tárolás és szinkronizálás
 
 A Giftiary offline is működik: a változtatások először a készülékeden mentődnek, majd internetkapcsolat esetén titkosított (HTTPS) kapcsolaton szinkronizálódnak a szerverre. A szerveren minden fiók csak a saját adataihoz fér hozzá; ezt adatbázisszintű hozzáférés-szabályozás biztosítja.
 
-Az ajándékfotók is először a készülékeden mentődnek, és internetkapcsolat esetén töltődnek fel egy privát fájltárolóba; az ajándék csak a fotó feltöltése után szinkronizálódik vele. A tárolóban minden fiók csak a saját mappájához fér hozzá, a fotóknak nincs nyilvános hivatkozása, és másik eszközödre szükség esetén onnan töltődnek le.
+Az ajándék- és személyfotók is először a készülékeden mentődnek, és internetkapcsolat esetén töltődnek fel egy privát fájltárolóba; az ajándék vagy a személy csak a fotó feltöltése után szinkronizálódik vele. A tárolóban minden fiók csak a saját mappájához fér hozzá, a fotóknak nincs nyilvános hivatkozása, és másik eszközödre szükség esetén onnan töltődnek le.
+
+A profilfotód nem a készülékeden mentődik először: azonnal feltöltődik egy külön privát fájltárolóba, amelyhez csak a te fiókod fér hozzá, és csak a sikeres feltöltés után számít megváltozottnak.
 
 ## 7. Kívánságlisták megosztása, meghívók és foglalások
 
@@ -122,7 +127,7 @@ Az ajándékfotók is először a készülékeden mentődnek, és internetkapcso
 - **A lista tulajdonosa látja:** a tagok megjelenített nevét és a csatlakozásuk idejét, valamint a nyitott meghívókat.
 - **Foglalások:** a tagok egy kívánságnál csak azt látják, hogy szabad, általuk foglalt, vagy valaki más foglalta – azt nem, hogy ki. **A lista tulajdonosa a foglalásokról semmit nem lát**, így a meglepetés megmarad.
 - A tulajdonos eltávolíthat tagot, és a tag kiléphet; ilyenkor a tag foglalásai érvényüket vesztik.
-- A megosztás csak az adott kívánságlistához ad hozzáférést. A személyeid, alkalmaid, ajándékötleteid, ajándékaid (és azok fotói) és más listáid nem válnak láthatóvá.
+- A megosztás csak az adott kívánságlistához ad hozzáférést. A személyeid (és fotóik), alkalmaid, ajándékötleteid, ajándékaid (és azok fotói), a profilfotód és más listáid nem válnak láthatóvá. Ez arra a listára is igaz, amelyet egy személyed számára vezetsz: a tagok a lista címzettjeként a személy nevét látják, a fotóját soha.
 
 ## 8. Emlékeztetők és értesítések
 
@@ -132,7 +137,7 @@ Ha bekapcsolod az emlékeztetőket, az alkalmazás a készülékeden, helyben á
 
 Adataidat nem adjuk el, és nem adjuk át harmadik félnek reklám- vagy marketingcélra. A szolgáltatás működtetéséhez az alábbi szolgáltatókat vesszük igénybe:
 
-- **Supabase** (Supabase, Inc.) – hitelesítés (felhasználói fiókok, bejelentkezés, Google- és Facebook-bejelentkezés kezelése), adatbázis és fájltárolás (ajándékfotók). A projektünk az Európai Unióban, Frankfurtban (eu-central-1) található adatközpontban fut. A Supabase további alvállalkozókat (például felhőinfrastruktúra-szolgáltatót) vehet igénybe. Adatvédelmi tájékoztatója: https://supabase.com/privacy
+- **Supabase** (Supabase, Inc.) – hitelesítés (felhasználói fiókok, bejelentkezés, Google- és Facebook-bejelentkezés kezelése), adatbázis és fájltárolás (ajándék-, személy- és profilfotók). A projektünk az Európai Unióban, Frankfurtban (eu-central-1) található adatközpontban fut. A Supabase további alvállalkozókat (például felhőinfrastruktúra-szolgáltatót) vehet igénybe. Adatvédelmi tájékoztatója: https://supabase.com/privacy
 - **Resend** – a megerősítő és jelszó-visszaállító e-mailek kézbesítése (a hitelesítési rendszer egyéni SMTP-szolgáltatójaként). Adatvédelmi tájékoztatója: https://resend.com/legal/privacy-policy
 - **Porkbun** – a support@giftiary.app postafiók szolgáltatója: az erre a címre küldött adatvédelmi és támogatási megkeresések fogadása és tárolása.
 - **Google** – az alkalmazás terjesztése a Google Playen.
@@ -152,7 +157,8 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   - Ha az alkalmazásban törölsz egy elemet (például egy személyt vagy ajándékot), az mindenhol eltűnik a nézetekből.
   - A szerveren „törölt” jelöléssel megmarad, hogy a többi eszközöd is értesüljön a törlésről; a szinkronizálás változásnaplója szintén megmarad.
   - Mindkettő a fiók törléséig marad meg; automatikus végleges törlés jelenleg nincs.
-- **Ajándékfotók:** ha egy fotót lecserélsz vagy eltávolítasz, vagy törlöd az ajándékot, a fotó törlődik a fájltárolóból, amint a változás szinkronizálódott, és a helyi másolatai is törlődnek (a többi eszközödön a következő szinkronizáláskor). A fotókat nem őrizzük „törölt” jelöléssel.
+- **Ajándék- és személyfotók:** ha egy fotót lecserélsz vagy eltávolítasz, vagy törlöd az ajándékot vagy a személyt, a fotó törlődik a fájltárolóból, amint a változás szinkronizálódott, és a helyi másolatai is törlődnek (a többi eszközödön a következő szinkronizáláskor). A fotókat nem őrizzük „törölt” jelöléssel.
+- **Profilfotó:** ha lecseréled vagy eltávolítod, az előző fotó közvetlenül a változás után törlődik a fájltárolóból. Ha ez a törlés nem sikerül (például megszakad a kapcsolat), a maradványt egy későbbi profilfotó-cserénél, illetve a fiókkal együtt töröljük.
 - **Lejárt és visszavont meghívók:** sorokként (lejárati és visszavonási időponttal) a fiók törléséig megmaradnak.
 - **Kijelentkezés:**
   - A kijelentkezés nem törlés. A készüléken a fiók adatai rejtve, de tárolva maradnak, hogy ugyanazzal a fiókkal visszajelentkezve újra elérd őket.
@@ -167,10 +173,10 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 
 **Mi történik:**
 
-- **A szerveren** először a fiók összes ajándékfotója törlődik a fájltárolóból, majd egyetlen lépésben, véglegesen törlődik:
+- **A szerveren** először a fiók összes ajándék- és személyfotója, majd a profilfotói törlődnek a fájltárolóból, ezután egyetlen lépésben, véglegesen törlődik:
   - a fiókod összes személye, alkalma, ajándékötlete, ajándéka, kívánságlistája és kívánsága;
   - a meghívóid és a szinkronizálás változásnaplója;
-  - a profilod (megjelenített név);
+  - a profilod (megjelenített név és a profilfotód hivatkozása);
   - a te tagságaid és foglalásaid mások listáin, valamint a saját listáidhoz tartozó összes tagság és foglalás;
   - végül maga a felhasználói fiók, a bejelentkezési munkamenetekkel és a kapcsolt Google-/Facebook-identitásokkal együtt.
 
@@ -204,9 +210,10 @@ Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál 
 - Az alkalmazás és a szerver közötti kapcsolat titkosított (HTTPS).
 - Minden fiók csak a saját adataihoz fér hozzá; ezt adatbázisszintű hozzáférés-szabályozás biztosítja.
 - A jelszavakat és a meghívókódokat csak visszafejthetetlen (hash-elt) formában tároljuk.
-- Az ajándékfotók privát fájltárolóban vannak: minden fiók csak a saját mappájához fér hozzá, nyilvános hivatkozás nincs.
+- A fotók privát fájltárolóban vannak: minden fiók csak a saját mappájához fér hozzá, nyilvános hivatkozás nincs, a profilfotókat pedig minden más fotótól elkülönítve tároljuk.
+- A személy- és profilfotók a kívánságlista-megosztáson és a meghívókon keresztül sem érhetők el; a szerver a tulajdonosukon kívül senkinek nem adja ki őket.
 - A megosztott listák tulajdonosa a foglalásokat a szerveren keresztül sem kapja meg.
-- A bejelentkezési munkamenetet, a helyi adatbázist és az ajándékfotókat az Android biztonsági mentése nem menti.
+- A bejelentkezési munkamenetet, a helyi adatbázist és a fotókat az Android biztonsági mentése nem menti.
 
 Teljes biztonságot egyetlen rendszer sem tud garantálni, de észszerű intézkedésekkel védjük az adataidat.
 
@@ -217,7 +224,7 @@ A Giftiary jelenleg felnőtteknek készült, és nem gyermekeknek szól. Ha úgy
 ## 16. Amit nem csinálunk
 
 - Nem használunk analitikai, reklám- vagy hibajelentő eszközt, és nem követjük a tevékenységedet más alkalmazásokban vagy weboldalakon.
-- Nem kérünk hozzáférést helyadathoz, névjegyekhez, kamerához, fényképekhez vagy fájlokhoz; ajándékfotót csak az általad kiválasztott vagy a kameraalkalmazással készített képből készítünk.
+- Nem kérünk hozzáférést helyadathoz, névjegyekhez, kamerához, fényképekhez vagy fájlokhoz; fotót csak az általad kiválasztott vagy a kameraalkalmazással készített képből készítünk.
 - Nem kezelünk fizetési adatot.
 - Nem adjuk el az adataidat.
 
