@@ -18,7 +18,7 @@ Giftiary is operated by a private individual. No data protection officer is requ
 - Your data is first stored on your device and then synced to our server under your account, so that you can use it on more than one device.
 - We do **not** use analytics, advertising, tracking or advertising identifiers, and we do **not** collect location, contacts or files from your device. We process a photo only if you add one yourself: to a gift, to a person, or as your own profile photo. Every photo is private to your account in this release. There are no payments in the app.
 - We do not sell your data or share it for advertising.
-- You can delete your account in the app at any time (Settings → Delete account).
+- You can delete your account in the app at any time (Settings → Delete account), or ask for its deletion by email without the app (see section 12).
 
 ## 3. Data we process
 
@@ -55,7 +55,7 @@ If you already have a Giftiary account with the same verified email address, the
 - **Gift photo (optional):** at most one image per gift, which you choose with the system photo picker or take with your device's camera app. Before it is stored we resize it (at most 1600 pixels on the longer side), convert it to JPEG and remove its metadata (for example location and device data).
 - **Person photo (optional):** at most one image per person you record, chosen or taken the same way. We crop it to a square, resize it to 640 × 640 pixels, convert it to JPEG and remove its metadata. Such a photo usually shows someone else (see section 5).
 
-You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar). The photo picker gives the app only the one image you choose; we have no access to your other photos. If you take a new photo, your camera app hands it only to Giftiary, which processes it as above and deletes the camera's original right away; it is not saved to your gallery by us.
+You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar). The photo picker gives the app only the one image you choose; we have no access to your other photos. If you take a new photo, your camera app saves it into a temporary file that Giftiary creates for this purpose only. Giftiary processes it as above and deletes the temporary file right after processing. If the app stops while you are taking the photo, the leftover temporary file is deleted after one day, the next time you take a photo (or earlier by the system when it clears the cache). Giftiary does not save the photo to your gallery; however, some camera apps may keep a copy according to their own settings, which you can check in your camera app.
 
 ### 3.5. Sharing data
 
@@ -76,13 +76,15 @@ We send emails from no-reply@giftiary.app to confirm your registration and to re
 ### 3.8. Data stored on your device
 
 - A local copy of your data in the app's own database, so the app works offline.
-- Local copies of your gift and person photos in the app's own storage.
+- Local copies of your gift and person photos in the app's own storage, and the list of photos waiting to be uploaded or deleted from the file storage.
 - A profile photo you have just picked, only until it is uploaded. If it cannot be uploaded and you do not try again, the app deletes it automatically later.
+- While you take a photo, a temporary image file in the app's cache (see section 3.4).
 - Your sign-in session (while you are signed in).
 - Your reminder setting (on/off) and the day of the last reminder, per account.
+- A marker that you have already seen the introduction screens on this device (per device, not tied to an account).
 - A temporary marker if an account deletion has not finished on the device yet.
 
-Android backup (if enabled on your device) does **not** include the session, the local database, photos or the deletion marker; it does include the reminder settings. Backup is performed by Google under its own terms, according to your device settings.
+Android backup (if enabled on your device) does **not** include the session, the local database, photos or the deletion marker; it does include the reminder settings and the introduction marker. Backup is performed by Google under its own terms, according to your device settings.
 
 ### 3.9. If you contact us
 
@@ -105,7 +107,7 @@ Showing notifications requires Android's notification permission. You grant it, 
 
 ## 5. Data about other people
 
-In Giftiary you can record data about other people (for example their names, birthdays, gifts meant for them or received from them, and optionally a photo of them). We process this data only to provide the service to you:
+In Giftiary you can record data about other people (for example their names, birthdays, gifts meant for them or received from them, and optionally a photo of them), and other people may also appear in gift photos. We process this data only to provide the service to you:
 - only you can see it, except the content of shared wishlists (see section 7); a person's photo is never shown to anyone else;
 - we do not contact or notify those people;
 - we do not use their data for any other purpose.
@@ -157,15 +159,21 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   - If you delete an item in the app (for example a person or a gift), it disappears from all views.
   - On the server it is kept, marked as deleted, so that your other devices learn of the deletion; the sync change log is kept too.
   - Both are kept until the account is deleted; there is currently no automatic permanent deletion.
-- **Gift and person photos:** if you replace or remove a photo, or delete the gift or person, the photo is deleted from the file storage once the change has synced, and its local copies are deleted too (on your other devices at their next sync). Photos are not kept marked as deleted.
+- **Gift and person photos:**
+  - If you replace or remove a photo, or delete the gift or person, the old photo's local copy on the device where you do it is deleted right away.
+  - It is deleted from the file storage once the change has synced from that device; while the device is offline, the photo stays in the file storage.
+  - On your other devices the local copy is deleted during the syncs after they receive the change; if that device downloaded the copy within the last day, up to about one day later. On a signed-out device this does not happen until the next sign-in.
+  - Photos are not kept marked as deleted.
 - **Profile photo:** if you replace or remove it, the previous photo is deleted from the file storage right after the change. If that deletion fails (for example the connection drops), the leftover is deleted at a later profile photo change, or with the account.
 - **Expired and revoked invites:** kept as rows (with their expiry and revocation time) until the account is deleted.
 - **Signing out:**
-  - Signing out is not deletion. On the device, the account's data stays stored but hidden, so that you can reach it again when you sign back in with the same account.
+  - Signing out is not deletion. On the device, the account's data and its gift and person photos stay stored but hidden, so that you can reach it again when you sign back in with the same account.
   - To remove the data from the device as well, delete the account, or clear the app's data / uninstall the app.
 - **Technical logs and email delivery data:** for a limited period, according to our providers' settings.
 - **Backups:** backups made by our hosting provider may contain deleted data until they are overwritten in the normal backup cycle.
 - **Enquiries:** for as long as needed to answer and document the request.
+- **Correspondence about closed deletion requests:** 90 days after a request is closed, we manually and permanently delete the full correspondence and its attachments from all folders of the mailboxes we manage and any additional copies under our control, including sent messages. This rule applies to the correspondence; it does not cover a separate record of the request's completion.
+- **Deletion-request completion log:** we retain the minimum record needed to document completion for one year after the request is closed, then manually delete it. It contains the case ID, the affected account's UUID, the dates of receipt, confirmation, completion, closure and notification, the final check result, the deadlines for deleting the correspondence and log entry, and the actual correspondence deletion date. We do not copy email addresses, message bodies, photos or other user content into it. Access is restricted; we treat a log containing a UUID as personal data.
 
 ## 12. Deleting your account
 
@@ -183,10 +191,16 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   This data is not kept marked as deleted; it is actually removed. If deleting the account fails after the photos were deleted, some photos may already be gone; the account deletion can then be tried again.
 - **On the device you delete from:** the app removes the account's local data and photos, reminder settings and pending reminders, then signs you out. If the app stops part way, it finishes on its next start.
 - **On the account's other devices**, the data is **not deleted automatically**. Those devices will eventually be signed out, so the data is no longer available through the app in the normal way, but it may remain in their local database. You can remove it there by clearing the app's data or uninstalling the app.
-- If another of your devices uploads a photo while the account is being deleted, that photo may remain in the file storage. Once the account is gone nobody can access it, and we delete it during maintenance.
+- If another of your devices, still holding a valid sign-in, uploads a photo while the account is being deleted, that photo may remain in the file storage. No other user can access such a leftover photo, and we delete it through manual maintenance.
 - For backups, see section 11.
 
-**If you cannot access the app:** contact us at support@giftiary.app. We will help determine the appropriate secure way to delete your account. Never send us your password, verification codes or other sign-in credentials.
+**By email, without the app:** if you cannot access the app or do not want to reinstall it, you can request deletion by email:
+
+- Write to support@giftiary.app, preferably from the email address you use with Giftiary, and say that you want your account deleted.
+- We then send a confirmation email to the account's email address. We delete the account once you reply to that email from that address and confirm the request. This is how we check that the account is really yours.
+- If you are not sure which email address belongs to your account (with Google or Facebook sign-in, it is the address received from the provider), tell us which sign-in method you used. We always send the confirmation to the account's email address; that is the only way we can verify a request by email.
+- By default we do not ask for a password, verification code or other sign-in credentials, or for an identity document. Never send us any of these.
+- The time limit runs from when your request reaches us. We send the confirmation email promptly after receiving your request, delete the account without undue delay once you confirm, and tell you what we have done within one month of receiving your request. Your confirmation does not start a new time limit. If we cannot act on the request (for example, because no confirmation arrives from the account's address), we tell you so, with the reason, within the same time limit. On the server, the same is deleted as with deletion in the app (including photos); we cannot delete the local data on your devices remotely, which you can remove by clearing the app's data or uninstalling the app. We will let you know by email once the deletion is done.
 
 Account deletion steps and details: https://giftiary.app/account-deletion/
 
@@ -201,7 +215,7 @@ Under the GDPR you have the right to:
 - **data portability** (to receive your data in a machine-readable format);
 - **object** to processing based on legitimate interest.
 
-Send your request to support@giftiary.app. We answer without undue delay, and within one month at the latest. Before acting on a request, we may check that the account really belongs to you.
+Send your request to support@giftiary.app. We answer without undue delay, and within one month of receiving your request at the latest. Before acting on a request, we may check that the account really belongs to you.
 
 You can lodge a complaint with the Hungarian National Authority for Data Protection and Freedom of Information (NAIH, 1055 Budapest, Falk Miksa utca 9–11, https://naih.hu), with the supervisory authority of your place of residence in the EU, or go to court.
 

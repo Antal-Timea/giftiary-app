@@ -18,7 +18,7 @@ A Giftiary egy magánszemély által üzemeltetett alkalmazás. Adatvédelmi tis
 - Az adataidat először a készülékeden tároljuk, majd fiókodhoz kötve szinkronizáljuk a szerverünkre, hogy több eszközön is elérd őket.
 - **Nem** használunk analitikát, reklámot, követést vagy hirdetési azonosítót, és **nem** gyűjtünk helyadatot, névjegyeket vagy fájlokat a készülékedről. Fotót csak akkor kezelünk, ha te adsz hozzá egyet: egy ajándékhoz, egy személyhez vagy saját profilfotóként. Ebben a kiadásban minden fotó csak a te fiókodé, privát. Nincs fizetés az alkalmazásban.
 - Az adataidat nem adjuk el, és nem adjuk át reklámcélra.
-- A fiókodat az alkalmazásban bármikor törölheted (Beállítások → Fiók törlése).
+- A fiókodat az alkalmazásban bármikor törölheted (Beállítások → Fiók törlése), vagy az alkalmazás nélkül, e-mailben is kérheted a törlését (lásd 12. pont).
 
 ## 3. Milyen adatokat kezelünk
 
@@ -55,7 +55,7 @@ Ha ugyanazzal az igazolt e-mail-címmel már van Giftiary-fiókod, a hitelesít�
 - **Ajándékfotó (választható):** ajándékonként legfeljebb egy kép, amelyet te választasz ki a rendszer fotóválasztójával, vagy a készüléked kameraalkalmazásával készítesz. Mentés előtt kicsinyítjük (a hosszabb oldal legfeljebb 1600 képpont), JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait (például a helyadatot és az eszköz adatait).
 - **Személy fotója (választható):** az általad rögzített személyenként legfeljebb egy kép, amelyet ugyanígy választasz ki vagy készítesz. Négyzetesre vágjuk, 640 × 640 képpontosra méretezzük, JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait. Az ilyen fotó általában valaki mást ábrázol (lásd 5. pont).
 
-Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá. Ha új fényképet készítesz, a kameraalkalmazás csak a Giftiarynek adja át, amely a fentiek szerint feldolgozza, a kamera eredeti felvételét pedig azonnal törli; a galériádba mi nem mentjük.
+Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá. Ha új fényképet készítesz, a kameraalkalmazás a felvételt a Giftiary egy ideiglenes, csak erre a célra létrehozott fájljába menti. A Giftiary ezt a fentiek szerint feldolgozza, az ideiglenes fájlt pedig a feldolgozás után azonnal törli. Ha a fotózás közben az alkalmazás leáll, a megmaradt ideiglenes fájlt egy nap elteltével, a következő fotókészítéskor törli (vagy addig a rendszer törölheti a gyorsítótár ürítésekor). A Giftiary a képet nem menti a galériádba; egyes kameraalkalmazások azonban a saját beállításaik szerint megtarthatnak egy másolatot, ezt a kameraalkalmazásban tudod ellenőrizni.
 
 ### 3.5. Megosztási adatok
 
@@ -76,13 +76,15 @@ A regisztráció megerősítéséhez és az elfelejtett jelszó visszaállítás
 ### 3.8. A készülékeden tárolt adatok
 
 - Az adataid helyi másolata az alkalmazás saját adatbázisában, hogy internet nélkül is működjön.
-- Az ajándék- és személyfotóid helyi másolata az alkalmazás saját tárhelyén.
+- Az ajándék- és személyfotóid helyi másolata az alkalmazás saját tárhelyén, valamint a feltöltésre vagy a fájltárolóból való törlésre váró fotók listája.
 - Egy épp kiválasztott profilfotó, csak a feltöltéséig. Ha nem sikerül feltölteni, és nem próbálod újra, az alkalmazás később automatikusan törli.
+- Fotókészítés közben egy ideiglenes képfájl az alkalmazás gyorsítótárában (lásd 3.4. pont).
 - A bejelentkezési munkamenet (amíg be vagy jelentkezve).
 - Az emlékeztetők beállítása (be/ki) és az utolsó emlékeztető napja, fiókonként.
+- Egy jelölő arról, hogy a bevezető képernyőket ezen a készüléken már megnézted (készülékenként, nem fiókhoz kötve).
 - Egy ideiglenes jelölő, ha egy fióktörlés még nem fejeződött be a készüléken.
 
-Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
+Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat és a bevezető jelölőjét igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
 
 ### 3.9. Ha írsz nekünk
 
@@ -105,7 +107,7 @@ Az értesítések megjelenítéséhez az Android értesítési engedélyére van
 
 ## 5. Más személyekről rögzített adatok
 
-A Giftiaryben más emberekről is rögzíthetsz adatokat (például nevüket, születésnapjukat, a nekik szánt vagy tőlük kapott ajándékokat, és ha szeretnéd, egy fotót róluk). Ezeket az adatokat kizárólag azért kezeljük, hogy a szolgáltatást neked nyújtsuk:
+A Giftiaryben más emberekről is rögzíthetsz adatokat (például nevüket, születésnapjukat, a nekik szánt vagy tőlük kapott ajándékokat, és ha szeretnéd, egy fotót róluk), és az ajándékfotókon is láthatók lehetnek más személyek. Ezeket az adatokat kizárólag azért kezeljük, hogy a szolgáltatást neked nyújtsuk:
 - csak te látod őket, a megosztott kívánságlisták tartalmát kivéve (lásd 7. pont); egy személy fotóját soha senki más nem látja;
 - az érintetteket nem keressük meg és nem értesítjük;
 - az adataikat más célra nem használjuk.
@@ -157,15 +159,21 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   - Ha az alkalmazásban törölsz egy elemet (például egy személyt vagy ajándékot), az mindenhol eltűnik a nézetekből.
   - A szerveren „törölt” jelöléssel megmarad, hogy a többi eszközöd is értesüljön a törlésről; a szinkronizálás változásnaplója szintén megmarad.
   - Mindkettő a fiók törléséig marad meg; automatikus végleges törlés jelenleg nincs.
-- **Ajándék- és személyfotók:** ha egy fotót lecserélsz vagy eltávolítasz, vagy törlöd az ajándékot vagy a személyt, a fotó törlődik a fájltárolóból, amint a változás szinkronizálódott, és a helyi másolatai is törlődnek (a többi eszközödön a következő szinkronizáláskor). A fotókat nem őrizzük „törölt” jelöléssel.
+- **Ajándék- és személyfotók:**
+  - Ha egy fotót lecserélsz vagy eltávolítasz, vagy törlöd az ajándékot vagy a személyt, azon az eszközön, ahol ezt teszed, a régi fotó helyi másolata azonnal törlődik.
+  - A fájltárolóból akkor törlődik, amikor a változás erről az eszközről szinkronizálódott; amíg az eszköz offline, a fotó a fájltárolóban marad.
+  - A többi eszközödön a helyi másolat a változás letöltése utáni szinkronizálások során törlődik; ha a másolatot az adott eszköz egy napon belül töltötte le, legfeljebb körülbelül egy nappal később. Kijelentkezett eszközön ez a következő bejelentkezésig nem történik meg.
+  - A fotókat nem őrizzük „törölt” jelöléssel.
 - **Profilfotó:** ha lecseréled vagy eltávolítod, az előző fotó közvetlenül a változás után törlődik a fájltárolóból. Ha ez a törlés nem sikerül (például megszakad a kapcsolat), a maradványt egy későbbi profilfotó-cserénél, illetve a fiókkal együtt töröljük.
 - **Lejárt és visszavont meghívók:** sorokként (lejárati és visszavonási időponttal) a fiók törléséig megmaradnak.
 - **Kijelentkezés:**
-  - A kijelentkezés nem törlés. A készüléken a fiók adatai rejtve, de tárolva maradnak, hogy ugyanazzal a fiókkal visszajelentkezve újra elérd őket.
+  - A kijelentkezés nem törlés. A készüléken a fiók adatai, ajándék- és személyfotói rejtve, de tárolva maradnak, hogy ugyanazzal a fiókkal visszajelentkezve újra elérd őket.
   - Ha a készülékről is el szeretnéd távolítani az adatokat, töröld a fiókot, vagy töröld az alkalmazás adatait / távolítsd el az alkalmazást.
 - **Technikai naplók és e-mail-kézbesítési adatok:** a szolgáltatóink beállításai szerinti korlátozott ideig.
 - **Biztonsági mentések:** a tárhelyszolgáltatónk által készített biztonsági mentések a törölt adatokat is tartalmazhatják, amíg azok a szokásos mentési ciklusban felülíródnak.
 - **Megkeresések:** a kérés megválaszolásához és dokumentálásához szükséges ideig.
+- **Lezárt törlési kérelmek levelezése:** a kérelem lezárásától számított 90 nap elteltével kézzel, véglegesen töröljük a teljes levelezést és mellékleteit a kezelt postafiókok valamennyi mappájából és az általunk kezelt esetleges további példányokból, beleértve az elküldött leveleket is. Ez a megőrzési szabály a levelezésre vonatkozik, nem a kérelem teljesítéséről vezetett külön nyilvántartásra.
+- **Törlési kérelmek teljesítési nyilvántartása:** a kérelem lezárásától számított egy évig őrizzük a teljesítés igazolásához szükséges minimális nyilvántartást, majd kézzel töröljük. A nyilvántartás az ügyazonosítót, az érintett fiók UUID-jét, a beérkezés, megerősítés, teljesítés, lezárás és értesítés dátumát, a záró ellenőrzés eredményét, valamint a levelezés és a nyilvántartási sor törlési határidejét és a levelezés tényleges törlésének dátumát tartalmazza. Nem másolunk bele e-mail-címet, levéltartalmat, fotót vagy más felhasználói tartalmat. Korlátozott hozzáféréssel kezeljük; az UUID-t tartalmazó nyilvántartást személyes adatnak tekintjük.
 
 ## 12. Fiók törlése
 
@@ -183,10 +191,16 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   Ezek az adatok nem „törölt” jelöléssel maradnak meg, hanem ténylegesen törlődnek. Ha a fotók törlése után a fiók törlése nem sikerül, néhány fotó már törlődhetett; a fióktörlés ilyenkor újra megpróbálható.
 - **Azon a készüléken, amelyen a törlést elvégzed:** az alkalmazás törli a fiók helyi adatait és fotóit, emlékeztető-beállításait és függő emlékeztetőit, majd kijelentkeztet. Ha az alkalmazás a folyamat közben leáll, a következő indításkor befejezi.
 - **A fiók többi eszközén** az adatok **nem törlődnek automatikusan**. Ezek az eszközök idővel kijelentkeznek, így az adatok a szokásos módon már nem érhetők el az alkalmazásban, de a helyi adatbázisukban megmaradhatnak. Ezeken az eszközökön az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
-- Ha egy másik eszközöd éppen a törlés közben tölt fel fotót, az a fájltárolóban maradhat. A fiók megszűnése után ezt senki nem érheti el, és karbantartás során töröljük.
+- Ha egy másik eszközöd a törlés idején még érvényes bejelentkezéssel fotót tölt fel, az a fájltárolóban maradhat. Az ilyen maradványfotót más felhasználó nem érheti el, és kézi karbantartással töröljük.
 - A biztonsági mentésekre a 11. pont vonatkozik.
 
-**Ha nem férsz hozzá az alkalmazáshoz:** vedd fel velünk a kapcsolatot a support@giftiary.app címen. Segítünk meghatározni a fiók biztonságos törlésének megfelelő módját. Jelszót, ellenőrző kódot vagy más bejelentkezési adatot soha ne küldj nekünk.
+**E-mailben, az alkalmazás nélkül:** ha nem férsz hozzá az alkalmazáshoz, vagy nem szeretnéd újratelepíteni, a törlést e-mailben is kérheted:
+
+- Írj a support@giftiary.app címre, lehetőleg arról az e-mail-címről, amellyel a Giftiaryt használod, és írd meg, hogy a fiókod törlését kéred.
+- Ezután a fiókhoz tartozó e-mail-címre visszaigazoló levelet küldünk. A törlést akkor végezzük el, ha erre a levélre arról a címről válaszolsz és megerősíted a kérést. Így ellenőrizzük, hogy a fiók valóban a tiéd.
+- Ha nem tudod, melyik e-mail-cím tartozik a fiókodhoz (Google- vagy Facebook-bejelentkezésnél ez a szolgáltatótól kapott cím), írd meg, melyik bejelentkezési módot használtad. A visszaigazolást mindig a fiókhoz tartozó e-mail-címre küldjük; e-mailben csak így tudjuk ellenőrizni a kérést.
+- Alapesetben nem kérünk jelszót, ellenőrző kódot vagy más bejelentkezési adatot, sem személyazonosító okmányt. Ilyet soha ne küldj nekünk.
+- A határidőt a kérésed beérkezésétől számítjuk. A visszaigazoló levelet a beérkezés után haladéktalanul elküldjük, a megerősítésed után indokolatlan késedelem nélkül töröljük a fiókot, és a kérésed beérkezésétől számított egy hónapon belül tájékoztatunk a kérés teljesítéséről. A megerősítés nem indít új határidőt. Ha a kérést nem tudjuk teljesíteni (például mert a fiókhoz tartozó címről nem érkezik megerősítés), erről és az okáról is ezen a határidőn belül tájékoztatunk. A szerveren ugyanaz törlődik, mint az alkalmazásbeli törléskor (a fotókkal együtt); a készülékeiden lévő helyi adatokat távolról nem tudjuk törölni, azokat az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el. Az elvégzett törlésről e-mailben értesítünk.
 
 A fióktörlés lépései és részletei: https://giftiary.app/account-deletion/
 
@@ -201,7 +215,7 @@ A GDPR alapján jogosult vagy:
 - **adathordozhatóságot** kérni (az adataidat géppel olvasható formában megkapni);
 - **tiltakozni** a jogos érdeken alapuló adatkezelés ellen.
 
-Kérésedet a support@giftiary.app címre küldheted. Indokolatlan késedelem nélkül, legkésőbb egy hónapon belül válaszolunk. A kérés teljesítése előtt ellenőrizhetjük, hogy a fiók valóban hozzád tartozik.
+Kérésedet a support@giftiary.app címre küldheted. Indokolatlan késedelem nélkül, legkésőbb a kérés beérkezésétől számított egy hónapon belül válaszolunk. A kérés teljesítése előtt ellenőrizhetjük, hogy a fiók valóban hozzád tartozik.
 
 Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (NAIH, 1055 Budapest, Falk Miksa utca 9–11., https://naih.hu), vagy a lakóhelyed szerinti uniós felügyeleti hatóságnál, illetve bírósághoz fordulhatsz.
 
