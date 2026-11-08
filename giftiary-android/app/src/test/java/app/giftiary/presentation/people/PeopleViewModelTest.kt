@@ -3,6 +3,7 @@ package app.giftiary.presentation.people
 import androidx.lifecycle.SavedStateHandle
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.model.OccasionType
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.MainDispatcherRule
@@ -24,12 +25,13 @@ class PeopleViewModelTest {
     private val repository = FakePersonRepository()
     private val occasions = FakeOccasionRepository()
     private val savedState = SavedStateHandle()
+    private val photos = FakeGiftPhotoRepository()
 
     @Test
     fun `people from the repository are shown and follow its changes`() = runTest {
         val anna = person("Anna")
         repository.givenPeople(anna)
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.Loaded(listOf(anna)), viewModel.uiState.value.content)
@@ -41,7 +43,7 @@ class PeopleViewModelTest {
 
     @Test
     fun `no people is an empty loaded list`() = runTest {
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.Loaded(emptyList()), viewModel.uiState.value.content)
@@ -50,7 +52,7 @@ class PeopleViewModelTest {
     @Test
     fun `failing to observe people shows a load error`() = runTest {
         repository.peopleFlowFailure = IOException("disk")
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.LoadFailed, viewModel.uiState.value.content)
@@ -60,7 +62,7 @@ class PeopleViewModelTest {
     fun `a selected person can be cleared again`() = runTest {
         val anna = person("Anna")
         repository.givenPeople(anna, person("Béla"))
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
         assertNull(viewModel.uiState.value.selectedPersonId)
 
@@ -75,9 +77,9 @@ class PeopleViewModelTest {
     fun `the selection is restored from saved state, as after process death`() = runTest {
         val anna = person("Anna")
         repository.givenPeople(anna)
-        PeopleViewModel(repository, occasions, savedState).onPersonSelected(anna)
+        PeopleViewModel(repository, occasions, savedState, photos).onPersonSelected(anna)
 
-        val restored = PeopleViewModel(repository, occasions, savedState)
+        val restored = PeopleViewModel(repository, occasions, savedState, photos)
         assertNull("nothing selected before the people load", restored.uiState.value.selectedPersonId)
         keepSubscribed(restored.uiState)
 
@@ -89,7 +91,7 @@ class PeopleViewModelTest {
         val annaId = person("Anna").id.toString()
         savedState[SELECTED_PERSON_KEY] = annaId
         repository.peopleFlowFailure = IOException("disk")
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.LoadFailed, viewModel.uiState.value.content)
@@ -103,7 +105,7 @@ class PeopleViewModelTest {
         val anna = person("Anna")
         val bela = person("Béla")
         repository.givenPeople(anna, bela)
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
         viewModel.onPersonSelected(anna)
 
@@ -119,7 +121,7 @@ class PeopleViewModelTest {
         val bela = person("Béla", relationship = "Brother")
         val cili = person("Cili")
         repository.givenPeople(anna, bela, cili)
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
         assertEquals(listOf(anna, bela, cili), viewModel.uiState.value.matchingPeople)
 
@@ -140,9 +142,9 @@ class PeopleViewModelTest {
     @Test
     fun `the search is restored from saved state`() = runTest {
         repository.givenPeople(person("Anna"), person("Béla"))
-        PeopleViewModel(repository, occasions, savedState).onQueryChange("Béla")
+        PeopleViewModel(repository, occasions, savedState, photos).onQueryChange("Béla")
 
-        val restored = PeopleViewModel(repository, occasions, savedState)
+        val restored = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(restored.uiState)
 
         assertEquals("Béla", restored.uiState.value.query)
@@ -158,7 +160,7 @@ class PeopleViewModelTest {
         val birthday = occasion(anna.id)
         val nameDay = occasion(bela.id, OccasionDetails(OccasionType.NAME_DAY, null, 4, 6, null, true))
         occasions.givenOccasions(birthday, nameDay)
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(mapOf(anna.id to birthday), viewModel.uiState.value.birthdays)
@@ -169,11 +171,25 @@ class PeopleViewModelTest {
         val anna = person("Anna")
         repository.givenPeople(anna)
         occasions.readFailure = IOException("disk")
-        val viewModel = PeopleViewModel(repository, occasions, savedState)
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(PeopleContent.Loaded(listOf(anna)), viewModel.uiState.value.content)
         assertEquals(emptyMap<Any, Any>(), viewModel.uiState.value.birthdays)
+    }
+
+    @Test
+    fun `rows get the photos already on this device, and never a download`() = runTest {
+        val here = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/10000000-0000-4000-8000-000000000001.jpg"
+        val elsewhere = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/10000000-0000-4000-8000-000000000002.jpg"
+        photos.stored[here] = byteArrayOf(1)
+        photos.stored[elsewhere] = byteArrayOf(2)
+        photos.remoteOnly += elsewhere
+        repository.givenPeople(person("Anna", photoPath = here), person("Béla", photoPath = elsewhere), person("Cili"))
+        val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
+        keepSubscribed(viewModel.uiState)
+
+        assertEquals(setOf(here), viewModel.uiState.value.photos.keys)
     }
 
     private companion object {

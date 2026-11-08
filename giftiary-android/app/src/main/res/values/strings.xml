@@ -95,6 +95,9 @@ big stories</string>
     <string name="person_editor_load_failed">This person could not be loaded.</string>
     <string name="person_editor_add_subtitle">Keep the people you care about close.</string>
     <string name="person_editor_edit_subtitle">Keep what you know about them up to date.</string>
+    <string name="person_photo_add">Add photo</string>
+    <string name="person_photo_change">Change photo</string>
+    <string name="person_photo_remove">Remove photo</string>
 
     <string name="people_open">Open</string>
     <string name="people_subtitle">The people behind your gift memories.</string>

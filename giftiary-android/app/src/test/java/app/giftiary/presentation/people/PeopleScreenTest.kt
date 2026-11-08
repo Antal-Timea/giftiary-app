@@ -1,9 +1,11 @@
 package app.giftiary.presentation.people
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import app.giftiary.domain.model.OccasionType
@@ -11,6 +13,7 @@ import app.giftiary.domain.model.Person
 import app.giftiary.domain.model.UpcomingOccasion
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.presentation.home.ComingUpContent
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.home.ComingUpItem
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.occasion
@@ -21,6 +24,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 
 /** The phone People screen: its parts and states, and what its rows and actions do. */
@@ -42,11 +47,12 @@ class PeopleScreenTest {
     private val opened = mutableListOf<String>()
     private var added = 0
 
-    private fun showPeople(vararg people: Person, query: String = "") {
+    private fun showPeople(vararg people: Person, query: String = "", photos: Map<String, LoadedPhoto> = emptyMap()) {
         state = PeopleUiState(
             content = PeopleContent.Loaded(people.toList()),
             query = query,
             birthdays = mapOf(peter.id to peterBirthday),
+            photos = photos,
         )
         compose.setContent {
             GiftiaryTheme {
@@ -76,6 +82,24 @@ class PeopleScreenTest {
 
         compose.onNodeWithText("Martin").performClick()
         assertEquals(listOf("Martin"), opened)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `a row shows the person's photo when it is on this device, else the monogram`() {
+        val withPhoto = peter.copy(photoPath = "peter.jpg")
+        val notHere = martin.copy(photoPath = "martin.jpg")
+
+        showPeople(withPhoto, notHere, grandma, photos = mapOf("peter.jpg" to jpeg()))
+
+        assertEquals(1, compose.onAllNodesWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).fetchSemanticsNodes().size)
+        compose.onNodeWithText("Peter").performClick()
+        assertEquals(listOf("Peter"), opened)
+    }
+
+    private fun jpeg(): LoadedPhoto {
+        val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
+        return LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())
     }
 
     @Test

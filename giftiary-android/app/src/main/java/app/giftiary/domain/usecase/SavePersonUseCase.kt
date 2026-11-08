@@ -11,9 +11,10 @@ class SavePersonUseCase @Inject constructor(
     private val repository: PersonRepository,
 ) {
 
-    suspend fun add(name: String, relationship: String?): SavePersonResult =
+    /** [photoPath] is stored with the person in one write; see [PersonRepository.addPerson]. */
+    suspend fun add(name: String, relationship: String?, photoPath: String? = null): SavePersonResult =
         withValidInput(name, relationship) { validName, validRelationship ->
-            repository.addPerson(validName, validRelationship).id
+            repository.addPerson(validName, validRelationship, photoPath).id
         }
 
     /** @throws app.giftiary.domain.repository.PersonNotFoundException if the person no longer exists. */

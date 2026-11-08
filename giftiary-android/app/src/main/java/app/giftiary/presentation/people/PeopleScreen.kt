@@ -40,7 +40,6 @@ import app.giftiary.domain.model.Person
 import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryAddFab
 import app.giftiary.presentation.components.GiftiaryAddFabClearance
-import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.GiftiaryPillButton
 import app.giftiary.presentation.components.GiftiaryRow
@@ -52,6 +51,7 @@ import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.RowChevron
 import app.giftiary.presentation.components.RowSupportingText
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.home.ComingUpBand
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.home.ComingUpViewModel
@@ -199,6 +199,7 @@ private fun PeopleList(
             PersonRow(
                 person = person,
                 birthday = state.birthdays[person.id]?.let { "${occasionTitle(it)} ${occasionShortDayMonth(it.day, it.month)}" },
+                photo = person.photoPath?.let(state.photos::get),
                 selected = person.id == selectedPersonId,
                 selectable = selectable,
                 onClick = { onOpenPerson(person) },
@@ -238,6 +239,7 @@ private fun PeopleHeader() {
 private fun PersonRow(
     person: Person,
     birthday: String?,
+    photo: LoadedPhoto?,
     selected: Boolean,
     selectable: Boolean,
     onClick: () -> Unit,
@@ -251,7 +253,7 @@ private fun PersonRow(
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier),
         supporting = detail.takeIf { it.isNotEmpty() }?.let { { RowSupportingText(it) } },
         // The selected row is already aqua; the avatar takes the in-band fill so it stays visible.
-        leading = { GiftiaryAvatar(name = person.name, size = AVATAR_SIZE, onContext = selected) },
+        leading = { PersonAvatar(name = person.name, photo = photo, size = AVATAR_SIZE, onContext = selected) },
         trailing = { RowChevron() },
         onClickLabel = stringResource(R.string.people_open),
         onClick = onClick,

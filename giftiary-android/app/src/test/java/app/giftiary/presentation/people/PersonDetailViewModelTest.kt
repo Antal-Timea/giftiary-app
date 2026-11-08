@@ -21,6 +21,7 @@ import app.giftiary.testing.occasion
 import app.giftiary.testing.person
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -187,5 +188,20 @@ class PersonDetailViewModelTest {
 
         assertEquals(setOf("a/photo.jpg"), viewModel.giftPhotos.value.keys)
         assertTrue(byteArrayOf(1, 2).contentEquals(viewModel.giftPhotos.value.getValue("a/photo.jpg").bytes))
+    }
+
+    @Test
+    fun `the hero gets the person's photo, downloaded if need be, and none without one`() = runTest {
+        val path = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/30000000-0000-4000-8000-000000000001.jpg"
+        photos.stored[path] = byteArrayOf(7)
+        photos.remoteOnly += path
+        people.givenPeople(anna.copy(photoPath = path))
+        val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
+        keepSubscribed(viewModel.personPhoto)
+
+        assertEquals(listOf<Byte>(7), viewModel.personPhoto.value?.bytes?.toList())
+
+        people.givenPeople(anna)
+        assertNull(viewModel.personPhoto.value)
     }
 }

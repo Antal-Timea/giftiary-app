@@ -1,6 +1,7 @@
 package app.giftiary.presentation.people
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,7 +44,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -78,6 +81,7 @@ import app.giftiary.presentation.components.monogramInitial
 import app.giftiary.presentation.giftideas.GiftIdeaRow
 import app.giftiary.presentation.gifts.GiftMemoryCard
 import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.rememberDecoded
 import app.giftiary.presentation.home.DaysCountdown
 import app.giftiary.presentation.home.PlanLine
 import app.giftiary.presentation.occasions.occasionDateLine
@@ -111,6 +115,7 @@ fun PersonDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val giftPhotos by viewModel.giftPhotos.collectAsStateWithLifecycle()
+    val personPhoto by viewModel.personPhoto.collectAsStateWithLifecycle()
     val deletion by viewModel.deletion.collectAsStateWithLifecycle()
     LaunchedEffect(deletion.deleted) {
         if (deletion.deleted) onDeleted()
@@ -118,6 +123,7 @@ fun PersonDetailScreen(
     PersonDetailScreen(
         state = state,
         giftPhotos = giftPhotos,
+        personPhoto = personPhoto,
         deletion = deletion,
         onBack = onBack,
         onEditPerson = { onEditPerson(it.id) },
@@ -161,6 +167,7 @@ fun PersonDetailScreen(
     onDeleteErrorShown: () -> Unit,
     modifier: Modifier = Modifier,
     giftPhotos: Map<String, LoadedPhoto> = emptyMap(),
+    personPhoto: LoadedPhoto? = null,
     deletion: PersonDeletion = PersonDeletion(),
     today: LocalDate = LocalDate.now(),
 ) {
@@ -189,6 +196,7 @@ fun PersonDetailScreen(
             is PersonDetailUiState.Loaded -> PersonDetailContent(
                 state = state,
                 giftPhotos = giftPhotos,
+                personPhoto = personPhoto,
                 today = today,
                 onBack = onBack,
                 onEditPerson = { onEditPerson(state.person) },
@@ -233,6 +241,7 @@ fun PersonDetailScreen(
 private fun PersonDetailContent(
     state: PersonDetailUiState.Loaded,
     giftPhotos: Map<String, LoadedPhoto>,
+    personPhoto: LoadedPhoto?,
     today: LocalDate,
     onBack: (() -> Unit)?,
     onEditPerson: () -> Unit,
@@ -255,7 +264,7 @@ private fun PersonDetailContent(
             .fillMaxSize()
             .giftiaryReadableWidth(),
     ) {
-        item { PersonHero(person = state.person, onBack = onBack, onEdit = onEditPerson, onMore = onOpenMore) }
+        item { PersonHero(person = state.person, photo = personPhoto, onBack = onBack, onEdit = onEditPerson, onMore = onOpenMore) }
         next?.let { (occasion, date) ->
             item {
                 NextOccasionCard(
@@ -349,11 +358,12 @@ internal fun nextOccasion(occasions: List<Occasion>, today: LocalDate): Pair<Occ
         .minByOrNull { it.second }
 
 /**
- * Person photos are not stored yet, so the hero is always the identity fallback: a quiet aqua
- * surface carrying a large monogram, never an empty photo slot.
+ * A quiet aqua surface with the person's photo, cropped, in its large circle; without one the circle
+ * carries a large monogram instead, never an empty photo slot. Either is decorative, as the name is
+ * written in the hero.
  */
 @Composable
-private fun PersonHero(person: Person, onBack: (() -> Unit)?, onEdit: () -> Unit, onMore: () -> Unit) {
+private fun PersonHero(person: Person, photo: LoadedPhoto?, onBack: (() -> Unit)?, onEdit: () -> Unit, onMore: () -> Unit) {
     val colors = GiftiaryTheme.colors
     Box(
         modifier = Modifier
@@ -367,18 +377,29 @@ private fun PersonHero(person: Person, onBack: (() -> Unit)?, onEdit: () -> Unit
                 .align(Alignment.CenterEnd)
                 .offset(x = 28.dp, y = 18.dp)
                 .size(196.dp)
-                .background(colors.surfaceContextQuiet, GiftiaryShapes.pill),
+                .clip(GiftiaryShapes.pill)
+                .background(colors.surfaceContextQuiet),
             contentAlignment = Alignment.Center,
         ) {
-            // Sized to its circle, not to the text size: the name is written in the hero, and the
-            // monogram only gives it a face.
-            val monogramSize = with(LocalDensity.current) { MONOGRAM_SIZE.toSp() }
-            Text(
-                text = monogramInitial(person.name),
-                modifier = Modifier.clearAndSetSemantics {},
-                style = GiftiaryType.display.copy(fontSize = monogramSize, lineHeight = monogramSize),
-                color = colors.textPrimary,
-            )
+            val image = photo?.let { rememberDecoded(it) }
+            if (image != null) {
+                Image(
+                    bitmap = image,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().testTag(PERSON_PHOTO_TAG),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                // Sized to its circle, not to the text size: the name is written in the hero, and
+                // the monogram only gives it a face.
+                val monogramSize = with(LocalDensity.current) { MONOGRAM_SIZE.toSp() }
+                Text(
+                    text = monogramInitial(person.name),
+                    modifier = Modifier.clearAndSetSemantics {},
+                    style = GiftiaryType.display.copy(fontSize = monogramSize, lineHeight = monogramSize),
+                    color = colors.textPrimary,
+                )
+            }
         }
         Row(
             modifier = Modifier

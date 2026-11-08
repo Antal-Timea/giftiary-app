@@ -2,25 +2,35 @@ package app.giftiary.presentation.people
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
@@ -28,13 +38,17 @@ import app.giftiary.presentation.components.DecoratedPage
 import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.GiftiaryPrimaryButton
+import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.GiftiaryTaskHeader
 import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.GiftPhotoCamera
+import app.giftiary.presentation.gifts.GiftPhotoSources
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.theme.GiftiaryType
 import java.util.UUID
 
 @Composable
@@ -69,8 +83,27 @@ fun PersonEditorScreen(
             onConfirmed = viewModel::onDeleteConfirmed,
             onErrorShown = viewModel::onDeleteErrorShown,
         ),
+        photo = PersonEditorPhotoActions(
+            onPick = viewModel::onPhotoPicked,
+            camera = GiftPhotoCamera(
+                newTarget = viewModel::newCaptureTarget,
+                onCaptured = viewModel::onPhotoCaptured,
+                onCancelled = viewModel::onCaptureCancelled,
+                onUnavailable = viewModel::onCameraUnavailable,
+            ),
+            onRemove = viewModel::onPhotoRemoved,
+            onErrorShown = viewModel::onPhotoErrorShown,
+        ),
     )
 }
+
+/** What the photo part of the editor reaches. */
+class PersonEditorPhotoActions(
+    val onPick: (String) -> Unit = {},
+    val camera: GiftPhotoCamera = GiftPhotoCamera(newTarget = { null }, onCaptured = {}, onCancelled = {}, onUnavailable = {}),
+    val onRemove: () -> Unit = {},
+    val onErrorShown: () -> Unit = {},
+)
 
 /** What deleting from the editor reaches; only an existing person offers it. */
 class PersonEditorDeletion(
@@ -90,8 +123,24 @@ fun PersonEditorScreen(
     onSaveErrorShown: () -> Unit,
     deletion: PersonEditorDeletion,
     modifier: Modifier = Modifier,
+    photo: PersonEditorPhotoActions = PersonEditorPhotoActions(),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val photoErrorMessage = state.photoError?.let {
+        stringResource(
+            when (it) {
+                PersonPhotoError.UNREADABLE -> R.string.gift_photo_unreadable
+                PersonPhotoError.CAMERA_UNAVAILABLE -> R.string.gift_photo_camera_unavailable
+                PersonPhotoError.UNAVAILABLE_ON_SAVE -> R.string.gift_photo_unavailable_on_save
+            },
+        )
+    }
+    LaunchedEffect(photoErrorMessage) {
+        if (photoErrorMessage != null) {
+            snackbarHostState.showSnackbar(photoErrorMessage)
+            photo.onErrorShown()
+        }
+    }
     val saveFailedMessage = stringResource(R.string.person_editor_save_failed)
     LaunchedEffect(state.saveFailed) {
         if (state.saveFailed) {
@@ -118,15 +167,19 @@ fun PersonEditorScreen(
             EditorStatus.NOT_FOUND -> GiftiaryTaskStatus(stringResource(R.string.person_editor_not_found), onBack, contentModifier)
             EditorStatus.LOAD_FAILED -> GiftiaryTaskStatus(stringResource(R.string.person_editor_load_failed), onBack, contentModifier)
             EditorStatus.EDITING, EditorStatus.SAVED, EditorStatus.DELETED -> DecoratedPage(top = GiftCutout.LARGE) {
-                PersonForm(
-                    state = state,
-                    onBack = onBack,
-                    onNameChange = onNameChange,
-                    onRelationshipChange = onRelationshipChange,
-                    onSave = onSave,
-                    onDelete = deletion.onRequested,
-                    modifier = contentModifier,
-                )
+                GiftPhotoSources(onPick = photo.onPick, camera = photo.camera) { choosePhoto ->
+                    PersonForm(
+                        state = state,
+                        onBack = onBack,
+                        onNameChange = onNameChange,
+                        onRelationshipChange = onRelationshipChange,
+                        onSave = onSave,
+                        onDelete = deletion.onRequested,
+                        onChoosePhoto = choosePhoto,
+                        onRemovePhoto = photo.onRemove,
+                        modifier = contentModifier,
+                    )
+                }
             }
         }
     }
@@ -143,9 +196,8 @@ fun PersonEditorScreen(
 }
 
 /**
- * The approved Add a person layout, less what a person cannot hold yet: there is no person photo,
- * so no photo picker or pretend upload, and dates are occasions, added from the person's page once
- * they exist.
+ * The approved Add a person layout: the photo, then the name and relationship. Dates are
+ * occasions, added from the person's page once it exists.
  */
 @Composable
 private fun PersonForm(
@@ -155,6 +207,8 @@ private fun PersonForm(
     onRelationshipChange: (String) -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    onChoosePhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val canEdit = state.status == EditorStatus.EDITING && !state.isBusy
@@ -178,8 +232,15 @@ private fun PersonForm(
                 }
             },
         )
-        Column(
+        PersonPhotoField(
+            state = state,
+            enabled = canEdit,
+            onChoose = onChoosePhoto,
+            onRemove = onRemovePhoto,
             modifier = Modifier.padding(top = GiftiarySpacing.section),
+        )
+        Column(
+            modifier = Modifier.padding(top = GiftiarySpacing.fieldGroup),
             verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.fieldGroup),
         ) {
             GiftiaryTextField(
@@ -214,12 +275,63 @@ private fun PersonForm(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = GiftiarySpacing.xxl),
-            enabled = state.status == EditorStatus.EDITING && !state.isDeleting,
+            enabled = state.status == EditorStatus.EDITING && !state.isDeleting && !state.photoBusy,
             loading = state.isSaving,
             trailingArrow = true,
         )
     }
 }
+
+/**
+ * The person's avatar as it will be saved, with what can be done to it. The avatar itself is
+ * decorative: the actions say whether there is a photo, and the name is in the field below.
+ */
+@Composable
+private fun PersonPhotoField(
+    state: PersonEditorUiState,
+    enabled: Boolean,
+    onChoose: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = GiftiaryTheme.colors
+    val actionsEnabled = enabled && !state.photoBusy
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PersonAvatar(name = state.name, photo = state.photo, size = EDITOR_AVATAR_SIZE)
+        // Beside the avatar while they fit, under one another at large text.
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),
+            verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            GiftiarySecondaryButton(
+                text = stringResource(if (state.photoPath == null) R.string.person_photo_add else R.string.person_photo_change),
+                onClick = onChoose,
+                enabled = actionsEnabled,
+            )
+            if (state.photoPath != null) {
+                TextButton(
+                    onClick = onRemove,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    enabled = actionsEnabled,
+                    colors = ButtonDefaults.textButtonColors(contentColor = colors.primaryActionText),
+                ) {
+                    Text(stringResource(R.string.person_photo_remove), style = GiftiaryType.actionSmall)
+                }
+            }
+            if (state.photoBusy) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = colors.primaryAction, strokeWidth = 2.dp)
+            }
+        }
+    }
+}
+
+private val EDITOR_AVATAR_SIZE = 88.dp
 
 @PreviewLightDark
 @Composable

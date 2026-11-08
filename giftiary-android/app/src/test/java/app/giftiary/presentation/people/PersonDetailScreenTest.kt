@@ -1,18 +1,22 @@
 package app.giftiary.presentation.people
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -25,6 +29,7 @@ import app.giftiary.domain.model.Wishlist
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.WithFontScale
 import app.giftiary.testing.giftDetails
@@ -42,6 +47,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -64,7 +70,12 @@ class PersonDetailScreenTest {
     private var deletion by mutableStateOf(PersonDeletion())
     private var fontScale by mutableFloatStateOf(1f)
 
-    private fun showDetail(state: PersonDetailUiState.Loaded, fontScale: Float = 1f, today: LocalDate = this.today) {
+    private fun showDetail(
+        state: PersonDetailUiState.Loaded,
+        fontScale: Float = 1f,
+        today: LocalDate = this.today,
+        photo: LoadedPhoto? = null,
+    ) {
         this.fontScale = fontScale
         compose.setContent {
             WithFontScale(this.fontScale) {
@@ -88,6 +99,7 @@ class PersonDetailScreenTest {
                         onDeleteErrorShown = {},
                         deletion = deletion,
                         today = today,
+                        personPhoto = photo,
                     )
                 }
             }
@@ -110,10 +122,37 @@ class PersonDetailScreenTest {
         // The monogram is decorative (see FoundationComponentsTest); the name is what is read out.
         compose.onNodeWithText("Peter").assertExists()
         compose.onNodeWithText("Husband").assertExists()
+        compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).assertDoesNotExist()
 
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithContentDescription("Edit Peter").performClick()
         assertEquals(listOf("back", "edit Peter"), actions)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `with a photo it fills the hero's circle, cropped and unannounced, beside the name`() {
+        showDetail(loaded(), photo = jpeg())
+
+        val photo = compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+            .getBoundsInRoot()
+        // The circle runs off the hero's end, so only its height is whole: a 4:3 photo fitted
+        // inside rather than cropped would be 147dp tall.
+        assertEquals("fills the 196dp circle", 196f, (photo.bottom - photo.top).value, 0.5f)
+        // Cropped, the photo's colour reaches the top of the circle; fitted, the circle's own fill
+        // would show above and below it.
+        val pixels = compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).captureToImage().toPixelMap()
+        val nearTop = pixels[pixels.width / 2, pixels.height / 20]
+        assertEquals("photo colour near the top", 0x5A / 255f, nearTop.red, 0.06f)
+        assertEquals(0x40 / 255f, nearTop.green, 0.06f)
+        compose.onNodeWithText("Peter").assertExists()
+        compose.onNodeWithContentDescription("Edit Peter").assertExists()
+    }
+
+    private fun jpeg(): LoadedPhoto {
+        val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
+        return LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())
     }
 
     @Test
