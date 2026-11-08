@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.time.LocalDate
@@ -85,11 +86,35 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun `the avatar is shown when the server has one, downloaded again only when it changed`() = runTest {
+        val viewModel = viewModel()
+        keepSubscribed(viewModel.state)
+        viewModel.onResume()
+        assertNull(viewModel.state.value.avatar)
+
+        profiles.avatarPath = AVATAR
+        profiles.avatars[AVATAR] = byteArrayOf(7)
+        viewModel.onResume()
+        viewModel.onResume()
+
+        assertTrue(viewModel.state.value.avatar!!.bytes.contentEquals(byteArrayOf(7)))
+        assertEquals(1, profiles.calls.count { it == "avatar" })
+
+        profiles.avatarPath = null
+        viewModel.onResume()
+        assertNull("removed in Edit profile, gone on return", viewModel.state.value.avatar)
+    }
+
+    @Test
     fun `counts that cannot be read are left out rather than guessed`() = runTest {
         people.peopleFlowFailure = IllegalStateException("database")
         val viewModel = viewModel()
         keepSubscribed(viewModel.state)
 
         assertNull(viewModel.state.value.stats)
+    }
+
+    private companion object {
+        const val AVATAR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/10000000-0000-4000-8000-000000000001.jpg"
     }
 }

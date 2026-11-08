@@ -2,12 +2,14 @@ package app.giftiary.presentation.navigation
 
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import app.giftiary.presentation.home.ComingUpViewModel
+import app.giftiary.presentation.home.HomeAvatarViewModel
 import app.giftiary.presentation.home.HomeScreen
 import app.giftiary.presentation.home.RecentGiftsViewModel
 import app.giftiary.presentation.home.ReminderCardViewModel
@@ -26,6 +28,12 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
         val reminders = hiltViewModel<ReminderCardViewModel>()
         val reminderCard by reminders.state.collectAsStateWithLifecycle()
         val recentGifts by hiltViewModel<RecentGiftsViewModel>().content.collectAsStateWithLifecycle()
+        val homeAvatar = hiltViewModel<HomeAvatarViewModel>()
+        val accountAvatar by homeAvatar.avatar.collectAsStateWithLifecycle()
+        LifecycleResumeEffect(homeAvatar) {
+            homeAvatar.onResume()
+            onPauseOrDispose {}
+        }
         HomeScreen(
             syncStatus = syncStatus,
             comingUp = comingUp,
@@ -38,6 +46,7 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
             onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
             onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
             accountEmail = accountEmail,
+            accountAvatar = accountAvatar,
             onOpenProfile = dropUnlessResumed { navController.navigate(ProfileRoute) },
         )
     }

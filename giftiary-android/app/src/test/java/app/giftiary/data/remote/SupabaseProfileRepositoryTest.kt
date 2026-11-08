@@ -1,5 +1,7 @@
 package app.giftiary.data.remote
 
+import androidx.test.core.app.ApplicationProvider
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.remote.RemoteTestData.alice
 import app.giftiary.data.remote.RemoteTestData.token
 import app.giftiary.domain.repository.ProfileException
@@ -37,6 +39,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
+import java.time.Clock
 import java.util.UUID
 
 /** The own profile against a fake PostgREST: exactly which row is read and written, and failures. */
@@ -59,8 +62,17 @@ class SupabaseProfileRepositoryTest {
             alwaysAutoRefresh = false
         }
     }.auth
-    private fun repository(owner: UUID? = alice) =
-        SupabaseProfileRepository(AccountBoundClients(URL, KEY, engine), RemoteAccounts(auth), FakeActiveOwner(owner))
+    private fun repository(owner: UUID? = alice): SupabaseProfileRepository {
+        val clients = AccountBoundClients(URL, KEY, engine)
+        return SupabaseProfileRepository(
+            clients,
+            RemoteAccounts(auth),
+            FakeActiveOwner(owner),
+            SupabaseProfileAvatarRemote(clients),
+            GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
+            Clock.systemUTC(),
+        )
+    }
 
     @Before
     fun signIn() = runTest {

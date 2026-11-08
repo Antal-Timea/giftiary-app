@@ -549,6 +549,10 @@ nagy történetek</string>
     <string name="settings_display_name_hint">Azok látják, akikkel kívánságlistát osztasz meg. Ha üresen hagyod, nem jelenik meg név.</string>
     <string name="settings_save_name">Név mentése</string>
     <string name="settings_name_saved">Név elmentve</string>
+    <string name="profile_photo_private">A profilfotódat csak te látod.</string>
+    <string name="profile_photo_saved">Profilfotó elmentve</string>
+    <string name="profile_photo_removed">Profilfotó eltávolítva</string>
+    <string name="profile_photo_unchanged">A profilfotód nem változott.</string>
     <string name="settings_privacy_policy">Adatkezelési tájékoztató</string>
     <string name="settings_privacy_policy_url">https://giftiary.app/privacy/#hu</string>
     <string name="settings_delete_account">Fiók törlése</string>

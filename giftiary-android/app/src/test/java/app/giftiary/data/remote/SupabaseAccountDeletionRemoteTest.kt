@@ -40,16 +40,18 @@ import java.util.UUID
 class SupabaseAccountDeletionRemoteTest {
 
     private val requests = mutableListOf<HttpRequestData>()
-    // The photo folder lists as empty unless a test fills it; only the RPC's answer varies.
+    // Each bucket's folder lists as empty unless a test fills it; only the RPC's answer varies.
     private var folder = mutableListOf<String>()
+    private var avatarFolder = mutableListOf<String>()
     private var answer: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData = { respond("", HttpStatusCode.NoContent) }
     private val engine = MockEngine { request ->
         requests += request
+        val listed = if (request.url.encodedPath.endsWith("/profile-avatars")) avatarFolder else folder
         when {
             request.url.encodedPath.startsWith("/storage/v1/object/list/") ->
-                respond(folder.joinToString(prefix = "[", postfix = "]", transform = ::listed), HttpStatusCode.OK, JSON_HEADERS)
+                respond(listed.joinToString(prefix = "[", postfix = "]", transform = ::listed), HttpStatusCode.OK, JSON_HEADERS)
             request.url.encodedPath.startsWith("/storage/v1/object/") -> {
-                folder.clear()
+                listed.clear()
                 respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             }
             else -> answer(request)
@@ -66,7 +68,12 @@ class SupabaseAccountDeletionRemoteTest {
         }
     }.auth
     private val clients = AccountBoundClients(URL, PUBLISHABLE_KEY, engine)
-    private val remote = SupabaseAccountDeletionRemote(clients, RemoteAccounts(auth), SupabaseGiftPhotoRemote(clients))
+    private val remote = SupabaseAccountDeletionRemote(
+        clients,
+        RemoteAccounts(auth),
+        SupabaseGiftPhotoRemote(clients),
+        SupabaseProfileAvatarRemote(clients),
+    )
 
     @Before
     fun signIn() = runTest {
@@ -104,6 +111,7 @@ class SupabaseAccountDeletionRemoteTest {
             listOf(
                 "POST /storage/v1/object/list/gift-photos",
                 "DELETE /storage/v1/object/gift-photos",
+                "POST /storage/v1/object/list/profile-avatars",
                 "POST /rest/v1/rpc/delete_my_account",
             ),
             paths,
@@ -119,13 +127,50 @@ class SupabaseAccountDeletionRemoteTest {
     }
 
     @Test
+    fun `the account's avatars are emptied too, after its photos and before the account`() = runTest {
+        avatarFolder += listOf("20000000-0000-4000-8000-000000000001.jpg")
+
+        remote.deleteAccount(alice)
+
+        assertEquals(
+            listOf(
+                "POST /storage/v1/object/list/gift-photos",
+                "POST /storage/v1/object/list/profile-avatars",
+                "DELETE /storage/v1/object/profile-avatars",
+                "POST /rest/v1/rpc/delete_my_account",
+            ),
+            requests.map { "${it.method.value} ${it.url.encodedPath}" },
+        )
+        val deleted = Json.parseToJsonElement((requests[2].body as OutgoingContent.ByteArrayContent).bytes().decodeToString())
+        assertEquals(Json.parseToJsonElement("""{"prefixes":["$alice/20000000-0000-4000-8000-000000000001.jpg"]}"""), deleted)
+    }
+
+    @Test
+    fun `a failure to empty the avatars deletes no account`() = runTest {
+        val avatarsDown = MockEngine { request ->
+            requests += request
+            when {
+                request.url.encodedPath.endsWith("/profile-avatars") -> throw IOException("offline")
+                request.url.encodedPath.startsWith("/storage/") -> respond("[]", HttpStatusCode.OK, JSON_HEADERS)
+                else -> respond("", HttpStatusCode.NoContent)
+            }
+        }
+        val down = AccountBoundClients(URL, PUBLISHABLE_KEY, avatarsDown)
+        val deletion = SupabaseAccountDeletionRemote(down, RemoteAccounts(auth), SupabaseGiftPhotoRemote(down), SupabaseProfileAvatarRemote(down))
+
+        assertFailure(RemoteFailure.NETWORK) { deletion.deleteAccount(alice) }
+        assertTrue(requests.none { it.url.encodedPath.startsWith("/rest/") })
+        avatarsDown.close()
+    }
+
+    @Test
     fun `a failure to empty the photo folder deletes nothing else`() = runTest {
         val storageDown = MockEngine { request ->
             requests += request
             if (request.url.encodedPath.startsWith("/storage/")) throw IOException("offline") else respond("", HttpStatusCode.NoContent)
         }
         val failing = AccountBoundClients(URL, PUBLISHABLE_KEY, storageDown)
-        val deletion = SupabaseAccountDeletionRemote(failing, RemoteAccounts(auth), SupabaseGiftPhotoRemote(failing))
+        val deletion = SupabaseAccountDeletionRemote(failing, RemoteAccounts(auth), SupabaseGiftPhotoRemote(failing), SupabaseProfileAvatarRemote(failing))
 
         assertFailure(RemoteFailure.NETWORK) { deletion.deleteAccount(alice) }
         assertTrue(requests.none { it.url.encodedPath.startsWith("/rest/") })

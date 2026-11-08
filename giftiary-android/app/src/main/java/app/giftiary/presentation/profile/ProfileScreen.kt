@@ -5,6 +5,7 @@ import androidx.annotation.PluralsRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,7 +35,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,13 +46,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.presentation.components.DecoratedPage
 import app.giftiary.presentation.components.GiftCutout
-import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryDivider
 import app.giftiary.presentation.components.GiftiaryRow
 import app.giftiary.presentation.components.GiftiarySecondaryButton
 import app.giftiary.presentation.components.RowChevron
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.people.PersonAvatar
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -79,8 +82,8 @@ class ProfileActions(
 )
 
 /**
- * The approved Profile board as far as the account has the data: the monogram (there is no profile
- * photo), the name others see or else the email, Edit profile for that name, what this device
+ * The approved Profile board as far as the account has the data: the avatar or else the monogram,
+ * the name others see or else the email, Edit profile for that name, what this device
  * keeps, then Settings and Sign out.
  */
 @Composable
@@ -114,7 +117,7 @@ fun ProfileContent(state: ProfileUiState, actions: ProfileActions, modifier: Mod
     }
 }
 
-/** The monogram is decorative: the name or email is written right beside it. */
+/** The avatar is decorative: the name or email is written right beside it. */
 @Composable
 private fun Identity(state: ProfileUiState, modifier: Modifier = Modifier) {
     val colors = GiftiaryTheme.colors
@@ -125,8 +128,9 @@ private fun Identity(state: ProfileUiState, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The same initial as on Home, which knows only the account's email.
-        GiftiaryAvatar(name = state.email ?: title.orEmpty(), size = 88.dp)
-        Column(Modifier.weight(1f)) {
+        PersonAvatar(name = state.email ?: title.orEmpty(), photo = state.avatar, size = 88.dp)
+        // Short of the corner gift, which reaches down beside this row on a phone.
+        Column(Modifier.weight(1f).padding(end = GIFT_CLEARANCE)) {
             if (title != null) {
                 Text(
                     text = title,
@@ -156,12 +160,7 @@ private fun Identity(state: ProfileUiState, modifier: Modifier = Modifier) {
 private fun Story(stats: ProfileStats, modifier: Modifier = Modifier) {
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier) {
-        Text(
-            text = stringResource(R.string.profile_story).uppercase(),
-            modifier = Modifier.semantics { heading() },
-            style = GiftiaryType.wordmark,
-            color = colors.textLabel,
-        )
+        StoryHeading(stringResource(R.string.profile_story).uppercase())
         Row(
             modifier = Modifier
                 .padding(top = GiftiarySpacing.m)
@@ -181,6 +180,32 @@ private fun Story(stats: ProfileStats, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(top = GiftiarySpacing.l),
             style = GiftiaryType.body,
             color = colors.textSecondary,
+        )
+    }
+}
+
+/**
+ * The story overline, broken only between words: "GIFTIARY-TÖRTÉNETED" is one word, not split at
+ * its hyphen nor hyphenated. When even the longest word is wider than the page (large text on a
+ * phone), the overline is set smaller rather than split.
+ */
+@Composable
+private fun StoryHeading(text: String) {
+    // The word joiner after a hyphen removes the break the line breaker would otherwise allow there.
+    val joined = text.replace("-", "-\u2060")
+    val base = GiftiaryType.wordmark.copy(hyphens = Hyphens.None, lineBreak = LineBreak.Heading)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val measurer = rememberTextMeasurer()
+        val longestWord = joined.split(' ').maxOf { measurer.measure(it, base, softWrap = false).size.width }
+        // A little short of the full width: a word measured as just fitting can still be wrapped.
+        val available = constraints.maxWidth * 0.95f
+        // Letter spacing is in em, so it shrinks along with the size.
+        val style = if (longestWord <= available) base else base.copy(fontSize = base.fontSize * (available / longestWord))
+        Text(
+            text = joined,
+            modifier = Modifier.semantics { heading() },
+            style = style,
+            color = GiftiaryTheme.colors.textLabel,
         )
     }
 }
@@ -231,6 +256,9 @@ private fun ProfileRow(@DrawableRes icon: Int, title: String, onClick: () -> Uni
         onClick = onClick,
     )
 }
+
+// The corner gift's reach past the page gutter beside the identity row (measured in the test).
+internal val GIFT_CLEARANCE = 48.dp
 
 // Past the 22dp icon and the row's 14dp gap, so the hairline starts under the titles, as on the board.
 private val ROW_TEXT_INDENT = 36.dp
