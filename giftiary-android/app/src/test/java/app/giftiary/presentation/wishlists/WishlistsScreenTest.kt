@@ -256,21 +256,27 @@ class WishlistsScreenTest {
     }
 
     @Test
-    fun `shared lists name their owner, or a neutral member, never more`() {
+    fun `the sharer's own lists name only who shared them, or a neutral member`() {
         show(populated)
 
-        compose.onNodeWithText("Peter").assertExists()
-        compose.onNodeWithText("A Giftiary member").assertExists()
-        compose.onNodeWithText("Peter · ", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Shared by Peter").assertExists()
+        compose.onNodeWithText("Shared by A Giftiary member").assertExists()
     }
 
     @Test
-    fun `a shared list kept for a person names whom it is for instead of its owner`() {
+    fun `a shared list kept for a person names whom it is for and, apart, who shared it`() {
         show(populated, shared = OnlineState(OnlineContent.Loaded(listOf(forAlex, peters))))
 
-        compose.onNodeWithText("For Alex").assertExists()
-        compose.onNodeWithText("Bea").assertDoesNotExist()
-        compose.onNodeWithText("Peter").assertExists()
+        compose.onNodeWithText("For Alex · Shared by Bea").assertExists()
+        compose.onNodeWithText("Shared by Peter").assertExists()
+    }
+
+    @Test
+    fun `a recipient who shares the sharer's name is still shown apart, never merged`() {
+        val same = SharedWishlistSummary(UUID.randomUUID(), "Bea’s list", "Bea", personName = "Bea")
+        show(populated, shared = OnlineState(OnlineContent.Loaded(listOf(same))))
+
+        compose.onNodeWithText("For Bea · Shared by Bea").assertExists()
     }
 
     @Test
@@ -278,7 +284,7 @@ class WishlistsScreenTest {
     fun `in Hungarian a person's shared list reads as for them`() {
         show(populated, shared = OnlineState(OnlineContent.Loaded(listOf(forAlex))))
 
-        compose.onNodeWithText("Alex részére").assertExists()
+        compose.onNodeWithText("Alex részére · Megosztotta: Bea").assertExists()
     }
 
     @Test

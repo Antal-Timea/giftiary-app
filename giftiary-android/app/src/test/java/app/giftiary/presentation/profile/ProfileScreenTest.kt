@@ -2,6 +2,7 @@ package app.giftiary.presentation.profile
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.lineCount
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -21,6 +23,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** Profile shows what the account has: monogram, name or email, counts, then Settings and Sign out. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -116,6 +119,37 @@ class ProfileScreenTest {
         listOf("Profil szerkesztése", "A GIFTIARY-TÖRTÉNETED", "Beállítások", "Kijelentkezés").forEach {
             val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
             assertTrue("$it fits: ${bounds.right} <= $width", bounds.right <= width)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w390dp-h1400dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `a long email stays on one line, read out whole, at 390dp and large text`() = assertLongEmailOneLine()
+
+    @Test
+    @Config(qualifiers = "hu-w360dp-h1400dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `in Hungarian a long email stays on one line, read out whole, at 360dp and large text`() = assertLongEmailOneLine()
+
+    private fun assertLongEmailOneLine() {
+        val email = "giftiary.owner.tests@example.com"
+        var current by mutableStateOf(ProfileUiState(email = email, displayName = null))
+        var scale by mutableFloatStateOf(1f)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, scale)) {
+                GiftiaryTheme { ProfileContent(current, ProfileActions({}, {}, {}, {})) }
+            }
+        }
+        listOf(null, "Timi").forEach { name ->
+            listOf(1f, 2f).forEach { s ->
+                current = ProfileUiState(email = email, displayName = name)
+                scale = s
+                compose.waitForIdle()
+                val node = compose.onNodeWithText(email, useUnmergedTree = true)
+                assertEquals("named $name at ${s}x", 1, node.lineCount())
+                assertTrue(node.getBoundsInRoot().right <= compose.onRoot().getBoundsInRoot().right)
+            }
         }
     }
 }
