@@ -314,6 +314,16 @@ class SharingViewModelsTest {
     }
 
     @Test
+    fun `sharing reads only the owner's name, never the avatar`() = runTest {
+        profiles.avatarPath = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/10000000-0000-4000-8000-000000000001.jpg"
+        val viewModel = accessViewModel()
+
+        viewModel.checkOwnerName()
+
+        assertEquals(listOf("displayName"), profiles.calls)
+    }
+
+    @Test
     fun `an unreadable profile shows no prompt rather than a wrong one`() = runTest {
         profiles.failNext += ProfileFailure.NETWORK
         val viewModel = accessViewModel()

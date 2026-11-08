@@ -1,5 +1,6 @@
 package app.giftiary.data.remote
 
+import io.github.jan.supabase.storage.BucketApi
 import io.github.jan.supabase.storage.storage
 import io.ktor.http.ContentType
 import javax.inject.Inject
@@ -42,21 +43,23 @@ class SupabaseGiftPhotoRemote @Inject constructor(
     }
 
     override suspend fun deleteAll(account: RemoteAccount) {
-        val folder = account.ownerUserId.toString()
-        clients.call(account) { client ->
-            val bucket = client.storage.from(BUCKET)
-            while (true) {
-                // Deleted objects leave the listing, so each page starts again from the top.
-                val page = bucket.list(folder) { limit = PAGE_SIZE }.filter { it.id != null }
-                if (page.isEmpty()) break
-                bucket.delete(page.map { "$folder/${it.name}" })
-                if (page.size < PAGE_SIZE) break
-            }
-        }
+        clients.call(account) { client -> client.storage.from(BUCKET).emptyFolder(account.ownerUserId.toString()) }
     }
 
     companion object {
         const val BUCKET = "gift-photos"
-        private const val PAGE_SIZE = 100
     }
 }
+
+/** Removes every object in [folder], page by page. */
+internal suspend fun BucketApi.emptyFolder(folder: String) {
+    while (true) {
+        // Deleted objects leave the listing, so each page starts again from the top.
+        val page = list(folder) { limit = PAGE_SIZE }.filter { it.id != null }
+        if (page.isEmpty()) break
+        delete(page.map { "$folder/${it.name}" })
+        if (page.size < PAGE_SIZE) break
+    }
+}
+
+private const val PAGE_SIZE = 100

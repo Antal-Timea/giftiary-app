@@ -550,6 +550,10 @@ big stories</string>
     <string name="settings_display_name_hint">Shown to the people you share wishlists with. Leave it empty to show no name.</string>
     <string name="settings_save_name">Save name</string>
     <string name="settings_name_saved">Name saved</string>
+    <string name="profile_photo_private">Only you see your profile photo.</string>
+    <string name="profile_photo_saved">Profile photo saved</string>
+    <string name="profile_photo_removed">Profile photo removed</string>
+    <string name="profile_photo_unchanged">Your profile photo didn’t change.</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
     <!-- The published policy; the page holds both languages, the anchor picks this one. -->
     <string name="settings_privacy_policy_url">https://giftiary.app/privacy/#en</string>

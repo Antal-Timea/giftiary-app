@@ -59,6 +59,8 @@ import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.components.giftiaryWideWidth
 import app.giftiary.presentation.gifts.GiftMemoryCard
+import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.people.PersonAvatar
 import app.giftiary.presentation.sync.SyncStatusContent
 import app.giftiary.presentation.sync.SyncStatusLine
 import app.giftiary.presentation.theme.GiftiaryShapes
@@ -86,6 +88,7 @@ fun HomeScreen(
     accountEmail: String?,
     onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier,
+    accountAvatar: LoadedPhoto? = null,
     widthClass: WidthClass = LocalWidthClass.current,
     today: LocalDate = LocalDate.now(),
 ) {
@@ -111,7 +114,7 @@ fun HomeScreen(
                 onOpenSyncAttention = onOpenSyncAttention,
                 reminderCard = reminderCard,
                 reminderActions = reminderActions,
-                profileEntry = { ProfileEntry(accountEmail, onOpenProfile) },
+                profileEntry = { ProfileEntry(accountEmail, accountAvatar, onOpenProfile) },
                 modifier = Modifier.padding(contentPadding).windowInsetsPadding(WindowInsets.statusBars),
             )
             return@Scaffold
@@ -124,7 +127,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .giftiaryReadableWidth(),
         ) {
-            HomeHero(today = today, profileEntry = { ProfileEntry(accountEmail, onOpenProfile) })
+            HomeHero(today = today, profileEntry = { ProfileEntry(accountEmail, accountAvatar, onOpenProfile) })
             SyncStatusLine(
                 content = syncStatus,
                 onOpenAttention = onOpenSyncAttention,
@@ -233,7 +236,7 @@ private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
  * signing out are. The initial comes from the email, the one name the device always has.
  */
 @Composable
-private fun ProfileEntry(email: String?, onClick: () -> Unit) {
+private fun ProfileEntry(email: String?, avatar: LoadedPhoto?, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
     Box(
         modifier = Modifier
@@ -243,6 +246,10 @@ private fun ProfileEntry(email: String?, onClick: () -> Unit) {
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
+        if (avatar != null) {
+            PersonAvatar(name = email.orEmpty(), photo = avatar, size = 36.dp)
+            return@Box
+        }
         GiftiaryAvatar(
             name = email.orEmpty(),
             size = 36.dp,

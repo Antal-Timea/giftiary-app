@@ -9,6 +9,7 @@ import app.giftiary.domain.repository.PersonRepository
 import app.giftiary.domain.repository.ProfileException
 import app.giftiary.domain.repository.ProfileRepository
 import app.giftiary.domain.repository.WishlistRepository
+import app.giftiary.presentation.gifts.LoadedPhoto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,8 +23,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * The user's own profile: the account's email, the name others see when the server has one, and
- * how much this device keeps. Nothing is filled in that the account does not have.
+ * The user's own profile: the account's email, the name others see and the avatar when the server
+ * has them, and how much this device keeps. Nothing is filled in that the account does not have.
  */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
@@ -38,6 +39,7 @@ class ProfileViewModel @Inject constructor(
 
     // The name lives only on the server; without an answer the profile shows the email alone.
     private val displayName = MutableStateFlow<String?>(null)
+    private val avatar = MutableStateFlow<SavedAvatar?>(null)
 
     private val stats = combine(
         people.observePeople().map { it.size },
@@ -47,8 +49,9 @@ class ProfileViewModel @Inject constructor(
 
     val state: StateFlow<ProfileUiState> = combine(
         displayName,
+        avatar,
         stats.map<ProfileStats, ProfileStats?> { it }.catch { emit(null) },
-    ) { name, counts -> ProfileUiState(email = email, displayName = name, stats = counts) }
+    ) { name, avatar, counts -> ProfileUiState(email = email, displayName = name, avatar = avatar?.photo, stats = counts) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -57,17 +60,20 @@ class ProfileViewModel @Inject constructor(
 
     private var loading: Job? = null
 
-    /** On every visit, so a name just changed in Edit profile shows on return. */
+    /** On every visit, so a name or avatar just changed in Edit profile shows on return. */
     fun onResume() {
         loading?.cancel()
         loading = viewModelScope.launch {
             try {
-                displayName.value = profiles.displayName()
+                val profile = profiles.profile()
+                displayName.value = profile.displayName
+                avatar.value = profiles.refreshAvatar(profile.avatarPath, avatar.value)
             } catch (_: ProfileException) {
                 // Keeps what was read before; Edit profile is where a failure is explained.
             }
         }
     }
+
 
     private companion object {
         const val STOP_TIMEOUT_MILLIS = 5_000L
@@ -77,9 +83,21 @@ class ProfileViewModel @Inject constructor(
 data class ProfileUiState(
     val email: String? = null,
     val displayName: String? = null,
+    /** Null while there is none, or before it is downloaded. */
+    val avatar: LoadedPhoto? = null,
     /** Null until counted. */
     val stats: ProfileStats? = null,
 )
+
+/** The avatar shown and the path it came from, so an unchanged avatar is not downloaded again. */
+internal data class SavedAvatar(val path: String, val photo: LoadedPhoto)
+
+/** The avatar at [path], reusing [shown] when it is the same one. @throws ProfileException */
+internal suspend fun ProfileRepository.refreshAvatar(path: String?, shown: SavedAvatar?): SavedAvatar? = when {
+    path == null -> null
+    path == shown?.path -> shown
+    else -> SavedAvatar(path, LoadedPhoto(avatar(path)))
+}
 
 /** What this device keeps for the account: active people, gifts and wishlists. */
 data class ProfileStats(val people: Int, val gifts: Int, val wishlists: Int)
