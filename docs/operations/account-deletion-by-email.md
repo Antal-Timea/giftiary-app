@@ -386,6 +386,13 @@ particular:
 
 ## Gaps (owner decisions or provider checks)
 
+- **Privacy follow-up, not implemented: email addresses in closed recipient invites.** Today a
+  `wishlist_recipient_invites` row keeps `recipient_email` after it is accepted, declined, revoked
+  or expired, and after the list is deleted; it goes only with the owner's account
+  (`private.delete_account`), never with the invitee's. The privacy policy (sections 3.5, 11, 12)
+  describes exactly this. Follow-up: once an invite is closed, make its email address deletable or
+  anonymizable later while the invite's audit row (list, owner, status, timestamps) is kept. When
+  that ships, update the privacy policy's retention text to match.
 - **Accounts without an email address:** run the provider checks in "Accounts without an email
   address". Only if such accounts can exist does a verification method need to be decided.
 - **EDPB para. 157** (identity confirmation and the time limit) to be read and a decision recorded.

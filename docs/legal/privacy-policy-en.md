@@ -97,7 +97,8 @@ If you email us, we process your message and your email address to answer your r
 |---|---|---|
 | Creating your account, sign-in (email, Google, Facebook), account management | 3.1, 3.2 | (b) providing the service (performance of a contract) |
 | Storing, syncing and displaying the content you enter | 3.4, 3.8 | (b) |
-| Sharing wishlists, joining, reserving | 3.3, 3.5 | (b) |
+| Sharing wishlists, joining, reserving (except the email address of a person invited by email) | 3.3, 3.5 | (b) |
+| Inviting by email address: processing the invited third person's email address | 3.5 (Email invites) | (f) legitimate interest: the Giftiary user's legitimate interest in being able to invite a specific person to their shared wishlist |
 | Confirmation and password-reset emails | 3.7 | (b) |
 | Local reminders | 3.8 | (b) |
 | Security of the service, abuse prevention, troubleshooting, technical logs | 3.6 | (f) legitimate interest in a secure and reliable service |

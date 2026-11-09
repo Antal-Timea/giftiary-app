@@ -97,7 +97,8 @@ Ha e-mailben megkeresel minket, a leveledet és az e-mail-címedet a kérésed m
 |---|---|---|
 | Fiók létrehozása, bejelentkezés (e-mail, Google, Facebook), fiókkezelés | 3.1, 3.2 | b) pont – a szolgáltatás nyújtása (szerződés teljesítése) |
 | Az általad rögzített tartalom tárolása, szinkronizálása, megjelenítése | 3.4, 3.8 | b) pont |
-| Kívánságlisták megosztása, csatlakozás, foglalás | 3.3, 3.5 | b) pont |
+| Kívánságlisták megosztása, csatlakozás, foglalás (kivéve az e-mail-cím alapján meghívott személy e-mail-címét) | 3.3, 3.5 | b) pont |
+| Meghívás e-mail-cím alapján: a meghívott harmadik személy e-mail-címének kezelése | 3.5 (E-mailes meghívók) | f) pont – jogos érdek: a Giftiary-felhasználó jogos érdeke, hogy egy konkrét személyt meghívhasson a megosztott kívánságlistájához |
 | Megerősítő és jelszó-visszaállító e-mailek | 3.7 | b) pont |
 | Helyi emlékeztetők | 3.8 | b) pont |
 | A szolgáltatás biztonsága, visszaélések megelőzése, hibakeresés, technikai naplók | 3.6 | f) pont – jogos érdek a biztonságos és megbízható működéshez |
