@@ -168,8 +168,8 @@ table `wishlist_recipient_invites`, RPC-only like the tables above):
 | Function | For | Returns |
 |---|---|---|
 | `create_recipient_invite(p_wishlist_id, p_email)` | owner | `{invite_id, recipient_email, state, created_at, expires_at}`; the pending one if the address already has one |
-| `list_recipient_invites(p_wishlist_id)` | owner | its invites, `state` `PENDING` or `NOT_ACCEPTED` (declined and expired alike); accepted and revoked ones are left out |
-| `revoke_recipient_invite(p_invite_id)` | owner | nothing; withdraws a pending invite or clears a not accepted one |
+| `list_recipient_invites(p_wishlist_id)` | owner | its pending invites (`state` is always `PENDING`); closed ones have no address left to show |
+| `revoke_recipient_invite(p_invite_id)` | owner | nothing; withdraws a pending invite |
 | `get_my_invites()` | recipient | `[{invite_id, wishlist_name, owner_display_name, person_name, created_at, expires_at}]` |
 | `respond_to_invite(p_invite_id, p_accept)` | recipient | `{wishlist_id}` on accept, `{}` on decline |
 
@@ -182,6 +182,20 @@ table `wishlist_recipient_invites`, RPC-only like the tables above):
 - **Accepting** joins like a link: under the per-list lock, within 50 members, keeping an existing
   membership and its reservations. No recipient id is stored; a recipient's account deletion leaves
   the invites addressed to them unchanged, an owner's removes theirs.
+- **The invite email** (`20261110100000_recipient_invite_privacy`). Each new invite queues one
+  email to its address through pg_net to Resend, in the invite's transaction: a Giftiary user
+  invited you, open the app or register within 14 days, where the address came from and what it
+  is for, and the privacy policy, in Hungarian and English. Only the address and the expiry date
+  vary; it names neither the owner nor the list. A repeat invite while one is pending sends
+  nothing. The API key is the Vault secret `resend_api_key`; without it nothing is sent, and the
+  job sends the backlog once it is set. Answers are settled from `net._http_response`: 2xx sent,
+  a 4xx other than 429 never retried, anything else retried up to 5 times, with an
+  `Idempotency-Key` of the invite.
+- **Closed invites keep no address.** Accepting, declining, revoking and expiry each set
+  `recipient_email` to null (a check enforces it); the row keeps its list, owner, status and times.
+  The pg_cron job `recipient-invites` (`private.run_recipient_invite_jobs`, every minute) closes
+  expired invites, so expiry erases addresses without anyone calling a function, and resends
+  unsent emails. `tests/database/15_recipient_invite_privacy.test.sql` covers it.
 
 ## Account deletion
 

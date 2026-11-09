@@ -12,7 +12,6 @@ import app.giftiary.data.user.ActiveOwner
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
-import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.RecipientInvite
@@ -109,7 +108,8 @@ class SupabaseWishlistSharingRepository @Inject constructor(
             "list_recipient_invites",
             buildJsonObject { put("p_wishlist_id", wishlistId.toString()) },
             ListSerializer(RemoteEmailInvite.serializer()),
-        ).map(::emailInvite)
+        // A server from before closed invites lost their address still lists declined and expired ones.
+        ).filter { it.state == PENDING }.map(::emailInvite)
 
     override suspend fun revokeEmailInvite(inviteId: UUID) {
         rpc("revoke_recipient_invite", buildJsonObject { put("p_invite_id", inviteId.toString()) })
@@ -201,11 +201,9 @@ class SupabaseWishlistSharingRepository @Inject constructor(
             throw SharingException(SharingFailure.SERVER)
         }
 
-    // A state this version does not know could be shown wrongly to the owner, so it is a failure.
     private fun emailInvite(invite: RemoteEmailInvite) = EmailInvite(
         id = invite.inviteId,
         email = invite.recipientEmail,
-        state = EmailInviteState.entries.find { it.name == invite.state } ?: throw SharingException(SharingFailure.SERVER),
         createdAt = invite.createdAt,
         expiresAt = invite.expiresAt,
     )
@@ -231,6 +229,7 @@ class SupabaseWishlistSharingRepository @Inject constructor(
 
     private companion object {
         const val INVITE_VALID_DAYS = 7
+        const val PENDING = "PENDING"
 
         val RESERVE_ANSWERS = setOf(ReservationState.RESERVED_BY_ME, ReservationState.RESERVED_BY_OTHER)
 

@@ -22,7 +22,6 @@ import androidx.compose.ui.semantics.SemanticsActions
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
-import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
@@ -57,8 +56,8 @@ class WishlistAccessScreenTest {
     private val unnamed = WishlistMember(UUID.randomUUID(), null, now)
     private val invite = ActiveInvite(UUID.randomUUID(), now, now.plusSeconds(7 * 86_400))
     private val token = InviteToken.of("A".repeat(43))!!
-    private val bob = EmailInvite(UUID.randomUUID(), "bob@example.com", EmailInviteState.PENDING, now, now.plusSeconds(14 * 86_400))
-    private val eve = EmailInvite(UUID.randomUUID(), "eve@example.com", EmailInviteState.NOT_ACCEPTED, now, now.plusSeconds(14 * 86_400))
+    private val bob = EmailInvite(UUID.randomUUID(), "bob@example.com", now, now.plusSeconds(14 * 86_400))
+    private val eve = EmailInvite(UUID.randomUUID(), "eve@example.com", now, now.plusSeconds(3 * 86_400))
     private val loaded = WishlistAccessUiState(
         content = AccessContent.Loaded(WishlistAccess(listOf(invite), listOf(anna, unnamed))),
         emailInvites = EmailInvitesContent.Loaded(listOf(bob, eve)),
@@ -196,9 +195,12 @@ class WishlistAccessScreenTest {
     fun `the email form takes an address and sends or cancels`() {
         show(loaded.copy(emailForm = EmailInviteForm(text = "bob@")))
 
-        compose.onNodeWithText("No email is sent. The invite appears in Giftiary for whoever signs in with this address.").assertExists()
+        compose.onNodeWithText(
+            "We send this address one email saying a Giftiary user invited them, without your name or the list’s, " +
+                "with our privacy policy. Whoever signs in to Giftiary with this address within 14 days sees the invite.",
+        ).assertExists()
         compose.onNodeWithText("bob@").performTextReplacement("bob@example.com")
-        compose.onNodeWithText("Save invite").performClick()
+        compose.onNodeWithText("Send invite").performClick()
         compose.onNodeWithText("Cancel").performClick()
         assertEquals(listOf("email bob@example.com", "email send", "email cancel"), events)
         compose.onNodeWithText("Share invite link").assertExists()
@@ -220,22 +222,22 @@ class WishlistAccessScreenTest {
     }
 
     @Test
-    fun `an email invite reads pending or not accepted, nothing more`() {
+    fun `an email invite reads pending until its expiry, nothing more`() {
         show(loaded)
 
         compose.onNodeWithText("Pending · until ${date(bob.expiresAt)}").assertExists()
-        compose.onNodeWithText("Not accepted").assertExists()
-        listOf("Declined", "Expired", "Accepted").forEach { compose.onNodeWithText(it, substring = true).assertDoesNotExist() }
+        compose.onNodeWithText("Pending · until ${date(eve.expiresAt)}").assertExists()
+        listOf("Declined", "Expired", "Accepted", "Not accepted").forEach { compose.onNodeWithText(it, substring = true).assertDoesNotExist() }
     }
 
     @Test
-    fun `a pending email invite is withdrawn and a not accepted one cleared, behind their options`() {
+    fun `each pending email invite is withdrawn behind its options`() {
         show(loaded)
 
         compose.onNodeWithContentDescription("Options for the invite to bob@example.com").performClick()
         compose.onNodeWithText("Withdraw the invite to bob@example.com").performClick()
         compose.onNodeWithContentDescription("Options for the invite to eve@example.com").performClick()
-        compose.onNodeWithText("Remove eve@example.com from this list").performClick()
+        compose.onNodeWithText("Withdraw the invite to eve@example.com").performClick()
         assertEquals(listOf("email revoke ${bob.id}", "email revoke ${eve.id}"), events)
     }
 
@@ -254,7 +256,7 @@ class WishlistAccessScreenTest {
     @Config(qualifiers = "w320dp-h2000dp")
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun `a long address stays on one line, cut short, at large text, still named in full`() {
-        val long = EmailInvite(UUID.randomUUID(), "bartholomew.longname@gmail.com", EmailInviteState.PENDING, now, now.plusSeconds(86_400))
+        val long = EmailInvite(UUID.randomUUID(), "bartholomew.longname@gmail.com", now, now.plusSeconds(86_400))
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
@@ -282,7 +284,7 @@ class WishlistAccessScreenTest {
     fun `a sent invite is confirmed the same way for any address`() {
         show(loaded.copy(invitedEmail = "nobody@example.com"))
 
-        compose.onNodeWithText("Invite saved for nobody@example.com.").assertExists()
+        compose.onNodeWithText("Invite saved. We’ll email nobody@example.com.").assertExists()
     }
 
     @Test
@@ -325,8 +327,9 @@ class WishlistAccessScreenTest {
         val width = compose.onRoot().getBoundsInRoot().right
         listOf(
             "Lista megosztása", "Meghívó link megosztása", "Péter születésnapi kívánságlistája", "Meghívás email-cím alapján",
-            "Most nem küldhetsz több email-meghívót. Vonj vissza egyet, vagy próbáld újra holnap.", "Meghívó mentése",
-            "Emailt nem küldünk. A meghívó a Giftiaryben jelenik meg annak, aki ezzel a címmel jelentkezik be.",
+            "Most nem küldhetsz több email-meghívót. Vonj vissza egyet, vagy próbáld újra holnap.", "Meghívó küldése",
+            "Erre a címre egy emailt küldünk arról, hogy egy Giftiary-felhasználó meghívta, a neved és a lista neve nélkül, " +
+                "az adatkezelési tájékoztatóval. Aki 14 napon belül ezzel a címmel jelentkezik be a Giftiarybe, látja a meghívót.",
         ).forEach {
             val bounds = compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot()
             assertTrue("$it fits: ${bounds.right} <= $width", bounds.right <= width)

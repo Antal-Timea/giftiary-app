@@ -53,7 +53,6 @@ import app.giftiary.R
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
-import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
@@ -513,26 +512,18 @@ private fun EmailInviteCard(form: EmailInviteForm, actions: WishlistAccessAction
     }
 }
 
-/** An email invite: the address and pending or not accepted, which is all the owner is told. */
+/** A pending email invite; closed ones are not listed, as their address is erased. */
 @Composable
 private fun EmailInviteRow(invite: EmailInvite, changing: Boolean, onRevoke: (UUID) -> Unit) {
-    val pending = invite.state == EmailInviteState.PENDING
     AccessRow(
         leading = { InviteMark(R.drawable.ic_mail) },
         title = invite.email,
-        detail = if (pending) {
-            stringResource(R.string.wishlist_access_email_pending, sharingDate(invite.expiresAt))
-        } else {
-            stringResource(R.string.wishlist_access_email_not_accepted)
-        },
+        detail = stringResource(R.string.wishlist_access_email_pending, sharingDate(invite.expiresAt)),
         optionsDescription = stringResource(R.string.wishlist_access_email_more, invite.email),
         singleLineTitle = true,
     ) {
         Option(
-            text = stringResource(
-                if (pending) R.string.wishlist_access_email_withdraw else R.string.wishlist_access_email_clear,
-                invite.email,
-            ),
+            text = stringResource(R.string.wishlist_access_email_withdraw, invite.email),
             icon = R.drawable.ic_close,
             onClick = { onRevoke(invite.id) },
             enabled = !changing,
@@ -667,8 +658,8 @@ private fun WishlistAccessPreview() {
                 newInvite = CreatedInvite(invite.id, InviteToken.of("A".repeat(43))!!, invite.expiresAt),
                 emailInvites = EmailInvitesContent.Loaded(
                     listOf(
-                        EmailInvite(UUID.randomUUID(), "anna@example.com", EmailInviteState.PENDING, now, now.plusSeconds(14 * 86_400)),
-                        EmailInvite(UUID.randomUUID(), "peter@example.com", EmailInviteState.NOT_ACCEPTED, now, now),
+                        EmailInvite(UUID.randomUUID(), "anna@example.com", now, now.plusSeconds(14 * 86_400)),
+                        EmailInvite(UUID.randomUUID(), "peter@example.com", now, now.plusSeconds(3 * 86_400)),
                     ),
                 ),
             ),
