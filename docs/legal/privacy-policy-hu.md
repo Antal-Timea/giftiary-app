@@ -130,6 +130,7 @@ A profilfotód nem a készülékeden mentődik először: azonnal feltöltődik 
 ## 7. Kívánságlisták megosztása, meghívók és foglalások
 
 - Saját kívánságlistádat meghívó-hivatkozással oszthatod meg. A hivatkozást te továbbítod, az általad választott módon (például üzenetküldőben). Aki a hivatkozást megkapja, a meghívó érvényességi ideje alatt (jelenleg 7 nap) bejelentkezve csatlakozhat a listához. A meghívót bármikor visszavonhatod.
+- Valakit az e-mail-címével is meghívhatsz (lásd 3.5. pont). Erre a címre egy meghívó e-mailt küldünk (lásd 3.7. pont). A meghívó 14 napig érvényes, és csak az fogadhatja el, aki megerősített e-mail-címként pontosan ezzel a címmel jelentkezik be. A függő e-mailes meghívót bármikor visszavonhatod.
 - **A tagok látják:** a lista nevét, a kívánságokat (név, megjegyzés, becsült ár, termékhivatkozás) és a lista tulajdonosának megjelenített nevét.
 - **A lista tulajdonosa látja:** a tagok megjelenített nevét és a csatlakozásuk idejét, a nyitott meghívó-hivatkozásokat, valamint a függő e-mailes meghívókat (a meghívott címével).
 - **Foglalások:** a tagok egy kívánságnál csak azt látják, hogy szabad, általuk foglalt, vagy valaki más foglalta – azt nem, hogy ki. **A lista tulajdonosa a foglalásokról semmit nem lát**, így a meglepetés megmarad.

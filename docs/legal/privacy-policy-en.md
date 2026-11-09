@@ -130,6 +130,7 @@ Your profile photo is not saved on your device first: it is uploaded straight aw
 ## 7. Wishlist sharing, invites and reservations
 
 - You can share your own wishlist with an invite link. You pass the link on yourself, in any way you choose (for example in a messaging app). Anyone who receives the link can join the list while the invite is valid (currently 7 days), after signing in. You can revoke an invite at any time.
+- You can also invite someone by their email address (see section 3.5). We send that address one invitation email (see section 3.7). The invite is valid for 14 days, and only someone who signs in with exactly that address as a confirmed email address can accept it. You can withdraw a pending email invite at any time.
 - **Members see:** the list name, the wishes (name, note, estimated price, product link) and the list owner's display name.
 - **The list owner sees:** the members' display names and when they joined, the open invite links, and the pending email invites (with the invited address).
 - **Reservations:** for each wish, members see only whether it is available, reserved by them or reserved by someone else. They do not see who reserved it. **The list owner sees nothing about reservations**, so the surprise is kept.
