@@ -189,7 +189,7 @@ table `wishlist_recipient_invites`, RPC-only like the tables above):
   vary; it names neither the owner nor the list. A repeat invite while one is pending sends
   nothing. The API key is the Vault secret `resend_api_key`; without it nothing is sent, and the
   job sends the backlog once it is set. Answers are settled from `net._http_response`: 2xx sent,
-  a 4xx other than 429 never retried, anything else retried up to 5 times, with an
+  a 4xx other than 409 (Resend's idempotent request still in progress) and 429 never retried, anything else retried up to 5 times, with an
   `Idempotency-Key` of the invite.
 - **Closed invites keep no address.** Accepting, declining, revoking and expiry each set
   `recipient_email` to null (a check enforces it); the row keeps its list, owner, status and times.

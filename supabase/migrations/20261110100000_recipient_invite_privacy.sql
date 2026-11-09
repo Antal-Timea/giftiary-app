@@ -169,12 +169,13 @@ security definer
 set search_path = ''
 as $$
 begin
-    -- Accepted: sent. Refused for good (4xx other than 429): no more attempts. Otherwise sent again.
+    -- Accepted: sent. Refused for good (4xx other than 409 and 429): no more attempts. Otherwise
+    -- sent again; Resend's 409 is the same idempotency key still in progress, safe to retry later.
     update public.wishlist_recipient_invites i
     set email_request_id = null,
         email_sent_at = case when r.status_code between 200 and 299 then r.created end,
         email_attempts = case
-            when r.status_code between 400 and 499 and r.status_code <> 429
+            when r.status_code between 400 and 499 and r.status_code not in (409, 429)
                 then private.recipient_invite_email_max_attempts()
             else i.email_attempts end
     from net._http_response r
