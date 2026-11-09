@@ -67,18 +67,16 @@ data class SharedWish(
 enum class ReservationState { AVAILABLE, RESERVED_BY_ME, RESERVED_BY_OTHER }
 
 /**
- * An invite of an own wishlist to an email address. [state] is all the owner learns: pending, or
- * not accepted (declined and expired alike), never whether the address has an account.
+ * A pending invite of an own wishlist to an email address. Once it closes (accepted, declined,
+ * withdrawn or expired) its address is erased and the owner no longer sees it, so the owner never
+ * learns whether the address has an account.
  */
 data class EmailInvite(
     val id: UUID,
     val email: String,
-    val state: EmailInviteState,
     val createdAt: Instant,
     val expiresAt: Instant,
 )
-
-enum class EmailInviteState { PENDING, NOT_ACCEPTED }
 
 // The server's own check (create_recipient_invite), so what passes here is not refused as invalid.
 private val EMAIL_SHAPE = Regex("""[^@\s]+@[^@\s]+\.[^@\s]+""")

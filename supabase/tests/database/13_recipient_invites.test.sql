@@ -1,6 +1,6 @@
 -- Recipient invites (Sharing 4B): an owner invites an email address, and only a signed-in user
 -- whose confirmed address is that one sees and answers it. The owner's side never looks at
--- accounts, so it answers alike for any address, and sees pending or not accepted, never which.
+-- accounts, so it answers alike for any address, and sees pending invites only.
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(82);
@@ -174,8 +174,8 @@ select throws_ok(format('select public.respond_to_invite(%L, true)', current_set
     'P0002', 'not available', 'and cannot be accepted after all');
 
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-select is(pg_temp.owner_state('10000000-0000-4000-8000-000000000002', current_setting('test.bob_lp')), 'NOT_ACCEPTED',
-    'the owner sees a decline as not accepted');
+select is(pg_temp.owner_state('10000000-0000-4000-8000-000000000002', current_setting('test.bob_lp')), null,
+    'a declined invite leaves the owner''s list');
 select set_config('test.bob_lp2', public.create_recipient_invite('10000000-0000-4000-8000-000000000002', 'bob@example.test') ->> 'invite_id', true);
 select isnt(current_setting('test.bob_lp2'), current_setting('test.bob_lp'), 'after a decline the address can be invited again');
 
@@ -236,7 +236,7 @@ select is(pg_temp.owner_state('10000000-0000-4000-8000-000000000001', current_se
 select lives_ok(format('select public.revoke_recipient_invite(%L)', current_setting('test.nobody_l1')), 'revoking again is harmless');
 select public.revoke_recipient_invite(current_setting('test.bob_lp')::uuid);
 select is(pg_temp.owner_sees('10000000-0000-4000-8000-000000000002'), array['bob@example.test:PENDING'],
-    'a not accepted invite can be cleared, leaving the new one');
+    'revoking a declined invite changes nothing, leaving the new one');
 select public.revoke_recipient_invite(current_setting('test.bob_lp2')::uuid);
 select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 select throws_ok(format('select public.respond_to_invite(%L, true)', current_setting('test.bob_lp2')),
@@ -256,8 +256,8 @@ select throws_ok(format('select public.respond_to_invite(%L, true)', current_set
     'P0002', 'not available', 'and cannot be accepted');
 
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-select is(pg_temp.owner_state('10000000-0000-4000-8000-000000000001', current_setting('test.dave_l1')), 'NOT_ACCEPTED',
-    'the owner sees an expiry as not accepted, like a decline');
+select is(pg_temp.owner_state('10000000-0000-4000-8000-000000000001', current_setting('test.dave_l1')), null,
+    'an expired invite leaves the owner''s list, like a decline');
 select set_config('test.dave_l1b', public.create_recipient_invite('10000000-0000-4000-8000-000000000001', 'dave@example.test') ->> 'invite_id', true);
 select isnt(current_setting('test.dave_l1b'), current_setting('test.dave_l1'), 'an expired invite does not block a new one');
 reset role;

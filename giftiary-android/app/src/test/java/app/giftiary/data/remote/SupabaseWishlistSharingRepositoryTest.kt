@@ -4,7 +4,6 @@ import app.giftiary.data.remote.RemoteTestData.alice
 import app.giftiary.data.remote.RemoteTestData.token
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.domain.model.EmailInvite
-import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.Money
@@ -146,12 +145,12 @@ class SupabaseWishlistSharingRepositoryTest {
 
         val invite = repository.createEmailInvite(LIST, "bob@example.com")
 
-        assertEquals(EmailInvite(INVITE, "bob@example.com", EmailInviteState.PENDING, Instant.parse("2026-10-17T10:00:00Z"), Instant.parse("2026-10-31T10:00:00Z")), invite)
+        assertEquals(EmailInvite(INVITE, "bob@example.com", Instant.parse("2026-10-17T10:00:00Z"), Instant.parse("2026-10-31T10:00:00Z")), invite)
         assertRpc("create_recipient_invite", """{"p_wishlist_id":"$LIST","p_email":"bob@example.com"}""")
     }
 
     @Test
-    fun `email invites are listed pending or not accepted`() = runTest {
+    fun `only pending email invites are listed, even from a server that still lists closed ones`() = runTest {
         answer = {
             respondJson(
                 """[{"invite_id":"$INVITE","recipient_email":"bob@example.com","state":"PENDING","created_at":"2026-10-17T10:00:00+00:00","expires_at":"2026-10-31T10:00:00+00:00"},
@@ -161,20 +160,8 @@ class SupabaseWishlistSharingRepositoryTest {
 
         val invites = repository.emailInvites(LIST)
 
-        assertEquals(listOf(EmailInviteState.PENDING, EmailInviteState.NOT_ACCEPTED), invites.map { it.state })
-        assertEquals(listOf("bob@example.com", "eve@example.com"), invites.map { it.email })
+        assertEquals(listOf("bob@example.com"), invites.map { it.email })
         assertRpc("list_recipient_invites", """{"p_wishlist_id":"$LIST"}""")
-    }
-
-    @Test
-    fun `an email invite state this version does not know is a server failure, never a guess`() = runTest {
-        answer = {
-            respondJson(
-                """[{"invite_id":"$INVITE","recipient_email":"bob@example.com","state":"DECLINED","created_at":"2026-10-17T10:00:00+00:00","expires_at":"2026-10-31T10:00:00+00:00"}]""",
-            )
-        }
-
-        assertFailure(SharingFailure.SERVER) { repository.emailInvites(LIST) }
     }
 
     @Test

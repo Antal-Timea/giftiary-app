@@ -2,7 +2,6 @@ package app.giftiary.testing
 
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
-import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.ReservationState
@@ -66,8 +65,8 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
         emailCalls += "create:$email"
         failEmailNext.removeFirstOrNull()?.let { throw SharingException(it) }
         val now = Instant.parse("2026-10-17T10:00:00Z")
-        val invite = emailInvites.find { it.email == email && it.state == EmailInviteState.PENDING }
-            ?: EmailInvite(UUID.randomUUID(), email, EmailInviteState.PENDING, now, now.plusSeconds(14 * 86_400L))
+        val invite = emailInvites.find { it.email == email }
+            ?: EmailInvite(UUID.randomUUID(), email, now, now.plusSeconds(14 * 86_400L))
         if (invite !in emailInvites) emailInvites = emailInvites + invite
         return invite
     }

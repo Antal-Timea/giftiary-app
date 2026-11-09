@@ -3,7 +3,6 @@ package app.giftiary.presentation.sharing
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
-import app.giftiary.domain.model.EmailInviteState
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
@@ -76,7 +75,7 @@ class SharingViewModelsTest {
         assertNull(viewModel.state.value.emailForm)
         assertEquals("bob@example.com", viewModel.state.value.invitedEmail)
         val listed = (viewModel.state.value.emailInvites as EmailInvitesContent.Loaded).invites
-        assertEquals(listOf("bob@example.com" to EmailInviteState.PENDING), listed.map { it.email to it.state })
+        assertEquals(listOf("bob@example.com"), listed.map { it.email })
         viewModel.onInvitedNoticeShown()
         assertNull(viewModel.state.value.invitedEmail)
     }
@@ -151,7 +150,7 @@ class SharingViewModelsTest {
 
     @Test
     fun `withdrawing an email invite asks the server and shows what it now holds`() = runTest {
-        val pendingInvite = EmailInvite(UUID.randomUUID(), "bob@example.com", EmailInviteState.PENDING, now, now)
+        val pendingInvite = EmailInvite(UUID.randomUUID(), "bob@example.com", now, now)
         sharing.emailInvites = listOf(pendingInvite)
         val viewModel = accessViewModel()
 
@@ -164,7 +163,7 @@ class SharingViewModelsTest {
 
     @Test
     fun `a failed email invite refresh keeps the invites shown`() = runTest {
-        sharing.emailInvites = listOf(EmailInvite(UUID.randomUUID(), "bob@example.com", EmailInviteState.NOT_ACCEPTED, now, now))
+        sharing.emailInvites = listOf(EmailInvite(UUID.randomUUID(), "bob@example.com", now, now))
         val viewModel = accessViewModel()
         sharing.failEmailNext += SharingFailure.NETWORK
 
