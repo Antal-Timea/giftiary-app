@@ -19,13 +19,15 @@
 create extension if not exists pg_net with schema extensions;
 create extension if not exists pg_cron;
 
+-- Nullable first: the backfill below erases the addresses of invites already closed.
+alter table public.wishlist_recipient_invites alter column recipient_email drop not null;
+
 update public.wishlist_recipient_invites
 set status = 'expired', closed_at = expires_at
 where status = 'pending' and expires_at <= now();
 update public.wishlist_recipient_invites set recipient_email = null where status <> 'pending';
 
 alter table public.wishlist_recipient_invites
-    alter column recipient_email drop not null,
     add constraint wishlist_recipient_invites_email_only_pending
         check ((status = 'pending') = (recipient_email is not null)),
     -- The pg_net request of the email in flight, if any.
