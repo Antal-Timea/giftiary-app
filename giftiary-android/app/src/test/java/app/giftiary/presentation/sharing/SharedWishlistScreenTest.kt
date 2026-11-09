@@ -6,11 +6,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -21,6 +23,7 @@ import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.ANONYMOUS_AVATAR_TAG
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.WithFontScale
 import app.giftiary.testing.lineCount
@@ -103,7 +106,7 @@ class SharedWishlistScreenTest {
     fun `the list reads its owner's context, then the wishes in the owner's order`() {
         show(loaded(headphones, coffee, backpack))
 
-        val order = listOf("Peter’s wishlist", "Shared by Peter · 3 wishes", "Wishes", "Wireless headphones", "Coffee subscription", "Running backpack")
+        val order = listOf("Peter’s wishlist", "Shared by Peter · 3\u00A0wishes", "Wishes", "Wireless headphones", "Coffee subscription", "Running backpack")
         val tops = order.map(::top)
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         compose.onNodeWithText("Peter’s wishlist").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
@@ -113,14 +116,31 @@ class SharedWishlistScreenTest {
     fun `an owner without a name is a neutral member`() {
         show(loaded(headphones, owner = null))
 
-        compose.onNodeWithText("Shared by A Giftiary member · 1 wish").assertExists()
+        compose.onNodeWithText("Shared by A Giftiary member · 1\u00A0wish").assertExists()
+    }
+
+    @Test
+    fun `the header shows the people mark when there is no name, not a letter of the fallback`() {
+        show(loaded(headphones, owner = null))
+        compose.onAllNodesWithTag(ANONYMOUS_AVATAR_TAG, useUnmergedTree = true).assertCountEquals(1)
+
+        show(loaded(headphones, owner = null, personName = "Alex"))
+        compose.onAllNodesWithTag(ANONYMOUS_AVATAR_TAG, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    @Config(qualifiers = "hu-w390dp-h2000dp")
+    fun `in Hungarian the count keeps to its noun too`() {
+        show(loaded(headphones, coffee, backpack))
+
+        compose.onNodeWithText("3\u00A0kívánság", substring = true).assertExists()
     }
 
     @Test
     fun `a list kept for a person says whom it is for and, apart, who shared it`() {
         show(loaded(headphones, personName = "Alex"))
 
-        compose.onNodeWithText("For Alex · Shared by Peter · 1 wish").assertExists()
+        compose.onNodeWithText("For Alex · Shared by Peter · 1\u00A0wish").assertExists()
     }
 
     @Test
@@ -128,7 +148,7 @@ class SharedWishlistScreenTest {
     fun `in Hungarian a person's list reads as for them, shared by its owner`() {
         show(loaded(headphones, personName = "Alex"))
 
-        compose.onNodeWithText("Alex részére · Megosztotta: Peter · 1 kívánság").assertExists()
+        compose.onNodeWithText("Alex részére · Megosztotta: Peter · 1\u00A0kívánság").assertExists()
     }
 
     @Test

@@ -44,7 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -57,6 +56,7 @@ import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.EmailAddress
 import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryConfirmDialog
@@ -259,7 +259,7 @@ private fun AccessContents(
         items(access.members, key = { it.userId }) { member ->
             val name = memberName(member.displayName)
             AccessRow(
-                leading = { GiftiaryAvatar(name = name) },
+                leading = { GiftiaryAvatar(name = member.displayName) },
                 title = name,
                 detail = stringResource(R.string.wishlist_access_member_joined, sharingDate(member.joinedAt)),
                 optionsDescription = stringResource(R.string.wishlist_access_member_more, name),
@@ -375,7 +375,7 @@ private fun AccessRow(
     title: String,
     detail: String,
     optionsDescription: String,
-    singleLineTitle: Boolean = false,
+    titleIsEmail: Boolean = false,
     options: @Composable OptionsMenuScope.() -> Unit,
 ) {
     val colors = GiftiaryTheme.colors
@@ -394,16 +394,8 @@ private fun AccessRow(
                     .padding(start = GiftiarySpacing.l),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (singleLineTitle) {
-                    // Wrapped, an address breaks at its dots ("gmail" / ".com"); the options name it in full.
-                    Text(
-                        text = title,
-                        style = GiftiaryType.rowTitle,
-                        color = colors.textPrimary,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                if (titleIsEmail) {
+                    EmailAddress(email = title, style = GiftiaryType.rowTitle, color = colors.textPrimary)
                 } else {
                     Text(text = title, style = GiftiaryType.rowTitle, color = colors.textPrimary)
                 }
@@ -520,7 +512,7 @@ private fun EmailInviteRow(invite: EmailInvite, changing: Boolean, onRevoke: (UU
         title = invite.email,
         detail = stringResource(R.string.wishlist_access_email_pending, sharingDate(invite.expiresAt)),
         optionsDescription = stringResource(R.string.wishlist_access_email_more, invite.email),
-        singleLineTitle = true,
+        titleIsEmail = true,
     ) {
         Option(
             text = stringResource(R.string.wishlist_access_email_withdraw, invite.email),

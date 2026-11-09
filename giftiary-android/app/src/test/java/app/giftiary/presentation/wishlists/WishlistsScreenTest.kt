@@ -8,11 +8,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Density
 import app.giftiary.domain.model.RecipientInvite
 import app.giftiary.domain.model.SharedWishlistSummary
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.ANONYMOUS_AVATAR_TAG
 import app.giftiary.presentation.sharing.InvitationMessage
 import app.giftiary.presentation.sharing.InvitationResponses
 import app.giftiary.presentation.sharing.OnlineContent
@@ -150,6 +151,16 @@ class WishlistsScreenTest {
     }
 
     @Test
+    fun `with no name to show, invitations and shared lists use the people mark, not a letter`() {
+        show(populated, invitations = twoInvites)
+
+        // The unnamed sender's invitation and the list shared by an unnamed member.
+        compose.onAllNodesWithTag(ANONYMOUS_AVATAR_TAG, useUnmergedTree = true).assertCountEquals(2)
+        show(populated, shared = OnlineState(OnlineContent.Loaded(listOf(peters, forAlex))), invitations = OnlineState(OnlineContent.Loaded(listOf(birthdayInvite))))
+        compose.onAllNodesWithTag(ANONYMOUS_AVATAR_TAG, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
     fun `accept and decline are explicit, named for their list`() {
         show(populated, invitations = twoInvites)
 
@@ -238,9 +249,9 @@ class WishlistsScreenTest {
     fun `counts come from the wishes, and no list claims whether it is shared`() {
         show(populated)
 
-        compose.onNodeWithText("8 wishes").assertExists()
+        compose.onNodeWithText("8\u00A0wishes").assertExists()
         compose.onNodeWithText("No wishes yet").assertExists()
-        compose.onNodeWithText("For Martin · 1 wish").assertExists()
+        compose.onNodeWithText("For Martin · 1\u00A0wish").assertExists()
         // Any list may be shared, and whether it is is only known online, on its sharing screen.
         compose.onNodeWithText("Only you").assertDoesNotExist()
         compose.onNodeWithText("Shared with Peter").assertDoesNotExist()

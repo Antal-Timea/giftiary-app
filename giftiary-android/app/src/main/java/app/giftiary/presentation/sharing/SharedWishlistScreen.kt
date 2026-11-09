@@ -234,7 +234,7 @@ private fun SharedWishes(
                 title = wishlist.name,
                 meta = listOf(whose, wishCount(wishlist.wishes.size)).joinToString(" · "),
                 onBack = actions.onBack,
-                leading = { GiftiaryAvatar(name = wishlist.personName ?: memberName(wishlist.ownerDisplayName), size = 56.dp) },
+                leading = { GiftiaryAvatar(name = wishlist.personName ?: wishlist.ownerDisplayName, size = 56.dp) },
                 options = {
                     OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
                         Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true)

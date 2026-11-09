@@ -435,9 +435,10 @@ big stories</string>
     <string name="person_detail_no_wishlists">No wishlists for them yet.</string>
     <string name="person_detail_add_wishlist">Add wishlist</string>
     <string name="person_detail_wishlist_no_wishes">No wishes yet</string>
+    <!-- The no-break space keeps the count on the same line as its noun. -->
     <plurals name="person_detail_wish_count">
-        <item quantity="one">%d wish</item>
-        <item quantity="other">%d wishes</item>
+        <item quantity="one">%d\u00A0wish</item>
+        <item quantity="other">%d\u00A0wishes</item>
     </plurals>
     <!-- Wishlist sharing -->
     <string name="wishlist_access_title">Share wishlist</string>

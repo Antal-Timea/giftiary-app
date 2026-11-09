@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -87,7 +88,8 @@ fun GiftIdeaStatusSelector(
 
 /**
  * One idea in a list: what it is, for whom, how far along, and what it may cost. [selectable] rows,
- * beside a detail pane, show and announce whether they are the one open there.
+ * beside a detail pane, show and announce whether they are the one open there. [horizontalPadding]
+ * lines the text up with the page's gutter while the whole width stays clickable.
  */
 @Composable
 fun GiftIdeaRow(
@@ -97,6 +99,7 @@ fun GiftIdeaRow(
     showRecipient: Boolean = true,
     selectable: Boolean = false,
     selected: Boolean = false,
+    horizontalPadding: Dp = GiftiarySpacing.l,
 ) {
     val colors = GiftiaryTheme.colors
     val idea = entry.idea
@@ -107,7 +110,7 @@ fun GiftIdeaRow(
             .then(if (selectable) Modifier.semantics { this.selected = selected } else Modifier)
             .clickable(onClickLabel = stringResource(R.string.gift_idea_open), onClick = onClick)
             .heightIn(min = 48.dp)
-            .padding(horizontal = GiftiarySpacing.l, vertical = GiftiarySpacing.m),
+            .padding(horizontal = horizontalPadding, vertical = GiftiarySpacing.m),
         verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs),
     ) {
         Text(text = idea.name, style = GiftiaryType.contentTitle, color = colors.textPrimary)

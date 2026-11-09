@@ -311,7 +311,12 @@ private fun PersonDetailContent(
             item { EmptyLine(stringResource(R.string.person_detail_no_gift_ideas)) }
         } else {
             items(state.giftIdeas, key = { it.idea.id }) { entry ->
-                GiftIdeaRow(entry = entry, onClick = { onOpenGiftIdea(entry) }, showRecipient = false)
+                GiftIdeaRow(
+                    entry = entry,
+                    onClick = { onOpenGiftIdea(entry) },
+                    showRecipient = false,
+                    horizontalPadding = GiftiarySpacing.browseGutter,
+                )
                 GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter))
             }
         }

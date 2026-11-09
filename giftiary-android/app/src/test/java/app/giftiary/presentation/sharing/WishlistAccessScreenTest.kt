@@ -5,9 +5,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -16,9 +18,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.Density
 import org.robolectric.annotation.GraphicsMode
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.semantics.SemanticsActions
 import app.giftiary.domain.model.ActiveInvite
 import app.giftiary.domain.model.CreatedInvite
 import app.giftiary.domain.model.EmailInvite
@@ -26,6 +25,7 @@ import app.giftiary.domain.model.InviteToken
 import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.presentation.components.ANONYMOUS_AVATAR_TAG
 import app.giftiary.presentation.theme.GiftiaryTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,6 +41,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToInt
 
 /** Share & Invite: the people with access, sharing through an invite link, and the open links. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -255,14 +256,14 @@ class WishlistAccessScreenTest {
     @Test
     @Config(qualifiers = "w320dp-h2000dp")
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun `a long address stays on one line, cut short, at large text, still named in full`() {
+    fun `a long address keeps its domain at large text, still named in full`() {
         val long = EmailInvite(UUID.randomUUID(), "bartholomew.longname@gmail.com", now, now.plusSeconds(86_400))
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
                 GiftiaryTheme {
                     WishlistAccessScreen(
-                        state = loaded.copy(emailInvites = EmailInvitesContent.Loaded(listOf(long))),
+                        state = loaded.copy(emailInvites = EmailInvitesContent.Loaded(listOf(long, bob))),
                         wishlistName = "Peter’s wishlist",
                         actions = actions,
                     )
@@ -270,14 +271,19 @@ class WishlistAccessScreenTest {
             }
         }
 
-        val layouts = mutableListOf<TextLayoutResult>()
-        compose.onNodeWithText(long.email, useUnmergedTree = true)
-            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
-        val layout = layouts.single()
-        assertEquals(1, layout.lineCount)
-        assertTrue("cut short at this width", layout.isLineEllipsized(0))
-        assertTrue(compose.onNodeWithText(long.email, useUnmergedTree = true).getBoundsInRoot().right <= compose.onRoot().getBoundsInRoot().right)
+        // Cut at its end, as before, it read "bartholo…"; now "@gmail.com" takes a line of its own.
+        val line = compose.onNodeWithText("Anna", useUnmergedTree = true).fetchSemanticsNode().size.height
+        val address = compose.onNodeWithText(long.email, useUnmergedTree = true)
+        assertEquals(2, (address.fetchSemanticsNode().size.height.toFloat() / line).roundToInt())
+        assertTrue(address.getBoundsInRoot().right <= compose.onRoot().getBoundsInRoot().right)
         compose.onNodeWithContentDescription("Options for the invite to ${long.email}").assertExists()
+    }
+
+    @Test
+    fun `members without a name show the people mark, not a letter of the fallback`() {
+        show(loaded)
+
+        compose.onAllNodesWithTag(ANONYMOUS_AVATAR_TAG, useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test

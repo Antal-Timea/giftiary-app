@@ -34,17 +34,16 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.presentation.components.DecoratedPage
+import app.giftiary.presentation.components.EmailAddress
 import app.giftiary.presentation.components.GiftCutout
 import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.GiftiaryDivider
@@ -121,35 +120,38 @@ fun ProfileContent(state: ProfileUiState, actions: ProfileActions, modifier: Mod
 @Composable
 private fun Identity(state: ProfileUiState, modifier: Modifier = Modifier) {
     val colors = GiftiaryTheme.colors
-    val title = state.displayName ?: state.email
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The same initial as on Home, which knows only the account's email.
-        PersonAvatar(name = state.email ?: title.orEmpty(), photo = state.avatar, size = 88.dp)
+        PersonAvatar(name = state.email ?: state.displayName.orEmpty(), photo = state.avatar, size = 88.dp)
         // Short of the corner gift, which reaches down beside this row on a phone.
         Column(Modifier.weight(1f).padding(end = GIFT_CLEARANCE)) {
-            if (title != null) {
+            if (state.displayName != null) {
                 Text(
-                    text = title,
+                    text = state.displayName,
                     modifier = Modifier.semantics { heading() },
-                    // Standing in for a name, an address is set smaller so more of it stays in view.
-                    style = if (state.displayName == null) GiftiaryType.sectionTitle.asEmail() else GiftiaryType.screenTitle,
+                    style = GiftiaryType.screenTitle,
                     color = colors.textPrimary,
-                    maxLines = if (state.displayName == null) 1 else Int.MAX_VALUE,
-                    overflow = if (state.displayName == null) TextOverflow.MiddleEllipsis else TextOverflow.Clip,
                 )
-            }
-            if (state.displayName != null && state.email != null) {
-                Text(
-                    text = state.email,
-                    modifier = Modifier.padding(top = GiftiarySpacing.xs),
-                    style = GiftiaryType.body.asEmail(),
-                    color = colors.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.MiddleEllipsis,
+                if (state.email != null) {
+                    EmailAddress(
+                        email = state.email,
+                        modifier = Modifier.padding(top = GiftiarySpacing.xs),
+                        style = GiftiaryType.body,
+                        color = colors.textSecondary,
+                    )
+                }
+            } else if (state.email != null) {
+                // Standing in for a name, an address is set smaller, as a row's title, so that at large
+                // text on a 390dp phone its domain still fits a line of its own beside the avatar.
+                EmailAddress(
+                    email = state.email,
+                    modifier = Modifier.semantics { heading() },
+                    style = GiftiaryType.contentTitle,
+                    color = colors.textPrimary,
                 )
             }
         }
@@ -273,9 +275,3 @@ private fun ProfilePreview() {
         )
     }
 }
-
-/**
- * An address is one line, shortened in the middle so its start and domain stay readable; it is
- * never broken at "@" or ".com" like words. Its full text is still what is read out.
- */
-private fun TextStyle.asEmail() = copy(hyphens = Hyphens.None)
