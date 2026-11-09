@@ -1,6 +1,6 @@
 # Giftiary – Adatkezelési tájékoztató
 
-**Hatályos:** 2026. november 8.
+**Hatályos:** 2026. november 10.
 
 Ez a tájékoztató azt írja le, hogyan kezeli a Giftiary Android-alkalmazás és a hozzá tartozó szolgáltatás a személyes adatokat. Az angol nyelvű változat tartalmilag megegyezik ezzel a szöveggel.
 
@@ -18,7 +18,7 @@ A Giftiary egy magánszemély által üzemeltetett alkalmazás. Adatvédelmi tis
 - Az adataidat először a készülékeden tároljuk, majd fiókodhoz kötve szinkronizáljuk a szerverünkre, hogy több eszközön is elérd őket.
 - **Nem** használunk analitikát, reklámot, követést vagy hirdetési azonosítót, és **nem** gyűjtünk helyadatot, névjegyeket vagy fájlokat a készülékedről. Fotót csak akkor kezelünk, ha te adsz hozzá egyet: egy ajándékhoz, egy személyhez vagy saját profilfotóként. Ebben a kiadásban minden fotó csak a te fiókodé, privát. Nincs fizetés az alkalmazásban.
 - Az adataidat nem adjuk el, és nem adjuk át reklámcélra.
-- A fiókodat az alkalmazásban bármikor törölheted (Beállítások → Fiók törlése).
+- A fiókodat az alkalmazásban bármikor törölheted (Beállítások → Fiók törlése), vagy az alkalmazás nélkül, e-mailben is kérheted a törlését (lásd 12. pont).
 
 ## 3. Milyen adatokat kezelünk
 
@@ -55,11 +55,12 @@ Ha ugyanazzal az igazolt e-mail-címmel már van Giftiary-fiókod, a hitelesít�
 - **Ajándékfotó (választható):** ajándékonként legfeljebb egy kép, amelyet te választasz ki a rendszer fotóválasztójával, vagy a készüléked kameraalkalmazásával készítesz. Mentés előtt kicsinyítjük (a hosszabb oldal legfeljebb 1600 képpont), JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait (például a helyadatot és az eszköz adatait).
 - **Személy fotója (választható):** az általad rögzített személyenként legfeljebb egy kép, amelyet ugyanígy választasz ki vagy készítesz. Négyzetesre vágjuk, 640 × 640 képpontosra méretezzük, JPEG formátumba alakítjuk, és eltávolítjuk a metaadatait. Az ilyen fotó általában valaki mást ábrázol (lásd 5. pont).
 
-Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá. Ha új fényképet készítesz, a kameraalkalmazás csak a Giftiarynek adja át, amely a fentiek szerint feldolgozza, a kamera eredeti felvételét pedig azonnal törli; a galériádba mi nem mentjük.
+Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be automatikusan (például a névjegyeidet vagy a naptáradat sem). A fotóválasztó csak azt az egy képet adja át az alkalmazásnak, amelyet kiválasztasz; a többi fényképedhez nem férünk hozzá. Ha új fényképet készítesz, a kameraalkalmazás a felvételt a Giftiary egy ideiglenes, csak erre a célra létrehozott fájljába menti. A Giftiary ezt a fentiek szerint feldolgozza, az ideiglenes fájlt pedig a feldolgozás után azonnal törli. Ha a fotózás közben az alkalmazás leáll, a megmaradt ideiglenes fájlt egy nap elteltével, a következő fotókészítéskor törli (vagy addig a rendszer törölheti a gyorsítótár ürítésekor). A Giftiary a képet nem menti a galériádba; egyes kameraalkalmazások azonban a saját beállításaik szerint megtarthatnak egy másolatot, ezt a kameraalkalmazásban tudod ellenőrizni.
 
 ### 3.5. Megosztási adatok
 
 - **Meghívók:** amikor egy saját kívánságlistádat megosztod, meghívó jön létre. A meghívó titkos kódját a szerver csak visszafejthetetlen (hash-elt) formában tárolja; a kód csak a megosztott hivatkozásban szerepel. A meghívó létrehozásának, lejáratának és esetleges visszavonásának időpontját is tároljuk.
+- **E-mailes meghívók:** egy saját kívánságlistádra valakit az e-mail-címe megadásával is meghívhatsz. Ilyenkor a szerver tárolja a meghívott e-mail-címét (kisbetűsítve, a szóközök levágásával), a lista azonosítóját, a meghívó állapotát (függőben, elfogadva, elutasítva, visszavonva vagy lejárt), valamint a létrehozás, a lejárat (14 nappal a létrehozás után) és a lezárás időpontját. Az e-mail-címet kizárólag ehhez a meghíváshoz használjuk: hogy a meghívottnak egy meghívó e-mailt küldjünk (lásd 3.7. pont), és hogy a meghívó annak jelenjen meg az alkalmazásban, aki megerősített e-mail-címként pontosan ezzel a címmel jelentkezik be, és ő elfogadhatja vagy elutasíthatja. Elfogadás előtt a lista nevét, a megjelenített nevedet és – ha a listát egy személyed számára vezeted – a személy nevét látja. A címet reklám- vagy más célra nem használjuk. A meghívóban a meghívott fiókjának azonosítóját nem tároljuk, és neked sem jelezzük, hogy a címhez tartozik-e Giftiary-fiók. A meghívott e-mail-címét a függő meghívóid között csak te látod. Amikor a meghívó lezárul (elfogadják, elutasítják, visszavonják vagy lejár), az e-mail-címet töröljük belőle; ezután a meghívóid között sem jelenik meg.
 - **Tagságok:** ki csatlakozott egy listához, és mikor.
 - **Foglalások:** melyik tag foglalt le egy kívánságot.
 
@@ -73,16 +74,20 @@ Az alkalmazásba nem építettünk analitikai vagy hibajelentő eszközt. A Goog
 
 A regisztráció megerősítéséhez és az elfelejtett jelszó visszaállításához e-mailt küldünk a no-reply@giftiary.app címről. Ehhez az e-mail-címedet, az üzenet tartalmát (a megerősítő vagy visszaállító hivatkozást) és a kézbesítés technikai adatait kezeljük. Hírlevelet vagy marketing célú e-mailt nem küldünk.
 
+**Meghívó e-mail a meghívott személynek (GDPR 14. cikk).** Amikor egy Giftiary-felhasználó egy e-mail-címet meghív egy kívánságlistára, erre a címre egy e-mailt küldünk, magyarul és angolul. Ebben leírjuk, hogy egy Giftiary-felhasználó meghívta egy megosztott kívánságlistára (a felhasználó és a lista megnevezése nélkül); hogy ha már használja a Giftiaryt, nyissa meg az alkalmazást, egyébként 14 napon belül (a megadott dátumig) ezzel a címmel regisztrálva látja a meghívót; hogy a címet az adta meg, aki meghívta, és csak ehhez a meghíváshoz használjuk, marketingre nem; mikor töröljük a címet; a jogalapot; hogyan tiltakozhat és gyakorolhatja a jogait; valamint egy hivatkozást erre a tájékoztatóra. Az e-mail ugyanaz, akár tartozik a címhez Giftiary-fiók, akár nem. Ha a meghívót függő meghívó mellett ismét elküldik, új e-mailt nem küldünk. Ehhez a meghívott e-mail-címét, a meghívó lejárati dátumát és a kézbesítés technikai adatait kezeljük.
+
 ### 3.8. A készülékeden tárolt adatok
 
 - Az adataid helyi másolata az alkalmazás saját adatbázisában, hogy internet nélkül is működjön.
-- Az ajándék- és személyfotóid helyi másolata az alkalmazás saját tárhelyén.
+- Az ajándék- és személyfotóid helyi másolata az alkalmazás saját tárhelyén, valamint a feltöltésre vagy a fájltárolóból való törlésre váró fotók listája.
 - Egy épp kiválasztott profilfotó, csak a feltöltéséig. Ha nem sikerül feltölteni, és nem próbálod újra, az alkalmazás később automatikusan törli.
+- Fotókészítés közben egy ideiglenes képfájl az alkalmazás gyorsítótárában (lásd 3.4. pont).
 - A bejelentkezési munkamenet (amíg be vagy jelentkezve).
 - Az emlékeztetők beállítása (be/ki) és az utolsó emlékeztető napja, fiókonként.
+- Egy jelölő arról, hogy a bevezető képernyőket ezen a készüléken már megnézted (készülékenként, nem fiókhoz kötve).
 - Egy ideiglenes jelölő, ha egy fióktörlés még nem fejeződött be a készüléken.
 
-Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
+Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat és a bevezető jelölőjét igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
 
 ### 3.9. Ha írsz nekünk
 
@@ -94,8 +99,10 @@ Ha e-mailben megkeresel minket, a leveledet és az e-mail-címedet a kérésed m
 |---|---|---|
 | Fiók létrehozása, bejelentkezés (e-mail, Google, Facebook), fiókkezelés | 3.1, 3.2 | b) pont – a szolgáltatás nyújtása (szerződés teljesítése) |
 | Az általad rögzített tartalom tárolása, szinkronizálása, megjelenítése | 3.4, 3.8 | b) pont |
-| Kívánságlisták megosztása, csatlakozás, foglalás | 3.3, 3.5 | b) pont |
+| Kívánságlisták megosztása, csatlakozás, foglalás (kivéve az e-mail-cím alapján meghívott személy e-mail-címét) | 3.3, 3.5 | b) pont |
+| Meghívás e-mail-cím alapján: a meghívott harmadik személy e-mail-címének kezelése | 3.5 (E-mailes meghívók) | f) pont – jogos érdek: a Giftiary-felhasználó jogos érdeke, hogy egy konkrét személyt meghívhasson a megosztott kívánságlistájához |
 | Megerősítő és jelszó-visszaállító e-mailek | 3.7 | b) pont |
+| Meghívó e-mail a meghívott személynek | 3.7 | f) pont – jogos érdek: mint a fenti e-mailes meghívóknál; az e-mail egyben megadja a meghívottnak a 14. cikk szerinti tájékoztatást |
 | Helyi emlékeztetők | 3.8 | b) pont |
 | A szolgáltatás biztonsága, visszaélések megelőzése, hibakeresés, technikai naplók | 3.6 | f) pont – jogos érdek a biztonságos és megbízható működéshez |
 | Mások adatainak kezelése, amelyeket te rögzítesz (lásd 5. pont) | 3.4 | f) pont – jogos érdek: annak lehetővé tétele, hogy a felhasználók a saját ajándékozási teendőiket nyilvántartsák |
@@ -105,9 +112,9 @@ Az értesítések megjelenítéséhez az Android értesítési engedélyére van
 
 ## 5. Más személyekről rögzített adatok
 
-A Giftiaryben más emberekről is rögzíthetsz adatokat (például nevüket, születésnapjukat, a nekik szánt vagy tőlük kapott ajándékokat, és ha szeretnéd, egy fotót róluk). Ezeket az adatokat kizárólag azért kezeljük, hogy a szolgáltatást neked nyújtsuk:
+A Giftiaryben más emberekről is rögzíthetsz adatokat (például nevüket, születésnapjukat, a nekik szánt vagy tőlük kapott ajándékokat, és ha szeretnéd, egy fotót róluk), és az ajándékfotókon is láthatók lehetnek más személyek. Ezeket az adatokat kizárólag azért kezeljük, hogy a szolgáltatást neked nyújtsuk:
 - csak te látod őket, a megosztott kívánságlisták tartalmát kivéve (lásd 7. pont); egy személy fotóját soha senki más nem látja;
-- az érintetteket nem keressük meg és nem értesítjük;
+- az érintetteket nem keressük meg és nem értesítjük (kivéve a 3.7. pont szerinti meghívó e-mailt, ha valakit az e-mail-címével meghívsz);
 - az adataikat más célra nem használjuk.
 
 Kérjük, csak olyan adatot rögzíts, amelyre a saját, személyes ajándékszervezésedhez szükséged van, és valakiről csak akkor adj hozzá fotót, ha erre a magáncélra használhatod. Ha valaki úgy véli, hogy a Giftiaryben adatot kezelünk róla, a 18. pontban leírt elérhetőségen fordulhat hozzánk.
@@ -123,8 +130,9 @@ A profilfotód nem a készülékeden mentődik először: azonnal feltöltődik 
 ## 7. Kívánságlisták megosztása, meghívók és foglalások
 
 - Saját kívánságlistádat meghívó-hivatkozással oszthatod meg. A hivatkozást te továbbítod, az általad választott módon (például üzenetküldőben). Aki a hivatkozást megkapja, a meghívó érvényességi ideje alatt (jelenleg 7 nap) bejelentkezve csatlakozhat a listához. A meghívót bármikor visszavonhatod.
+- Valakit az e-mail-címével is meghívhatsz (lásd 3.5. pont). Erre a címre egy meghívó e-mailt küldünk (lásd 3.7. pont). A meghívó 14 napig érvényes, és csak az fogadhatja el, aki megerősített e-mail-címként pontosan ezzel a címmel jelentkezik be. A függő e-mailes meghívót bármikor visszavonhatod.
 - **A tagok látják:** a lista nevét, a kívánságokat (név, megjegyzés, becsült ár, termékhivatkozás) és a lista tulajdonosának megjelenített nevét.
-- **A lista tulajdonosa látja:** a tagok megjelenített nevét és a csatlakozásuk idejét, valamint a nyitott meghívókat.
+- **A lista tulajdonosa látja:** a tagok megjelenített nevét és a csatlakozásuk idejét, a nyitott meghívó-hivatkozásokat, valamint a függő e-mailes meghívókat (a meghívott címével).
 - **Foglalások:** a tagok egy kívánságnál csak azt látják, hogy szabad, általuk foglalt, vagy valaki más foglalta – azt nem, hogy ki. **A lista tulajdonosa a foglalásokról semmit nem lát**, így a meglepetés megmarad.
 - A tulajdonos eltávolíthat tagot, és a tag kiléphet; ilyenkor a tag foglalásai érvényüket vesztik.
 - A megosztás csak az adott kívánságlistához ad hozzáférést. A személyeid (és fotóik), alkalmaid, ajándékötleteid, ajándékaid (és azok fotói), a profilfotód és más listáid nem válnak láthatóvá. Ez arra a listára is igaz, amelyet egy személyed számára vezetsz: a tagok a lista címzettjeként a személy nevét látják, a fotóját soha.
@@ -138,7 +146,7 @@ Ha bekapcsolod az emlékeztetőket, az alkalmazás a készülékeden, helyben á
 Adataidat nem adjuk el, és nem adjuk át harmadik félnek reklám- vagy marketingcélra. A szolgáltatás működtetéséhez az alábbi szolgáltatókat vesszük igénybe:
 
 - **Supabase** (Supabase, Inc.) – hitelesítés (felhasználói fiókok, bejelentkezés, Google- és Facebook-bejelentkezés kezelése), adatbázis és fájltárolás (ajándék-, személy- és profilfotók). A projektünk az Európai Unióban, Frankfurtban (eu-central-1) található adatközpontban fut. A Supabase további alvállalkozókat (például felhőinfrastruktúra-szolgáltatót) vehet igénybe. Adatvédelmi tájékoztatója: https://supabase.com/privacy
-- **Resend** – a megerősítő és jelszó-visszaállító e-mailek kézbesítése (a hitelesítési rendszer egyéni SMTP-szolgáltatójaként). Adatvédelmi tájékoztatója: https://resend.com/legal/privacy-policy
+- **Resend** – a megerősítő és jelszó-visszaállító e-mailek kézbesítése (a hitelesítési rendszer egyéni SMTP-szolgáltatójaként), valamint a meghívott e-mail-címekre küldött meghívó e-mailek kézbesítése. Adatvédelmi tájékoztatója: https://resend.com/legal/privacy-policy
 - **Porkbun** – a support@giftiary.app postafiók szolgáltatója: az erre a címre küldött adatvédelmi és támogatási megkeresések fogadása és tárolása.
 - **Google** – az alkalmazás terjesztése a Google Playen.
 
@@ -157,15 +165,22 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   - Ha az alkalmazásban törölsz egy elemet (például egy személyt vagy ajándékot), az mindenhol eltűnik a nézetekből.
   - A szerveren „törölt” jelöléssel megmarad, hogy a többi eszközöd is értesüljön a törlésről; a szinkronizálás változásnaplója szintén megmarad.
   - Mindkettő a fiók törléséig marad meg; automatikus végleges törlés jelenleg nincs.
-- **Ajándék- és személyfotók:** ha egy fotót lecserélsz vagy eltávolítasz, vagy törlöd az ajándékot vagy a személyt, a fotó törlődik a fájltárolóból, amint a változás szinkronizálódott, és a helyi másolatai is törlődnek (a többi eszközödön a következő szinkronizáláskor). A fotókat nem őrizzük „törölt” jelöléssel.
+- **Ajándék- és személyfotók:**
+  - Ha egy fotót lecserélsz vagy eltávolítasz, vagy törlöd az ajándékot vagy a személyt, azon az eszközön, ahol ezt teszed, a régi fotó helyi másolata azonnal törlődik.
+  - A fájltárolóból akkor törlődik, amikor a változás erről az eszközről szinkronizálódott; amíg az eszköz offline, a fotó a fájltárolóban marad.
+  - A többi eszközödön a helyi másolat a változás letöltése utáni szinkronizálások során törlődik; ha a másolatot az adott eszköz egy napon belül töltötte le, legfeljebb körülbelül egy nappal később. Kijelentkezett eszközön ez a következő bejelentkezésig nem történik meg.
+  - A fotókat nem őrizzük „törölt” jelöléssel.
 - **Profilfotó:** ha lecseréled vagy eltávolítod, az előző fotó közvetlenül a változás után törlődik a fájltárolóból. Ha ez a törlés nem sikerül (például megszakad a kapcsolat), a maradványt egy későbbi profilfotó-cserénél, illetve a fiókkal együtt töröljük.
 - **Lejárt és visszavont meghívók:** sorokként (lejárati és visszavonási időponttal) a fiók törléséig megmaradnak.
+- **E-mailes meghívók:** a meghívott e-mail-címét csak addig őrizzük, amíg a meghívó függőben van, legfeljebb 14 napig. Ha a meghívót elfogadják, elutasítják vagy visszavonják, a címet azonnal töröljük; ha lejár, egy automatikus feladat a lejárat után perceken belül törli. A meghívó sora ezután a cím nélkül (a listával, az állapottal, valamint a létrehozás, a lejárat és a lezárás időpontjával) a fiókod törléséig megmarad; a meghívott fiókjának törlése nem törli. A kézbesítés technikai adatait az e-mail-szolgáltatónk a saját beállításai szerint őrzi.
 - **Kijelentkezés:**
-  - A kijelentkezés nem törlés. A készüléken a fiók adatai rejtve, de tárolva maradnak, hogy ugyanazzal a fiókkal visszajelentkezve újra elérd őket.
+  - A kijelentkezés nem törlés. A készüléken a fiók adatai, ajándék- és személyfotói rejtve, de tárolva maradnak, hogy ugyanazzal a fiókkal visszajelentkezve újra elérd őket.
   - Ha a készülékről is el szeretnéd távolítani az adatokat, töröld a fiókot, vagy töröld az alkalmazás adatait / távolítsd el az alkalmazást.
 - **Technikai naplók és e-mail-kézbesítési adatok:** a szolgáltatóink beállításai szerinti korlátozott ideig.
 - **Biztonsági mentések:** a tárhelyszolgáltatónk által készített biztonsági mentések a törölt adatokat is tartalmazhatják, amíg azok a szokásos mentési ciklusban felülíródnak.
 - **Megkeresések:** a kérés megválaszolásához és dokumentálásához szükséges ideig.
+- **Lezárt törlési kérelmek levelezése:** a kérelem lezárásától számított 90 nap elteltével kézzel, véglegesen töröljük a teljes levelezést és mellékleteit a kezelt postafiókok valamennyi mappájából és az általunk kezelt esetleges további példányokból, beleértve az elküldött leveleket is. Ez a megőrzési szabály a levelezésre vonatkozik, nem a kérelem teljesítéséről vezetett külön nyilvántartásra.
+- **Törlési kérelmek teljesítési nyilvántartása:** a kérelem lezárásától számított egy évig őrizzük a teljesítés igazolásához szükséges minimális nyilvántartást, majd kézzel töröljük. A nyilvántartás az ügyazonosítót, az érintett fiók UUID-jét, a beérkezés, megerősítés, teljesítés, lezárás és értesítés dátumát, a záró ellenőrzés eredményét, valamint a levelezés és a nyilvántartási sor törlési határidejét és a levelezés tényleges törlésének dátumát tartalmazza. Nem másolunk bele e-mail-címet, levéltartalmat, fotót vagy más felhasználói tartalmat. Korlátozott hozzáféréssel kezeljük; az UUID-t tartalmazó nyilvántartást személyes adatnak tekintjük.
 
 ## 12. Fiók törlése
 
@@ -175,7 +190,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 
 - **A szerveren** először a fiók összes ajándék- és személyfotója, majd a profilfotói törlődnek a fájltárolóból, ezután egyetlen lépésben, véglegesen törlődik:
   - a fiókod összes személye, alkalma, ajándékötlete, ajándéka, kívánságlistája és kívánsága;
-  - a meghívóid és a szinkronizálás változásnaplója;
+  - a meghívóid (az e-mailes meghívóid is) és a szinkronizálás változásnaplója;
   - a profilod (megjelenített név és a profilfotód hivatkozása);
   - a te tagságaid és foglalásaid mások listáin, valamint a saját listáidhoz tartozó összes tagság és foglalás;
   - végül maga a felhasználói fiók, a bejelentkezési munkamenetekkel és a kapcsolt Google-/Facebook-identitásokkal együtt.
@@ -183,10 +198,17 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   Ezek az adatok nem „törölt” jelöléssel maradnak meg, hanem ténylegesen törlődnek. Ha a fotók törlése után a fiók törlése nem sikerül, néhány fotó már törlődhetett; a fióktörlés ilyenkor újra megpróbálható.
 - **Azon a készüléken, amelyen a törlést elvégzed:** az alkalmazás törli a fiók helyi adatait és fotóit, emlékeztető-beállításait és függő emlékeztetőit, majd kijelentkeztet. Ha az alkalmazás a folyamat közben leáll, a következő indításkor befejezi.
 - **A fiók többi eszközén** az adatok **nem törlődnek automatikusan**. Ezek az eszközök idővel kijelentkeznek, így az adatok a szokásos módon már nem érhetők el az alkalmazásban, de a helyi adatbázisukban megmaradhatnak. Ezeken az eszközökön az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
-- Ha egy másik eszközöd éppen a törlés közben tölt fel fotót, az a fájltárolóban maradhat. A fiók megszűnése után ezt senki nem érheti el, és karbantartás során töröljük.
+- Azok az e-mailes meghívók, amelyeket más felhasználók a te e-mail-címedre küldtek, az ő fiókjukhoz tartoznak, ezért a fiókod törlése nem törli őket (lásd 11. pont).
+- Ha egy másik eszközöd a törlés idején még érvényes bejelentkezéssel fotót tölt fel, az a fájltárolóban maradhat. Az ilyen maradványfotót más felhasználó nem érheti el, és kézi karbantartással töröljük.
 - A biztonsági mentésekre a 11. pont vonatkozik.
 
-**Ha nem férsz hozzá az alkalmazáshoz:** vedd fel velünk a kapcsolatot a support@giftiary.app címen. Segítünk meghatározni a fiók biztonságos törlésének megfelelő módját. Jelszót, ellenőrző kódot vagy más bejelentkezési adatot soha ne küldj nekünk.
+**E-mailben, az alkalmazás nélkül:** ha nem férsz hozzá az alkalmazáshoz, vagy nem szeretnéd újratelepíteni, a törlést e-mailben is kérheted:
+
+- Írj a support@giftiary.app címre, lehetőleg arról az e-mail-címről, amellyel a Giftiaryt használod, és írd meg, hogy a fiókod törlését kéred.
+- Ezután a fiókhoz tartozó e-mail-címre visszaigazoló levelet küldünk. A törlést akkor végezzük el, ha erre a levélre arról a címről válaszolsz és megerősíted a kérést. Így ellenőrizzük, hogy a fiók valóban a tiéd.
+- Ha nem tudod, melyik e-mail-cím tartozik a fiókodhoz (Google- vagy Facebook-bejelentkezésnél ez a szolgáltatótól kapott cím), írd meg, melyik bejelentkezési módot használtad. A visszaigazolást mindig a fiókhoz tartozó e-mail-címre küldjük; e-mailben csak így tudjuk ellenőrizni a kérést.
+- Alapesetben nem kérünk jelszót, ellenőrző kódot vagy más bejelentkezési adatot, sem személyazonosító okmányt. Ilyet soha ne küldj nekünk.
+- A határidőt a kérésed beérkezésétől számítjuk. A visszaigazoló levelet a beérkezés után haladéktalanul elküldjük, a megerősítésed után indokolatlan késedelem nélkül töröljük a fiókot, és a kérésed beérkezésétől számított egy hónapon belül tájékoztatunk a kérés teljesítéséről. A megerősítés nem indít új határidőt. Ha a kérést nem tudjuk teljesíteni (például mert a fiókhoz tartozó címről nem érkezik megerősítés), erről és az okáról is ezen a határidőn belül tájékoztatunk. A szerveren ugyanaz törlődik, mint az alkalmazásbeli törléskor (a fotókkal együtt); a készülékeiden lévő helyi adatokat távolról nem tudjuk törölni, azokat az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el. Az elvégzett törlésről e-mailben értesítünk.
 
 A fióktörlés lépései és részletei: https://giftiary.app/account-deletion/
 
@@ -201,7 +223,7 @@ A GDPR alapján jogosult vagy:
 - **adathordozhatóságot** kérni (az adataidat géppel olvasható formában megkapni);
 - **tiltakozni** a jogos érdeken alapuló adatkezelés ellen.
 
-Kérésedet a support@giftiary.app címre küldheted. Indokolatlan késedelem nélkül, legkésőbb egy hónapon belül válaszolunk. A kérés teljesítése előtt ellenőrizhetjük, hogy a fiók valóban hozzád tartozik.
+Kérésedet a support@giftiary.app címre küldheted. Indokolatlan késedelem nélkül, legkésőbb a kérés beérkezésétől számított egy hónapon belül válaszolunk. A kérés teljesítése előtt ellenőrizhetjük, hogy a fiók valóban hozzád tartozik.
 
 Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (NAIH, 1055 Budapest, Falk Miksa utca 9–11., https://naih.hu), vagy a lakóhelyed szerinti uniós felügyeleti hatóságnál, illetve bírósághoz fordulhatsz.
 
