@@ -92,7 +92,7 @@ class WishlistDetailScreenTest {
     fun `the list reads identity, sharing, then its wishes in order`() {
         show(own(headphones, coffee))
 
-        val order = listOf("My wishlist", "Your wishlist · 2 wishes", "Sharing", "Wishes", "Wireless headphones", "Coffee subscription")
+        val order = listOf("My wishlist", "Your wishlist · 2\u00A0wishes", "Sharing", "Wishes", "Wireless headphones", "Coffee subscription")
         val tops = order.map(::top)
         assertEquals("top to bottom: $order", tops.sorted(), tops)
         compose.onNodeWithText("My wishlist").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
@@ -169,7 +169,7 @@ class WishlistDetailScreenTest {
         show(forPeter())
 
         compose.onNodeWithText("Sharing").performClick()
-        compose.onNodeWithText("Peter · 1 wish").performClick()
+        compose.onNodeWithText("Peter · 1\u00A0wish").performClick()
 
         assertEquals(listOf("share", "person"), actions)
     }

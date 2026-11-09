@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
@@ -34,11 +35,12 @@ import app.giftiary.presentation.theme.PublicSans
  * A person's round avatar: their [photo] when there is one, otherwise the aqua monogram, which is
  * content in its own right rather than an empty slot. [onContext] is for avatars inside the aqua
  * band, where the usual fill would disappear. The monogram is decorative, as the name is always
- * written next to it; a photo slot describes itself.
+ * written next to it; a photo slot describes itself. Without a [name], say a member who never set
+ * one, the people glyph stands in: an initial of the fallback wording would mean nothing.
  */
 @Composable
 fun GiftiaryAvatar(
-    name: String,
+    name: String?,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
     onContext: Boolean = false,
@@ -54,6 +56,13 @@ fun GiftiaryAvatar(
     ) {
         if (photo != null) {
             photo()
+        } else if (name.isNullOrBlank()) {
+            Icon(
+                painter = painterResource(R.drawable.ic_people),
+                contentDescription = null,
+                modifier = Modifier.size(size / 2).testTag(ANONYMOUS_AVATAR_TAG),
+                tint = colors.textPrimary,
+            )
         } else {
             Text(
                 text = monogramInitial(name),
@@ -64,6 +73,8 @@ fun GiftiaryAvatar(
         }
     }
 }
+
+internal const val ANONYMOUS_AVATAR_TAG = "anonymous_avatar"
 
 internal fun monogramInitial(name: String): String {
     val trimmed = name.trim()

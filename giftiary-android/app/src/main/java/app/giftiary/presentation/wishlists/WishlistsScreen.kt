@@ -398,7 +398,7 @@ private fun InvitationRow(invite: RecipientInvite, responding: Boolean, onAccept
             .testTag(INVITATION_CARD_TAG)
             .padding(GiftiarySpacing.l),
     ) {
-        GiftiaryAvatar(name = invite.personName ?: sender)
+        GiftiaryAvatar(name = invite.personName ?: invite.ownerDisplayName)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -448,11 +448,10 @@ private fun invitationMessageText(message: InvitationMessage): String = when (me
 /** The server does not report how many wishes a shared list has, so the row does not say. */
 @Composable
 private fun SharedListRow(wishlist: SharedWishlistSummary, onClick: () -> Unit) {
-    val owner = memberName(wishlist.ownerDisplayName)
     val whose = sharedListWhose(wishlist.personName, wishlist.ownerDisplayName)
     GiftiaryRow(
         title = wishlist.name,
-        leading = { GiftiaryAvatar(name = wishlist.personName ?: owner) },
+        leading = { GiftiaryAvatar(name = wishlist.personName ?: wishlist.ownerDisplayName) },
         trailing = { RowChevron() },
         supporting = {
             Text(whose, style = GiftiaryType.label.copy(fontWeight = GiftiaryType.metadata.fontWeight), color = GiftiaryTheme.colors.textLabel)

@@ -30,8 +30,10 @@ import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.WithFontScale
+import app.giftiary.testing.assertNear
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
 import app.giftiary.testing.ideaDetails
@@ -217,6 +219,17 @@ class PersonDetailScreenTest {
             compose.onNodeWithText(it, useUnmergedTree = true).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         }
         compose.onNodeWithText("Delete Peter").assertDoesNotExist()
+    }
+
+    @Test
+    fun `gift ideas line up with the occasions and wishlists at the page's gutter`() {
+        val idea = ideaEntry(ideaDetails(peter, name = "Hiking poles"), peter)
+        showDetail(loaded(ideas = listOf(idea), wishlists = listOf(christmasList)))
+
+        val left = listOf("Name day", "Hiking poles", "Christmas").map {
+            compose.onNodeWithText(it, useUnmergedTree = true).getBoundsInRoot().left
+        }
+        left.forEach { assertNear(GiftiarySpacing.browseGutter, it, "a row's text") }
     }
 
     @Test

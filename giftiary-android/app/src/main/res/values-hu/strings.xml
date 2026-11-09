@@ -434,9 +434,10 @@ nagy történetek</string>
     <string name="person_detail_no_wishlists">Még nincs kívánságlistája.</string>
     <string name="person_detail_add_wishlist">Kívánságlista hozzáadása</string>
     <string name="person_detail_wishlist_no_wishes">Még nincs kívánság</string>
+    <!-- The no-break space keeps the count on the same line as its noun. -->
     <plurals name="person_detail_wish_count">
-        <item quantity="one">%d kívánság</item>
-        <item quantity="other">%d kívánság</item>
+        <item quantity="one">%d\u00A0kívánság</item>
+        <item quantity="other">%d\u00A0kívánság</item>
     </plurals>
     <!-- Wishlist sharing -->
     <string name="wishlist_access_title">Lista megosztása</string>

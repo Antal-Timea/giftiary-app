@@ -14,6 +14,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.getBoundsInRoot
@@ -30,8 +32,8 @@ import androidx.compose.ui.unit.Density
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.people.PERSON_PHOTO_TAG
 import app.giftiary.presentation.theme.GiftiaryTheme
-import app.giftiary.testing.lineCount
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,6 +42,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.ByteArrayOutputStream
+import kotlin.math.roundToInt
 
 /** Profile shows what the account has: avatar or monogram, name or email, counts, then Settings and Sign out. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -165,12 +168,12 @@ class ProfileScreenTest {
     @Test
     @Config(qualifiers = "w390dp-h1400dp")
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun `a long email stays on one line, read out whole, at 390dp and large text`() = assertLongEmailOneLine()
+    fun `a long email keeps its domain whole, read out whole, at 390dp and large text`() = assertLongEmailSplitAtAt(domainWhole = true)
 
     @Test
     @Config(qualifiers = "hu-w360dp-h1400dp")
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun `in Hungarian a long email stays on one line, read out whole, at 360dp and large text`() = assertLongEmailOneLine()
+    fun `in Hungarian a long email breaks before its domain, read out whole, at 360dp and large text`() = assertLongEmailSplitAtAt(domainWhole = false)
 
     @Test
     @Config(qualifiers = "hu-w360dp-h1400dp")
@@ -247,23 +250,32 @@ class ProfileScreenTest {
                 compose.waitForIdle()
                 val density = compose.density.density
                 val root = compose.onRoot().getBoundsInRoot()
-                val text = compose.onNodeWithText(email, useUnmergedTree = true).getBoundsInRoot()
-                val box = 200f * density
-                val boxLeft = root.right.value * density - 120f * density
-                val boxTop = -24f * density
-                val giftLeft = ((text.top.value * density).toInt()..(text.bottom.value * density).toInt()).mapNotNull { y ->
-                    val row = ((y - boxTop) / box * gift.height).toInt()
-                    if (row !in 0 until gift.height) return@mapNotNull null
-                    (0 until gift.width).firstOrNull { Color.alpha(gift.getPixel(it, row)) > 40 }
-                }.minOrNull()?.let { (boxLeft + it * box / gift.width) / density } ?: return@forEach
-                val clearance = giftLeft - text.right.value
-                assertTrue("named $name at ${s}x: ${clearance}dp between the email and the gift", clearance >= 8f)
+                // Each of the address's lines on its own: the domain's is short of the name's.
+                listOf("someone.with.a.long.address", "@example.com").forEach { part ->
+                    val text = compose.onNodeWithText(part, useUnmergedTree = true).getBoundsInRoot()
+                    val box = 200f * density
+                    val boxLeft = root.right.value * density - 120f * density
+                    val boxTop = -24f * density
+                    val giftLeft = ((text.top.value * density).toInt()..(text.bottom.value * density).toInt()).mapNotNull { y ->
+                        val row = ((y - boxTop) / box * gift.height).toInt()
+                        if (row !in 0 until gift.height) return@mapNotNull null
+                        (0 until gift.width).firstOrNull { Color.alpha(gift.getPixel(it, row)) > 40 }
+                    }.minOrNull()?.let { (boxLeft + it * box / gift.width) / density } ?: return@forEach
+                    val clearance = giftLeft - text.right.value
+                    assertTrue("$part named $name at ${s}x: ${clearance}dp between the email and the gift", clearance >= 8f)
+                }
             }
         }
     }
 
-    private fun assertLongEmailOneLine() {
-        val email = "giftiary.owner.tests@example.com"
+    /**
+     * Too long for the room beside the avatar, the address breaks before the "@" rather than being
+     * cut to a few letters from each end. At 360dp and twice the text size even "@example.com" is
+     * wider than that room, so only the wider phone promises the [domainWhole].
+     */
+    private fun assertLongEmailSplitAtAt(domainWhole: Boolean) {
+        val email = "someone.with.a.long.address@example.com"
+        val short = "a@b.co"
         var current by mutableStateOf(ProfileUiState(email = email, displayName = null))
         var scale by mutableFloatStateOf(1f)
         compose.setContent {
@@ -273,12 +285,19 @@ class ProfileScreenTest {
         }
         listOf(null, "Timi").forEach { name ->
             listOf(1f, 2f).forEach { s ->
-                current = ProfileUiState(email = email, displayName = name)
                 scale = s
+                current = ProfileUiState(email = short, displayName = name)
                 compose.waitForIdle()
-                val node = compose.onNodeWithText(email, useUnmergedTree = true)
-                assertEquals("named $name at ${s}x", 1, node.lineCount())
+                val line = compose.onNodeWithText(short).fetchSemanticsNode().size.height
+                current = ProfileUiState(email = email, displayName = name)
+                compose.waitForIdle()
+                val node = compose.onNodeWithText(email)
+                val lines = (node.fetchSemanticsNode().size.height.toFloat() / line).roundToInt()
+                assertEquals("named $name at ${s}x", 2, lines)
+                val domain = compose.onNodeWithText("@example.com", useUnmergedTree = true).textLayout()
+                if (domainWhole || s == 1f) assertFalse("named $name at ${s}x: the domain is whole", domain.isLineEllipsized(0))
                 assertTrue(node.getBoundsInRoot().right <= compose.onRoot().getBoundsInRoot().right)
+                if (name == null) compose.onNode(hasText(email) and isHeading()).assertExists()
             }
         }
     }
