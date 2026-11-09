@@ -3,7 +3,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(44);
 
 -- ---- schema and privileges ----
 
@@ -129,6 +129,24 @@ select ok((pg_temp.row_of(current_setting('test.nobody')::uuid)).email_request_i
       and (pg_temp.row_of(current_setting('test.early')::uuid)).email_request_id is null,
     'the job resends only the failed one');
 
+-- Resend answers 409 while the same idempotency key is still being processed: retried later.
+select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+set local role authenticated;
+select set_config('test.busy', pg_temp.invite('10000000-0000-4000-8000-000000000001', 'busy@example.test')::text, true);
+reset role;
+select set_config('test.busy_first', (pg_temp.row_of(current_setting('test.busy')::uuid)).email_request_id::text, true);
+insert into net._http_response (id, status_code, created) values (current_setting('test.busy_first')::bigint, 409, now());
+select private.settle_recipient_invite_emails();
+select ok((pg_temp.row_of(current_setting('test.busy')::uuid)).email_request_id is null
+      and (pg_temp.row_of(current_setting('test.busy')::uuid)).email_sent_at is null,
+    'a 409 clears the request in flight without counting as sent');
+select is((pg_temp.row_of(current_setting('test.busy')::uuid)).email_attempts, 1::smallint,
+    'and leaves the remaining attempts, unlike a refusal');
+select private.run_recipient_invite_jobs();
+select ok((pg_temp.row_of(current_setting('test.busy')::uuid)).email_request_id::text <> current_setting('test.busy_first')
+      and (pg_temp.queued(current_setting('test.busy')::uuid)).headers ->> 'Idempotency-Key' = 'recipient-invite/' || current_setting('test.busy'),
+    'the job sends it again under the same idempotency key');
+
 -- ---- every way an invite closes erases its address ----
 
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
@@ -188,7 +206,7 @@ select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 set local role authenticated;
 select is((select array_agg(x ->> 'recipient_email' order by x ->> 'recipient_email')
            from jsonb_array_elements(public.list_recipient_invites('10000000-0000-4000-8000-000000000001')) x),
-    array['early@example.test'], 'the owner sees only the invite still pending');
+    array['busy@example.test', 'early@example.test'], 'the owner sees only the invites still pending');
 select ok(not exists (select 1 from jsonb_array_elements(public.list_recipient_invites('10000000-0000-4000-8000-000000000001')) x
                       where x ->> 'state' <> 'PENDING'), 'and never a closed state');
 reset role;
