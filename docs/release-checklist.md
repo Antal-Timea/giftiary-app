@@ -50,6 +50,11 @@ the file name has no `-unsigned` suffix.
 - [ ] Auth email rate limit is enough for the test group.
 - [ ] Recovery and confirmation templates keep `{{ .ConfirmationURL }}`.
 - [ ] Hosted migrations match `supabase/migrations` (`migration list --linked`, read-only).
+- [ ] Invitation email (migration `20261110100000`): `pg_net` and `pg_cron` installed, cron job
+      `recipient-invites` active with a successful last run, and the Vault secret
+      `resend_api_key` present (checked by a count query that never prints it). All three were
+      confirmed on hosted on 2026-11-09 (`docs/agent` STATUS at `b11f447`); re-check before each
+      release.
 - [ ] Dedicated test accounts exist: A (owner), B and C (guests), each with a distinct display
       name. Creating them creates hosted data.
 - [ ] Only if a sign-in provider is enabled for this build (see Build):
@@ -102,7 +107,7 @@ device (notification permission) and one older device.
 | S9 | Display name | A sets a name; later clears it | B sees A's name; after clearing, "a Giftiary member" |
 | S10 | Join by link | A shares an own, synced list; B opens the link signed out, then signs in | Join notice, then the shared list |
 | S11 | Join by paste | C pastes the whole shared message into Join | Joins |
-| S12 | Owner's access list | A opens Sharing | B and C by name, open invites, nothing about reservations |
+| S12 | Owner's access list | A opens Sharing | B and C by name, open invite links and pending email invites, nothing about reservations |
 | S13 | Revoke | A revokes the invite; someone tries it | "Invite isn't available" |
 | S14 | Reserve | B reserves wish W | B "Reserved by you"; C "Reserved", no name; A sees no change |
 | S15 | Lost race | C reserves W from a stale screen | "Someone else reserved this first." |
@@ -112,6 +117,13 @@ device (notification permission) and one older device.
 | S19 | No network | Airplane mode during reserve and during join | Retry message, nothing assumed; correct after reconnecting |
 | S20 | Email clients | Open confirmation and recovery mails in Gmail (with Chrome) and one other client | The link reaches the app (possibly after an "Open with Giftiary" prompt) |
 | S21 | Account deletion (**authorised, destructive**) | Only with a throwaway account D created for this row, and only with the owner's explicit go-ahead for that hosted deletion. D has data and a list shared with B. D: Settings → Delete account → confirm | "Account deleted", then the sign-in screen; D's data is gone from P1; D can no longer sign in; B no longer has D's list. Known limitation: a second device of D is not purged; once its session is refused it shows the sign-in screen, but D's rows stay in its local database |
+| S22 | Email invite | A: Sharing → Invite by email address → B's confirmed address → Send invite | "Invite saved. We'll email …"; the address is listed under Email invites as "Pending · until" a date 14 days ahead; B receives **one** email, in HU and EN, from `no-reply@giftiary.app`, with the privacy links and the expiry date, naming neither A nor the list |
+| S23 | Repeat and refusals | A invites B's address again while it is pending; A invites A's own address; an invalid address | No second email; "This address can't be invited…"; "Enter a valid email address." |
+| S24 | Recipient inbox and badge | B signs in on P2 with that confirmed address; C, with another address, opens Lists | B: the Lists destination (rail: Wishlists) carries the invitation badge, and Lists shows the invitation as a card "From <A's name>" above the joined lists; C sees no invitation |
+| S25 | Accept | B taps Accept | The shared list opens and then appears among B's shared lists; A sees B as a member; the invite leaves A's Email invites |
+| S26 | Decline / withdraw | A invites C's address and C declines; A invites another address and withdraws it before it is answered | C's card disappears and C gets no access; the withdrawn invite leaves A's list and the recipient's inbox; Accept or Decline on a card still on screen shows "This invitation is no longer available." |
+| S27 | Address without an account | A invites an address that has no Giftiary account | The same email text as S22; nothing in the app or the email tells A whether an account exists |
+| S28 | List kept for a person | A shares a list kept for person P with B (by link or by email) | B's Lists row and the list header read "For P · Shared by A"; B sees only that list's wishes: none of P's occasions, gifts, ideas or other lists |
 
 #### Sign-in providers (only those enabled for this build)
 
@@ -137,9 +149,14 @@ Record the device, Android version, build and result of each row.
 ### Tester notes for Gate A
 
 - Open recovery links on the phone that asked for them.
-- An invite link opens Giftiary directly only once its App Link is verified (Gate B); until then
-  it opens the giftiary.app/join/ page in the browser. Pasting the whole message into
+- An invite link opens Giftiary directly only on a build whose signing certificate is in
+  `https://giftiary.app/.well-known/assetlinks.json`. That statement lists only the Play app
+  signing key, so a directly installed build (upload- or debug-signed) opens the
+  giftiary.app/join/ page in the browser instead. Pasting the whole message into
   Wishlists → Shared with you → Join always works.
+- An email invite sends the recipient one short HU/EN email naming neither the owner nor the
+  list. The invitation itself appears only inside Giftiary, under Lists, for whoever signs in
+  with that confirmed address within 14 days.
 - Settings → Delete account deletes the account and its data at once and cannot be undone. Only
   the device it is done on is cleared; the account's other devices keep their local copy (no longer
   reachable in the app once they are signed out).
@@ -155,21 +172,34 @@ All of Gate A passed on the build to upload, then:
       earlier reading of the policy. In the app: Settings → Delete account calls the live backend
       function `delete_my_account()`, which hard-deletes the account and its data, including its
       sharing on other users' lists; the app then removes that account's data from the device and
-      clears the session. Still missing: the **external web deletion resource** (a public page
-      where users can request deletion without the app), entered in Play Console, and the Meta
-      data deletion instructions URL if Facebook sign-in ships.
-- [ ] **Privacy policy (human / legal):** finished from `docs/legal/privacy-policy-draft.md`,
-      reviewed, published at a public URL, and the URL entered in Play Console.
-- [ ] **Data safety (human):** form completed from `docs/legal/data-safety-draft.md`, every
-      `[VERIFY]` item resolved first.
-- [ ] Play Console app with package `app.giftiary` (permanent once uploaded), Play App Signing.
-- [ ] **Invite App Link (human):** take the SHA-256 certificate fingerprint of the **Play app
-      signing key** (Play Console → Test and release → App integrity; add the upload key's too if
-      directly installed release builds must open links). Publish
-      `https://giftiary.app/.well-known/assetlinks.json` for package `app.giftiary` with relation
-      `delegate_permission/common.handle_all_urls` and exactly those fingerprints, never a debug
-      one. Then check `adb shell pm get-app-links app.giftiary` shows `giftiary.app: verified`
-      and that tapping an invite in Gmail opens the app.
+      clears the session. The **external web deletion resource** is published at
+      https://giftiary.app/account-deletion/ (privacy policy section 12,
+      `docs/legal/privacy-policy-en.md`; runbook `docs/operations/account-deletion-by-email.md`).
+      Still to do: enter that URL in Play Console, and the Meta data deletion instructions URL if
+      Facebook sign-in ships.
+- [ ] **Privacy policy (human):** the canonical texts are `docs/legal/privacy-policy-hu.md` and
+      `docs/legal/privacy-policy-en.md`, effective 10 November 2026. They are byte-identical to the
+      website sources (app PR #3, website PR #7), published at https://giftiary.app/privacy/ and
+      linked from Settings. Still to do: the URL entered in Play Console.
+      (`docs/legal/privacy-policy-draft.md` is superseded; it is only the evidence behind them.)
+- [ ] **Data safety (human):** form completed from `docs/legal/data-safety-draft.md`, the current
+      answer sheet, every `[VERIFY]` item resolved first. Bring that sheet up to date before
+      using it: it does not yet cover email invites (the invitee's address goes to the email
+      provider), and it still says no web deletion page exists.
+- [x] Play Console app with package `app.giftiary` (permanent once uploaded), Play App Signing. Evidence: the owner supplied
+      the Play app signing certificate (CURRENT_TASK at `94389a7`), and a Play-installed build
+      was tested (CURRENT_TASK at `79fec2a`).
+- [x] **Invite App Link statement published:** `https://giftiary.app/.well-known/assetlinks.json`
+      for package `app.giftiary`, relation `delegate_permission/common.handle_all_urls`, the Play
+      app signing key's SHA-256 only (website PR #2, `site/.well-known/assetlinks.json`, with an
+      exact-match test in `tests/seo.test.mjs`). Add the upload key's fingerprint only if
+      directly installed release builds must open links; never a debug one.
+- [ ] **Invite App Link verified (human):** on a Play-installed build, `adb shell pm get-app-links
+      app.giftiary` shows `giftiary.app: verified`, and tapping an invite in Gmail joins the list,
+      both cold and with the app already running. Before the token-routing fix (`81cbfb3`), a
+      Play-installed build opened Giftiary from a tapped link, but on the empty join screen
+      (CURRENT_TASK at `79fec2a`). Neither the verification state nor a join after that fix is
+      recorded yet.
 - [ ] Content rating questionnaire, target audience.
 - [ ] App access: a dedicated demo account and instructions for Play review.
 - [ ] Minimal store listing: name, short and full description, 512×512 icon, feature graphic,
