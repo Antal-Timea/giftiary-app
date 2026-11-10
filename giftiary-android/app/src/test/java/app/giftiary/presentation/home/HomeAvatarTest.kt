@@ -57,7 +57,7 @@ class HomeAvatarTest {
                     onOpenAllGifts = {},
                     onOpenOwnOccasions = {},
                     onOpenSyncAttention = {},
-                    accountEmail = "anna@example.com",
+                    accountName = "Anna",
                     onOpenProfile = { opened++ },
                     accountAvatar = avatar,
                     widthClass = widthClass,
@@ -115,6 +115,25 @@ class HomeAvatarTest {
         profiles.avatarPath = null
         viewModel.onResume()
         assertNull(viewModel.avatar.value)
+    }
+
+    @Test
+    fun `the name for the monogram is read on every visit and kept through a failure`() = runTest {
+        val profiles = FakeProfileRepository()
+        val viewModel = HomeAvatarViewModel(profiles)
+        assertNull(viewModel.displayName.value)
+
+        profiles.name = "Lisa"
+        viewModel.onResume()
+        assertEquals("Lisa", viewModel.displayName.value)
+
+        profiles.name = "Gate A User"
+        viewModel.onResume()
+        assertEquals("Gate A User", viewModel.displayName.value)
+
+        profiles.failNext += ProfileFailure.NETWORK
+        viewModel.onResume()
+        assertEquals("Gate A User", viewModel.displayName.value)
     }
 
     private fun jpeg(): LoadedPhoto {

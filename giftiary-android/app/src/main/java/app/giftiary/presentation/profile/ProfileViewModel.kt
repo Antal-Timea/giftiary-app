@@ -89,6 +89,13 @@ data class ProfileUiState(
     val stats: ProfileStats? = null,
 )
 
+/**
+ * The name the user's own monogram is drawn from: the name others see, so an edit shows at once,
+ * and the account's email only while there is none. Null without either, for the people glyph.
+ */
+internal fun ownMonogramName(displayName: String?, email: String?): String? =
+    displayName?.takeIf { it.isNotBlank() } ?: email?.takeIf { it.isNotBlank() }
+
 /** The avatar shown and the path it came from, so an unchanged avatar is not downloaded again. */
 internal data class SavedAvatar(val path: String, val photo: LoadedPhoto)
 

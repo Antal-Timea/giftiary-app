@@ -125,8 +125,8 @@ private fun Identity(state: ProfileUiState, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The same initial as on Home, which knows only the account's email.
-        PersonAvatar(name = state.email ?: state.displayName.orEmpty(), photo = state.avatar, size = 88.dp)
+        // The same initial as on Home.
+        PersonAvatar(name = ownMonogramName(state.displayName, state.email).orEmpty(), photo = state.avatar, size = 88.dp)
         // Short of the corner gift, which reaches down beside this row on a phone.
         Column(Modifier.weight(1f).padding(end = GIFT_CLEARANCE)) {
             if (state.displayName != null) {

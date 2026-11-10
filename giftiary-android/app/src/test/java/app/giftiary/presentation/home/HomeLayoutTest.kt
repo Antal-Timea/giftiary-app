@@ -77,7 +77,7 @@ class HomeLayoutTest {
                             onOpenAllGifts = {},
                             onOpenOwnOccasions = {},
                             onOpenSyncAttention = {},
-                            accountEmail = "anna@example.com",
+                            accountName = "Anna",
                             onOpenProfile = {},
                             widthClass = widthClass,
                         )

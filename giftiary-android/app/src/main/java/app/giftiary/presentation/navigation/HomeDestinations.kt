@@ -16,6 +16,7 @@ import app.giftiary.presentation.home.ReminderCardViewModel
 import app.giftiary.presentation.home.rememberReminderCardActions
 import app.giftiary.presentation.profile.EditProfileScreen
 import app.giftiary.presentation.profile.ProfileScreen
+import app.giftiary.presentation.profile.ownMonogramName
 import app.giftiary.presentation.settings.SettingsScreen
 import app.giftiary.presentation.sync.SyncAttentionScreen
 import app.giftiary.presentation.sync.SyncStatusViewModel
@@ -30,6 +31,7 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
         val recentGifts by hiltViewModel<RecentGiftsViewModel>().content.collectAsStateWithLifecycle()
         val homeAvatar = hiltViewModel<HomeAvatarViewModel>()
         val accountAvatar by homeAvatar.avatar.collectAsStateWithLifecycle()
+        val displayName by homeAvatar.displayName.collectAsStateWithLifecycle()
         LifecycleResumeEffect(homeAvatar) {
             homeAvatar.onResume()
             onPauseOrDispose {}
@@ -45,7 +47,7 @@ internal fun NavGraphBuilder.homeDestinations(navController: NavHostController, 
             onOpenAllGifts = dropUnlessResumed { navController.navigateToSection(AppSection.GIFTS) },
             onOpenOwnOccasions = dropUnlessResumed { navController.navigate(OwnOccasionsRoute) },
             onOpenSyncAttention = dropUnlessResumed { navController.navigate(SyncAttentionRoute) },
-            accountEmail = accountEmail,
+            accountName = ownMonogramName(displayName, accountEmail),
             accountAvatar = accountAvatar,
             onOpenProfile = dropUnlessResumed { navController.navigate(ProfileRoute) },
         )

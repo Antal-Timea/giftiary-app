@@ -155,7 +155,7 @@ private fun AvatarField(state: EditProfileUiState, onChoose: () -> Unit, onRemov
     val enabled = !state.avatarBusy
     Column(verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
         Row(horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l), verticalAlignment = Alignment.CenterVertically) {
-            PersonAvatar(name = state.email ?: state.nameInput, photo = state.avatar, size = AVATAR_SIZE)
+            PersonAvatar(name = ownMonogramName(state.nameInput, state.email).orEmpty(), photo = state.avatar, size = AVATAR_SIZE)
             // Beside the avatar while they fit, under one another at large text.
             FlowRow(
                 modifier = Modifier.weight(1f),
