@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -99,20 +101,23 @@ internal fun SignInContent(
             enabled = !state.isSubmitting,
             modifier = Modifier.fillMaxWidth().padding(top = GiftiarySpacing.s),
         )
-        CredentialsFields(
-            state = state,
-            onEmailChange = onEmailChange,
-            onPasswordChange = onPasswordChange,
-            onSubmit = onSubmit,
-            showPasswordHint = false,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-            GiftiaryTextAction(
-                text = stringResource(R.string.auth_forgot_password),
-                onClick = onForgotPassword,
-                enabled = !state.isSubmitting && !providerBusy,
+        // Forgot password sits right under the password it is about; its touch target is the gap.
+        Column(Modifier.fillMaxWidth()) {
+            CredentialsFields(
+                state = state,
+                onEmailChange = onEmailChange,
+                onPasswordChange = onPasswordChange,
+                onSubmit = onSubmit,
+                showPasswordHint = false,
+                modifier = Modifier.fillMaxWidth(),
             )
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                GiftiaryTextAction(
+                    text = stringResource(R.string.auth_forgot_password),
+                    onClick = onForgotPassword,
+                    enabled = !state.isSubmitting && !providerBusy,
+                )
+            }
         }
         GiftiaryPrimaryButton(
             text = stringResource(R.string.auth_sign_in),
@@ -158,23 +163,27 @@ private fun SignInPreview() {
 }
 
 /**
- * The header beside the corner gift, as on the board, while every word of the title fits there.
- * When one does not (large text, a long translated word such as "Giftiaryben"), the header
- * starts below the gift at full width instead, so no word is split and nothing runs under it.
+ * The header beside the corner gift, as on the board, while every word of the title fits there;
+ * at the smaller title size if only that fits, as "Giftiaryben" on a narrow phone, so the form
+ * still fits the screen. When neither does (large text), the header starts below the gift at full
+ * width instead, so no word is split and nothing runs under it.
  */
 @Composable
 private fun SignInHeader(title: String, subtitle: String) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val measurer = rememberTextMeasurer()
         val besideArt = maxWidth - SIGN_IN_ART_CLEARANCE
-        val longestWord = with(LocalDensity.current) {
-            title.split(' ').maxOf { measurer.measure(it, GiftiaryType.display, softWrap = false).size.width }.toDp()
+        val density = LocalDensity.current
+        fun longestWord(style: TextStyle) = with(density) {
+            title.split(' ').maxOf { measurer.measure(it, style, softWrap = false).size.width }.toDp()
         }
+        val titleStyle = GiftiaryType.screenTitle.takeIf { longestWord(GiftiaryType.display) > besideArt } ?: GiftiaryType.display
         GiftiaryTaskHeader(
             title = title,
             subtitle = subtitle,
             onBack = null,
-            modifier = if (longestWord <= besideArt) {
+            titleStyle = titleStyle,
+            modifier = if (longestWord(titleStyle) <= besideArt) {
                 Modifier.padding(end = SIGN_IN_ART_CLEARANCE)
             } else {
                 Modifier.padding(top = SIGN_IN_ART_DEPTH)
