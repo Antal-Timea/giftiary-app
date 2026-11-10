@@ -137,7 +137,8 @@ $$;
 -- ---------------------------------------------------------------------------------------------
 
 -- Giftiary's own display_name first; then the provider's full_name or name (Google and Facebook
--- send both). Runs only on insert, so a name edited later is never replaced.
+-- send both). Runs only on insert, so a name edited later is never replaced. Line breaks and other
+-- control characters become spaces, as the app accepts none in a name.
 create or replace function private.create_profile_for_new_user()
     returns trigger
     language plpgsql
@@ -147,9 +148,9 @@ as $$
 begin
     insert into public.profiles (id, display_name)
     values (new.id, coalesce(
-        nullif(btrim(new.raw_user_meta_data ->> 'display_name'), ''),
-        nullif(btrim(new.raw_user_meta_data ->> 'full_name'), ''),
-        nullif(btrim(new.raw_user_meta_data ->> 'name'), '')))
+        nullif(btrim(regexp_replace(new.raw_user_meta_data ->> 'display_name', '[[:cntrl:]]+', ' ', 'g')), ''),
+        nullif(btrim(regexp_replace(new.raw_user_meta_data ->> 'full_name', '[[:cntrl:]]+', ' ', 'g')), ''),
+        nullif(btrim(regexp_replace(new.raw_user_meta_data ->> 'name', '[[:cntrl:]]+', ' ', 'g')), '')))
     -- Safe if the trigger ever runs twice for the same user.
     on conflict (id) do nothing;
     return new;

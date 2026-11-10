@@ -4,7 +4,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(37);
 
 -- ---- fixtures ----
 
@@ -139,7 +139,8 @@ insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) value
     ('eeeeeeee-eeee-4eee-8eee-000000000001', 'g@example.test', now(), '{"full_name": " Gate A User ", "name": "Ignored"}'),
     ('eeeeeeee-eeee-4eee-8eee-000000000002', 'f@example.test', now(), '{"name": "Facebook Name"}'),
     ('eeeeeeee-eeee-4eee-8eee-000000000003', 'n@example.test', now(), '{"full_name": "  "}'),
-    ('eeeeeeee-eeee-4eee-8eee-000000000004', 'o@example.test', now(), '{"display_name": "Own", "full_name": "Provider"}');
+    ('eeeeeeee-eeee-4eee-8eee-000000000004', 'o@example.test', now(), '{"display_name": "Own", "full_name": "Provider"}'),
+    ('eeeeeeee-eeee-4eee-8eee-000000000005', 'c@example.test', now(), '{"full_name": "Line\n\tBreak"}');
 select is((select display_name from public.profiles where id = 'eeeeeeee-eeee-4eee-8eee-000000000001'), 'Gate A User',
     'a new account takes the provider''s full name');
 select is((select display_name from public.profiles where id = 'eeeeeeee-eeee-4eee-8eee-000000000002'), 'Facebook Name',
@@ -148,6 +149,8 @@ select is((select display_name from public.profiles where id = 'eeeeeeee-eeee-4e
     'without one it has no name, and the app falls back as before');
 select is((select display_name from public.profiles where id = 'eeeeeeee-eeee-4eee-8eee-000000000004'), 'Own',
     'a name given to Giftiary wins over the provider''s');
+select is((select display_name from public.profiles where id = 'eeeeeeee-eeee-4eee-8eee-000000000005'), 'Line Break',
+    'control characters in a provider name become a space');
 
 update public.profiles set display_name = 'Edited' where id = 'eeeeeeee-eeee-4eee-8eee-000000000001';
 update auth.users set raw_user_meta_data = '{"full_name": "Signed In Again"}' where id = 'eeeeeeee-eeee-4eee-8eee-000000000001';
