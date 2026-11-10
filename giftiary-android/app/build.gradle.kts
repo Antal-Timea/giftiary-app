@@ -9,6 +9,10 @@ plugins {
     alias(libs.plugins.room)
 }
 
+// The upload key's details come from the git-ignored keystore.properties next to settings.gradle.kts.
+// Read once here; a problem only fails the build when release output is actually produced (below).
+val releaseSigning = loadReleaseSigning()
+
 android {
     namespace = "app.giftiary"
     compileSdk = 37
@@ -36,8 +40,21 @@ android {
         buildConfigField("boolean", "AUTH_FACEBOOK_ENABLED", providerEnabled("auth.facebook.enabled").toString())
     }
 
+    signingConfigs {
+        releaseSigning.config?.let { signing ->
+            create("release") {
+                storeFile = signing.storeFile
+                storePassword = signing.storePassword
+                keyAlias = signing.keyAlias
+                keyPassword = signing.keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Never debug-signed: without keystore.properties the release tasks fail instead.
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -82,6 +99,27 @@ android {
             )
         }
     }
+}
+
+// Every task that turns the release variant into an APK or AAB, whatever was asked for on the command
+// line (assembleRelease, bundleRelease, build, installRelease…), waits on this check. Debug builds, unit
+// tests, lint and the debug-signed minifiedSmoke never reach it.
+val checkReleaseSigning = tasks.register("checkReleaseSigning") {
+    description = "Fails unless keystore.properties names a usable upload key."
+    val problem = releaseSigning.problem
+    doLast {
+        if (problem != null) {
+            throw GradleException(
+                "Release signing is not configured: $problem. Put storeFile, storePassword, keyAlias and " +
+                    "keyPassword in giftiary-android/keystore.properties (git-ignored; a relative storeFile " +
+                    "is resolved from giftiary-android/). See docs/release-checklist.md, Signing.",
+            )
+        }
+    }
+}
+val releaseOutputTasks = setOf("minifyReleaseWithR8", "packageRelease", "packageReleaseBundle", "signReleaseBundle")
+tasks.configureEach {
+    if (name in releaseOutputTasks) dependsOn(checkReleaseSigning)
 }
 
 room {
@@ -152,6 +190,31 @@ fun providerEnabled(name: String): Boolean {
         rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { load(it) }
     }
     return (localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull)?.trim() == "true"
+}
+
+class SigningValues(val storeFile: File, val storePassword: String, val keyAlias: String, val keyPassword: String)
+
+/** Either the values to sign with, or what is wrong with them; never the secrets themselves in [problem]. */
+class ReleaseSigning(val config: SigningValues?, val problem: String?)
+
+fun loadReleaseSigning(): ReleaseSigning {
+    val text = providers.fileContents(rootProject.layout.projectDirectory.file("keystore.properties")).asText.orNull
+        ?: return ReleaseSigning(null, "giftiary-android/keystore.properties does not exist")
+    val properties = Properties().apply { load(text.reader()) }
+    val fields = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    val blank = fields.filter { properties.getProperty(it).isNullOrBlank() }
+    if (blank.isNotEmpty()) return ReleaseSigning(null, "keystore.properties has no value for ${blank.joinToString()}")
+    val storeFile = rootProject.file(properties.getProperty("storeFile").trim())
+    if (!storeFile.isFile) return ReleaseSigning(null, "the keystore named by storeFile does not exist ($storeFile)")
+    return ReleaseSigning(
+        SigningValues(
+            storeFile = storeFile,
+            storePassword = properties.getProperty("storePassword"),
+            keyAlias = properties.getProperty("keyAlias").trim(),
+            keyPassword = properties.getProperty("keyPassword"),
+        ),
+        problem = null,
+    )
 }
 
 fun String.asBuildConfigString(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
