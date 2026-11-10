@@ -237,7 +237,7 @@ private fun SharedWishes(
                 leading = { GiftiaryAvatar(name = wishlist.personName ?: wishlist.ownerDisplayName, size = 56.dp) },
                 options = {
                     OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
-                        Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true)
+                        Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true, alone = true)
                     }
                 },
             )
