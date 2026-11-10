@@ -1,25 +1,38 @@
 package app.giftiary.presentation.giftideas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.R
@@ -55,7 +68,11 @@ fun GiftIdeaStatusTag(status: GiftIdeaStatus, modifier: Modifier = Modifier) {
     )
 }
 
-/** Idea, Planned or Purchased; any of them can be chosen, so mistakes are easy to correct. */
+/**
+ * Idea, Planned or Purchased; any of them can be chosen, so mistakes are easy to correct. Side by side
+ * while every label fits its third on one line; otherwise, as with the longer Hungarian labels on a
+ * narrow phone or at large text, stacked one under another, so no label is squeezed, broken or cut.
+ */
 @Composable
 fun GiftIdeaStatusSelector(
     selected: GiftIdeaStatus,
@@ -64,27 +81,63 @@ fun GiftIdeaStatusSelector(
     enabled: Boolean = true,
 ) {
     val colors = GiftiaryTheme.colors
-    SingleChoiceSegmentedButtonRow(modifier = modifier.fillMaxWidth()) {
-        GiftIdeaStatus.entries.forEachIndexed { index, status ->
-            SegmentedButton(
-                selected = status == selected,
-                onClick = { onSelect(status) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = GiftIdeaStatus.entries.size),
-                enabled = enabled,
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = colors.surfaceContext,
-                    activeContentColor = colors.textPrimary,
-                    activeBorderColor = colors.border,
-                    inactiveContainerColor = colors.background,
-                    inactiveContentColor = colors.textSecondary,
-                    inactiveBorderColor = colors.border,
-                ),
-            ) {
-                Text(giftIdeaStatusLabel(status))
+    val labels = GiftIdeaStatus.entries.associateWith { giftIdeaStatusLabel(it) }
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val widestLabel = labels.values.maxOf { measurer.measure(it, GiftiaryType.actionSmall, maxLines = 1).size.width }
+        val sideBySide = with(density) { widestLabel.toDp() } + STATUS_OPTION_PADDING * 2 <= (maxWidth - 1.dp * (labels.size - 1)) / labels.size
+        val options: @Composable (Modifier) -> Unit = { optionModifier ->
+            GiftIdeaStatus.entries.forEachIndexed { index, status ->
+                if (index > 0) {
+                    val line = if (sideBySide) Modifier.fillMaxHeight().width(1.dp) else Modifier.fillMaxWidth().height(1.dp)
+                    Box(line.background(colors.border))
+                }
+                StatusOption(
+                    label = labels.getValue(status),
+                    selected = status == selected,
+                    enabled = enabled,
+                    onClick = { onSelect(status) },
+                    modifier = optionModifier,
+                )
             }
+        }
+        val group = Modifier
+            .fillMaxWidth()
+            .clip(GiftiaryShapes.input)
+            .border(1.dp, colors.border, GiftiaryShapes.input)
+            .selectableGroup()
+        if (sideBySide) {
+            Row(group.height(IntrinsicSize.Min)) { options(Modifier.weight(1f).fillMaxHeight()) }
+        } else {
+            Column(group) { options(Modifier.fillMaxWidth()) }
         }
     }
 }
+
+@Composable
+private fun StatusOption(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val colors = GiftiaryTheme.colors
+    Box(
+        modifier = modifier
+            .background(if (selected) colors.surfaceContext else colors.background)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = STATUS_OPTION_PADDING, vertical = GiftiarySpacing.s),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.alpha(if (enabled) 1f else DISABLED_ALPHA),
+            style = GiftiaryType.actionSmall,
+            color = if (selected) colors.textPrimary else colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private val STATUS_OPTION_PADDING = 12.dp
+private const val DISABLED_ALPHA = 0.38f
 
 /**
  * One idea in a list: what it is, for whom, how far along, and what it may cost. [selectable] rows,
