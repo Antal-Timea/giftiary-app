@@ -115,6 +115,13 @@ class SupabaseWishlistSharingRepository @Inject constructor(
         rpc("revoke_recipient_invite", buildJsonObject { put("p_invite_id", inviteId.toString()) })
     }
 
+    override suspend fun reservedWishes(wishlistId: UUID): Set<UUID> =
+        rpc(
+            "get_owner_reserved_wishes",
+            buildJsonObject { put("p_wishlist_id", wishlistId.toString()) },
+            ListSerializer(String.serializer()),
+        ).map { runCatching { UUID.fromString(it) }.getOrNull() ?: throw SharingException(SharingFailure.SERVER) }.toSet()
+
     override suspend fun redeem(token: InviteToken): UUID =
         rpc(
             "redeem_wishlist_invite",
@@ -242,6 +249,7 @@ class SupabaseWishlistSharingRepository @Inject constructor(
                 "P0002" -> SharingFailure.UNAVAILABLE
                 "P0001" -> SharingFailure.INVITE_LIMIT
                 "22023" -> SharingFailure.INVALID_INPUT
+                "23505" -> SharingFailure.ALREADY_MEMBER
                 else -> SharingFailure.SERVER
             }
         }

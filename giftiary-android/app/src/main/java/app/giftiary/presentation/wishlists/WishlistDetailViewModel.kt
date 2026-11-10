@@ -6,6 +6,8 @@ import app.giftiary.domain.model.Person
 import app.giftiary.domain.model.Wish
 import app.giftiary.domain.model.Wishlist
 import app.giftiary.domain.repository.PersonRepository
+import app.giftiary.domain.repository.SharingException
+import app.giftiary.domain.repository.WishlistSharingRepository
 import app.giftiary.domain.repository.WishlistRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,9 +34,13 @@ class WishlistDetailViewModel @AssistedInject constructor(
     @Assisted private val wishlistId: UUID,
     private val repository: WishlistRepository,
     personRepository: PersonRepository,
+    private val sharing: WishlistSharingRepository,
 ) : ViewModel() {
 
     private val actions = MutableStateFlow(WishlistDetailActions())
+
+    // Reserved wishes of a list kept for a person, from the server; never of the user's own list.
+    private val reserved = MutableStateFlow<Set<UUID>>(emptySet())
 
     private val wishlist = combine(
         repository.observeWishlist(wishlistId),
@@ -47,10 +54,15 @@ class WishlistDetailViewModel @AssistedInject constructor(
     private val waitingToSync = repository.observeWaitingToSync(wishlistId).catch { emit(false) }
 
     val uiState: StateFlow<WishlistDetailUiState> =
-        combine(wishlist, waitingToSync, actions) { content, waitingToSync, actions ->
+        combine(wishlist, waitingToSync, actions, reserved) { content, waitingToSync, actions, reserved ->
+            val shown = if (content is WishlistDetailContent.Loaded && content.wishlist.personId != null) {
+                content.copy(reservedWishIds = reserved.filterTo(mutableSetOf()) { id -> content.wishes.any { it.id == id } })
+            } else {
+                content
+            }
             // Once deleted, the wishlist is gone from Room too; keep reporting the deletion, not "not found".
             WishlistDetailUiState(
-                content = if (actions.deleted) WishlistDetailContent.Deleted else content,
+                content = if (actions.deleted) WishlistDetailContent.Deleted else shown,
                 actions = actions,
                 waitingToSync = waitingToSync,
             )
@@ -59,6 +71,21 @@ class WishlistDetailViewModel @AssistedInject constructor(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             initialValue = WishlistDetailUiState(),
         )
+
+    /**
+     * Asks the server which wishes of a list kept for a person are reserved, each time the screen
+     * shows. Offline, or for a list the server does not have yet, the last answer stays.
+     */
+    fun onShown() {
+        viewModelScope.launch {
+            val list = repository.observeWishlist(wishlistId).first()
+            if (list?.personId == null) return@launch
+            try {
+                reserved.value = sharing.reservedWishes(wishlistId)
+            } catch (_: SharingException) {
+            }
+        }
+    }
 
     fun onDeleteRequested() {
         actions.update { it.copy(confirmingDelete = true) }
@@ -135,12 +162,14 @@ sealed interface WishlistDetailContent {
 
     /**
      * [openablePersonId] is the person the wishlist is for while they are an active person; a
-     * deleted person has nothing to open. [wishes] are oldest first.
+     * deleted person has nothing to open. [wishes] are oldest first. [reservedWishIds] are those
+     * someone reserved, only ever known for a list kept for a person.
      */
     data class Loaded(
         val wishlist: Wishlist,
         val owner: WishlistOwner,
         val openablePersonId: UUID?,
         val wishes: List<Wish>,
+        val reservedWishIds: Set<UUID> = emptySet(),
     ) : WishlistDetailContent
 }

@@ -450,6 +450,7 @@ nagy történetek</string>
     <string name="wishlist_access_email_sent">Meghívó elmentve. Emailt küldünk ide: %1$s.</string>
     <string name="wishlist_access_email_invalid">Adj meg egy érvényes email-címet.</string>
     <string name="wishlist_access_email_not_allowed">Ez a cím nem hívható meg. Saját magadat nem hívhatod meg.</string>
+    <string name="wishlist_access_email_already_member">Ez a személy már hozzáfér a listához.</string>
     <string name="wishlist_access_email_limit">Most nem küldhetsz több email-meghívót. Vonj vissza egyet, vagy próbáld újra holnap.</string>
     <string name="wishlist_access_email_invites">Email-meghívók</string>
     <string name="wishlist_access_email_pending">Függőben · lejár: %1$s</string>

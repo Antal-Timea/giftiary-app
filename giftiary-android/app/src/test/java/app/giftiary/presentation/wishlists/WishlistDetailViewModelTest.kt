@@ -1,8 +1,10 @@
 package app.giftiary.presentation.wishlists
 
+import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.domain.repository.WishDetails
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.FakeWishlistRepository
+import app.giftiary.testing.FakeWishlistSharingRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.keepSubscribed
 import app.giftiary.testing.person
@@ -26,6 +28,7 @@ class WishlistDetailViewModelTest {
 
     private val wishlists = FakeWishlistRepository()
     private val people = FakePersonRepository()
+    private val sharing = FakeWishlistSharingRepository()
     private val anna = person("Anna")
 
     @Test
@@ -146,7 +149,61 @@ class WishlistDetailViewModelTest {
         assertEquals(own, (viewModel.uiState.value.content as WishlistDetailContent.Loaded).wishlist)
     }
 
-    private fun viewModel(id: UUID) = WishlistDetailViewModel(id, wishlists, people)
+    @Test
+    fun `the owner of a list kept for a person sees which wishes are reserved, never by whom`() = runTest {
+        people.givenPeople(anna)
+        val forAnna = wishlist("Christmas", personId = anna.id).also { wishlists.givenWishlists(it) }
+        val kite = wish(forAnna.id, "Kite")
+        val ball = wish(forAnna.id, "Ball")
+        wishlists.givenWishes(kite, ball)
+        // An id the device no longer has, e.g. a wish deleted here and not yet synced, is ignored.
+        sharing.reservedWishes = setOf(kite.id, UUID.randomUUID())
+        val viewModel = viewModel(forAnna.id)
+        keepSubscribed(viewModel.uiState)
+        assertEquals(emptySet<UUID>(), loaded(viewModel).reservedWishIds)
+
+        viewModel.onShown()
+
+        assertEquals(setOf(kite.id), loaded(viewModel).reservedWishIds)
+        assertEquals(listOf("reservedWishes:${forAnna.id}"), sharing.calls)
+    }
+
+    @Test
+    fun `the owner of their own list is never told, and the server is not even asked`() = runTest {
+        val own = wishlist("Birthday").also { wishlists.givenWishlists(it) }
+        val lamp = wish(own.id, "Lamp").also { wishlists.givenWishes(it) }
+        sharing.reservedWishes = setOf(lamp.id)
+        val viewModel = viewModel(own.id)
+        keepSubscribed(viewModel.uiState)
+
+        viewModel.onShown()
+
+        assertEquals(emptySet<UUID>(), loaded(viewModel).reservedWishIds)
+        assertTrue(sharing.calls.isEmpty())
+    }
+
+    @Test
+    fun `offline the last known reservations stay, and showing again refreshes them`() = runTest {
+        people.givenPeople(anna)
+        val forAnna = wishlist("Christmas", personId = anna.id).also { wishlists.givenWishlists(it) }
+        val kite = wish(forAnna.id, "Kite")
+        val ball = wish(forAnna.id, "Ball")
+        wishlists.givenWishes(kite, ball)
+        sharing.reservedWishes = setOf(kite.id)
+        val viewModel = viewModel(forAnna.id)
+        keepSubscribed(viewModel.uiState)
+        viewModel.onShown()
+
+        sharing.reservedWishes = setOf(ball.id)
+        sharing.failNext += SharingFailure.NETWORK
+        viewModel.onShown()
+        assertEquals(setOf(kite.id), loaded(viewModel).reservedWishIds)
+
+        viewModel.onShown()
+        assertEquals(setOf(ball.id), loaded(viewModel).reservedWishIds)
+    }
+
+    private fun viewModel(id: UUID) = WishlistDetailViewModel(id, wishlists, people, sharing)
 
     private fun TestScope.loaded(viewModel: WishlistDetailViewModel): WishlistDetailContent.Loaded {
         keepSubscribed(viewModel.uiState)
