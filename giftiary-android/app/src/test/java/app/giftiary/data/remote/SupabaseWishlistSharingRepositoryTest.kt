@@ -29,6 +29,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -347,6 +349,45 @@ class SupabaseWishlistSharingRepositoryTest {
 
         answer = { respondJson("""[{"wishlist_id":"not-a-uuid"}]""") }
         assertFailure(SharingFailure.SERVER) { repository.sharedWishlists() }
+    }
+
+    @Test
+    fun `a token that expired offline is waited for once, then the call is made again with the new one`() = runTest {
+        val refreshed = token(alice, "refreshed")
+        answer = { request ->
+            if (request.headers[HttpHeaders.Authorization] == "Bearer $refreshed") {
+                respondJson("[]")
+            } else {
+                respondError("PGRST303", HttpStatusCode.Unauthorized, "JWT expired")
+            }
+        }
+        launch {
+            delay(3_000)
+            auth.importSession(
+                UserSession(refreshed, "r2", expiresIn = 3600, tokenType = "bearer", user = UserInfo(aud = "authenticated", id = alice.toString())),
+                autoRefresh = false,
+                source = SessionSource.Storage,
+            )
+        }
+
+        assertEquals(emptyList<Any>(), repository.sharedWishlists())
+        assertEquals(listOf("Bearer ${token(alice)}", "Bearer $refreshed"), requests.map { it.headers[HttpHeaders.Authorization] })
+    }
+
+    @Test
+    fun `without a new token in time the refusal stays a retryable failure, sent once`() = runTest {
+        answer = { respondError("PGRST303", HttpStatusCode.Unauthorized, "JWT expired") }
+
+        assertFailure(SharingFailure.SERVER) { repository.sharedWishlists() }
+        assertEquals(1, requests.size)
+    }
+
+    @Test
+    fun `other refusals are not waited on or sent again`() = runTest {
+        answer = { respondError("P0002") }
+
+        assertFailure(SharingFailure.UNAVAILABLE) { repository.sharedWishlist(LIST) }
+        assertEquals(1, requests.size)
     }
 
     @Test
