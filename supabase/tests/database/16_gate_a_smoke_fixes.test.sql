@@ -4,7 +4,7 @@
 
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(38);
 
 -- ---- fixtures ----
 
@@ -124,6 +124,10 @@ select is(
     public.create_recipient_invite('10000000-0000-4000-8000-000000000001', 'dave@example.test') ->> 'invite_id',
     current_setting('test.dave'),
     'a pending invite is still returned, not doubled');
+select set_config('test.new', public.create_recipient_invite('10000000-0000-4000-8000-000000000001', 'new@example.test') ->> 'invite_id', true);
+select public.revoke_recipient_invite(current_setting('test.new')::uuid);
+select isnt(public.create_recipient_invite('10000000-0000-4000-8000-000000000001', 'new@example.test') ->> 'invite_id',
+    current_setting('test.new'), 'after a revoke the address can be invited again, as a new invite');
 reset role;
 
 -- A declined invite does not stop a new one.
