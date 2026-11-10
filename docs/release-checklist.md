@@ -22,21 +22,45 @@ submissions). Nothing in this file is done automatically.
 
 ## Signing (human)
 
-The repository holds no signing configuration and no key material; `.gitignore` refuses
-`*.jks`, `*.keystore`, `*.p12`, `*.pem`, `keystore.properties` and `signing.properties`.
+The repository holds no key material; `.gitignore` refuses `*.jks`, `*.keystore`, `*.p12`,
+`*.pem`, `keystore.properties` and `signing.properties`.
 
 1. **Human:** create the upload key on a trusted machine and keep it and its passwords outside the
    repository (e.g. a password manager plus an offline backup). Losing it means asking Google to
    reset the upload key.
-2. **Human:** decide where the build reads the key from (a `keystore.properties` next to the
-   project, or environment variables on the build machine).
-3. Release signing in Gradle is wired only after that decision, and must **fail the build** when
-   a signed release is requested and the key is missing. A signed build must never silently come
-   out unsigned.
+2. **Human:** put the key's details in `giftiary-android/keystore.properties` (decided: a local
+   file, not environment variables). See Setup below.
+3. Gradle signs `assembleRelease` and `bundleRelease` (and anything that builds them, such as
+   `build` or `installRelease`) with that key. If the file is missing, a field is missing or blank,
+   or `storeFile` names no file, the `checkReleaseSigning` task **fails the build** before any
+   release output is produced; the message names the problem, never a password. Wrong passwords
+   or alias fail at the signing step. A release build never silently comes out unsigned or
+   debug-signed. Debug builds, unit tests, lint and the debug-signed `minifiedSmoke` build type
+   need no key.
 4. For Gate B, enrol in **Play App Signing** with this key as the upload key (human).
 
-Check on every release build: `apksigner verify --print-certs` shows the upload certificate, and
-the file name has no `-unsigned` suffix.
+### Setup
+
+`giftiary-android/keystore.properties` (git-ignored; placeholders only, never commit real values):
+
+```properties
+storeFile=/path/outside/the/repo/upload-keystore.jks
+storePassword=<store password>
+keyAlias=<key alias>
+keyPassword=<key password>
+```
+
+A relative `storeFile` is resolved from `giftiary-android/` (the Android project root), not from
+`app/`. Keep the keystore itself outside the repository; an absolute path is clearest.
+
+### Verification
+
+Check on every release build:
+- `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk` shows the upload
+  certificate;
+- `keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab` shows the same
+  certificate for the bundle;
+- the file name has no `-unsigned` suffix.
 
 ## Gate A: direct-install smoke
 
