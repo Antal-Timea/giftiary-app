@@ -117,9 +117,24 @@ val checkReleaseSigning = tasks.register("checkReleaseSigning") {
         }
     }
 }
+// Same boundary for the backend a release talks to: a debug build may run without one (it warns), but a
+// release that cannot reach Supabase, or would reach it over plain HTTP, is never produced.
+val checkReleaseBackend = tasks.register("checkReleaseBackend") {
+    description = "Fails unless supabase.url is an https URL and supabase.publishableKey is set."
+    val problems = releaseBackendProblems(supabaseSetting("supabase.url"), supabaseSetting("supabase.publishableKey"))
+    doLast {
+        if (problems.isNotEmpty()) {
+            throw GradleException(
+                "Release backend is not configured: ${problems.joinToString("; ")}. Set supabase.url and " +
+                    "supabase.publishableKey for the hosted project in giftiary-android/local.properties (git-ignored) " +
+                    "or as -P properties. See docs/release-checklist.md, Build.",
+            )
+        }
+    }
+}
 val releaseOutputTasks = setOf("minifyReleaseWithR8", "packageRelease", "packageReleaseBundle", "signReleaseBundle")
 tasks.configureEach {
-    if (name in releaseOutputTasks) dependsOn(checkReleaseSigning)
+    if (name in releaseOutputTasks) dependsOn(checkReleaseSigning, checkReleaseBackend)
 }
 
 room {
@@ -182,6 +197,19 @@ fun supabaseSetting(name: String): String {
     val value = localProperties.getProperty(name) ?: providers.gradleProperty(name).orNull
     if (value.isNullOrBlank()) logger.warn("Giftiary: $name is not set in local.properties; Supabase is unavailable.")
     return value.orEmpty()
+}
+
+/** What is wrong with the release backend settings; never their values, so nothing configured is echoed. */
+fun releaseBackendProblems(url: String, publishableKey: String): List<String> = buildList {
+    if (url.isBlank()) {
+        add("supabase.url is not set")
+    } else {
+        val uri = runCatching { java.net.URI(url.trim()) }.getOrNull()
+        val valid = uri != null && uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank() &&
+            uri.userInfo == null
+        if (!valid) add("supabase.url is not an https:// URL with a host")
+    }
+    if (publishableKey.isBlank()) add("supabase.publishableKey is not set")
 }
 
 /** Same sources as [supabaseSetting]; only the exact value "true" enables a provider. */

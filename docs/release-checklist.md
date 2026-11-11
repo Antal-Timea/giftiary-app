@@ -100,7 +100,11 @@ Check on every release build:
 
 - [ ] Clean checkout of the commit to release; `git status` clean.
 - [ ] `local.properties` (never committed) holds the **hosted** `supabase.url` and
-      `supabase.publishableKey`; never a service-role key.
+      `supabase.publishableKey`; never a service-role key. The `checkReleaseBackend` task fails
+      every release APK/AAB build (the same tasks `checkReleaseSigning` guards) if the URL is
+      missing or not `https://` with a host, or if the key is missing; the message names the
+      setting, never its value. Debug builds, unit tests, lint and `minifiedSmoke` (mock backend,
+      never shipped) only warn.
 - [ ] Sign-in providers are off unless enabled on purpose: `auth.google.enabled=true` and
       `auth.facebook.enabled=true` in `local.properties` (or `-P`) only once that provider's
       hosted setup above is complete. Any other value leaves its button out of the build.
