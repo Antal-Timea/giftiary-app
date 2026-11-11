@@ -82,6 +82,9 @@ class GiftIdeaStatusSelectorTest {
         compose.onNodeWithTag(SELECTOR).assertNoClippedText()
     }
 
+    /** The width of the option, the tappable group the label belongs to. */
+    private fun optionWidth(label: String) = compose.onNodeWithText(label).getBoundsInRoot().let { it.right - it.left }
+
     private fun sideBySide(labels: List<String>) = labels.map { bounds(it).top }.distinct().size == 1
 
     @Test
@@ -94,8 +97,18 @@ class GiftIdeaStatusSelectorTest {
 
     @Test
     @Config(qualifiers = "hu")
-    fun `Hungarian labels that do not fit their third are stacked, never broken or overlapping`() {
+    fun `Hungarian labels sit side by side on a phone, the longest one wider`() {
         show()
+
+        assertLabelsWhole(HUNGARIAN)
+        assertTrue(sideBySide(HUNGARIAN))
+        assertTrue("Megvásárolva gets more room than Ötlet", optionWidth("Megvásárolva") > optionWidth("Ötlet"))
+    }
+
+    @Test
+    @Config(qualifiers = "hu")
+    fun `on a narrow window the Hungarian labels are stacked, never broken or overlapping`() {
+        show(width = 240.dp)
 
         assertLabelsWhole(HUNGARIAN)
         assertTrue("stacked", HUNGARIAN.zipWithNext().all { (a, b) -> bounds(a).bottom <= bounds(b).top })

@@ -70,8 +70,10 @@ fun GiftIdeaStatusTag(status: GiftIdeaStatus, modifier: Modifier = Modifier) {
 
 /**
  * Idea, Planned or Purchased; any of them can be chosen, so mistakes are easy to correct. Side by side
- * while every label fits its third on one line; otherwise, as with the longer Hungarian labels on a
- * narrow phone or at large text, stacked one under another, so no label is squeezed, broken or cut.
+ * while the three labels fit on one line each: every option gets its label's width and an equal share
+ * of the room left, so the longer Hungarian "Megvásárolva" still fits beside the others on a phone.
+ * Only when they cannot, on a narrow window or at large text, are they stacked one under another, so
+ * no label is squeezed, broken or cut.
  */
 @Composable
 fun GiftIdeaStatusSelector(
@@ -85,9 +87,13 @@ fun GiftIdeaStatusSelector(
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val widestLabel = labels.values.maxOf { measurer.measure(it, GiftiaryType.actionSmall, maxLines = 1).size.width }
-        val sideBySide = with(density) { widestLabel.toDp() } + STATUS_OPTION_PADDING * 2 <= (maxWidth - 1.dp * (labels.size - 1)) / labels.size
-        val options: @Composable (Modifier) -> Unit = { optionModifier ->
+        val natural = labels.mapValues { (_, label) ->
+            with(density) { measurer.measure(label, GiftiaryType.actionSmall, maxLines = 1).size.width.toDp() } + STATUS_OPTION_PADDING * 2
+        }
+        // The dividers, and a little slack so rounding never leaves a label a pixel short.
+        val spare = maxWidth - natural.values.fold(0.dp) { sum, width -> sum + width } - 1.dp * (labels.size + 1)
+        val sideBySide = spare >= 0.dp
+        val options: @Composable (optionModifier: (GiftIdeaStatus) -> Modifier) -> Unit = { optionModifier ->
             GiftIdeaStatus.entries.forEachIndexed { index, status ->
                 if (index > 0) {
                     val line = if (sideBySide) Modifier.fillMaxHeight().width(1.dp) else Modifier.fillMaxWidth().height(1.dp)
@@ -98,7 +104,7 @@ fun GiftIdeaStatusSelector(
                     selected = status == selected,
                     enabled = enabled,
                     onClick = { onSelect(status) },
-                    modifier = optionModifier,
+                    modifier = optionModifier(status),
                 )
             }
         }
@@ -108,9 +114,11 @@ fun GiftIdeaStatusSelector(
             .border(1.dp, colors.border, GiftiaryShapes.input)
             .selectableGroup()
         if (sideBySide) {
-            Row(group.height(IntrinsicSize.Min)) { options(Modifier.weight(1f).fillMaxHeight()) }
+            Row(group.height(IntrinsicSize.Min)) {
+                options { status -> Modifier.weight((natural.getValue(status) + spare / labels.size).value).fillMaxHeight() }
+            }
         } else {
-            Column(group) { options(Modifier.fillMaxWidth()) }
+            Column(group) { options { Modifier.fillMaxWidth() } }
         }
     }
 }
