@@ -189,7 +189,8 @@ dependencies {
 
 /**
  * Supabase settings come from the git-ignored local.properties, or from a Gradle property
- * (e.g. -Psupabase.url=... on CI). A missing value builds an app that cannot reach Supabase.
+ * (e.g. -Psupabase.url=... on CI). Debug, test and minifiedSmoke builds only warn when one is missing, and
+ * such an app cannot reach Supabase; release APK/AAB output is blocked by checkReleaseBackend instead.
  */
 fun supabaseSetting(name: String): String {
     val localProperties = Properties().apply {
