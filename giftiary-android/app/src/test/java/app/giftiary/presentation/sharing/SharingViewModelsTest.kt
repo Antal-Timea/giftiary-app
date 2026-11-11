@@ -654,30 +654,109 @@ class SharingViewModelsTest {
 
     // ---- join ----
 
+    private fun confirming(viewModel: JoinWishlistViewModel) =
+        viewModel.state.value.phase == JoinPhase.Idle && viewModel.state.value.confirmingOpenedInvite
+
     @Test
-    fun `an opened link is taken once and redeemed`() = runTest {
+    fun `an opened link only asks, and is taken once`() = runTest {
         pending.offer(PendingJoin.Invite(token))
 
         val viewModel = JoinWishlistViewModel(sharing, pending)
 
-        assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
-        assertEquals(listOf(token), sharing.redeemedTokens)
+        assertTrue("it waits for the user's answer", confirming(viewModel))
+        assertTrue("nothing is sent before Join", sharing.calls.isEmpty())
+        assertEquals("the token is never shown", "", viewModel.state.value.input)
         assertNull("the link is consumed", pending.take())
-        // A second screen, e.g. after going back, does not join again.
-        JoinWishlistViewModel(sharing, pending)
-        assertEquals(1, sharing.redeemedTokens.size)
+        // A second screen, e.g. after going back, has nothing to ask about.
+        val again = JoinWishlistViewModel(sharing, pending)
+        assertFalse(again.state.value.confirmingOpenedInvite)
+        assertTrue(sharing.calls.isEmpty())
     }
 
     @Test
-    fun `a link opened while the join screen is open is joined there`() = runTest {
-        val viewModel = JoinWishlistViewModel(sharing, pending)
-        assertEquals(JoinPhase.Idle, viewModel.state.value.phase)
-
+    fun `a link opened while signed out still stops at the question after signing in`() = runTest {
+        // Offered before sign-in; the join screen of the signed-in graph takes it later.
         pending.offer(PendingJoin.Invite(token))
+        assertTrue(sharing.calls.isEmpty())
+
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+
+        assertTrue(confirming(viewModel))
+        assertTrue(sharing.calls.isEmpty())
+    }
+
+    @Test
+    fun `Join redeems the opened invite exactly once`() = runTest {
+        pending.offer(PendingJoin.Invite(token))
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+
+        viewModel.onConfirmOpenedInvite()
 
         assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
         assertEquals(listOf(token), sharing.redeemedTokens)
+        viewModel.onConfirmOpenedInvite()
+        assertEquals("a joined invite is not redeemed again", 1, sharing.redeemedTokens.size)
+    }
+
+    @Test
+    fun `a link opened while the join screen is open asks there`() = runTest {
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+        assertEquals(JoinPhase.Idle, viewModel.state.value.phase)
+        assertFalse(viewModel.state.value.confirmingOpenedInvite)
+
+        pending.offer(PendingJoin.Invite(token))
+
+        assertTrue(confirming(viewModel))
+        assertTrue(sharing.calls.isEmpty())
         assertNull("the link is consumed", pending.take())
+    }
+
+    @Test
+    fun `Not now forgets the opened invite, so nothing joins later`() = runTest {
+        pending.offer(PendingJoin.Invite(token))
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+
+        viewModel.onDeclineOpenedInvite()
+
+        assertFalse(viewModel.state.value.confirmingOpenedInvite)
+        assertEquals(JoinPhase.Idle, viewModel.state.value.phase)
+        viewModel.onConfirmOpenedInvite()
+        viewModel.onRetry()
+        JoinWishlistViewModel(sharing, pending)
+        assertTrue("no redeem, not even later", sharing.calls.isEmpty())
+        assertNull(pending.take())
+    }
+
+    @Test
+    fun `pressing Join again while joining sends one redeem`() = runTest {
+        sharing.gate = CompletableDeferred()
+        pending.offer(PendingJoin.Invite(token))
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+
+        viewModel.onConfirmOpenedInvite()
+        viewModel.onConfirmOpenedInvite()
+        viewModel.onDeclineOpenedInvite()
+        assertEquals(JoinPhase.Joining, viewModel.state.value.phase)
+        assertTrue("Not now cannot undo a join already sent", viewModel.state.value.confirmingOpenedInvite)
+
+        sharing.gate!!.complete(Unit)
+        assertEquals(listOf("redeem"), sharing.calls)
+        assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
+    }
+
+    @Test
+    fun `a link opened while joining is dropped, not joined`() = runTest {
+        sharing.gate = CompletableDeferred()
+        pending.offer(PendingJoin.Invite(token))
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+        viewModel.onConfirmOpenedInvite()
+
+        pending.offer(PendingJoin.Invite(InviteToken.of("B".repeat(43))!!))
+        sharing.gate!!.complete(Unit)
+
+        assertEquals(listOf(token), sharing.redeemedTokens)
+        assertNull(pending.take())
+        assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
     }
 
     @Test
@@ -687,6 +766,7 @@ class SharingViewModelsTest {
         val viewModel = JoinWishlistViewModel(sharing, pending)
 
         assertEquals(JoinPhase.Failed(JoinFailure.INVALID_LINK), viewModel.state.value.phase)
+        assertFalse(viewModel.state.value.confirmingOpenedInvite)
         assertTrue(sharing.calls.isEmpty())
     }
 
@@ -708,16 +788,19 @@ class SharingViewModelsTest {
     }
 
     @Test
-    fun `a network failure can be retried with the same token`() = runTest {
+    fun `a network failure after Join can be retried with the same token`() = runTest {
         pending.offer(PendingJoin.Invite(token))
         sharing.failNext += SharingFailure.NETWORK
-
         val viewModel = JoinWishlistViewModel(sharing, pending)
+
+        viewModel.onConfirmOpenedInvite()
         assertEquals(JoinPhase.Failed(JoinFailure.NETWORK), viewModel.state.value.phase)
+        assertFalse("the failure is shown on the paste form", viewModel.state.value.confirmingOpenedInvite)
         assertTrue(JoinFailure.NETWORK.isRetryable)
 
         viewModel.onRetry()
         assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
+        assertEquals(listOf(token), sharing.redeemedTokens)
     }
 
     @Test
@@ -729,13 +812,26 @@ class SharingViewModelsTest {
             sharing.failNext += failure
 
             val viewModel = JoinWishlistViewModel(sharing, pending)
+            viewModel.onConfirmOpenedInvite()
             assertEquals(JoinPhase.Failed(JoinFailure.UNAVAILABLE), viewModel.state.value.phase)
             assertFalse(JoinFailure.UNAVAILABLE.isRetryable)
 
             val calls = sharing.calls.size
             viewModel.onRetry()
+            viewModel.onConfirmOpenedInvite()
             assertEquals("nothing left to retry", calls, sharing.calls.size)
         }
+    }
+
+    @Test
+    fun `a refusal for an already joined list reads as a server failure`() = runTest {
+        pending.offer(PendingJoin.Invite(token))
+        sharing.failNext += SharingFailure.ALREADY_MEMBER
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+
+        viewModel.onConfirmOpenedInvite()
+
+        assertEquals(JoinPhase.Failed(JoinFailure.SERVER), viewModel.state.value.phase)
     }
 
     @Test
@@ -751,5 +847,12 @@ class SharingViewModelsTest {
         sharing.gate!!.complete(Unit)
         assertEquals(listOf("redeem"), sharing.calls)
         assertEquals(JoinPhase.Joined(sharing.redeemedWishlistId), viewModel.state.value.phase)
+    }
+
+    @Test
+    fun `the state never prints a pasted token`() {
+        val state = JoinWishlistUiState(input = joinLink(token), confirmingOpenedInvite = true)
+
+        assertFalse(state.toString().contains(token.value))
     }
 }

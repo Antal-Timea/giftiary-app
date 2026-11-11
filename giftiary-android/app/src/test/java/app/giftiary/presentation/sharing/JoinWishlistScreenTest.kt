@@ -63,6 +63,8 @@ class JoinWishlistScreenTest {
                         onInputChange = { events += "input" },
                         onJoin = { events += "join" },
                         onRetry = { events += "retry" },
+                        onConfirmOpenedInvite = { events += "confirm" },
+                        onDeclineOpenedInvite = { events += "decline" },
                     )
                 }
             }
@@ -102,10 +104,33 @@ class JoinWishlistScreenTest {
     }
 
     @Test
-    fun `an opened link joins on the button, which cannot be pressed meanwhile`() {
-        show(JoinWishlistUiState(phase = JoinPhase.Joining))
+    fun `an opened link asks first, says what joining shares and never shows the link`() {
+        show(JoinWishlistUiState(confirmingOpenedInvite = true))
+
+        compose.onNodeWithText("If you join, its owner will see you", substring = true).assertExists()
+        compose.onAllNodesWithText("Invite link").assertCountEquals(0)
+        compose.onAllNodesWithText("Paste the invite link you received.").assertCountEquals(0)
+        assertTrue("nothing happens until a button is pressed", events.isEmpty())
+
+        joinButton().assertIsEnabled().performClick()
+        assertEquals(listOf("confirm"), events)
+    }
+
+    @Test
+    fun `Not now declines the opened invite`() {
+        show(JoinWishlistUiState(confirmingOpenedInvite = true))
+
+        compose.onNode(hasText("Not now") and hasClickAction()).performClick()
+
+        assertEquals(listOf("decline"), events)
+    }
+
+    @Test
+    fun `while an opened invite joins, neither button can be pressed`() {
+        show(JoinWishlistUiState(phase = JoinPhase.Joining, confirmingOpenedInvite = true))
 
         joinButton().assertIsNotEnabled().performClick()
+        compose.onNode(hasText("Not now") and hasClickAction()).assertIsNotEnabled().performClick()
         assertTrue(events.isEmpty())
     }
 
@@ -160,7 +185,23 @@ class JoinWishlistScreenTest {
     }
 
     @Test
-    fun `an opened link that joins leads to the joined list, once`() {
+    @Config(qualifiers = "hu-w390dp-h1600dp")
+    fun `in Hungarian at large text the question stays inside the screen`() {
+        show(JoinWishlistUiState(confirmingOpenedInvite = true), fontScale = 2f)
+
+        val width = compose.onRoot().getBoundsInRoot().right
+        listOf(
+            compose.onNodeWithText("Ha csatlakozol", substring = true),
+            compose.onNode(hasText("Csatlakozás") and hasClickAction()),
+            compose.onNode(hasText("Most nem") and hasClickAction()),
+        ).forEach { node ->
+            val bounds = node.getBoundsInRoot()
+            assertTrue("$bounds outside the screen", bounds.left >= 0.dp && bounds.right <= width)
+        }
+    }
+
+    @Test
+    fun `an opened link joins only on Join, then leads to the joined list once`() {
         val sharing = FakeWishlistSharingRepository()
         val pending = PendingWishlistJoin().apply { offer(PendingJoin.Invite(InviteToken.of("A".repeat(43))!!)) }
         val viewModel = JoinWishlistViewModel(sharing, pending)
@@ -172,7 +213,34 @@ class JoinWishlistScreenTest {
             }
         }
         compose.waitForIdle()
+        assertTrue("opening and showing it sends nothing", sharing.calls.isEmpty())
+        assertTrue(joined.isEmpty())
 
+        joinButton().performClick()
+        compose.waitForIdle()
+
+        assertEquals(listOf("redeem"), sharing.calls)
         assertEquals(listOf(sharing.redeemedWishlistId), joined)
+    }
+
+    @Test
+    fun `Not now on an opened link leaves without joining`() {
+        val sharing = FakeWishlistSharingRepository()
+        val pending = PendingWishlistJoin().apply { offer(PendingJoin.Invite(InviteToken.of("A".repeat(43))!!)) }
+        val viewModel = JoinWishlistViewModel(sharing, pending)
+        var backs = 0
+
+        compose.setContent {
+            GiftiaryTheme {
+                JoinWishlistScreen(viewModel = viewModel, onBack = { backs++ }, onJoined = {})
+            }
+        }
+        compose.onNode(hasText("Not now") and hasClickAction()).performClick()
+        compose.waitForIdle()
+
+        assertEquals(1, backs)
+        assertTrue(sharing.calls.isEmpty())
+        viewModel.onConfirmOpenedInvite()
+        assertTrue("the declined invite is gone", sharing.calls.isEmpty())
     }
 }

@@ -45,13 +45,19 @@ fun JoinWishlistScreen(viewModel: JoinWishlistViewModel, onBack: () -> Unit, onJ
         onInputChange = viewModel::onInputChange,
         onJoin = viewModel::onJoin,
         onRetry = viewModel::onRetry,
+        onConfirmOpenedInvite = viewModel::onConfirmOpenedInvite,
+        onDeclineOpenedInvite = {
+            viewModel.onDeclineOpenedInvite()
+            onBack()
+        },
     )
 }
 
 /**
  * Joining a shared list, as a task flow beside Create list: the header, the invite link, one coral
  * Join, and Try again only after a failure that may pass. Nothing about the list is known before
- * joining, so nothing about it is shown; an opened link starts joining at once, shown on the button.
+ * joining, so nothing about it is shown. An opened link asks first: what joining shares, Join and
+ * Not now, without the paste field, so the token is never displayed.
  */
 @Composable
 fun JoinWishlistScreen(
@@ -60,6 +66,8 @@ fun JoinWishlistScreen(
     onInputChange: (String) -> Unit,
     onJoin: () -> Unit,
     onRetry: () -> Unit,
+    onConfirmOpenedInvite: () -> Unit,
+    onDeclineOpenedInvite: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val joining = state.phase == JoinPhase.Joining || state.phase is JoinPhase.Joined
@@ -85,45 +93,67 @@ fun JoinWishlistScreen(
             ) {
                 GiftiaryTaskHeader(
                     title = stringResource(R.string.join_wishlist_title),
-                    subtitle = stringResource(R.string.join_wishlist_message),
+                    subtitle = stringResource(
+                        if (state.confirmingOpenedInvite) R.string.join_wishlist_opened_message else R.string.join_wishlist_message,
+                    ),
                     onBack = onBack,
                 )
-                GiftiaryTextField(
-                    value = state.input,
-                    onValueChange = onInputChange,
-                    label = stringResource(R.string.join_wishlist_input),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = GiftiarySpacing.section),
-                    errorMessage = failure?.let { joinFailureText(it) },
-                    enabled = !joining,
-                    // No suggestions or corrections: the keyboard should not learn an invite token.
-                    keyboardOptions = KeyboardOptions(
-                        autoCorrectEnabled = false,
-                        keyboardType = KeyboardType.Uri,
-                        imeAction = ImeAction.Go,
-                    ),
-                    keyboardActions = KeyboardActions(onGo = { onJoin() }),
-                    leadingIcon = painterResource(R.drawable.ic_link),
-                )
-                GiftiaryPrimaryButton(
-                    text = stringResource(R.string.join_wishlist_join),
-                    onClick = onJoin,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = GiftiarySpacing.xxl),
-                    enabled = state.input.isNotBlank(),
-                    loading = joining,
-                    trailingArrow = true,
-                )
-                if (failure?.isRetryable == true) {
+                if (state.confirmingOpenedInvite) {
+                    GiftiaryPrimaryButton(
+                        text = stringResource(R.string.join_wishlist_join),
+                        onClick = onConfirmOpenedInvite,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = GiftiarySpacing.xxl),
+                        loading = joining,
+                        trailingArrow = true,
+                    )
                     GiftiarySecondaryButton(
-                        text = stringResource(R.string.sharing_retry),
-                        onClick = onRetry,
+                        text = stringResource(R.string.join_wishlist_not_now),
+                        onClick = onDeclineOpenedInvite,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = GiftiarySpacing.m),
+                        enabled = !joining,
                     )
+                } else {
+                    GiftiaryTextField(
+                        value = state.input,
+                        onValueChange = onInputChange,
+                        label = stringResource(R.string.join_wishlist_input),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = GiftiarySpacing.section),
+                        errorMessage = failure?.let { joinFailureText(it) },
+                        enabled = !joining,
+                        // No suggestions or corrections: the keyboard should not learn an invite token.
+                        keyboardOptions = KeyboardOptions(
+                            autoCorrectEnabled = false,
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Go,
+                        ),
+                        keyboardActions = KeyboardActions(onGo = { onJoin() }),
+                        leadingIcon = painterResource(R.drawable.ic_link),
+                    )
+                    GiftiaryPrimaryButton(
+                        text = stringResource(R.string.join_wishlist_join),
+                        onClick = onJoin,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = GiftiarySpacing.xxl),
+                        enabled = state.input.isNotBlank(),
+                        loading = joining,
+                        trailingArrow = true,
+                    )
+                    if (failure?.isRetryable == true) {
+                        GiftiarySecondaryButton(
+                            text = stringResource(R.string.sharing_retry),
+                            onClick = onRetry,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = GiftiarySpacing.m),
+                        )
+                    }
                 }
             }
         }
@@ -148,6 +178,8 @@ private fun JoinWishlistPreview() {
             onInputChange = {},
             onJoin = {},
             onRetry = {},
+            onConfirmOpenedInvite = {},
+            onDeclineOpenedInvite = {},
         )
     }
 }

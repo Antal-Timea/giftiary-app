@@ -507,6 +507,8 @@ nagy történetek</string>
     <string name="join_wishlist_join">Csatlakozás</string>
     <string name="join_wishlist_invalid_link">Ez nem érvényes meghívó link.</string>
     <string name="join_wishlist_unavailable">Ez a meghívó nem érhető el. Lehet, hogy lejárt vagy visszavonták. Kérj új linket.</string>
+    <string name="join_wishlist_opened_message">Megnyitottál egy meghívót valaki kívánságlistájára. Ha csatlakozol, a lista tulajdonosa látni fog a tagok között.</string>
+    <string name="join_wishlist_not_now">Most nem</string>
     <string name="auth_join_pending">Jelentkezz be, hogy megnyithasd a kívánságlistát, amelyre meghívtak.</string>
     <!-- A1: password recovery and settings -->
     <string name="auth_error_link_invalid">Ez a link már nem használható. Kérj újat.</string>

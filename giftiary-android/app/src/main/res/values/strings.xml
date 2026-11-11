@@ -508,6 +508,8 @@ big stories</string>
     <string name="join_wishlist_join">Join wishlist</string>
     <string name="join_wishlist_invalid_link">This isn’t a valid invite link.</string>
     <string name="join_wishlist_unavailable">This invite isn’t available. It may have expired or been withdrawn. Ask for a new link.</string>
+    <string name="join_wishlist_opened_message">You opened an invite to someone’s wishlist. If you join, its owner will see you among the list’s members.</string>
+    <string name="join_wishlist_not_now">Not now</string>
     <string name="auth_join_pending">Sign in to open the wishlist you were invited to.</string>
     <!-- A1: password recovery and settings -->
     <string name="auth_error_link_invalid">This link can’t be used anymore. Request a new one.</string>
