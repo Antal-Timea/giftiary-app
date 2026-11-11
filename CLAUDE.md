@@ -657,18 +657,25 @@ Reason:
 
 Two users must never both believe they successfully reserved the same wish.
 
-The wishlist owner must not know:
+What the wishlist owner may know depends on whose list it is.
+
+For the owner's own wishlist (the owner is the beneficiary), the surprise is kept. The owner must not know:
 
 - whether a wish has been reserved
 - who reserved it
+
+and must not receive reservation state from the backend at all.
+
+For a wishlist the owner created for another person (`person_id` is set), the owner may see only the
+neutral fact that a wish is reserved (`Reserved` / `Lefoglalva`), so they do not buy the same gift.
+The owner must never receive the reserver's identity, the reservation time, a count, or any other
+detail that could identify who reserved it. Do not widen this exception beyond person-lists.
 
 Guests may eventually see only:
 
     AVAILABLE
     RESERVED_BY_ME
     RESERVED_BY_OTHER
-
-The owner must not receive reservation state from the backend at all.
 
 Do not solve owner privacy merely by hiding reservation information in Compose.
 
