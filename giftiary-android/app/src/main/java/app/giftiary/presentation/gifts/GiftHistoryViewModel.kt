@@ -28,7 +28,7 @@ import javax.inject.Inject
 class GiftHistoryViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     repository: GiftRepository,
-    photos: GiftPhotoRepository,
+    photoRepository: GiftPhotoRepository,
 ) : ViewModel() {
 
     private val filter = savedStateHandle.getStateFlow(KEY_FILTER, GiftFilter.ALL)
@@ -43,14 +43,13 @@ class GiftHistoryViewModel @Inject constructor(
 
     // The history is small and filtered in memory, so switching filters and typing stay instant.
     private val content = combine(gifts, filter, query) { load, filter, query -> historyContent(load, filter, query) }
-        // Read by the list and by the photos, from one subscription to Room.
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), replay = 1)
 
-    // Only the photos of the gifts shown are read: a search should not download the whole history.
-    private val shownPhotos = photos.photosOf(content.map { (it as? GiftHistoryContent.Loaded)?.gifts.orEmpty() })
+    /** Read only for the rows on screen: loading the history, or searching it, reads no photo. */
+    val photos = ShownPhotos(viewModelScope, photoRepository::loadPhoto)
 
-    private val list = combine(content, filter, query, shownPhotos) { content, filter, query, photos ->
-        GiftHistoryUiState(filter = filter, query = query, content = content, photos = photos)
+    private val list = combine(content, filter, query) { content, filter, query ->
+        GiftHistoryUiState(filter = filter, query = query, content = content)
     }
         // A selection the shown list does not hold (deleted, filtered or searched out, unreadable)
         // is dropped rather than kept as a dead id; undoing the filter does not bring it back.
@@ -155,8 +154,6 @@ data class GiftHistoryUiState(
     val content: GiftHistoryContent = GiftHistoryContent.Loading,
     /** The gift shown beside the list; only ever one the list currently shows. */
     val selectedGiftId: UUID? = null,
-    /** Photos of the shown gifts, by path: only those read so far. */
-    val photos: Map<String, LoadedPhoto> = emptyMap(),
 )
 
 data class GiftYear(val year: Int, val months: List<GiftMonth>)

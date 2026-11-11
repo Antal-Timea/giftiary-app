@@ -12,10 +12,12 @@ import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.model.UpcomingOccasion
 import app.giftiary.domain.repository.OccasionDetails
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.home.ComingUpItem
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.awaitPhoto
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
@@ -52,12 +54,12 @@ class PeopleScreenTest {
             content = PeopleContent.Loaded(people.toList()),
             query = query,
             birthdays = mapOf(peter.id to peterBirthday),
-            photos = photos,
         )
         compose.setContent {
             GiftiaryTheme {
                 PeopleScreen(
                     state = state,
+                    photos = ShownPhotos.of(photos),
                     comingUp = comingUp,
                     onQueryChange = { state = state.copy(query = it) },
                     onAddPerson = { added++ },
@@ -91,6 +93,7 @@ class PeopleScreenTest {
         val notHere = martin.copy(photoPath = "martin.jpg")
 
         showPeople(withPhoto, notHere, grandma, photos = mapOf("peter.jpg" to jpeg()))
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
 
         assertEquals(1, compose.onAllNodesWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).fetchSemanticsNodes().size)
         compose.onNodeWithText("Peter").performClick()

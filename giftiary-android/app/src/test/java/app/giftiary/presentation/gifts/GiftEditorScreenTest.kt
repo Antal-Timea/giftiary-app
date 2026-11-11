@@ -35,6 +35,7 @@ import app.giftiary.domain.model.GiftDirection
 import app.giftiary.domain.usecase.GiftInputError
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.awaitPhoto
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -310,6 +311,7 @@ class GiftEditorScreenTest {
         compose.onNodeWithText("Change what you remember about this gift.").assertExists()
         compose.onNodeWithText("Peter").assertIsSelected()
         listOf("LEGO", "24990", "Wrapped in blue", "https://example.org/lego").forEach { compose.onNodeWithText(it).assertExists() }
+        compose.awaitPhoto(PHOTO_TAG)
         compose.onNodeWithTag(PHOTO_TAG).assertExists()
 
         compose.onNodeWithText("Remove photo").performScrollTo().performClick()

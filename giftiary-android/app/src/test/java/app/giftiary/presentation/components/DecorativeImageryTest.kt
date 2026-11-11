@@ -6,6 +6,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.people.PeopleContent
 import app.giftiary.presentation.people.PeopleScreen
@@ -46,6 +47,7 @@ class DecorativeImageryTest {
             GiftiaryTheme {
                 PeopleScreen(
                     state = PeopleUiState(content = PeopleContent.Loaded(emptyList())),
+                    photos = ShownPhotos.of(emptyMap()),
                     comingUp = ComingUpContent.Loaded(emptyList()),
                     onQueryChange = {},
                     onAddPerson = {},

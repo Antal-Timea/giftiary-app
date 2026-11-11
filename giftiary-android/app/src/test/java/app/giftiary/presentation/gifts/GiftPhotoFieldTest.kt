@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityOptionsCompat
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.assertNear
+import app.giftiary.testing.awaitPhoto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -170,6 +171,7 @@ class GiftPhotoFieldTest {
     fun `a portrait photo is shown whole at its own aspect ratio, no taller than the limit`() {
         showField(hasPhoto = true, photo = jpeg(width = 600, height = 1200))
 
+        compose.awaitPhoto(PHOTO_TAG)
         val bounds = compose.onNodeWithTag(PHOTO_TAG).getBoundsInRoot()
         assertNear(PHOTO_MAX_HEIGHT, bounds.bottom - bounds.top, "height")
         assertNear(PHOTO_MAX_HEIGHT / 2, bounds.right - bounds.left, "width")
@@ -179,6 +181,7 @@ class GiftPhotoFieldTest {
     fun `a landscape photo takes the column's width at its own aspect ratio`() {
         showField(hasPhoto = true, photo = jpeg(width = 1600, height = 400), width = 300.dp)
 
+        compose.awaitPhoto(PHOTO_TAG)
         val bounds = compose.onNodeWithTag(PHOTO_TAG).getBoundsInRoot()
         assertNear(300.dp, bounds.right - bounds.left, "width")
         assertNear(75.dp, bounds.bottom - bounds.top, "height")

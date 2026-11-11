@@ -30,10 +30,12 @@ import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.WithFontScale
 import app.giftiary.testing.assertNear
+import app.giftiary.testing.awaitPhoto
 import app.giftiary.testing.giftDetails
 import app.giftiary.testing.giftEntry
 import app.giftiary.testing.ideaDetails
@@ -41,6 +43,8 @@ import app.giftiary.testing.ideaEntry
 import app.giftiary.testing.lineCount
 import app.giftiary.testing.occasion
 import app.giftiary.testing.person
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -77,6 +81,7 @@ class PersonDetailScreenTest {
         fontScale: Float = 1f,
         today: LocalDate = this.today,
         photo: LoadedPhoto? = null,
+        giftPhotos: ShownPhotos = ShownPhotos.of(emptyMap()),
     ) {
         this.fontScale = fontScale
         compose.setContent {
@@ -102,10 +107,30 @@ class PersonDetailScreenTest {
                         deletion = deletion,
                         today = today,
                         personPhoto = photo,
+                        giftPhotos = giftPhotos,
                     )
                 }
             }
         }
+    }
+
+    @Test
+    fun `a long history reads the photos of the cards on screen only, newest first, each once`() {
+        // One gift a month back from today's month, each with its own photo.
+        val gifts = (0 until 120).map { month ->
+            giftEntry(giftDetails(person = peter, name = "Gift $month", givenAt = today.minusMonths(month.toLong())), peter)
+                .let { it.copy(gift = it.gift.copy(photoPath = "photo-$month.jpg")) }
+        }
+        val reads = mutableListOf<String>()
+        val bytes = jpeg().bytes
+        val photos = ShownPhotos(CoroutineScope(Dispatchers.Unconfined), { path -> reads += path; bytes })
+
+        showDetail(loaded(gifts = gifts), giftPhotos = photos)
+
+        assertTrue("some cards are on screen", reads.isNotEmpty())
+        assertTrue("a screenful of 120, not all: ${reads.size}", reads.size < 20)
+        assertEquals(reads.distinct(), reads)
+        assertEquals(gifts.take(reads.size).map { it.gift.photoPath }, reads)
     }
 
     private fun top(text: String) = compose.onAllNodesWithText(text, useUnmergedTree = true)[0].getBoundsInRoot().top
@@ -136,6 +161,7 @@ class PersonDetailScreenTest {
     fun `with a photo it fills the hero's circle, cropped and unannounced, beside the name`() {
         showDetail(loaded(), photo = jpeg())
 
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
         val photo = compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
             .getBoundsInRoot()

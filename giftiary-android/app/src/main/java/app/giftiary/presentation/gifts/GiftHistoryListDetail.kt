@@ -24,6 +24,7 @@ import java.util.UUID
 @Composable
 internal fun AdaptiveGiftHistoryScreen(
     state: GiftHistoryUiState,
+    photos: ShownPhotos,
     onFilterChange: (GiftFilter) -> Unit,
     onQueryChange: (String) -> Unit,
     onAddGift: () -> Unit,
@@ -47,6 +48,7 @@ internal fun AdaptiveGiftHistoryScreen(
         }
         GiftHistoryScreen(
             state = state,
+            photos = photos,
             onFilterChange = onFilterChange,
             onQueryChange = onQueryChange,
             onAddGift = onAddGift,
@@ -61,6 +63,7 @@ internal fun AdaptiveGiftHistoryScreen(
         list = { paneModifier ->
             GiftHistoryScreen(
                 state = state,
+                photos = photos,
                 onFilterChange = onFilterChange,
                 onQueryChange = onQueryChange,
                 onAddGift = onAddGift,
@@ -90,6 +93,7 @@ private fun AdaptiveGiftHistoryPreview(selected: GiftEntry?) {
                     content = GiftHistoryContent.Loaded(groupByYearAndMonth(previewGifts)),
                     selectedGiftId = selected?.gift?.id,
                 ),
+                photos = ShownPhotos.of(emptyMap()),
                 onFilterChange = {},
                 onQueryChange = {},
                 onAddGift = {},

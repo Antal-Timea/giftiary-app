@@ -9,8 +9,7 @@ import app.giftiary.domain.model.Person
 import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.OccasionRepository
 import app.giftiary.domain.repository.PersonRepository
-import app.giftiary.presentation.gifts.LoadedPhoto
-import app.giftiary.presentation.gifts.localPhotosOf
+import app.giftiary.presentation.gifts.ShownPhotos
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +26,7 @@ class PeopleViewModel @Inject constructor(
     repository: PersonRepository,
     occasionRepository: OccasionRepository,
     private val savedStateHandle: SavedStateHandle,
-    photos: GiftPhotoRepository,
+    photoRepository: GiftPhotoRepository,
 ) : ViewModel() {
 
     // The person shown beside the list on a wide window; saved, so it survives process death.
@@ -49,17 +48,19 @@ class PeopleViewModel @Inject constructor(
         // A selected person deleted here or by sync is forgotten rather than kept as a dead id.
         .onEach { content -> if (content is PeopleContent.Loaded) forgetSelectionUnlessIn(content.people) }
 
-    // Only photos already on this device: a list never downloads per row.
-    private val shownPhotos = photos.localPhotosOf(people.map { (it as? PeopleContent.Loaded)?.people.orEmpty() })
-        .catch { emit(emptyMap()) }
+    /**
+     * The avatars of the rows on screen, only from this device: a list never downloads per row,
+     * and a person whose photo is not here keeps the monogram.
+     */
+    val photos = ShownPhotos(viewModelScope, photoRepository::loadLocalPhoto)
 
     val uiState: StateFlow<PeopleUiState> =
-        combine(people, selectedId, query, birthdays, shownPhotos) { content, selected, query, birthdays, photos ->
+        combine(people, selectedId, query, birthdays) { content, selected, query, birthdays ->
             // Only a loaded person is selected: while loading, a restored id waits instead of showing as missing.
             val selectedPersonId = (content as? PeopleContent.Loaded)?.people
                 ?.firstOrNull { it.id.toString() == selected }
                 ?.id
-            PeopleUiState(content, selectedPersonId, query, birthdays, photos)
+            PeopleUiState(content, selectedPersonId, query, birthdays)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -97,8 +98,6 @@ data class PeopleUiState(
     val query: String = "",
     /** Each person's birthday, for the rows' second line. */
     val birthdays: Map<UUID, Occasion> = emptyMap(),
-    /** The people's photos that are on this device, by path; the others show their monogram. */
-    val photos: Map<String, LoadedPhoto> = emptyMap(),
 ) {
     /** The loaded people the search leaves, by name or relationship; all of them without a search. */
     val matchingPeople: List<Person>

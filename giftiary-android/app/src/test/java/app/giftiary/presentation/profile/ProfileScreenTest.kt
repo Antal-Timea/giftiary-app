@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Density
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.people.PERSON_PHOTO_TAG
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.awaitPhoto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -102,6 +103,7 @@ class ProfileScreenTest {
         val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
         show(full.copy(avatar = LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())))
 
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
         compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         compose.onNodeWithText("Anna Kovács").assertExists()

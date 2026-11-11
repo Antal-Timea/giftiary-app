@@ -73,6 +73,7 @@ class GiftHistoryListDetailTest {
                 Box(Modifier.width(widthOf(widthClass)).fillMaxHeight()) {
                     AdaptiveGiftHistoryScreen(
                         state = state,
+                        photos = ShownPhotos.of(emptyMap()),
                         onFilterChange = {},
                         onQueryChange = {},
                         onAddGift = {},

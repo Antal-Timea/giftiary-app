@@ -17,6 +17,7 @@ import app.giftiary.presentation.sync.SyncStatusContent
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.FakeProfileRepository
 import app.giftiary.testing.MainDispatcherRule
+import app.giftiary.testing.awaitPhoto
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -71,6 +72,7 @@ class HomeAvatarTest {
     fun `the saved avatar fills the profile entry, which is still named and opens the profile`() {
         showHome(jpeg())
 
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
         compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         compose.onNodeWithContentDescription("Your profile").performClick()
@@ -83,6 +85,7 @@ class HomeAvatarTest {
     fun `on a wide window too`() {
         showHome(jpeg(), WidthClass.EXPANDED)
 
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
         compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).assertExists()
     }
 

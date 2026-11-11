@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.Density
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.people.PERSON_PHOTO_TAG
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.awaitPhoto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -88,6 +89,7 @@ class EditProfileScreenTest {
     fun `with an avatar it fills the circle, silently, and Change and Remove are offered`() {
         show(loaded.copy(avatarPath = "p.jpg", avatar = jpeg()))
 
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
         compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         compose.onNodeWithText("Change photo").assertExists()

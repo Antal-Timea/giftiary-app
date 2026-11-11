@@ -149,18 +149,24 @@ class GiftHistoryViewModelTest {
     }
 
     @Test
-    fun `only the shown gifts' photos are read`() = runTest {
+    fun `loading, filtering and searching the history read no photo, and a shown row reads its own, once`() = runTest {
         val withPhoto = book.copy(gift = book.gift.copy(photoPath = "book.jpg"))
         val otherPhoto = headphones.copy(gift = headphones.gift.copy(photoPath = "headphones.jpg"))
         photos.stored["book.jpg"] = byteArrayOf(1)
         photos.stored["headphones.jpg"] = byteArrayOf(2)
         repository.givenGifts(withPhoto, otherPhoto)
         val viewModel = viewModel()
-        viewModel.onFilterChange(GiftFilter.GIVEN)
         keepSubscribed(viewModel.uiState)
+        viewModel.onFilterChange(GiftFilter.GIVEN)
+        viewModel.onQueryChange("b")
+        assertEquals(emptyList<String>(), photos.loads)
 
-        assertEquals(setOf("book.jpg"), viewModel.uiState.value.photos.keys)
-        assertTrue(viewModel.uiState.value.photos.getValue("book.jpg").bytes.contentEquals(byteArrayOf(1)))
+        viewModel.photos.show("book.jpg")
+        viewModel.photos.show("book.jpg")
+
+        assertEquals(listOf("book.jpg"), photos.loads)
+        assertTrue(viewModel.photos["book.jpg"]!!.bytes.contentEquals(byteArrayOf(1)))
+        assertNull(viewModel.photos["headphones.jpg"])
     }
 
     @Test

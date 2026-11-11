@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.gifts.LoadedPhoto
-import app.giftiary.presentation.gifts.rememberDecoded
+import app.giftiary.presentation.gifts.rememberDecodedImage
 
 /**
  * A person's avatar: their [photo], cropped into the circle, or the monogram while there is none
@@ -24,7 +24,7 @@ fun PersonAvatar(
     size: Dp = 48.dp,
     onContext: Boolean = false,
 ) {
-    val image = photo?.let { rememberDecoded(it) }
+    val image = rememberDecodedImage(photo, size)
     GiftiaryAvatar(
         name = name,
         modifier = modifier,

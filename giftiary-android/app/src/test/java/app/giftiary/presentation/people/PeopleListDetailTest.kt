@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.Person
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.theme.GiftiaryLayout
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -73,6 +74,7 @@ class PeopleListDetailTest {
                 Box(Modifier.width(widthOf(widthClass)).fillMaxHeight()) {
                     AdaptivePeopleScreen(
                         state = state,
+                        photos = ShownPhotos.of(emptyMap()),
                         comingUp = ComingUpContent.Loaded(emptyList()),
                         onQueryChange = {},
                         onAddPerson = {},

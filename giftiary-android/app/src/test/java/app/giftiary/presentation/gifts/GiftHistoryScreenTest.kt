@@ -56,6 +56,7 @@ class GiftHistoryScreenTest {
     private var shown = false
 
     private var fontScale = 1f
+    private var photos = ShownPhotos.of(emptyMap())
 
     private fun show(state: GiftHistoryUiState, showAddButton: Boolean = false) {
         this.state = state
@@ -67,6 +68,7 @@ class GiftHistoryScreenTest {
                 GiftiaryTheme {
                     GiftHistoryScreen(
                         state = this.state,
+                        photos = photos,
                         onFilterChange = { actions += "filter $it" },
                         onQueryChange = { actions += "query '$it'" },
                         onAddGift = { actions += "add" },
@@ -78,8 +80,8 @@ class GiftHistoryScreenTest {
         }
     }
 
-    private fun loaded(vararg gifts: GiftEntry, photos: Map<String, LoadedPhoto> = emptyMap()) =
-        GiftHistoryUiState(content = GiftHistoryContent.Loaded(groupByYearAndMonth(gifts.toList())), photos = photos)
+    private fun loaded(vararg gifts: GiftEntry) =
+        GiftHistoryUiState(content = GiftHistoryContent.Loaded(groupByYearAndMonth(gifts.toList())))
 
     private fun top(text: String) = compose.onNodeWithText(text).getBoundsInRoot().top
 
@@ -113,7 +115,8 @@ class GiftHistoryScreenTest {
     fun `a gift with a photo and one without both render, the second with the fallback`() {
         val bitmap = Bitmap.createBitmap(40, 40, Bitmap.Config.ARGB_8888)
         val jpeg = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
-        show(loaded(lego, cookbook, photos = mapOf("lego.jpg" to LoadedPhoto(jpeg))))
+        photos = ShownPhotos.of(mapOf("lego.jpg" to LoadedPhoto(jpeg)))
+        show(loaded(lego, cookbook))
 
         // Thumbnails are decorative: the name beside them says what each gift is.
         compose.onNodeWithText("LEGO").assertExists()

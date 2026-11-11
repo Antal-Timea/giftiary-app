@@ -14,6 +14,7 @@ import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.MessageContent
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.components.WidthClass
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.navigation.hasNavigationRail
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -26,6 +27,7 @@ import java.util.UUID
 @Composable
 internal fun AdaptivePeopleScreen(
     state: PeopleUiState,
+    photos: ShownPhotos,
     comingUp: ComingUpContent,
     onQueryChange: (String) -> Unit,
     onAddPerson: () -> Unit,
@@ -49,6 +51,7 @@ internal fun AdaptivePeopleScreen(
         }
         PeopleScreen(
             state = state,
+            photos = photos,
             comingUp = comingUp,
             onQueryChange = onQueryChange,
             onAddPerson = onAddPerson,
@@ -64,6 +67,7 @@ internal fun AdaptivePeopleScreen(
         list = { paneModifier ->
             PeopleScreen(
                 state = state,
+                photos = photos,
                 comingUp = comingUp,
                 onQueryChange = onQueryChange,
                 onAddPerson = onAddPerson,
@@ -91,6 +95,7 @@ private fun AdaptivePeoplePreview(selected: Person?) {
         ProvideWidthClass {
             AdaptivePeopleScreen(
                 state = PeopleUiState(content = PeopleContent.Loaded(previewPeople), selectedPersonId = selected?.id),
+                photos = ShownPhotos.of(emptyMap()),
                 comingUp = ComingUpContent.Loaded(emptyList()),
                 onQueryChange = {},
                 onAddPerson = {},

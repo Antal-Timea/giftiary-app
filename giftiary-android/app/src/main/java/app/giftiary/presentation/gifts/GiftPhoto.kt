@@ -26,7 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,11 +35,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -51,6 +53,8 @@ import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** A photo's image as read from storage; compared by identity, so a new read is a new value. */
 class LoadedPhoto(val bytes: ByteArray)
@@ -226,7 +230,10 @@ private fun PhotoSource(label: String, onClick: () -> Unit) {
  */
 @Composable
 private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
-    val image = photo?.let { rememberDecoded(it) }
+    val decoded = photo?.let { rememberDecoded(it) }
+    // A moment while it decodes: nothing yet, rather than "not available".
+    if (decoded == DecodedPhoto.Decoding) return
+    val image = (decoded as? DecodedPhoto.Ready)?.image
     if (image != null) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val ratio = image.width.toFloat() / image.height
@@ -250,9 +257,52 @@ private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
     }
 }
 
+/** A photo on its way to the screen: [Decoding] until its pixels are ready, or [Unreadable]. */
+internal sealed interface DecodedPhoto {
+    data object Decoding : DecodedPhoto
+    class Ready(val image: ImageBitmap) : DecodedPhoto
+    data object Unreadable : DecodedPhoto
+}
+
+/**
+ * The [photo]'s pixels, decoded on a background thread rather than while composing. With a
+ * [target], only as many as a box of that size shows when cropped: a 56dp thumbnail of a 1600px
+ * photo decodes a quarter of it per side instead of 7 MB of pixels. Without one, the whole photo,
+ * for the pages that show it whole. Decoded once per photo and size; a row that leaves the
+ * composition cancels its decode.
+ */
 @Composable
-internal fun rememberDecoded(photo: LoadedPhoto): ImageBitmap? =
-    remember(photo) { BitmapFactory.decodeByteArray(photo.bytes, 0, photo.bytes.size)?.asImageBitmap() }
+internal fun rememberDecoded(photo: LoadedPhoto, target: Dp? = null): DecodedPhoto {
+    val targetPx = target?.let { with(LocalDensity.current) { it.roundToPx() } }
+    return produceState<DecodedPhoto>(DecodedPhoto.Decoding, photo, targetPx) {
+        value = withContext(Dispatchers.Default) { decodePhoto(photo.bytes, targetPx) }
+    }.value
+}
+
+/** The image [rememberDecoded] would show, or null while decoding or if it cannot be read. */
+@Composable
+internal fun rememberDecodedImage(photo: LoadedPhoto?, target: Dp? = null): ImageBitmap? =
+    photo?.let { (rememberDecoded(it, target) as? DecodedPhoto.Ready)?.image }
+
+internal fun decodePhoto(bytes: ByteArray, targetPx: Int?): DecodedPhoto {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return DecodedPhoto.Unreadable
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, targetPx) }
+    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return DecodedPhoto.Unreadable
+    return DecodedPhoto.Ready(bitmap.asImageBitmap())
+}
+
+/**
+ * The largest power-of-two reduction that keeps the shorter side at least [targetPx], so a box
+ * of that size, cropped, stays sharp; 1 without a target.
+ */
+internal fun sampleSizeFor(width: Int, height: Int, targetPx: Int?): Int {
+    if (targetPx == null || targetPx <= 0) return 1
+    var sample = 1
+    while (minOf(width, height) / (sample * 2) >= targetPx) sample *= 2
+    return sample
+}
 
 internal val PHOTO_MAX_HEIGHT = 280.dp
 private val ADD_PHOTO_TILE = 84.dp

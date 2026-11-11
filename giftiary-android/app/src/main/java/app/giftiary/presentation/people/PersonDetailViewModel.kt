@@ -14,7 +14,7 @@ import app.giftiary.domain.repository.OccasionRepository
 import app.giftiary.domain.repository.PersonRepository
 import app.giftiary.domain.repository.WishlistRepository
 import app.giftiary.presentation.gifts.LoadedPhoto
-import app.giftiary.presentation.gifts.photosOf
+import app.giftiary.presentation.gifts.ShownPhotos
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -54,10 +54,8 @@ class PersonDetailViewModel @AssistedInject constructor(
     private val deletionState = MutableStateFlow(PersonDeletion())
     val deletion: StateFlow<PersonDeletion> = deletionState.asStateFlow()
 
-    /** The photos of the person's gifts, by path, as they are read; the history shows fallbacks until then. */
-    val giftPhotos: StateFlow<Map<String, LoadedPhoto>> = photos.photosOf(giftRepository.observeGiftsForPerson(personId))
-        .catch { emit(emptyMap()) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyMap())
+    /** The photos of the person's gifts, read only for the cards on screen; fallbacks until then. */
+    val giftPhotos = ShownPhotos(viewModelScope, photos::loadPhoto)
 
     /**
      * The person's photo for the hero, downloaded the first time if need be; null while there is
