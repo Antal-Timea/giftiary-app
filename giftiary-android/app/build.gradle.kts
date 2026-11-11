@@ -1,3 +1,4 @@
+import java.net.URI
 import java.util.Properties
 
 plugins {
@@ -204,7 +205,7 @@ fun releaseBackendProblems(url: String, publishableKey: String): List<String> = 
     if (url.isBlank()) {
         add("supabase.url is not set")
     } else {
-        val uri = runCatching { java.net.URI(url.trim()) }.getOrNull()
+        val uri = runCatching { URI(url.trim()) }.getOrNull()
         val valid = uri != null && uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank() &&
             uri.userInfo == null
         if (!valid) add("supabase.url is not an https:// URL with a host")
