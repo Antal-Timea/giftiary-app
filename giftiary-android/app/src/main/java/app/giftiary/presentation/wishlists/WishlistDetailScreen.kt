@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.giftiary.R
 import app.giftiary.domain.model.Money
@@ -52,6 +53,7 @@ import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.PendingSyncStatus
 import app.giftiary.presentation.components.TrailingActionRow
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.sharing.ReservedTag
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -71,6 +73,11 @@ fun WishlistDetailScreen(
     onShare: (UUID) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Reservations change elsewhere; ask again whenever the list comes back into view.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onShown()
+        onPauseOrDispose {}
+    }
     LaunchedEffect(state.content) {
         if (state.content == WishlistDetailContent.Deleted) onBack()
     }
@@ -215,7 +222,12 @@ private fun WishlistContents(
         }
         itemsIndexed(content.wishes, key = { _, wish -> wish.id }) { index, wish ->
             if (index > 0) WishDivider()
-            OwnerWishRow(wish = wish, onOpen = { actions.onOpenWish(wish.id) }, onEdit = { actions.onEditWish(wish.id) })
+            OwnerWishRow(
+                wish = wish,
+                reserved = wish.id in content.reservedWishIds,
+                onOpen = { actions.onOpenWish(wish.id) },
+                onEdit = { actions.onEditWish(wish.id) },
+            )
         }
     }
 }
@@ -296,7 +308,7 @@ private fun WishesHeading(onAddWish: () -> Unit) {
 }
 
 @Composable
-private fun OwnerWishRow(wish: Wish, onOpen: () -> Unit, onEdit: () -> Unit) {
+private fun OwnerWishRow(wish: Wish, reserved: Boolean, onOpen: () -> Unit, onEdit: () -> Unit) {
     WishRowContent(
         name = wish.name,
         note = wish.note,
@@ -312,6 +324,7 @@ private fun OwnerWishRow(wish: Wish, onOpen: () -> Unit, onEdit: () -> Unit) {
                 Option(stringResource(R.string.wish_edit), R.drawable.ic_edit, onEdit)
             }
         },
+        below = { if (reserved) ReservedTag() },
     )
 }
 

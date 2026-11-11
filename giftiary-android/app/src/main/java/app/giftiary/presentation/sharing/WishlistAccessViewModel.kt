@@ -149,6 +149,7 @@ class WishlistAccessViewModel @AssistedInject constructor(
             } catch (e: SharingException) {
                 val error = when (e.failure) {
                     SharingFailure.INVALID_INPUT -> EmailInviteError.NOT_ALLOWED
+                    SharingFailure.ALREADY_MEMBER -> EmailInviteError.ALREADY_MEMBER
                     SharingFailure.INVITE_LIMIT -> EmailInviteError.LIMIT
                     SharingFailure.UNAVAILABLE -> EmailInviteError.UNAVAILABLE
                     SharingFailure.NETWORK -> EmailInviteError.NETWORK
@@ -261,7 +262,7 @@ data class EmailInviteForm(
 )
 
 /** Why an email invite was not sent; none of them says anything about an account. */
-enum class EmailInviteError { INVALID, NOT_ALLOWED, LIMIT, UNAVAILABLE, NETWORK, SERVER }
+enum class EmailInviteError { INVALID, NOT_ALLOWED, ALREADY_MEMBER, LIMIT, UNAVAILABLE, NETWORK, SERVER }
 
 sealed interface EmailInvitesContent {
     data object Loading : EmailInvitesContent

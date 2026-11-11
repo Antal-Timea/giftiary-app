@@ -38,6 +38,12 @@ interface WishlistSharingRepository {
     /** Withdraws a pending email invite, or clears a not accepted one from the owner's list. */
     suspend fun revokeEmailInvite(inviteId: UUID)
 
+    /**
+     * The reserved wishes of an own wishlist kept for a person, never who reserved them. The server
+     * refuses an own wishlist of the user's own, so its owner is never told.
+     */
+    suspend fun reservedWishes(wishlistId: UUID): Set<UUID>
+
     // Guest side.
 
     /** Joins the wishlist the invite is for and returns its id; joining again is not an error. */
@@ -83,6 +89,9 @@ enum class SharingFailure {
 
     /** The server refused the input, e.g. an invalid email address or the owner's own. */
     INVALID_INPUT,
+
+    /** The email invite is for someone who already has access to the wishlist. */
+    ALREADY_MEMBER,
 
     /** No answer; trying again may work. */
     NETWORK,

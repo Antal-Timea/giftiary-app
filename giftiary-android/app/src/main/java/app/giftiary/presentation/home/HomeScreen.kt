@@ -84,8 +84,8 @@ fun HomeScreen(
     onOpenAllGifts: () -> Unit,
     onOpenOwnOccasions: () -> Unit,
     onOpenSyncAttention: () -> Unit,
-    // The signed-in account's email, which gives the profile entry its initial.
-    accountEmail: String?,
+    // The name the profile entry's monogram is drawn from (see ownMonogramName).
+    accountName: String?,
     onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier,
     accountAvatar: LoadedPhoto? = null,
@@ -114,7 +114,7 @@ fun HomeScreen(
                 onOpenSyncAttention = onOpenSyncAttention,
                 reminderCard = reminderCard,
                 reminderActions = reminderActions,
-                profileEntry = { ProfileEntry(accountEmail, accountAvatar, onOpenProfile) },
+                profileEntry = { ProfileEntry(accountName, accountAvatar, onOpenProfile) },
                 modifier = Modifier.padding(contentPadding).windowInsetsPadding(WindowInsets.statusBars),
             )
             return@Scaffold
@@ -127,7 +127,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .giftiaryReadableWidth(),
         ) {
-            HomeHero(today = today, profileEntry = { ProfileEntry(accountEmail, accountAvatar, onOpenProfile) })
+            HomeHero(today = today, profileEntry = { ProfileEntry(accountName, accountAvatar, onOpenProfile) })
             SyncStatusLine(
                 content = syncStatus,
                 onOpenAttention = onOpenSyncAttention,
@@ -233,10 +233,10 @@ private fun HomeHero(today: LocalDate, profileEntry: @Composable () -> Unit) {
 
 /**
  * The approved hero's profile entry: the account's monogram, opening Profile, where Settings and
- * signing out are. The initial comes from the email, the one name the device always has.
+ * signing out are. Without a name, say before the profile is read offline, the people glyph shows.
  */
 @Composable
-private fun ProfileEntry(email: String?, avatar: LoadedPhoto?, onClick: () -> Unit) {
+private fun ProfileEntry(name: String?, avatar: LoadedPhoto?, onClick: () -> Unit) {
     val label = stringResource(R.string.home_open_profile)
     Box(
         modifier = Modifier
@@ -247,13 +247,13 @@ private fun ProfileEntry(email: String?, avatar: LoadedPhoto?, onClick: () -> Un
         contentAlignment = Alignment.Center,
     ) {
         if (avatar != null) {
-            PersonAvatar(name = email.orEmpty(), photo = avatar, size = 36.dp)
+            PersonAvatar(name = name.orEmpty(), photo = avatar, size = 36.dp)
             return@Box
         }
         GiftiaryAvatar(
-            name = email.orEmpty(),
+            name = name.orEmpty(),
             size = 36.dp,
-            photo = if (email.isNullOrBlank()) {
+            photo = if (name.isNullOrBlank()) {
                 {
                     Icon(
                         painter = painterResource(R.drawable.ic_people),
@@ -443,7 +443,7 @@ private fun HomePreviewContent() {
         onOpenAllGifts = {},
         onOpenOwnOccasions = {},
         onOpenSyncAttention = {},
-        accountEmail = "anna@example.com",
+        accountName = "Anna",
         onOpenProfile = {},
     )
 }

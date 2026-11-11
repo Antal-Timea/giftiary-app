@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,7 @@ fun GiftiaryTaskHeader(
     eyebrow: String? = stringResource(R.string.app_name).uppercase(),
     // What the title belongs to, between title and standfirst: the shared list, the idea's person.
     context: (@Composable () -> Unit)? = null,
+    titleStyle: TextStyle = GiftiaryType.display,
 ) {
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier.fillMaxWidth()) {
@@ -81,7 +83,7 @@ fun GiftiaryTaskHeader(
             modifier = Modifier
                 .padding(top = if (eyebrow != null) GiftiarySpacing.s else GiftiarySpacing.browseGutter)
                 .semantics { heading() },
-            style = GiftiaryType.display,
+            style = titleStyle,
             color = colors.textPrimary,
         )
         if (context != null) Box(Modifier.padding(top = GiftiarySpacing.s)) { context() }

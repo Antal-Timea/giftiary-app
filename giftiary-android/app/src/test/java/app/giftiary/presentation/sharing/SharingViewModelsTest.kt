@@ -122,6 +122,7 @@ class SharingViewModelsTest {
         viewModel.onEmailChanged("me@example.com")
         val expected = listOf(
             SharingFailure.INVALID_INPUT to EmailInviteError.NOT_ALLOWED,
+            SharingFailure.ALREADY_MEMBER to EmailInviteError.ALREADY_MEMBER,
             SharingFailure.INVITE_LIMIT to EmailInviteError.LIMIT,
             SharingFailure.UNAVAILABLE to EmailInviteError.UNAVAILABLE,
             SharingFailure.NETWORK to EmailInviteError.NETWORK,

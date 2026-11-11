@@ -155,7 +155,7 @@ class AdaptiveNavigationTest {
                     onOpenAllGifts = {},
                     onOpenOwnOccasions = {},
                     onOpenSyncAttention = {},
-                    accountEmail = "anna@example.com",
+                    accountName = "Anna",
                     onOpenProfile = { profileOpened++ },
                     widthClass = widthClass,
                 )

@@ -83,7 +83,7 @@ class JoinWishlistViewModel @Inject constructor(
                         // A full list, an expired or a withdrawn invite: all the same to the guest.
                         SharingFailure.UNAVAILABLE, SharingFailure.INVITE_LIMIT -> JoinFailure.UNAVAILABLE
                         SharingFailure.NETWORK -> JoinFailure.NETWORK
-                        SharingFailure.SERVER, SharingFailure.INVALID_INPUT -> JoinFailure.SERVER
+                        SharingFailure.SERVER, SharingFailure.INVALID_INPUT, SharingFailure.ALREADY_MEMBER -> JoinFailure.SERVER
                     },
                 )
             }

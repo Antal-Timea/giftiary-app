@@ -30,6 +30,7 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
     var redeemedWishlistId: UUID = UUID.randomUUID()
     var reserveAnswer = ReservationState.RESERVED_BY_ME
     var releaseAnswer = ReservationState.AVAILABLE
+    var reservedWishes: Set<UUID> = emptySet()
     val failNext = ArrayDeque<SharingFailure>()
     var gate: CompletableDeferred<Unit>? = null
 
@@ -82,6 +83,8 @@ class FakeWishlistSharingRepository : WishlistSharingRepository {
         failEmailNext.removeFirstOrNull()?.let { throw SharingException(it) }
         emailInvites = emailInvites.filterNot { it.id == inviteId }
     }
+
+    override suspend fun reservedWishes(wishlistId: UUID) = answer("reservedWishes:$wishlistId") { reservedWishes }
 
     override suspend fun redeem(token: InviteToken): UUID = answer("redeem") {
         redeemedTokens += token

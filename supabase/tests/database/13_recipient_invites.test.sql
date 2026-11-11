@@ -198,8 +198,16 @@ select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
 set local role authenticated;
 select is(pg_temp.owner_state('10000000-0000-4000-8000-000000000001', current_setting('test.bob_l1')), null,
     'an accepted invite leaves the owner''s list: Bob is a member now');
-select set_config('test.bob_l1b', public.create_recipient_invite('10000000-0000-4000-8000-000000000001', 'bob@example.test') ->> 'invite_id', true);
-select isnt(current_setting('test.bob_l1b'), current_setting('test.bob_l1'), 'inviting a member again is a new invite, like any other');
+select throws_ok(
+    format('select public.create_recipient_invite(%L, %L)', '10000000-0000-4000-8000-000000000001', 'bob@example.test'),
+    '23505', 'already a member', 'a member cannot be invited to the same list again');
+reset role;
+-- An invite made before Bob joined by link can still be answered.
+with i as (
+    insert into public.wishlist_recipient_invites (wishlist_id, owner_user_id, recipient_email, expires_at)
+    values ('10000000-0000-4000-8000-000000000001', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'bob@example.test', now() + interval '14 days')
+    returning id)
+select set_config('test.bob_l1b', i.id::text, true) from i;
 
 select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 select is(public.respond_to_invite(current_setting('test.bob_l1b')::uuid, true) ->> 'wishlist_id',

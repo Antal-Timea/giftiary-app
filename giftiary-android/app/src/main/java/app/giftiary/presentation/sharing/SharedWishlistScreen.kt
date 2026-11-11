@@ -237,7 +237,7 @@ private fun SharedWishes(
                 leading = { GiftiaryAvatar(name = wishlist.personName ?: wishlist.ownerDisplayName, size = 56.dp) },
                 options = {
                     OptionsMenu(R.drawable.ic_more, stringResource(R.string.wishlist_more, wishlist.name)) {
-                        Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true)
+                        Option(stringResource(R.string.shared_wishlist_leave), R.drawable.ic_close, actions.onLeaveRequested, enabled = !isLeaving, quiet = true, alone = true)
                     }
                 },
             )
@@ -372,14 +372,21 @@ private fun Reservation(
             }
             if (busy) ReservationProgress()
         }
-        ReservationLabel.RESERVED -> Row(
-            modifier = Modifier.padding(top = 9.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(painterResource(R.drawable.ic_reserved), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textLabel)
-            Text(stringResource(R.string.shared_wish_reserved), style = GiftiaryType.label, color = colors.textLabel)
-        }
+        ReservationLabel.RESERVED -> ReservedTag()
+    }
+}
+
+/** Someone reserved the wish; never who. Guests and the owner of a list kept for a person see it. */
+@Composable
+internal fun ReservedTag() {
+    val colors = GiftiaryTheme.colors
+    Row(
+        modifier = Modifier.padding(top = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_reserved), contentDescription = null, modifier = Modifier.size(13.dp), tint = colors.textLabel)
+        Text(stringResource(R.string.shared_wish_reserved), style = GiftiaryType.label, color = colors.textLabel)
     }
 }
 

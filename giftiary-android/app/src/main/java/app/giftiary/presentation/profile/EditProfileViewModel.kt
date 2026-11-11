@@ -208,7 +208,7 @@ data class EditProfileUiState(
     /** Shown once each. */
     val saved: Boolean = false,
     val saveFailure: ProfileFailure? = null,
-    /** The account's email, for the monogram while there is no avatar. */
+    /** The account's email, for the monogram while there is neither an avatar nor a name. */
     val email: String? = null,
     /** As the server has it. */
     val avatarPath: String? = null,

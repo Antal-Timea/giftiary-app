@@ -6,9 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -119,6 +121,26 @@ class WishlistDetailScreenTest {
         assertTrue("link on at most two lines", link.lineCount() <= 2)
         val price = compose.onNodeWithText("kb.", substring = true, useUnmergedTree = true).getBoundsInRoot()
         assertTrue("link under the price", link.getBoundsInRoot().top >= price.bottom)
+    }
+
+    @Test
+    fun `a reserved wish of a list kept for a person says only Reserved`() {
+        val forPeter = forPeter()
+        val content = forPeter.content as WishlistDetailContent.Loaded
+        show(forPeter.copy(content = content.copy(wishes = listOf(headphones, coffee), reservedWishIds = setOf(coffee.id))))
+
+        compose.onAllNodesWithText("Reserved").assertCountEquals(1)
+        // The row merges its texts; the tag's own place is in the unmerged tree.
+        fun ownTop(text: String) = compose.onNodeWithText(text, useUnmergedTree = true).getBoundsInRoot().top
+        assertTrue("under the reserved wish", ownTop("Reserved") > ownTop("Medium roast"))
+        assertEquals("in the reserved wish's row", top("Coffee subscription"), top("Reserved"))
+    }
+
+    @Test
+    fun `nothing is said about reservations when none are known`() {
+        show(own(headphones, coffee))
+
+        compose.onAllNodesWithText("Reserved").assertCountEquals(0)
     }
 
     @Test

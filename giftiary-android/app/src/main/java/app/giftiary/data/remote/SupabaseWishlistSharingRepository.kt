@@ -38,6 +38,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * [WishlistSharingRepository] over the sharing RPCs. Each call is made as the account that is
@@ -115,6 +116,13 @@ class SupabaseWishlistSharingRepository @Inject constructor(
         rpc("revoke_recipient_invite", buildJsonObject { put("p_invite_id", inviteId.toString()) })
     }
 
+    override suspend fun reservedWishes(wishlistId: UUID): Set<UUID> =
+        rpc(
+            "get_owner_reserved_wishes",
+            buildJsonObject { put("p_wishlist_id", wishlistId.toString()) },
+            ListSerializer(String.serializer()),
+        ).map { runCatching { UUID.fromString(it) }.getOrNull() ?: throw SharingException(SharingFailure.SERVER) }.toSet()
+
     override suspend fun redeem(token: InviteToken): UUID =
         rpc(
             "redeem_wishlist_invite",
@@ -190,9 +198,20 @@ class SupabaseWishlistSharingRepository @Inject constructor(
         }
     }
 
+    // A token that expired while the device was offline is renewed by the SDK on its own shortly
+    // after the connection returns. A call refused for it in the meantime waits for that once and
+    // is made again; a refused token means the server ran nothing, so even a reservation is safe.
     private suspend fun <T> call(block: suspend (SupabaseClient) -> T): T =
         try {
-            clients.call(accounts.capture(activeOwner.requireOwnerId()), block)
+            val ownerId = activeOwner.requireOwnerId()
+            var account: RemoteAccount? = null
+            try {
+                account = accounts.capture(ownerId)
+                clients.call(account, block)
+            } catch (e: RemoteException) {
+                if (e.failure != RemoteFailure.UNAUTHENTICATED || !accounts.awaitNewToken(account, TOKEN_WAIT)) throw e
+                clients.call(accounts.capture(ownerId), block)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: RemoteException) {
@@ -229,6 +248,9 @@ class SupabaseWishlistSharingRepository @Inject constructor(
 
     private companion object {
         const val INVITE_VALID_DAYS = 7
+
+        // Longer than the SDK's 10 second wait between refresh attempts.
+        val TOKEN_WAIT = 15.seconds
         const val PENDING = "PENDING"
 
         val RESERVE_ANSWERS = setOf(ReservationState.RESERVED_BY_ME, ReservationState.RESERVED_BY_OTHER)
@@ -242,6 +264,7 @@ class SupabaseWishlistSharingRepository @Inject constructor(
                 "P0002" -> SharingFailure.UNAVAILABLE
                 "P0001" -> SharingFailure.INVITE_LIMIT
                 "22023" -> SharingFailure.INVALID_INPUT
+                "23505" -> SharingFailure.ALREADY_MEMBER
                 else -> SharingFailure.SERVER
             }
         }

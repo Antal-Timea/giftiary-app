@@ -451,6 +451,7 @@ big stories</string>
     <string name="wishlist_access_email_sent">Invite saved. We’ll email %1$s.</string>
     <string name="wishlist_access_email_invalid">Enter a valid email address.</string>
     <string name="wishlist_access_email_not_allowed">This address can’t be invited. You can’t invite yourself.</string>
+    <string name="wishlist_access_email_already_member">This person already has access to the list.</string>
     <string name="wishlist_access_email_limit">You can’t send more email invites right now. Withdraw one or try again tomorrow.</string>
     <string name="wishlist_access_email_invites">Email invites</string>
     <string name="wishlist_access_email_pending">Pending · until %1$s</string>

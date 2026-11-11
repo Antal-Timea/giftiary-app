@@ -537,6 +537,7 @@ private fun EmailInvitesFailed(onRetry: () -> Unit) {
 private fun emailErrorText(error: EmailInviteError): String = when (error) {
     EmailInviteError.INVALID -> stringResource(R.string.wishlist_access_email_invalid)
     EmailInviteError.NOT_ALLOWED -> stringResource(R.string.wishlist_access_email_not_allowed)
+    EmailInviteError.ALREADY_MEMBER -> stringResource(R.string.wishlist_access_email_already_member)
     EmailInviteError.LIMIT -> stringResource(R.string.wishlist_access_email_limit)
     EmailInviteError.UNAVAILABLE -> stringResource(R.string.wishlist_access_unavailable)
     EmailInviteError.NETWORK -> retryableFailureText(SharingFailure.NETWORK)
