@@ -85,24 +85,31 @@ class GiftIdeaStatusSelectorTest {
     /** The width of the option, the tappable group the label belongs to. */
     private fun optionWidth(label: String) = compose.onNodeWithText(label).getBoundsInRoot().let { it.right - it.left }
 
+    /** Each option takes a third of the control, give or take the pixel rounding leaves. */
+    private fun assertEqualThirds(labels: List<String>) {
+        val widths = labels.map(::optionWidth)
+        assertTrue("equal thirds: $widths", widths.max() - widths.min() <= 1.dp)
+    }
+
     private fun sideBySide(labels: List<String>) = labels.map { bounds(it).top }.distinct().size == 1
 
     @Test
-    fun `English labels sit side by side on a phone`() {
+    fun `English labels sit side by side on a phone, in equal thirds`() {
         show()
 
         assertLabelsWhole(ENGLISH)
         assertTrue(sideBySide(ENGLISH))
+        assertEqualThirds(ENGLISH)
     }
 
     @Test
     @Config(qualifiers = "hu")
-    fun `Hungarian labels sit side by side on a phone, the longest one wider`() {
+    fun `Hungarian labels sit side by side on a phone, in equal thirds`() {
         show()
 
         assertLabelsWhole(HUNGARIAN)
         assertTrue(sideBySide(HUNGARIAN))
-        assertTrue("Megvásárolva gets more room than Ötlet", optionWidth("Megvásárolva") > optionWidth("Ötlet"))
+        assertEqualThirds(HUNGARIAN)
     }
 
     @Test
@@ -124,10 +131,11 @@ class GiftIdeaStatusSelectorTest {
 
     @Test
     @Config(qualifiers = "hu")
-    fun `Hungarian at large text stays whole`() {
+    fun `Hungarian at large text is stacked and stays whole`() {
         show(fontScale = 2f)
 
         assertLabelsWhole(HUNGARIAN)
+        assertTrue(HUNGARIAN.zipWithNext().all { (a, b) -> bounds(a).bottom <= bounds(b).top })
     }
 
     @Test

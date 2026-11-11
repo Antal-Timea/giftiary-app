@@ -69,11 +69,11 @@ fun GiftIdeaStatusTag(status: GiftIdeaStatus, modifier: Modifier = Modifier) {
 }
 
 /**
- * Idea, Planned or Purchased; any of them can be chosen, so mistakes are easy to correct. Side by side
- * while the three labels fit on one line each: every option gets its label's width and an equal share
- * of the room left, so the longer Hungarian "Megvásárolva" still fits beside the others on a phone.
- * Only when they cannot, on a narrow window or at large text, are they stacked one under another, so
- * no label is squeezed, broken or cut.
+ * Idea, Planned or Purchased; any of them can be chosen, so mistakes are easy to correct. Three equal
+ * segments side by side, as no status matters more than another, while the longest label fits its third
+ * on one line; the side padding is kept compact so the Hungarian "Megvásárolva" fits on a phone. Only
+ * when it cannot, on a narrow window or at large text, are they stacked one under another, so no label
+ * is squeezed, broken or cut.
  */
 @Composable
 fun GiftIdeaStatusSelector(
@@ -87,12 +87,11 @@ fun GiftIdeaStatusSelector(
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val natural = labels.mapValues { (_, label) ->
-            with(density) { measurer.measure(label, GiftiaryType.actionSmall, maxLines = 1).size.width.toDp() } + STATUS_OPTION_PADDING * 2
+        val longestLabel = with(density) {
+            labels.values.maxOf { measurer.measure(it, GiftiaryType.actionSmall, maxLines = 1).size.width }.toDp()
         }
-        // The dividers, and a little slack so rounding never leaves a label a pixel short.
-        val spare = maxWidth - natural.values.fold(0.dp) { sum, width -> sum + width } - 1.dp * (labels.size + 1)
-        val sideBySide = spare >= 0.dp
+        val third = (maxWidth - 1.dp * (labels.size - 1)) / labels.size
+        val sideBySide = longestLabel + STATUS_OPTION_PADDING * 2 <= third
         val options: @Composable (optionModifier: (GiftIdeaStatus) -> Modifier) -> Unit = { optionModifier ->
             GiftIdeaStatus.entries.forEachIndexed { index, status ->
                 if (index > 0) {
@@ -115,7 +114,7 @@ fun GiftIdeaStatusSelector(
             .selectableGroup()
         if (sideBySide) {
             Row(group.height(IntrinsicSize.Min)) {
-                options { status -> Modifier.weight((natural.getValue(status) + spare / labels.size).value).fillMaxHeight() }
+                options { Modifier.weight(1f).fillMaxHeight() }
             }
         } else {
             Column(group) { options { Modifier.fillMaxWidth() } }
@@ -144,7 +143,7 @@ private fun StatusOption(label: String, selected: Boolean, enabled: Boolean, onC
     }
 }
 
-private val STATUS_OPTION_PADDING = 12.dp
+private val STATUS_OPTION_PADDING = GiftiarySpacing.xs
 private const val DISABLED_ALPHA = 0.38f
 
 /**
