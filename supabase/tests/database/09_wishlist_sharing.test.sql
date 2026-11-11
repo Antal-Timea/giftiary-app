@@ -124,7 +124,7 @@ insert into public.people (id, owner_user_id, name, last_mutation_id)
 values ('a0000000-0000-4000-8000-0000000000f1', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'Anna', gen_random_uuid());
 
 -- Alice's lists: L (shared), L2 (shared, the target of a move), LP (kept for Anna), LCAP (limits),
--- LPRIV (shared, later linked to Anna).
+-- LPRIV (shared; linking it to Anna is refused).
 insert into public.wishlists (id, owner_user_id, person_id, name, last_mutation_id) values
     ('10000000-0000-4000-8000-000000000001', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', null, 'Birthday', gen_random_uuid()),
     ('10000000-0000-4000-8000-000000000002', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', null, 'Christmas', gen_random_uuid()),
@@ -443,7 +443,7 @@ select is(pg_temp.state('10000000-0000-4000-8000-000000000001', '20000000-0000-4
     'a cross-list row never shows as a reservation');
 select is(public.reserve_wish('20000000-0000-4000-8000-000000000005'), 'RESERVED_BY_ME', 'and is taken over by an eligible member');
 
--- ---- a list later kept for a person stays shared, and never shows the person ----
+-- ---- a shared list of the owner's own cannot later be linked to a person ----
 
 select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 select ok(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') -> 'person_name' = 'null'::jsonb,
@@ -452,22 +452,22 @@ select ok((select x -> 'person_name' = 'null'::jsonb from jsonb_array_elements(p
            where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'),
     'and the summary says so too');
 select pg_temp.as_user('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-update public.wishlists set person_id = 'a0000000-0000-4000-8000-0000000000f1', last_mutation_id = gen_random_uuid()
-where id = '10000000-0000-4000-8000-000000000005';
+-- A list's kind is fixed at creation (20261111120000); 17_wishlist_kind_fixed covers why.
+select throws_ok(
+    $$update public.wishlists set person_id = 'a0000000-0000-4000-8000-0000000000f1', last_mutation_id = gen_random_uuid()
+      where id = '10000000-0000-4000-8000-000000000005'$$,
+    '42501', null, 'linking it to a person is refused');
 select pg_temp.as_user('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
 select is(pg_temp.listed('10000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000006'), 1,
-    'a list linked to a person stays available to its members');
+    'the list stays available to its members');
 select is(public.reserve_wish('20000000-0000-4000-8000-000000000006'), 'RESERVED_BY_ME', 'and so do its wishes');
 select is((select count(*)::int from jsonb_array_elements(public.get_shared_wishlists()) x
            where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'), 1,
     'and it stays among the member''s shared lists');
-select ok(position('a0000000-0000-4000-8000-0000000000f1' in
-              public.get_shared_wishlist('10000000-0000-4000-8000-000000000005')::text || public.get_shared_wishlists()::text) = 0,
-    'the person''s id is never part of what members get');
-select is(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') ->> 'person_name', 'Anna',
-    'but who the list is for is named');
-select is((select x ->> 'person_name' from jsonb_array_elements(public.get_shared_wishlists()) x
-           where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'), 'Anna',
+select ok(public.get_shared_wishlist('10000000-0000-4000-8000-000000000005') -> 'person_name' = 'null'::jsonb,
+    'still for no one');
+select ok((select x -> 'person_name' = 'null'::jsonb from jsonb_array_elements(public.get_shared_wishlists()) x
+           where x ->> 'wishlist_id' = '10000000-0000-4000-8000-000000000005'),
     'in the summary as well');
 
 -- ---- a member of a person's list reaches that list only ----

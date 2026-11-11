@@ -671,6 +671,10 @@ neutral fact that a wish is reserved (`Reserved` / `Lefoglalva`), so they do not
 The owner must never receive the reserver's identity, the reservation time, a count, or any other
 detail that could identify who reserved it. Do not widen this exception beyond person-lists.
 
+A wishlist's kind is fixed when it is created: the backend refuses any later change of `person_id`
+(`private.keep_wishlist_person`), so an owner's own list can never be turned into a person-list, even
+briefly, to reach this exception.
+
 Guests may eventually see only:
 
     AVAILABLE

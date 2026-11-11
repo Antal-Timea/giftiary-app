@@ -18,7 +18,7 @@ network. The server is where devices exchange that data later.
 | `occasion` | `occasions` | `day`/`month`/optional `year`, never a full date |
 | `gift_idea` | `gift_ideas` | statuses `IDEA`, `PLANNED`, `PURCHASED` only |
 | `gift` | `gifts` | `direction` `GIVEN`/`RECEIVED`; null giver/recipient = the signed-in user |
-| `wishlist` | `wishlists` | optional `person_id`: a list kept for someone else; null = the user's own |
+| `wishlist` | `wishlists` | optional `person_id`: a list kept for someone else; null = the user's own; fixed at creation (any later change is refused) |
 | `wish` | `wishes` | carries `owner_user_id`, always its wishlist's (same-owner foreign key) |
 | — | `profiles` | one per auth user, created on sign-up; not synced |
 
