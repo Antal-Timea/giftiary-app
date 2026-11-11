@@ -19,13 +19,17 @@ import app.giftiary.presentation.sharing.PendingWishlistJoin
 import app.giftiary.testing.FakeWishlistSharingRepository
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** An opened invite link ends up joining on exactly one join screen, wherever the app was. */
+/**
+ * An opened invite link ends up asking on exactly one join screen, wherever the app was, and joins
+ * only when Join is pressed there.
+ */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -57,38 +61,44 @@ class JoinLinkNavigationTest {
         }
     }
 
-    private fun assertJoiningOnOneScreen() = compose.runOnIdle {
-        assertEquals(listOf(token), sharing.redeemedTokens)
+    private fun assertAskingOnOneScreenThenJoining() = compose.runOnIdle {
         assertEquals("one join screen", 1, joinScreens.size)
-        assertEquals(JoinPhase.Joining, joinScreens.single().state.value.phase)
         assertEquals(1, navController.currentBackStack.value.count { it.destination.hasRoute<JoinWishlistRoute>() })
+        val joinScreen = joinScreens.single()
+        assertTrue("it asks", joinScreen.state.value.confirmingOpenedInvite)
+        assertTrue("opening the link sent nothing", sharing.calls.isEmpty())
+
+        joinScreen.onConfirmOpenedInvite()
+
+        assertEquals(listOf(token), sharing.redeemedTokens)
+        assertEquals(JoinPhase.Joining, joinScreen.state.value.phase)
     }
 
     @Test
-    fun `a link opened elsewhere in the app opens the join screen, which joins`() {
+    fun `a link opened elsewhere in the app opens the join screen, which asks`() {
         showNavHost(start = HomeRoute)
 
         compose.runOnIdle { pending.offer(PendingJoin.Invite(token)) }
 
-        assertJoiningOnOneScreen()
+        assertAskingOnOneScreenThenJoining()
     }
 
     @Test
-    fun `a link opened over a join screen restored with the app joins there, not on an empty one`() {
+    fun `a link opened over a join screen restored with the app asks there, not on an empty one`() {
         // The process was killed with the join screen open; the link arrives as the app comes back.
         pending.offer(PendingJoin.Invite(token))
 
         showNavHost(start = JoinWishlistRoute)
 
-        assertJoiningOnOneScreen()
+        assertAskingOnOneScreenThenJoining()
     }
 
     @Test
-    fun `a link opened while the join screen is open joins there`() {
+    fun `a link opened while the join screen is open asks there`() {
         showNavHost(start = JoinWishlistRoute)
 
         compose.runOnIdle { pending.offer(PendingJoin.Invite(token)) }
 
-        assertJoiningOnOneScreen()
+        assertAskingOnOneScreenThenJoining()
     }
 }
