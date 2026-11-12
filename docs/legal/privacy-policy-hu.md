@@ -1,6 +1,6 @@
 # Giftiary – Adatkezelési tájékoztató
 
-**Hatályos:** 2026. november 10.
+**Hatályos:** 2026. november 12.
 
 Ez a tájékoztató azt írja le, hogyan kezeli a Giftiary Android-alkalmazás és a hozzá tartozó szolgáltatás a személyes adatokat. Az angol nyelvű változat tartalmilag megegyezik ezzel a szöveggel.
 
@@ -28,6 +28,7 @@ A Giftiary egy magánszemély által üzemeltetett alkalmazás. Adatvédelmi tis
 - **Jelszó:** ha e-mail-címmel és jelszóval regisztrálsz. A jelszót a hitelesítési szolgáltatónk kizárólag biztonságos, visszafejthetetlen (hash-elt) formában tárolja; az alkalmazás nem tárolja.
 - **Fiókazonosító:** egy véletlenszerű technikai azonosító, amelyhez az adataid kapcsolódnak.
 - **Fiókállapot:** például a regisztráció és a megerősítés időpontja, az utolsó bejelentkezés ideje.
+- **Eszközigazolás:** amíg be vagy jelentkezve, az alkalmazás minden telepítése létrehoz egy véletlenszerű titkos kódot, és csak azon a készüléken tárolja. A szerverünk ennek csak visszafejthetetlen (SHA-256 hash-elt) formáját tárolja a fiókodhoz kapcsolva, fiókonként legfeljebb 20 telepítésre. Kizárólag arra használjuk, hogy eldöntsük, egy készülék biztonságosan törölheti-e a fiókod helyi adatait, miután a fiókot törölték (lásd 12. pont). Nem hardver- vagy reklámazonosító, és magáról a készülékről semmit nem árul el.
 
 ### 3.2. Bejelentkezés Google- vagy Facebook-fiókkal (választható)
 
@@ -86,8 +87,9 @@ A regisztráció megerősítéséhez és az elfelejtett jelszó visszaállítás
 - Az emlékeztetők beállítása (be/ki) és az utolsó emlékeztető napja, fiókonként.
 - Egy jelölő arról, hogy a bevezető képernyőket ezen a készüléken már megnézted (készülékenként, nem fiókhoz kötve).
 - Egy ideiglenes jelölő, ha egy fióktörlés még nem fejeződött be a készüléken.
+- Minden, ezen a készüléken bejelentkezett fiók eszközigazolásának titkos kódja (lásd 3.1. pont), amíg az adott fiók helyi adatai a készülékről nem törlődnek.
 
-Az Android biztonsági mentése (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat és a fióktörlési jelölőt **nem** menti; az emlékeztető-beállításokat és a bevezető jelölőjét igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
+Az Android biztonsági mentése és az új készülékre való átvitel (ha a készülékeden be van kapcsolva) a munkamenetet, a helyi adatbázist, a fotókat, a fióktörlési jelölőt és az eszközigazolások titkos kódjait **nem** viszi át; az emlékeztető-beállításokat és a bevezető jelölőjét igen. A biztonsági mentést a Google a saját feltételei szerint végzi, a te készülékbeállításaid alapján.
 
 ### 3.9. Ha írsz nekünk
 
@@ -98,6 +100,7 @@ Ha e-mailben megkeresel minket, a leveledet és az e-mail-címedet a kérésed m
 | Cél | Adatok | Jogalap (GDPR 6. cikk (1) bek.) |
 |---|---|---|
 | Fiók létrehozása, bejelentkezés (e-mail, Google, Facebook), fiókkezelés | 3.1, 3.2 | b) pont – a szolgáltatás nyújtása (szerződés teljesítése) |
+| Egy törölt fiók adatainak eltávolítása a többi eszközödről (eszközigazolás) | 3.1, 3.8 | b) pont |
 | Az általad rögzített tartalom tárolása, szinkronizálása, megjelenítése | 3.4, 3.8 | b) pont |
 | Kívánságlisták megosztása, csatlakozás, foglalás (kivéve az e-mail-cím alapján meghívott személy e-mail-címét) | 3.3, 3.5 | b) pont |
 | Meghívás e-mail-cím alapján: a meghívott harmadik személy e-mail-címének kezelése | 3.5 (E-mailes meghívók) | f) pont – jogos érdek: a Giftiary-felhasználó jogos érdeke, hogy egy konkrét személyt meghívhasson a megosztott kívánságlistájához |
@@ -161,6 +164,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 ## 11. Megőrzési idő
 
 - **Fiókadatok és az általad rögzített tartalom:** a fiókod fennállásáig, illetve amíg törlöd őket.
+- **Eszközigazolások:** a szerveren tárolt hash a fiók törléséig megmarad, és vele együtt törlődik. A készüléken tárolt titkos kód addig marad meg, amíg az adott fiók helyi adatai a készülékről nem törlődnek.
 - **Törölt elemek:**
   - Ha az alkalmazásban törölsz egy elemet (például egy személyt vagy ajándékot), az mindenhol eltűnik a nézetekből.
   - A szerveren „törölt” jelöléssel megmarad, hogy a többi eszközöd is értesüljön a törlésről; a szinkronizálás változásnaplója szintén megmarad.
@@ -193,11 +197,11 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
   - a meghívóid (az e-mailes meghívóid is) és a szinkronizálás változásnaplója;
   - a profilod (megjelenített név és a profilfotód hivatkozása);
   - a te tagságaid és foglalásaid mások listáin, valamint a saját listáidhoz tartozó összes tagság és foglalás;
-  - végül maga a felhasználói fiók, a bejelentkezési munkamenetekkel és a kapcsolt Google-/Facebook-identitásokkal együtt.
+  - végül maga a felhasználói fiók, a bejelentkezési munkamenetekkel, a kapcsolt Google-/Facebook-identitásokkal és az eszközigazolásokkal együtt.
 
   Ezek az adatok nem „törölt” jelöléssel maradnak meg, hanem ténylegesen törlődnek. Ha a fotók törlése után a fiók törlése nem sikerül, néhány fotó már törlődhetett; a fióktörlés ilyenkor újra megpróbálható.
 - **Azon a készüléken, amelyen a törlést elvégzed:** az alkalmazás törli a fiók helyi adatait és fotóit, emlékeztető-beállításait és függő emlékeztetőit, majd kijelentkeztet. Ha az alkalmazás a folyamat közben leáll, a következő indításkor befejezi.
-- **A fiók többi eszközén** az adatok **nem törlődnek automatikusan**. Ezek az eszközök idővel kijelentkeznek, így az adatok a szokásos módon már nem érhetők el az alkalmazásban, de a helyi adatbázisukban megmaradhatnak. Ezeken az eszközökön az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
+- **A fiók többi eszközén** az a telepítés, amely eszközigazolást regisztrált (lásd 3.1. pont), magától törli a fiók helyi adatait és fotóit, de nem azonnal: csak akkor, amikor az eszköz online van, és a bejelentkezését elutasítják (amikor az alkalmazás legközelebb elindul, előtérbe kerül vagy megújítja a bejelentkezést; nyitott alkalmazásnál ez általában körülbelül egy órán belül megtörténik), és csak azután, hogy a szerverünk megerősítette, hogy az igazolás már nem tartozik létező fiókhoz. Ha a szerver nem érhető el, vagy a válasza nem egyértelmű, semmi nem törlődik, és az eszköz később újra rákérdez. Az eszközön lévő más fiókok adatait ez nem érinti. Az alkalmazás régebbi változata, illetve az a telepítés, amely soha nem regisztrált igazolást (például mert bejelentkezve soha nem volt online), megtarthatja az adatokat a helyi adatbázisában; ott az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket.
 - Azok az e-mailes meghívók, amelyeket más felhasználók a te e-mail-címedre küldtek, az ő fiókjukhoz tartoznak, ezért a fiókod törlése nem törli őket (lásd 11. pont).
 - Ha egy másik eszközöd a törlés idején még érvényes bejelentkezéssel fotót tölt fel, az a fájltárolóban maradhat. Az ilyen maradványfotót más felhasználó nem érheti el, és kézi karbantartással töröljük.
 - A biztonsági mentésekre a 11. pont vonatkozik.
@@ -208,7 +212,7 @@ A szerverünk az EU-ban (Frankfurt) található, de szolgáltatóink és alváll
 - Ezután a fiókhoz tartozó e-mail-címre visszaigazoló levelet küldünk. A törlést akkor végezzük el, ha erre a levélre arról a címről válaszolsz és megerősíted a kérést. Így ellenőrizzük, hogy a fiók valóban a tiéd.
 - Ha nem tudod, melyik e-mail-cím tartozik a fiókodhoz (Google- vagy Facebook-bejelentkezésnél ez a szolgáltatótól kapott cím), írd meg, melyik bejelentkezési módot használtad. A visszaigazolást mindig a fiókhoz tartozó e-mail-címre küldjük; e-mailben csak így tudjuk ellenőrizni a kérést.
 - Alapesetben nem kérünk jelszót, ellenőrző kódot vagy más bejelentkezési adatot, sem személyazonosító okmányt. Ilyet soha ne küldj nekünk.
-- A határidőt a kérésed beérkezésétől számítjuk. A visszaigazoló levelet a beérkezés után haladéktalanul elküldjük, a megerősítésed után indokolatlan késedelem nélkül töröljük a fiókot, és a kérésed beérkezésétől számított egy hónapon belül tájékoztatunk a kérés teljesítéséről. A megerősítés nem indít új határidőt. Ha a kérést nem tudjuk teljesíteni (például mert a fiókhoz tartozó címről nem érkezik megerősítés), erről és az okáról is ezen a határidőn belül tájékoztatunk. A szerveren ugyanaz törlődik, mint az alkalmazásbeli törléskor (a fotókkal együtt); a készülékeiden lévő helyi adatokat távolról nem tudjuk törölni, azokat az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el. Az elvégzett törlésről e-mailben értesítünk.
+- A határidőt a kérésed beérkezésétől számítjuk. A visszaigazoló levelet a beérkezés után haladéktalanul elküldjük, a megerősítésed után indokolatlan késedelem nélkül töröljük a fiókot, és a kérésed beérkezésétől számított egy hónapon belül tájékoztatunk a kérés teljesítéséről. A megerősítés nem indít új határidőt. Ha a kérést nem tudjuk teljesíteni (például mert a fiókhoz tartozó címről nem érkezik megerősítés), erről és az okáról is ezen a határidőn belül tájékoztatunk. A szerveren ugyanaz törlődik, mint az alkalmazásbeli törléskor (a fotókkal együtt); a készülékeiden lévő helyi adatokat távolról nem tudjuk törölni; az alkalmazás aktuális változatai a fent leírt módon maguktól eltávolítják őket, egyébként az alkalmazás adatainak törlésével vagy az alkalmazás eltávolításával távolíthatod el őket. Az elvégzett törlésről e-mailben értesítünk.
 
 A fióktörlés lépései és részletei: https://giftiary.app/account-deletion/
 
@@ -231,11 +235,11 @@ Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál 
 
 - Az alkalmazás és a szerver közötti kapcsolat titkosított (HTTPS).
 - Minden fiók csak a saját adataihoz fér hozzá; ezt adatbázisszintű hozzáférés-szabályozás biztosítja.
-- A jelszavakat és a meghívókódokat csak visszafejthetetlen (hash-elt) formában tároljuk.
+- A jelszavakat, a meghívókódokat és az eszközigazolásokat a szerveren csak visszafejthetetlen (hash-elt) formában tároljuk.
 - A fotók privát fájltárolóban vannak: minden fiók csak a saját mappájához fér hozzá, nyilvános hivatkozás nincs, a profilfotókat pedig minden más fotótól elkülönítve tároljuk.
 - A személy- és profilfotók a kívánságlista-megosztáson és a meghívókon keresztül sem érhetők el; a szerver a tulajdonosukon kívül senkinek nem adja ki őket.
 - A megosztott listák tulajdonosa a foglalásokat a szerveren keresztül sem kapja meg.
-- A bejelentkezési munkamenetet, a helyi adatbázist és a fotókat az Android biztonsági mentése nem menti.
+- A bejelentkezési munkamenetet, a helyi adatbázist, a fotókat és az eszközigazolások titkos kódjait az Android biztonsági mentése nem menti.
 
 Teljes biztonságot egyetlen rendszer sem tud garantálni, de észszerű intézkedésekkel védjük az adataidat.
 
