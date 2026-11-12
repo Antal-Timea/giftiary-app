@@ -87,8 +87,9 @@ select functions_are('public', array[
     'create_wishlist_invite', 'revoke_wishlist_invite', 'list_wishlist_access', 'remove_wishlist_member',
     'redeem_wishlist_invite', 'leave_wishlist', 'get_shared_wishlists', 'get_shared_wishlist',
     'reserve_wish', 'release_wish', 'delete_my_account', 'get_owner_reserved_wishes',
-    'create_recipient_invite', 'list_recipient_invites', 'revoke_recipient_invite', 'get_my_invites', 'respond_to_invite'],
-    'the API schema has no sync write function, only the sharing, reservation and account deletion calls');
+    'create_recipient_invite', 'list_recipient_invites', 'revoke_recipient_invite', 'get_my_invites', 'respond_to_invite',
+    'register_device_proof', 'device_proof_is_live'],
+    'the API schema has no sync write function, only the sharing, reservation, account deletion and device proof calls');
 
 select * from finish();
 rollback;

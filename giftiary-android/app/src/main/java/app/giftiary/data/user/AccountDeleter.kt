@@ -1,15 +1,9 @@
 package app.giftiary.data.user
 
 import android.util.Log
-import app.giftiary.data.local.dao.AccountDataDao
-import app.giftiary.data.photos.GiftPhotoFiles
-import app.giftiary.data.reminders.ReminderNotifier
-import app.giftiary.data.reminders.ReminderPreferences
-import app.giftiary.data.reminders.ReminderSignOut
 import app.giftiary.data.remote.AccountDeletionRemote
 import app.giftiary.data.remote.RemoteException
 import app.giftiary.data.remote.RemoteFailure
-import app.giftiary.data.sync.SyncScheduler
 import app.giftiary.di.ApplicationScope
 import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.repository.AccountDeletion
@@ -39,9 +33,8 @@ import javax.inject.Singleton
  * device. [AccountDeletionMarker] is set before the request and cleared last, so a deletion the
  * server may have done is always finished, by the next start if the app stops in between.
  *
- * Finishing on this device: the account is closed (and stays closed), its sync and reminders stop,
- * its reminder choices, rows and photo files are deleted, and its session is forgotten without the
- * network.
+ * Finishing on this device: the account is closed (and stays closed), then [LocalAccountPurge]
+ * removes it from the device.
  */
 @Singleton
 class AccountDeleter @Inject constructor(
@@ -49,12 +42,7 @@ class AccountDeleter @Inject constructor(
     private val authRepository: AuthRepository,
     private val remote: AccountDeletionRemote,
     private val marker: AccountDeletionMarker,
-    private val accountData: AccountDataDao,
-    private val syncScheduler: SyncScheduler,
-    private val reminderSignOut: ReminderSignOut,
-    private val reminderPreferences: ReminderPreferences,
-    private val reminderNotifier: ReminderNotifier,
-    private val photoFiles: GiftPhotoFiles,
+    private val localPurge: LocalAccountPurge,
     @ApplicationScope private val scope: CoroutineScope,
 ) : AccountDeletion {
 
@@ -149,19 +137,8 @@ class AccountDeleter @Inject constructor(
         _state.value = AccountDeletionState.Finishing
         try {
             // Another account may have signed in since (only after an earlier process stopped half
-            // way); its session, sync and reminders are its own and stay.
-            val auth = authRepository.authState.first { it != AuthState.Restoring }
-            val otherAccount = auth is AuthState.SignedIn && auth.user.id != owner
-            if (otherAccount) {
-                reminderNotifier.cancel(owner)
-            } else {
-                syncScheduler.cancelAll()
-                reminderSignOut.onSignOut()
-            }
-            reminderPreferences.forget(owner)
-            accountData.purge(owner)
-            photoFiles.deleteAll(owner)
-            if (!otherAccount) authRepository.clearLocalSession()
+            // way); the purge leaves its session, sync and reminders alone.
+            localPurge.purge(owner)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

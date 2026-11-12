@@ -45,10 +45,11 @@ select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and (proconfig is null or not ('search_path=""' = any (proconfig)))),
     0, 'every API function runs with an empty search_path');
+-- The one exception is the device proof question, asked when the account's session is gone.
 select is(
-    (select count(*)::int from pg_proc
+    (select array_agg(proname::text) from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('anon', oid, 'execute')),
-    0, 'anon can execute no API function');
+    array['device_proof_is_live'], 'anon can execute no API function but the device proof question');
 select is(
     (select count(*)::int from pg_proc p, aclexplode(p.proacl) a
      where p.pronamespace = 'public'::regnamespace and a.grantee = 0),
@@ -56,7 +57,7 @@ select is(
 select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('authenticated', oid, 'execute')),
-    17, 'signed-in users can execute exactly the sixteen sharing functions and the account deletion');
+    19, 'signed-in users can execute exactly the sixteen sharing functions, the account deletion and the two device proof calls');
 select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('service_role', oid, 'execute')),

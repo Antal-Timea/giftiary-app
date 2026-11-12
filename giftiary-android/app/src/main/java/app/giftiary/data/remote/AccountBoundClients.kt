@@ -25,12 +25,21 @@ class AccountBoundClients(
     private val engine: HttpClientEngine,
 ) {
 
-    suspend fun <T> withClient(account: RemoteAccount, block: suspend (SupabaseClient) -> T): T {
+    suspend fun <T> withClient(account: RemoteAccount, block: suspend (SupabaseClient) -> T): T =
+        use(accessToken = account.accessToken, block)
+
+    /**
+     * A client with no account at all: only the publishable key goes with its requests, whatever
+     * session the app holds, for the few calls made precisely when there is no session to use.
+     */
+    suspend fun <T> withoutAccount(block: suspend (SupabaseClient) -> T): T = use(accessToken = null, block)
+
+    private suspend fun <T> use(accessToken: String?, block: suspend (SupabaseClient) -> T): T {
         val client = createSupabaseClient(supabaseUrl, publishableKey) {
             // The SDK logs request details at debug level.
             defaultLogLevel = LogLevel.WARNING
             httpEngine = engine
-            accessToken = { account.accessToken }
+            if (accessToken != null) this.accessToken = { accessToken }
             install(Postgrest)
             install(Storage) {
                 // Photos are small single-request uploads. The default cache of resumable upload

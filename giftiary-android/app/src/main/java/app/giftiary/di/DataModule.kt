@@ -17,6 +17,8 @@ import app.giftiary.data.sync.SyncScheduler
 import app.giftiary.data.sync.WorkManagerSyncScheduler
 import app.giftiary.data.user.AccountDeleter
 import app.giftiary.data.user.ActiveOwner
+import app.giftiary.data.user.DeletedAccountCheck
+import app.giftiary.data.user.DeletedAccountCheckRequester
 import app.giftiary.data.user.OwnerSession
 import app.giftiary.domain.repository.AccountDeletion
 import app.giftiary.domain.repository.AccountSession
@@ -76,6 +78,9 @@ abstract class DataModule {
 
     @Binds
     abstract fun bindFullSyncRequester(impl: ForegroundSyncCoordinator): FullSyncRequester
+
+    @Binds
+    abstract fun bindDeletedAccountCheckRequester(impl: DeletedAccountCheck): DeletedAccountCheckRequester
 
     @Binds
     abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler

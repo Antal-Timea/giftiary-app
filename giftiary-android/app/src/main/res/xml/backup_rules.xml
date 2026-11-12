@@ -16,6 +16,11 @@
         to an account that is already gone.
     -->
     <exclude domain="sharedpref" path="giftiary_account_deletion.xml" />
+    <!--
+        Device proofs (see DeletedAccountCheck): restored elsewhere, a secret would let that device
+        ask about an account whose data it does not have.
+    -->
+    <exclude domain="sharedpref" path="giftiary_device_proofs.xml" />
     <!-- Gift photos belong with the database: they reach a new device by syncing. -->
     <exclude domain="file" path="gift-photos/" />
     <!--
