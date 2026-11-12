@@ -144,7 +144,7 @@ device (notification permission) and one older device.
 | S18 | Owner deletes | A deletes a reserved wish, then the list | It disappears for guests; then the list is unavailable |
 | S19 | No network | Airplane mode during reserve and during join | Retry message, nothing assumed; correct after reconnecting |
 | S20 | Email clients | Open confirmation and recovery mails in Gmail (with Chrome) and one other client | The link reaches the app (possibly after an "Open with Giftiary" prompt) |
-| S21 | Account deletion (**authorised, destructive**) | Only with a throwaway account D created for this row, and only with the owner's explicit go-ahead for that hosted deletion. D has data and a list shared with B. D: Settings → Delete account → confirm | "Account deleted", then the sign-in screen; D's data is gone from P1; D can no longer sign in; B no longer has D's list. Known limitation: a second device of D is not purged; once its session is refused it shows the sign-in screen, but D's rows stay in its local database |
+| S21 | Account deletion (**authorised, destructive**) | Only with a throwaway account D created for this row, and only with the owner's explicit go-ahead for that hosted deletion. D has data and a list shared with B. D: Settings → Delete account → confirm | "Account deleted", then the sign-in screen; D's data is gone from P1; D can no longer sign in; B no longer has D's list. A second device of D that registered a device proof (any build from develop `763adc5`) shows the sign-in screen and removes D's rows, photos and proof once its session is refused (token refresh, up to about an hour while open, or its next start) and it is online; its other accounts' data stays. A device without a registered proof keeps D's rows |
 | S22 | Email invite | A: Sharing → Invite by email address → B's confirmed address → Send invite | "Invite saved. We'll email …"; the address is listed under Email invites as "Pending · until" a date 14 days ahead; B receives **one** email, in HU and EN, from `no-reply@giftiary.app`, with the privacy links and the expiry date, naming neither A nor the list |
 | S23 | Repeat and refusals | A invites B's address again while it is pending; A invites A's own address; an invalid address | No second email; "This address can't be invited…"; "Enter a valid email address." |
 | S24 | Recipient inbox and badge | B signs in on P2 with that confirmed address; C, with another address, opens Lists | B: the Lists destination (rail: Wishlists) carries the invitation badge, and Lists shows the invitation as a card "From <A's name>" above the joined lists; C sees no invitation |
@@ -185,9 +185,11 @@ Record the device, Android version, build and result of each row.
 - An email invite sends the recipient one short HU/EN email naming neither the owner nor the
   list. The invitation itself appears only inside Giftiary, under Lists, for whoever signs in
   with that confirmed address within 14 days.
-- Settings → Delete account deletes the account and its data at once and cannot be undone. Only
-  the device it is done on is cleared; the account's other devices keep their local copy (no longer
-  reachable in the app once they are signed out).
+- Settings → Delete account deletes the account and its data at once and cannot be undone. The
+  device it is done on is cleared at once. The account's other devices clear their copy themselves
+  once their session is refused and they are online (up to about an hour while the app is open, or
+  at its next start); a device that never registered a device proof (an older build, or never
+  online while signed in) keeps it.
 
 ## Gate B: Play-distributed closed test
 
@@ -206,14 +208,18 @@ All of Gate A passed on the build to upload, then:
       Still to do: enter that URL in Play Console, and the Meta data deletion instructions URL if
       Facebook sign-in ships.
 - [ ] **Privacy policy (human):** the canonical texts are `docs/legal/privacy-policy-hu.md` and
-      `docs/legal/privacy-policy-en.md`, effective 10 November 2026. They are byte-identical to the
-      website sources (app PR #3, website PR #7), published at https://giftiary.app/privacy/ and
-      linked from Settings. Still to do: the URL entered in Play Console.
+      `docs/legal/privacy-policy-en.md`, effective 12 November 2026 (F6: device proofs and the F5
+      other-device removal). The published https://giftiary.app/privacy/ (linked from Settings) is
+      still the 10 November version (app PR #3, website PR #7). Still to do: publish the
+      12 November texts byte-identically on the website, and enter the URL in Play Console.
       (`docs/legal/privacy-policy-draft.md` is superseded; it is only the evidence behind them.)
 - [ ] **Data safety (human):** form completed from `docs/legal/data-safety-draft.md`, the current
-      answer sheet, every `[VERIFY]` item resolved first. Bring that sheet up to date before
-      using it: it does not yet cover email invites (the invitee's address goes to the email
-      provider), and it still says no web deletion page exists.
+      answer sheet (brought up to date in F6 against `docs/legal/release-data-inventory.md`), every
+      `[VERIFY]` item resolved first.
+- [ ] **Privacy texts after F5 (human):** publish the 12 November policy and the
+      account-deletion page changes in `docs/legal/account-deletion-page-f5-update.md` in one
+      website PR, before a build with F5 reaches testers. Until then the live pages say a deleted
+      account's other devices are not cleared automatically and do not mention device proofs.
 - [x] Play Console app with package `app.giftiary` (permanent once uploaded), Play App Signing. Evidence: the owner supplied
       the Play app signing certificate (CURRENT_TASK at `94389a7`), and a Play-installed build
       was tested (CURRENT_TASK at `79fec2a`).
@@ -237,8 +243,6 @@ All of Gate A passed on the build to upload, then:
 
 ## Before a broader beta (not for the first closed test)
 
-- Removing a deleted account's data from its **other** devices (today those devices are not
-  purged: they end up signed out, but the rows stay in their local database).
 - **Human Code / Simplification Audit.** Goal: simplification, not fewer lines. Look for
   unnecessary abstraction, wrappers and indirection, state or gate machinery heavier than its
   invariant needs, defensive branches for impossible cases, duplicated layers (e.g. parallel

@@ -1,6 +1,6 @@
 # Giftiary – Privacy Policy
 
-**Effective date:** 10 November 2026
+**Effective date:** 12 November 2026
 
 This policy explains how the Giftiary Android app and its service handle personal data. A Hungarian version with the same content is also available.
 
@@ -28,6 +28,7 @@ Giftiary is operated by a private individual. No data protection officer is requ
 - **Password:** if you register with email and password. Our authentication provider stores it only in a secure, irreversible (hashed) form; the app does not store it.
 - **Account ID:** a random technical identifier your data is linked to.
 - **Account status:** for example when you registered and confirmed your email, and when you last signed in.
+- **Device proof:** while you are signed in, each installation of the app creates a random secret and keeps it only on that device. Our server stores only an irreversible (SHA-256 hashed) form of it, linked to your account, for at most 20 installations per account. We use it only to decide whether a device may safely remove your account's local data after the account has been deleted (see section 12). It is not a hardware or advertising identifier and says nothing about the device itself.
 
 ### 3.2. Signing in with Google or Facebook (optional)
 
@@ -86,8 +87,9 @@ We send emails from no-reply@giftiary.app to confirm your registration and to re
 - Your reminder setting (on/off) and the day of the last reminder, per account.
 - A marker that you have already seen the introduction screens on this device (per device, not tied to an account).
 - A temporary marker if an account deletion has not finished on the device yet.
+- For each account signed in on this device, the secret of its device proof (see section 3.1), until that account's local data is removed from the device.
 
-Android backup (if enabled on your device) does **not** include the session, the local database, photos or the deletion marker; it does include the reminder settings and the introduction marker. Backup is performed by Google under its own terms, according to your device settings.
+Android backup and transfer to a new device (if enabled on your device) do **not** include the session, the local database, photos, the deletion marker or the device proof secrets; they do include the reminder settings and the introduction marker. Backup is performed by Google under its own terms, according to your device settings.
 
 ### 3.9. If you contact us
 
@@ -98,6 +100,7 @@ If you email us, we process your message and your email address to answer your r
 | Purpose | Data | Legal basis (GDPR Art. 6(1)) |
 |---|---|---|
 | Creating your account, sign-in (email, Google, Facebook), account management | 3.1, 3.2 | (b) providing the service (performance of a contract) |
+| Removing a deleted account's data from your other devices (device proof) | 3.1, 3.8 | (b) |
 | Storing, syncing and displaying the content you enter | 3.4, 3.8 | (b) |
 | Sharing wishlists, joining, reserving (except the email address of a person invited by email) | 3.3, 3.5 | (b) |
 | Inviting by email address: processing the invited third person's email address | 3.5 (Email invites) | (f) legitimate interest: the Giftiary user's legitimate interest in being able to invite a specific person to their shared wishlist |
@@ -161,6 +164,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 ## 11. Retention
 
 - **Account data and the content you enter:** for as long as your account exists, or until you delete them.
+- **Device proofs:** the hash on the server is kept until the account is deleted, and is deleted together with it. The secret on a device is kept until that account's local data is removed from the device.
 - **Deleted items:**
   - If you delete an item in the app (for example a person or a gift), it disappears from all views.
   - On the server it is kept, marked as deleted, so that your other devices learn of the deletion; the sync change log is kept too.
@@ -193,11 +197,11 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   - your invites (your email invites included) and the sync change log;
   - your profile (display name and the reference to your profile photo);
   - your memberships and reservations on other people's lists, and every membership and reservation on your own lists;
-  - finally the user account itself, together with its sign-in sessions and linked Google/Facebook identities.
+  - finally the user account itself, together with its sign-in sessions, linked Google/Facebook identities and device proofs.
 
   This data is not kept marked as deleted; it is actually removed. If deleting the account fails after the photos were deleted, some photos may already be gone; the account deletion can then be tried again.
 - **On the device you delete from:** the app removes the account's local data and photos, reminder settings and pending reminders, then signs you out. If the app stops part way, it finishes on its next start.
-- **On the account's other devices**, the data is **not deleted automatically**. Those devices will eventually be signed out, so the data is no longer available through the app in the normal way, but it may remain in their local database. You can remove it there by clearing the app's data or uninstalling the app.
+- **On the account's other devices**, an installation that registered a device proof (see section 3.1) removes the account's local data and photos by itself, but not immediately: only once that device is online and its sign-in is refused (when the app next starts, returns to the foreground or renews its sign-in, usually within about an hour while the app is open), and only after our server has confirmed that the proof no longer belongs to an existing account. If the server cannot be reached or its answer is unclear, nothing is deleted, and the device asks again later. Other accounts' data on that device is not affected. An older version of the app, or an installation that never registered a proof (for example because it was never online while signed in), may keep the data in its local database; you can remove it there by clearing the app's data or uninstalling the app.
 - Email invites that other users sent to your email address belong to their accounts, so deleting your account does not delete them (see section 11).
 - If another of your devices, still holding a valid sign-in, uploads a photo while the account is being deleted, that photo may remain in the file storage. No other user can access such a leftover photo, and we delete it through manual maintenance.
 - For backups, see section 11.
@@ -208,7 +212,7 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 - We then send a confirmation email to the account's email address. We delete the account once you reply to that email from that address and confirm the request. This is how we check that the account is really yours.
 - If you are not sure which email address belongs to your account (with Google or Facebook sign-in, it is the address received from the provider), tell us which sign-in method you used. We always send the confirmation to the account's email address; that is the only way we can verify a request by email.
 - By default we do not ask for a password, verification code or other sign-in credentials, or for an identity document. Never send us any of these.
-- The time limit runs from when your request reaches us. We send the confirmation email promptly after receiving your request, delete the account without undue delay once you confirm, and tell you what we have done within one month of receiving your request. Your confirmation does not start a new time limit. If we cannot act on the request (for example, because no confirmation arrives from the account's address), we tell you so, with the reason, within the same time limit. On the server, the same is deleted as with deletion in the app (including photos); we cannot delete the local data on your devices remotely, which you can remove by clearing the app's data or uninstalling the app. We will let you know by email once the deletion is done.
+- The time limit runs from when your request reaches us. We send the confirmation email promptly after receiving your request, delete the account without undue delay once you confirm, and tell you what we have done within one month of receiving your request. Your confirmation does not start a new time limit. If we cannot act on the request (for example, because no confirmation arrives from the account's address), we tell you so, with the reason, within the same time limit. On the server, the same is deleted as with deletion in the app (including photos); we cannot delete the local data on your devices remotely; current versions of the app remove it by themselves as described above, and otherwise you can remove it by clearing the app's data or uninstalling the app. We will let you know by email once the deletion is done.
 
 Account deletion steps and details: https://giftiary.app/account-deletion/
 
@@ -231,11 +235,11 @@ You can lodge a complaint with the Hungarian National Authority for Data Protect
 
 - The connection between the app and the server is encrypted (HTTPS).
 - Every account can access only its own data; database-level access control enforces this.
-- Passwords and invite codes are stored only in an irreversible (hashed) form.
+- Passwords, invite codes and device proofs are stored on the server only in an irreversible (hashed) form.
 - Photos are in private file storage: every account can access only its own folder, there are no public links, and profile photos are kept apart from all other photos.
 - Person and profile photos are never exposed through wishlist sharing or invites; the server does not return them to anyone but their owner.
 - The owner of a shared list does not receive reservations, not even through the server.
-- Android backup does not include the sign-in session, the local database or photos.
+- Android backup does not include the sign-in session, the local database, photos or device proof secrets.
 
 No system can guarantee complete security, but we protect your data with reasonable measures.
 

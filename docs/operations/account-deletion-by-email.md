@@ -14,8 +14,13 @@ The public promise this runbook backs (privacy policy section 12, https://giftia
 - done without undue delay after the confirmation; the requester is told what was done within one
   month of **receiving the request** (the confirmation does not start a new period).
 
-What it cannot do: the local copies on the requester's devices (their database and photo files)
-cannot be deleted remotely. The reply says so and tells them to clear the app's data or uninstall.
+What it cannot do: delete the local copies on the requester's devices (their database and photo
+files) from the server. A device running a Giftiary version with device proofs (F5, develop
+`763adc5`) that registered one for the account removes them itself: deleting the account also
+deletes its proof rows (cascade), and the device asks about them once it has lost the account's
+session (at a token refresh or its next start, while online). A device without a registered proof
+(an older version, never online while signed in, or past the 20-install limit) keeps them. The
+reply says so and tells them to clear the app's data or uninstall where needed.
 
 ## Why `auth.users` alone is not enough
 
@@ -36,7 +41,7 @@ cannot be deleted remotely. The reply says so and tells them to clear the app's 
 
 `private.delete_account(uuid)` (migration `20261024120000_account_deletion.sql`, current body in
 `20261107100000_recipient_invites.sql`) already deletes all rows and finally the `auth.users` row
-(profile, identities, sessions and refresh tokens cascade) in one transaction. It also deletes the
+(profile, identities, sessions, refresh tokens and device proofs cascade) in one transaction. It also deletes the
 account's own email invites (`wishlist_recipient_invites`) and unlinks other accounts' people that
 pointed to it (`people.linked_user_id`). It is not callable by `anon`, `authenticated` or
 `service_role`; it is owned by `postgres`, the role the dashboard SQL editor runs as.
@@ -237,6 +242,7 @@ select
   (select count(*) from public.wishlist_members where member_user_id = '<uid>' or owner_user_id = '<uid>') as memberships,
   (select count(*) from public.wish_reservations where reserver_user_id = '<uid>') as reservations,
   (select count(*) from public.people where linked_user_id = '<uid>')           as linked_from_other_people,
+  (select count(*) from private.account_device_proofs where user_id = '<uid>')  as device_proofs,
   (select count(*) from storage.objects where bucket_id = 'gift-photos'     and name like '<uid>/%') as gift_and_person_photos,
   (select count(*) from storage.objects where bucket_id = 'profile-avatars' and name like '<uid>/%') as profile_photos;
 ```
@@ -250,7 +256,8 @@ investigate before telling the user it is done. Record in the log only that ever
 
 1. Reply to the requester (in their language): the account and its server data, gift, person
    and profile photos included, are deleted; backups made by the hosting provider may still contain them until the
-   normal backup cycle overwrites them; local copies on their devices remain until they clear the
+   normal backup cycle overwrites them; an up-to-date app removes its local copy itself the next
+   time it is opened online; on any device where Giftiary still shows the data, they can clear the
    app's data or uninstall the app.
 2. Log the completed and final-check dates. Set the closure date after the final check and the
    outcome notification; record the correspondence deletion due date as closure date + 90 days.
@@ -386,13 +393,6 @@ particular:
 
 ## Gaps (owner decisions or provider checks)
 
-- **Privacy follow-up, not implemented: email addresses in closed recipient invites.** Today a
-  `wishlist_recipient_invites` row keeps `recipient_email` after it is accepted, declined, revoked
-  or expired, and after the list is deleted; it goes only with the owner's account
-  (`private.delete_account`), never with the invitee's. The privacy policy (sections 3.5, 11, 12)
-  describes exactly this. Follow-up: once an invite is closed, make its email address deletable or
-  anonymizable later while the invite's audit row (list, owner, status, timestamps) is kept. When
-  that ships, update the privacy policy's retention text to match.
 - **Accounts without an email address:** run the provider checks in "Accounts without an email
   address". Only if such accounts can exist does a verification method need to be decided.
 - **EDPB para. 157** (identity confirmation and the time limit) to be read and a decision recorded.
@@ -404,4 +404,5 @@ particular:
 - **Retention implementation:** correspondence retention is closure + 90 days; the completion log
   is closure + one year. Both are manual owner procedures, with no configured cleanup automation.
   Porkbun's support answer is recorded above.
-- **Other devices** keep local data; nothing on the server can remove it.
+- **Other devices** without a registered device proof keep local data; nothing on the server can
+  remove it.

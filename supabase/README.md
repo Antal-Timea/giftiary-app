@@ -207,7 +207,28 @@ deleted outright, not tombstoned: the account has no device left to sync to. Any
 everything back. A token issued before the deletion stays valid until it expires but reads nothing
 and cannot recreate rows (the owner foreign keys reject it), and its refresh token is gone. Calling
 again is a no-op. Other devices of the account keep their local copy until they notice the account
-is gone.
+is gone (device proofs, below).
+
+**Device proofs** (`20261112100000_device_account_proofs`). While signed in, each app install
+registers the SHA-256 of a random 32-byte secret it keeps on the device
+(`public.register_device_proof`, authenticated only, at most 20 per account). The row in
+`private.account_device_proofs` belongs to the account and goes with it (`ON DELETE CASCADE` from
+`auth.users`); nothing else deletes it. A device that has lost an account's session asks
+`public.device_proof_is_live(secret)` (callable by `anon`) whether its secret still belongs to a
+live account; the only input is the secret and the only answer is one boolean, so it reveals
+nothing about accounts whose secret the caller does not hold. Only a definite `false` for a
+registered secret makes the device remove that account's local data. No tombstone of the deleted
+account is kept. `tests/database/18_device_account_proofs.test.sql` covers it.
+
+## Photos (Storage)
+
+Two private buckets, each object at `<user id>/<uuid>.jpg` (no subfolders, no public URLs):
+`gift-photos` for gift and person photos (`20261101120000_gift_photos`,
+`20261109100000_person_profile_photos`), and `profile-avatars` for the user's own profile photo
+(`20261109100000_person_profile_photos`). Policies limit every account to its own folder. Rows store
+the object path, never a signed URL. Objects have no foreign key to the user, so account deletion
+empties both folders through the Storage API before `delete_my_account()` (see
+`docs/operations/account-deletion-by-email.md`).
 
 The function runs as `postgres`, which Supabase grants `DELETE` on `auth.users`; `anon` and
 `service_role` cannot execute it. `tests/database/11_account_deletion.test.sql` covers it.
@@ -233,6 +254,3 @@ seed data.
 ## Not yet
 
 - Incremental pull (cursors, change logs) and Realtime.
-- Storage. Photo columns hold storage paths, not signed URLs, following
-  `users/{userId}/people/{personId}/...`, `users/{userId}/gifts/{giftId}/...` and
-  `users/{userId}/gift-ideas/{giftIdeaId}/...`. Buckets and policies come with photo upload.
