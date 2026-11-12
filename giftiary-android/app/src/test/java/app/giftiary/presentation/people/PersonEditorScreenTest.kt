@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.awaitPhoto
 import org.junit.Assert.assertEquals
 import app.giftiary.testing.lineCount
 import org.junit.Assert.assertTrue
@@ -146,6 +147,7 @@ class PersonEditorScreenTest {
     fun `with a photo it fills the avatar, silently, and Change and Remove are offered`() {
         show(PersonEditorUiState(isNewPerson = false, status = EditorStatus.EDITING, name = "Peter", photoPath = "p.jpg", photo = jpeg()))
 
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
         compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
         compose.onNodeWithText("Add photo").assertDoesNotExist()

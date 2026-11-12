@@ -177,17 +177,22 @@ class PersonDetailViewModelTest {
     }
 
     @Test
-    fun `the photos of the person's gifts are offered by path, those that cannot be read are left out`() = runTest {
+    fun `the photos of the person's gifts are read only for shown cards, those that cannot be read are left out`() = runTest {
         photos.stored["a/photo.jpg"] = byteArrayOf(1, 2)
         val withPhoto = giftEntry(giftDetails(person = anna, name = "Lamp").copy(photoPath = "a/photo.jpg"), anna)
         val missingPhoto = giftEntry(giftDetails(person = anna, name = "Scarf").copy(photoPath = "a/gone.jpg"), anna)
         people.givenPeople(anna)
         gifts.givenGifts(withPhoto, missingPhoto, giftEntry(giftDetails(person = anna, name = "Book"), anna))
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
-        keepSubscribed(viewModel.giftPhotos)
+        keepSubscribed(viewModel.uiState)
+        assertEquals(emptyList<String>(), photos.loads)
 
-        assertEquals(setOf("a/photo.jpg"), viewModel.giftPhotos.value.keys)
-        assertTrue(byteArrayOf(1, 2).contentEquals(viewModel.giftPhotos.value.getValue("a/photo.jpg").bytes))
+        viewModel.giftPhotos.show("a/photo.jpg")
+        viewModel.giftPhotos.show("a/gone.jpg")
+
+        assertEquals(listOf("a/photo.jpg", "a/gone.jpg"), photos.loads)
+        assertTrue(byteArrayOf(1, 2).contentEquals(viewModel.giftPhotos["a/photo.jpg"]!!.bytes))
+        assertNull(viewModel.giftPhotos["a/gone.jpg"])
     }
 
     @Test

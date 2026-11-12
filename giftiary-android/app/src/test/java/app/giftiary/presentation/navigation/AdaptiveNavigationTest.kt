@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.SyncStatus
 import app.giftiary.presentation.components.ProvideWidthClass
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.components.WidthClass
 import app.giftiary.presentation.home.HomeScreen
@@ -179,6 +180,7 @@ class AdaptiveNavigationTest {
             GiftiaryTheme {
                 PeopleScreen(
                     state = PeopleUiState(content = PeopleContent.Loaded(emptyList())),
+                    photos = ShownPhotos.of(emptyMap()),
                     comingUp = ComingUpContent.Loaded(emptyList()),
                     onQueryChange = {},
                     onAddPerson = {},

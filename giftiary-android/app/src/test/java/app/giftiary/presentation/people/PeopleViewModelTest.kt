@@ -13,6 +13,7 @@ import app.giftiary.testing.person
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
@@ -179,7 +180,7 @@ class PeopleViewModelTest {
     }
 
     @Test
-    fun `rows get the photos already on this device, and never a download`() = runTest {
+    fun `rows get the photos already on this device, only when shown, and never a download`() = runTest {
         val here = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/10000000-0000-4000-8000-000000000001.jpg"
         val elsewhere = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/10000000-0000-4000-8000-000000000002.jpg"
         photos.stored[here] = byteArrayOf(1)
@@ -188,8 +189,15 @@ class PeopleViewModelTest {
         repository.givenPeople(person("Anna", photoPath = here), person("Béla", photoPath = elsewhere), person("Cili"))
         val viewModel = PeopleViewModel(repository, occasions, savedState, photos)
         keepSubscribed(viewModel.uiState)
+        assertEquals(emptyList<String>(), photos.localLoads)
 
-        assertEquals(setOf(here), viewModel.uiState.value.photos.keys)
+        viewModel.photos.show(here)
+        viewModel.photos.show(elsewhere)
+
+        assertEquals(listOf(here, elsewhere), photos.localLoads)
+        assertEquals(emptyList<String>(), photos.loads)
+        assertTrue(viewModel.photos[here]!!.bytes.contentEquals(byteArrayOf(1)))
+        assertNull(viewModel.photos[elsewhere])
     }
 
     private companion object {

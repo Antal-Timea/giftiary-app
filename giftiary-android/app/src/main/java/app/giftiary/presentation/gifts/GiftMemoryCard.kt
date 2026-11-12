@@ -4,7 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -50,7 +50,7 @@ fun GiftMemoryCard(
     Column(
         modifier = modifier.clickable(onClickLabel = stringResource(R.string.gift_open), onClick = onClick),
     ) {
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(PHOTO_CARD_RATIO)
@@ -58,7 +58,8 @@ fun GiftMemoryCard(
                 .background(colors.thumbnailFallback),
             contentAlignment = Alignment.Center,
         ) {
-            val image = photo?.let { rememberDecoded(it) }
+            // Cropped to the card: its taller side is all the photo has to cover.
+            val image = rememberDecodedImage(photo, maxOf(maxWidth, maxHeight))
             if (image != null) {
                 // The gift's name is written below; the photo adds no information of its own.
                 Image(bitmap = image, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)

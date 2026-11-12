@@ -52,6 +52,7 @@ import app.giftiary.presentation.components.RowChevron
 import app.giftiary.presentation.components.RowSupportingText
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.ComingUpBand
 import app.giftiary.presentation.home.ComingUpContent
 import app.giftiary.presentation.home.ComingUpViewModel
@@ -78,6 +79,7 @@ fun PeopleScreen(
     val comingUp by comingUpViewModel.content.collectAsStateWithLifecycle()
     AdaptivePeopleScreen(
         state = state,
+        photos = viewModel.photos,
         comingUp = comingUp,
         onQueryChange = viewModel::onQueryChange,
         onAddPerson = onAddPerson,
@@ -96,6 +98,7 @@ fun PeopleScreen(
 @Composable
 fun PeopleScreen(
     state: PeopleUiState,
+    photos: ShownPhotos,
     comingUp: ComingUpContent,
     onQueryChange: (String) -> Unit,
     onAddPerson: () -> Unit,
@@ -126,6 +129,7 @@ fun PeopleScreen(
             } else {
                 PeopleList(
                     state = state,
+                    photos = photos,
                     allCount = content.people.size,
                     comingUp = comingUp,
                     selectable = selectable,
@@ -142,6 +146,7 @@ fun PeopleScreen(
 @Composable
 private fun PeopleList(
     state: PeopleUiState,
+    photos: ShownPhotos,
     allCount: Int,
     comingUp: ComingUpContent,
     selectable: Boolean,
@@ -199,7 +204,7 @@ private fun PeopleList(
             PersonRow(
                 person = person,
                 birthday = state.birthdays[person.id]?.let { "${occasionTitle(it)} ${occasionShortDayMonth(it.day, it.month)}" },
-                photo = person.photoPath?.let(state.photos::get),
+                photo = photos.photoOf(person.photoPath),
                 selected = person.id == selectedPersonId,
                 selectable = selectable,
                 onClick = { onOpenPerson(person) },
@@ -365,6 +370,7 @@ private fun PeopleScreenPreview(state: PeopleUiState) {
     GiftiaryTheme {
         PeopleScreen(
             state = state,
+            photos = ShownPhotos.of(emptyMap()),
             comingUp = ComingUpContent.Loaded(emptyList()),
             onQueryChange = {},
             onAddPerson = {},

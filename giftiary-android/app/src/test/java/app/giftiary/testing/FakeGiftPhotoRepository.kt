@@ -54,9 +54,19 @@ class FakeGiftPhotoRepository : GiftPhotoRepository {
         discarded += target
     }
 
-    override suspend fun loadPhoto(path: String): ByteArray? = stored[path]
+    /** Every path [loadPhoto] and [loadLocalPhoto] were asked for, in order. */
+    val loads = mutableListOf<String>()
+    val localLoads = mutableListOf<String>()
 
-    override suspend fun loadLocalPhoto(path: String): ByteArray? = stored[path]?.takeUnless { path in remoteOnly }
+    override suspend fun loadPhoto(path: String): ByteArray? {
+        loads += path
+        return stored[path]
+    }
+
+    override suspend fun loadLocalPhoto(path: String): ByteArray? {
+        localLoads += path
+        return stored[path]?.takeUnless { path in remoteOnly }
+    }
 
     override fun observeUploadPending(path: String): Flow<Boolean> = pendingUploads.map { path in it }
 }

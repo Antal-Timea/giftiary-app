@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -44,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -81,7 +84,8 @@ import app.giftiary.presentation.components.monogramInitial
 import app.giftiary.presentation.giftideas.GiftIdeaRow
 import app.giftiary.presentation.gifts.GiftMemoryCard
 import app.giftiary.presentation.gifts.LoadedPhoto
-import app.giftiary.presentation.gifts.rememberDecoded
+import app.giftiary.presentation.gifts.ShownPhotos
+import app.giftiary.presentation.gifts.rememberDecodedImage
 import app.giftiary.presentation.home.DaysCountdown
 import app.giftiary.presentation.home.PlanLine
 import app.giftiary.presentation.occasions.occasionDateLine
@@ -114,7 +118,6 @@ fun PersonDetailScreen(
     onDeleted: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val giftPhotos by viewModel.giftPhotos.collectAsStateWithLifecycle()
     val personPhoto by viewModel.personPhoto.collectAsStateWithLifecycle()
     val deletion by viewModel.deletion.collectAsStateWithLifecycle()
     LaunchedEffect(deletion.deleted) {
@@ -122,7 +125,7 @@ fun PersonDetailScreen(
     }
     PersonDetailScreen(
         state = state,
-        giftPhotos = giftPhotos,
+        giftPhotos = viewModel.giftPhotos,
         personPhoto = personPhoto,
         deletion = deletion,
         onBack = onBack,
@@ -166,7 +169,7 @@ fun PersonDetailScreen(
     onDeleteDismissed: () -> Unit,
     onDeleteErrorShown: () -> Unit,
     modifier: Modifier = Modifier,
-    giftPhotos: Map<String, LoadedPhoto> = emptyMap(),
+    giftPhotos: ShownPhotos = remember { ShownPhotos.of(emptyMap()) },
     personPhoto: LoadedPhoto? = null,
     deletion: PersonDeletion = PersonDeletion(),
     today: LocalDate = LocalDate.now(),
@@ -240,7 +243,7 @@ fun PersonDetailScreen(
 @Composable
 private fun PersonDetailContent(
     state: PersonDetailUiState.Loaded,
-    giftPhotos: Map<String, LoadedPhoto>,
+    giftPhotos: ShownPhotos,
     personPhoto: LoadedPhoto?,
     today: LocalDate,
     onBack: (() -> Unit)?,
@@ -343,16 +346,13 @@ private fun PersonDetailContent(
         }
         item { AddAction(label = stringResource(R.string.person_detail_add_wishlist), onClick = onAddWishlist) }
 
-        item {
-            History(
-                person = state.person,
-                gifts = state.gifts,
-                giftPhotos = giftPhotos,
-                onOpenGift = onOpenGift,
-                onAddGift = onAddGift,
-                modifier = Modifier.padding(top = GiftiarySpacing.xl),
-            )
-        }
+        history(
+            person = state.person,
+            gifts = state.gifts,
+            giftPhotos = giftPhotos,
+            onOpenGift = onOpenGift,
+            onAddGift = onAddGift,
+        )
     }
 }
 
@@ -381,12 +381,12 @@ private fun PersonHero(person: Person, photo: LoadedPhoto?, onBack: (() -> Unit)
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .offset(x = 28.dp, y = 18.dp)
-                .size(196.dp)
+                .size(HERO_PHOTO_SIZE)
                 .clip(GiftiaryShapes.pill)
                 .background(colors.surfaceContextQuiet),
             contentAlignment = Alignment.Center,
         ) {
-            val image = photo?.let { rememberDecoded(it) }
+            val image = rememberDecodedImage(photo, HERO_PHOTO_SIZE)
             if (image != null) {
                 Image(
                     bitmap = image,
@@ -531,39 +531,52 @@ private fun AddAction(label: String, onClick: () -> Unit, modifier: Modifier = M
 
 /**
  * "History with Peter" on parchment: the gifts grouped by year and occasion, newest first, two
- * memory cards to a row.
+ * memory cards to a row. Row by row in the page's list, so a long history composes, and reads the
+ * photos of, only the cards on screen.
  */
-@Composable
-private fun History(
+private fun LazyListScope.history(
     person: Person,
     gifts: List<GiftEntry>,
-    giftPhotos: Map<String, LoadedPhoto>,
+    giftPhotos: ShownPhotos,
     onOpenGift: (GiftEntry) -> Unit,
     onAddGift: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val colors = GiftiaryTheme.colors
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(colors.surfaceAlt, GiftiaryShapes.sheet)
-            .padding(top = GiftiarySpacing.s, bottom = GiftiarySpacing.xxl),
-    ) {
-        DetailHeading(
-            icon = R.drawable.ic_history,
-            title = stringResource(R.string.person_detail_history, person.name),
-            subtitle = if (gifts.isEmpty()) null else pluralStringResource(R.plurals.person_detail_history_count, gifts.size, gifts.size),
-        )
-        if (gifts.isEmpty()) EmptyLine(stringResource(R.string.person_detail_no_gifts))
-        historyGroups(gifts).forEach { group ->
-            HistoryGroup(group = group, giftPhotos = giftPhotos, onOpenGift = onOpenGift)
+    item {
+        HistoryPart(top = true) {
+            DetailHeading(
+                icon = R.drawable.ic_history,
+                title = stringResource(R.string.person_detail_history, person.name),
+                subtitle = if (gifts.isEmpty()) null else pluralStringResource(R.plurals.person_detail_history_count, gifts.size, gifts.size),
+            )
+            if (gifts.isEmpty()) EmptyLine(stringResource(R.string.person_detail_no_gifts))
         }
-        AddAction(
-            label = stringResource(R.string.person_detail_add_gift),
-            onClick = onAddGift,
-            modifier = Modifier.padding(top = GiftiarySpacing.s),
-        )
     }
+    historyGroups(gifts).forEach { group ->
+        item { HistoryPart { HistoryGroupHeading(group) } }
+        items(group.gifts.chunked(2)) { pair -> HistoryPart { HistoryCards(pair, giftPhotos, onOpenGift) } }
+    }
+    item {
+        HistoryPart(bottom = true) {
+            AddAction(
+                label = stringResource(R.string.person_detail_add_gift),
+                onClick = onAddGift,
+                modifier = Modifier.padding(top = GiftiarySpacing.s),
+            )
+        }
+    }
+}
+
+/** One slice of the history's parchment: the first rounds its top, the last ends it. */
+@Composable
+private fun HistoryPart(top: Boolean = false, bottom: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .then(if (top) Modifier.padding(top = GiftiarySpacing.xl) else Modifier)
+            .fillMaxWidth()
+            .background(GiftiaryTheme.colors.surfaceAlt, if (top) GiftiaryShapes.sheet else RectangleShape)
+            .padding(top = if (top) GiftiarySpacing.s else 0.dp, bottom = if (bottom) GiftiarySpacing.xxl else 0.dp),
+        content = content,
+    )
 }
 
 /** The person's secondary actions, kept off the page: deleting them. The same bottom sheet as Quick Add. */
@@ -633,7 +646,7 @@ internal fun historyGroups(gifts: List<GiftEntry>): List<HistoryGroup> =
         .map { (key, entries) -> HistoryGroup(year = key.first, occasion = entries.first().occasion, gifts = entries) }
 
 @Composable
-private fun HistoryGroup(group: HistoryGroup, giftPhotos: Map<String, LoadedPhoto>, onOpenGift: (GiftEntry) -> Unit) {
+private fun HistoryGroupHeading(group: HistoryGroup) {
     val colors = GiftiaryTheme.colors
     Row(
         modifier = Modifier
@@ -656,26 +669,29 @@ private fun HistoryGroup(group: HistoryGroup, giftPhotos: Map<String, LoadedPhot
             )
         }
     }
-    group.gifts.chunked(2).forEach { pair ->
-        Row(
-            modifier = Modifier.padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.l),
-            horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
-        ) {
-            pair.forEach { entry ->
-                GiftMemoryCard(
-                    entry = entry,
-                    photo = entry.gift.photoPath?.let(giftPhotos::get),
-                    onClick = { onOpenGift(entry) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (pair.size == 1) Spacer(Modifier.weight(1f))
+}
+
+@Composable
+private fun HistoryCards(pair: List<GiftEntry>, giftPhotos: ShownPhotos, onOpenGift: (GiftEntry) -> Unit) {
+    Row(
+        modifier = Modifier.padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, bottom = GiftiarySpacing.l),
+        horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.l),
+    ) {
+        pair.forEach { entry ->
+            GiftMemoryCard(
+                entry = entry,
+                photo = giftPhotos.photoOf(entry.gift.photoPath),
+                onClick = { onOpenGift(entry) },
+                modifier = Modifier.weight(1f),
+            )
         }
+        if (pair.size == 1) Spacer(Modifier.weight(1f))
     }
 }
 
 private val HERO_HEIGHT = 266.dp
 private val MONOGRAM_SIZE = 104.dp
+private val HERO_PHOTO_SIZE = 196.dp
 
 // The hero buttons' 48dp targets and their vertical padding.
 private val HERO_BAR_HEIGHT = 64.dp

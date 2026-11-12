@@ -82,6 +82,7 @@ fun GiftHistoryScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     AdaptiveGiftHistoryScreen(
         state = state,
+        photos = viewModel.photos,
         onFilterChange = viewModel::onFilterChange,
         onQueryChange = viewModel::onQueryChange,
         onAddGift = onAddGift,
@@ -100,6 +101,7 @@ fun GiftHistoryScreen(
 @Composable
 fun GiftHistoryScreen(
     state: GiftHistoryUiState,
+    photos: ShownPhotos,
     onFilterChange: (GiftFilter) -> Unit,
     onQueryChange: (String) -> Unit,
     onAddGift: () -> Unit,
@@ -129,6 +131,7 @@ fun GiftHistoryScreen(
             }
             else -> HistoryList(
                 state = state,
+                photos = photos,
                 selectable = selectable,
                 onFilterChange = onFilterChange,
                 onQueryChange = onQueryChange,
@@ -143,6 +146,7 @@ fun GiftHistoryScreen(
 @Composable
 private fun HistoryList(
     state: GiftHistoryUiState,
+    photos: ShownPhotos,
     selectable: Boolean,
     onFilterChange: (GiftFilter) -> Unit,
     onQueryChange: (String) -> Unit,
@@ -175,7 +179,7 @@ private fun HistoryList(
             }
             is GiftHistoryContent.Loaded -> history(
                 content = content,
-                photos = state.photos,
+                photos = photos,
                 selectedGiftId = selectedGiftId,
                 selectable = selectable,
                 onOpenGift = onOpenGift,
@@ -187,7 +191,7 @@ private fun HistoryList(
 
 private fun LazyListScope.history(
     content: GiftHistoryContent.Loaded,
-    photos: Map<String, LoadedPhoto>,
+    photos: ShownPhotos,
     selectedGiftId: UUID?,
     selectable: Boolean,
     onOpenGift: (GiftEntry) -> Unit,
@@ -206,7 +210,7 @@ private fun LazyListScope.history(
                     }
                     HistoryRow(
                         entry = entry,
-                        photo = entry.gift.photoPath?.let { photos[it] },
+                        photo = photos.photoOf(entry.gift.photoPath),
                         selected = entry.gift.id == selectedGiftId,
                         selectable = selectable,
                         onClick = { onOpenGift(entry) },
@@ -306,7 +310,7 @@ private fun HistoryRow(
         titleStyle = GiftiaryType.contentTitle,
         contentPadding = PaddingValues(horizontal = GiftiarySpacing.browseGutter, vertical = 10.dp),
         leading = {
-            val image = photo?.let { rememberDecoded(it) }
+            val image = rememberDecodedImage(photo, THUMBNAIL_SIZE)
             GiftThumbnail(
                 size = THUMBNAIL_SIZE,
                 photo = image?.let {
@@ -491,6 +495,7 @@ private fun GiftHistoryPreview() {
     GiftiaryTheme {
         GiftHistoryScreen(
             state = GiftHistoryUiState(content = GiftHistoryContent.Loaded(groupByYearAndMonth(previewGifts))),
+            photos = ShownPhotos.of(emptyMap()),
             onFilterChange = {},
             onQueryChange = {},
             onAddGift = {},

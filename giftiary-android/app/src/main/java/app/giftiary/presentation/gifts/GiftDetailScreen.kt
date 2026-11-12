@@ -224,7 +224,7 @@ private fun GiftHero(
     onDeleteRequested: () -> Unit,
 ) {
     val colors = GiftiaryTheme.colors
-    val image = photo?.let { rememberDecoded(it) }
+    val image = rememberDecodedImage(photo)
     val onImage = image != null
     val circle = if (onImage) colors.background.copy(alpha = 0.85f) else colors.background
     Box(
