@@ -7,6 +7,7 @@ import app.giftiary.data.sync.ForegroundSyncCoordinator
 import app.giftiary.data.sync.FullSyncRequester
 import app.giftiary.data.sync.SyncPuller
 import app.giftiary.data.sync.SyncRunner
+import app.giftiary.data.user.DeletedAccountCheckRequester
 import app.giftiary.domain.model.InviteToken
 import app.giftiary.presentation.sharing.PendingJoin
 import app.giftiary.presentation.sharing.PendingWishlistJoin
@@ -22,17 +23,21 @@ import org.robolectric.RobolectricTestRunner
 class MainActivityTest {
 
     @Test
-    fun `every start of the activity asks for a full sync once`() {
+    fun `every start of the activity asks once for a full sync and for the deleted-account check`() {
         var requests = 0
-        // Never created: Hilt injects on create, and the only dependency onStart uses is set here.
+        var checks = 0
+        // Never created: Hilt injects on create, and the only dependencies onStart uses are set here.
         val activity = Robolectric.buildActivity(MainActivity::class.java)
         activity.get().fullSyncRequester = FullSyncRequester { requests++ }
+        activity.get().deletedAccountCheck = DeletedAccountCheckRequester { checks++ }
 
         activity.start()
         assertEquals(1, requests)
+        assertEquals(1, checks)
 
         activity.stop().start()
         assertEquals(2, requests)
+        assertEquals(2, checks)
     }
 
     @Test

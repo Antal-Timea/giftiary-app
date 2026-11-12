@@ -9,6 +9,7 @@ import app.giftiary.data.auth.AuthCallbackHandler
 import app.giftiary.data.auth.PasswordRecovery
 import app.giftiary.data.auth.ProviderSignIn
 import app.giftiary.data.sync.FullSyncRequester
+import app.giftiary.data.user.DeletedAccountCheckRequester
 import app.giftiary.presentation.components.ProvideWidthClass
 import app.giftiary.presentation.navigation.GiftiaryApp
 import app.giftiary.presentation.sharing.PendingWishlistJoin
@@ -24,6 +25,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var fullSyncRequester: FullSyncRequester
+
+    @Inject
+    lateinit var deletedAccountCheck: DeletedAccountCheckRequester
 
     @Inject
     lateinit var pendingWishlistJoin: PendingWishlistJoin
@@ -49,10 +53,11 @@ class MainActivity : ComponentActivity() {
     }
 
     // Coming back is the chance to push what earlier attempts left, e.g. while offline, and to
-    // fetch what other devices changed meanwhile.
+    // fetch what other devices changed meanwhile, and to ask again about an account's deletion.
     override fun onStart() {
         super.onStart()
         fullSyncRequester.requestFullSync()
+        deletedAccountCheck.requestCheck()
     }
 
     // A provider's callback link arrives in onNewIntent first, so resuming while its sign-in still

@@ -73,6 +73,7 @@ class AccountDeleterTest {
     private val notifier = ReminderNotifier(context, DeviceNotificationAccess(context))
     private val reminderPreferences = ReminderPreferences(context)
     private val marker = AccountDeletionMarker(context)
+    private val deviceProofs = DeviceProofs(context)
     private lateinit var database: GiftiaryDatabase
 
     private val everyTable = ACCOUNT_TABLES.associateWith { 1 }
@@ -96,10 +97,10 @@ class AccountDeleterTest {
         )
         val reminderSignOut = ReminderSignOut(reminderScheduler, notifier)
         val session = OwnerSession(auth, syncScheduler, reminderSignOut, FakeRecoveryGate(), marker, scope)
-        val deleter = AccountDeleter(
-            session, auth, remote, marker, database.accountDataDao(), syncScheduler, reminderSignOut, reminderPreferences, notifier,
-            photoFiles, scope,
+        val purge = LocalAccountPurge(
+            auth, database.accountDataDao(), syncScheduler, reminderSignOut, reminderPreferences, notifier, photoFiles, deviceProofs,
         )
+        val deleter = AccountDeleter(session, auth, remote, marker, purge, scope)
         session.start()
         deleter.start()
         return session to deleter

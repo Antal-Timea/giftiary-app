@@ -4,6 +4,7 @@ import android.app.Application
 import app.giftiary.data.reminders.ReminderAccountFollower
 import app.giftiary.data.sync.ForegroundSyncCoordinator
 import app.giftiary.data.user.AccountDeleter
+import app.giftiary.data.user.DeletedAccountCheck
 import app.giftiary.data.user.OwnerSession
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -23,6 +24,9 @@ class GiftiaryApplication : Application() {
     @Inject
     lateinit var accountDeleter: AccountDeleter
 
+    @Inject
+    lateinit var deletedAccountCheck: DeletedAccountCheck
+
     override fun onCreate() {
         super.onCreate()
         // Follows the signed-in account for the whole process, independent of any screen.
@@ -30,5 +34,6 @@ class GiftiaryApplication : Application() {
         syncCoordinator.start()
         reminderAccountFollower.start()
         accountDeleter.start()
+        deletedAccountCheck.start()
     }
 }

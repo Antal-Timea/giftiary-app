@@ -3,11 +3,13 @@ package app.giftiary.di
 import app.giftiary.BuildConfig
 import app.giftiary.data.remote.AccountBoundClients
 import app.giftiary.data.remote.AccountDeletionRemote
+import app.giftiary.data.remote.DeviceProofRemote
 import app.giftiary.data.remote.GiftPhotoRemote
 import app.giftiary.data.remote.ProfileAvatarRemote
 import app.giftiary.data.remote.RemoteReader
 import app.giftiary.data.remote.RemoteWriter
 import app.giftiary.data.remote.SupabaseAccountDeletionRemote
+import app.giftiary.data.remote.SupabaseDeviceProofRemote
 import app.giftiary.data.remote.SupabaseGiftPhotoRemote
 import app.giftiary.data.remote.SupabaseProfileAvatarRemote
 import app.giftiary.data.remote.SupabaseProfileRepository
@@ -36,6 +38,9 @@ abstract class RemoteModule {
 
     @Binds
     abstract fun bindAccountDeletionRemote(impl: SupabaseAccountDeletionRemote): AccountDeletionRemote
+
+    @Binds
+    abstract fun bindDeviceProofRemote(impl: SupabaseDeviceProofRemote): DeviceProofRemote
 
     @Binds
     abstract fun bindGiftPhotoRemote(impl: SupabaseGiftPhotoRemote): GiftPhotoRemote

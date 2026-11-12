@@ -12,8 +12,15 @@ import java.io.IOException
  * through unchanged and is never reported as a failure. Nothing is retried.
  */
 internal suspend fun <T> AccountBoundClients.call(account: RemoteAccount, block: suspend (SupabaseClient) -> T): T =
+    reportingFailures { withClient(account, block) }
+
+/** As [call], with no account: see [AccountBoundClients.withoutAccount]. */
+internal suspend fun <T> AccountBoundClients.callWithoutAccount(block: suspend (SupabaseClient) -> T): T =
+    reportingFailures { withoutAccount(block) }
+
+private suspend fun <T> reportingFailures(request: suspend () -> T): T =
     try {
-        withClient(account, block)
+        request()
     } catch (e: CancellationException) {
         throw e
     } catch (e: RemoteException) {

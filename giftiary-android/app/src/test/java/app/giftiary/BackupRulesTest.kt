@@ -31,6 +31,8 @@ class BackupRulesTest {
         "database" to "${GiftiaryDatabase.NAME}-journal",
         // An account deletion still to be finished on this device.
         "sharedpref" to "giftiary_account_deletion.xml",
+        // Device proof secrets, which only this device may use.
+        "sharedpref" to "giftiary_device_proofs.xml",
         // Gift photos, which belong with the database.
         "file" to "gift-photos/",
     )
