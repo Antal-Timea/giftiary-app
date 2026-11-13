@@ -33,6 +33,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
+      # The wrapper is committed without the executable bit (the project is developed on Windows).
+      - name: Make the Gradle wrapper executable
+        run: chmod +x gradlew
+
       # No local.properties and no secrets: debug builds only warn that Supabase is not configured,
       # and no release task runs, so signing and the hosted backend are never involved.
       - name: Unit tests
