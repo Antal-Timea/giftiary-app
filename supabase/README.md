@@ -31,8 +31,8 @@ Columns are the Room columns in snake_case. What does **not** cross over:
 - The sharing tables (`20261017100000_wishlist_sharing.sql`) have no Room counterpart: shared
   lists, memberships and reservations are server-owned and read online only.
 
-**Hosted project.** At the last recorded apply (W3, 2026-10-17) all six migrations in
-`supabase/migrations` were applied to the hosted project and verified. Check
+**Hosted project.** At the last recorded apply (2026-11-12, `20261112100000_device_account_proofs`)
+all 17 migrations in `supabase/migrations` were applied to the hosted project and verified. Check
 `migration list --linked` (read-only, with approval) before relying on this for a release.
 
 ## Rules the schema enforces
@@ -247,6 +247,18 @@ supabase stop
 
 The keys `supabase start` prints are local-development defaults. Hosted project credentials,
 service-role keys and `.env` files never go into the repository.
+
+The local stack serves the database tests; the Android app is not wired to it. The app reads
+`supabase.url` and `supabase.publishableKey` from the git-ignored
+`giftiary-android/local.properties` (see the root README), and two things stop it from using the
+local stack as is:
+- the local API is plain HTTP, and the app ships no network security config allowing cleartext
+  traffic;
+- `config.toml` keeps the CLI's default redirect URLs, without the app's `giftiary://auth/callback`
+  and `giftiary://auth/recovery`.
+
+To run the app, point it at a Supabase project of your own with these migrations applied and those
+two redirect URLs allowed.
 
 Migrations are append-only once shared. Tests run inside transactions and roll back; there is no
 seed data.

@@ -206,13 +206,18 @@ The intended dependency flow is:
         ↓
     ViewModel
         ↓
-    Use Case
+    Use Case (when there is a rule to hold)
         ↓
     Domain Repository
         ↓
     Repository Implementation
         ↓
     Room / Remote data source
+
+A use case is not mandatory ceremony. A ViewModel may depend directly on a domain repository when
+it only loads, observes or saves data for its screen. Add a use case when it carries a business
+rule, orchestrates several repositories, is reused by several callers or encodes a meaningful
+policy (for example validating and saving a gift, or computing upcoming occasions).
 
 Presentation must not access DAOs directly.
 
