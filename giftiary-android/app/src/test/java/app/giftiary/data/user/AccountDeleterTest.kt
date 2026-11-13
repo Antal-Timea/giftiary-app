@@ -33,6 +33,7 @@ import app.giftiary.testing.rowsOf
 import app.giftiary.testing.seedAccount
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -221,9 +222,15 @@ class AccountDeleterTest {
         val (_, deleter) = startProcess()
         val gate = CompletableDeferred<Unit>()
         remote.gate = gate
+        val reachedServer = CompletableDeferred<Unit>()
+        remote.onCall = { reachedServer.complete(Unit) }
 
         val first = async { deleter.deleteAccount() }
-        val second = async { deleter.deleteAccount() }
+        // The first deletion now waits at the server and cannot finish until the gate opens.
+        reachedServer.await()
+        // Undispatched: the second request is inside deleteAccount() and waiting before this returns.
+        val second = async(start = CoroutineStart.UNDISPATCHED) { deleter.deleteAccount() }
+        assertFalse(second.isCompleted)
         gate.complete(Unit)
         first.await()
         second.await()
