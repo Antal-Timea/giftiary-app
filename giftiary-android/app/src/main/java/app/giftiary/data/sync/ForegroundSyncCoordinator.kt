@@ -254,8 +254,10 @@ class ForegroundSyncCoordinator @Inject constructor(
         }
     }
 
-    /** A photo step as [owner], or null if there is no usable session for it. */
-    /** Captures a token only when there is photo work, so a drain without any reads no more tokens. */
+    /**
+     * A photo step as [owner], or null if there is no usable session for it. A token is captured
+     * only when there is photo work, so a drain without any reads no more tokens.
+     */
     private suspend fun photoStep(
         owner: UUID,
         kind: PhotoTransferKind,

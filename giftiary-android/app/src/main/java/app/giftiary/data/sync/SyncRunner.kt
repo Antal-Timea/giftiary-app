@@ -14,28 +14,21 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Pushes one account's queue, one operation at a time, in one bounded run. Everything about a
- * single operation is [SyncPusher]'s; this only decides which operations to push, in what order,
- * and when to stop.
+ * Pushes one account's queue in one bounded run. [SyncPusher] owns everything about a single
+ * operation; this decides which operations to push, in what order, and when to stop.
  *
- * - Candidates are the owner's unblocked operations when the run starts, and those an earlier
- *   version of the app blocked as REMOTE_NEWER, which the push now settles as conflicts without
- *   sending anything. Changes made later are the next run's, but every decision reads the current
- *   state of the entities.
- * - Order: by entity type, parents first (Person, Occasion, GiftIdea, Gift); within a type,
- *   mutations still in flight first, then oldest first.
- * - An operation is pushed only once every parent its entity references is known remotely, so a
- *   child never waits on the network for a parent the backend may not have. A blocked conflict
- *   sends nothing, so it does not wait. A parent settled earlier in the run lets its children
- *   through in the same run. A gift likewise waits until its photo is uploaded.
- * - Each operation is pushed at most once per run, and at most [MAX_PUSHES] in all. A newer change
+ * - Candidates are the unblocked operations, plus REMOTE_NEWER blocks left by earlier app
+ *   versions, which the push settles as conflicts without sending anything.
+ * - Parents first ([TYPE_ORDER]); within a type, in-flight mutations first, then oldest first.
+ * - An operation waits until every parent it references, and a gift's photo, exists remotely. A
+ *   parent settled earlier in the run lets its children through in the same run.
+ * - Each operation is pushed at most once per run and at most [MAX_PUSHES] in all. A newer change
  *   left by a settled mutation waits for the next run, so continued editing cannot keep a run going.
- * - A failure only holds back its own operation and its children; only a failure of the session,
- *   the active account or the account's permissions ends the run.
+ * - A failure holds back only its operation and its children. Only a session, account or
+ *   permission failure ends the run.
  *
- * Nothing is ever blocked here, and neither attempts nor time are taken as evidence: an
- * operation's own push decides that, on proof. Runs are serial: a run started while another is in
- * progress returns at once, which saves duplicate work (correctness never depended on it).
+ * Nothing is blocked here: only an operation's own push decides that, on proof, never on attempts
+ * or elapsed time. Runs are serial to save duplicate work; correctness does not depend on it.
  */
 @Singleton
 class SyncRunner @Inject constructor(
@@ -108,11 +101,9 @@ class SyncRunner @Inject constructor(
     private fun SyncOperationEntity.isBlockedConflict() =
         blockedReason == BlockReason.REMOTE_NEWER.name && inFlightMutationId == null
 
-    /** The owner's queue of entities that sync. */
     private suspend fun queue(account: RemoteAccount): List<SyncOperationEntity> =
         operations.getAllForOwner(account.ownerUserId).filter { it.entityType in PUSHED_TYPES }
 
-    /** What one run did, counted as it goes. */
     private class Progress {
         var pushed = 0
         var settled = 0

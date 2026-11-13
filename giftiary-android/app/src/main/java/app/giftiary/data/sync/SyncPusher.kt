@@ -32,41 +32,28 @@ import java.util.UUID
 import javax.inject.Inject
 
 /**
- * Pushes one queued operation, chosen by the caller, for one captured account: it settles the
- * operation's single unresolved mutation and leaves Room consistent. It never picks other
- * operations and never pushes a newer change that appears meanwhile.
+ * Pushes one queued operation for one captured account and settles its single unresolved
+ * mutation, leaving Room consistent.
  *
- * Which mutation: the one in flight if there is one (left by a run that ended without knowing the
- * outcome), otherwise the current one, which is marked in flight before anything is sent. A newer
- * change is never sent while an older mutation is unresolved.
+ * - **Which mutation:** the one in flight, if an earlier run ended without knowing its outcome;
+ *   otherwise the current one, marked in flight before anything is sent. A newer change is never
+ *   sent while an older mutation is unresolved.
+ * - **What is sent:** the entity as it is when the attempt starts. Insert vs update and the
+ *   expected version come from the entity's remote state, which cannot change while a mutation is
+ *   in flight, so a retry may carry newer content under the same mutation id.
+ * - **Retries:** at most two sends per call (one when resuming), and only while the backend's
+ *   evidence (ledger, then row) shows the mutation has not committed and still can. Mutation ids
+ *   are never minted here.
+ * - **Giving up needs proof.** Refused values settle a mutation only when the refused send was its
+ *   only copy; a missing parent never does, since the parent may still arrive. Anything else stays
+ *   in flight.
+ * - **Conflicts:** a remote row past the expected version means none of the queued changes can
+ *   commit. The local state is kept as a conflict and the next pull brings the backend's row. A
+ *   gift insert that loses its source idea to another gift is a conflict only on that proof;
+ *   otherwise it is refused like any other insert.
  *
- * What is sent: the entity's state when the attempt starts, read in the same transaction that
- * checks the mutation is in flight. Whether it is an insert or an update, and the version an
- * update expects, come from the entity's remote state and version, which nothing changes while a
- * mutation is in flight; the queue's operation may already describe a newer change. A retry of
- * the same mutation may therefore carry newer content than the first send: the backend holds
- * whatever the committed copy carried, and the newer change stays queued to follow.
- *
- * Retries are bounded: at most two sends per call (one after a run that ended in flight), and only
- * when the backend's evidence shows the mutation has not committed and still can. The same
- * mutation id is always reused; none is ever created here.
- *
- * A mutation is only ever settled as unable to commit on proof. Refused values count as proof only
- * for the one copy of a mutation that was ever sent; a missing referenced row never does, since
- * the parent may still arrive. Otherwise the mutation stays in flight, unresolved.
- *
- * A remote row that moved past the version the entity's changes are based on is a conflict: none
- * of them can commit, so the operation is settled as a whole, keeping the local state as a
- * conflict, and the backend's row reaches Room through the next pull. An operation that an earlier
- * version of the app blocked for this is settled the same way, on a fresh read of the row; it is
- * never sent.
- *
- * A gift insert refused because another gift of the account already holds its source idea is a
- * conflict too, but only on that proof, read right after the refusal: the losing gift is kept as a
- * conflict and dropped locally. Every other refusal blocks the mutation.
- *
- * Network requests are never made inside a Room transaction. Cancellation is not a failure: it
- * leaves the mutation in flight, to be settled by the next push.
+ * No network call is made inside a Room transaction. Cancellation is not a failure: the mutation
+ * stays in flight for the next push.
  */
 class SyncPusher @Inject constructor(
     private val database: GiftiaryDatabase,
