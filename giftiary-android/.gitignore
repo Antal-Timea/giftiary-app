@@ -8,3 +8,5 @@ build/
 /captures
 .externalNativeBuild
 .cxx
+# Signed release outputs (APK/AAB) from Android Studio's Generate Signed Bundle / APK.
+/app/release/
