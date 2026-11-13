@@ -47,8 +47,10 @@
 - [ ] Every `[VERIFY]` above resolved by the owner.
 - [ ] Answers consistent with the published privacy policy (`docs/legal/privacy-policy-en.md`,
       `-hu.md`, effective 12 November 2026, covering device proofs and the F5 other-device
-      removal) and with the account-deletion page. Both must be published on the website first
-      (`docs/release-checklist.md`, Gate B).
+      removal) and with the account-deletion page. Both pages are already published and verified
+      live (website PR #9, `a675918`, 12 November 2026; `docs/release-checklist.md`, Gate B). This
+      check is still open: the answers above are a working draft, and the Play Data safety form has
+      **NOT been submitted**.
 - [ ] Deletion URL https://giftiary.app/account-deletion/ entered in Play Console.
 - [ ] Account-deletion answer consistent with the current Play policy check in
       `docs/release-checklist.md`, Gate B.
