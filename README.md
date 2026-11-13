@@ -126,6 +126,9 @@ supabase stop
 
 The pgTAP tests are not part of CI yet.
 
+Development was AI-assisted: much of the implementation was done with Claude Code, under the
+owner's direction and review.
+
 ## Running the app
 
 The app needs a Supabase backend. Its address and publishable key are read from

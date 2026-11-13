@@ -35,7 +35,8 @@ Notes on how the approved images are used:
 
 ## Why this exists
 
-The approved designs in `docs/design/approved/` use 20 recovered images (`source/assets/`). The owner
+The approved designs used 20 recovered reference images. They are kept in the project's private
+design record, not in this repository; `ProductionImageryTest` pins them by hash. The owner
 decided (**R4**) that they are **reference only**. They define each image's role and art direction, but
 they must not ship. This applies to the images and to anything closely derived from them.
 

@@ -77,7 +77,7 @@ Check on every release build:
 - [ ] Invitation email (migration `20261110100000`): `pg_net` and `pg_cron` installed, cron job
       `recipient-invites` active with a successful last run, and the Vault secret
       `resend_api_key` present (checked by a count query that never prints it). All three were
-      confirmed on hosted on 2026-11-09 (`docs/agent` STATUS at `b11f447`); re-check before each
+      confirmed on hosted on 2026-11-09 (recorded in the private review log); re-check before each
       release.
 - [ ] Dedicated test accounts exist: A (owner), B and C (guests), each with a distinct display
       name. Creating them creates hosted data.
