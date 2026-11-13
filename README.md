@@ -1,6 +1,6 @@
 # Giftiary
 
-[![Android](https://github.com/Antal-Timea/giftiary/actions/workflows/android.yml/badge.svg?branch=develop)](https://github.com/Antal-Timea/giftiary/actions/workflows/android.yml)
+[![Android](https://github.com/Antal-Timea/giftiary-app/actions/workflows/android.yml/badge.svg?branch=master)](https://github.com/Antal-Timea/giftiary-app/actions/workflows/android.yml?query=branch%3Amaster)
 
 <img src="giftiary-android/app/src/main/res/drawable-nodpi/giftiary_home_hero.webp" alt="" width="320" align="right">
 
