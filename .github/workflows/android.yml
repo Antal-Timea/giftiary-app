@@ -1,0 +1,58 @@
+name: Android
+
+on:
+  pull_request:
+  push:
+    branches: [develop, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: giftiary-android
+    steps:
+      - uses: actions/checkout@v5
+
+      # Matches gradle/gradle-daemon-jvm.properties.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # Accepts the SDK licences; AGP then fetches the platform and build tools compileSdk needs.
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      # No local.properties and no secrets: debug builds only warn that Supabase is not configured,
+      # and no release task runs, so signing and the hosted backend are never involved.
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: ./gradlew :app:lintDebug
+
+      - name: Debug build
+        if: ${{ !cancelled() }}
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload reports
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: reports
+          path: |
+            giftiary-android/app/build/reports/tests/
+            giftiary-android/app/build/test-results/
+            giftiary-android/app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
