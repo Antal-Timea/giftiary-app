@@ -29,7 +29,10 @@ jobs:
           java-version: 25
 
       # Accepts the SDK licences; AGP then fetches the platform and build tools compileSdk needs.
+      # Only platform-tools: the action's default list still names the removed 'tools' package.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - uses: gradle/actions/setup-gradle@v5
 
@@ -40,14 +43,16 @@ jobs:
       # No local.properties and no secrets: debug builds only warn that Supabase is not configured,
       # and no release task runs, so signing and the hosted backend are never involved.
       - name: Unit tests
+        id: unit
         run: ./gradlew :app:testDebugUnitTest
 
       - name: Lint
-        if: ${{ !cancelled() }}
+        # Also after failing tests, but not when setup failed before the tests could run.
+        if: ${{ !cancelled() && steps.unit.outcome != 'skipped' }}
         run: ./gradlew :app:lintDebug
 
       - name: Debug build
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.unit.outcome != 'skipped' }}
         run: ./gradlew :app:assembleDebug
 
       - name: Upload reports
