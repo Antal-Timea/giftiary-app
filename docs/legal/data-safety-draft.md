@@ -1,9 +1,11 @@
 # Google Play Data safety: working draft
 
-> **Status: draft answer sheet, not a submission.** Every fact here comes from
+> **Status: declaration completed.** The owner completed the Data safety form in Play Console
+> (App content) with the answers under "Declared in Play Console" below, and the App content page
+> shows nothing needing attention. This records the App content declaration only; it does not mean
+> a release was submitted for production review. The facts table is the answer sheet behind it, from
 > `release-data-inventory.md` (develop `763adc5`, F5 merged). Play's categories and wording change;
-> the owner must map each fact onto the **current** form and resolve every `[VERIFY]` before
-> submitting anything.
+> re-check the declaration whenever the inventory changes.
 
 ## Facts from the app
 
@@ -30,17 +32,23 @@
 | Shared with third parties | Processors only: Supabase (auth, database, storage), Resend (confirmation, recovery and invitation emails). No advertising or analytics partners | Processing by service providers; not "sharing" | `[VERIFY]` how the current form treats processors |
 | Data processed ephemerally | Shared lists of other users are read online and not stored on the device. The device-proof check sends the secret and stores nothing | n/a | `[VERIFY]` whether the check counts as ephemeral processing |
 
-## Proposed declaration (draft, not submitted)
+## Declared in Play Console
 
 - **Collected:**
-  - Personal info: Email address (required), Name (optional), User IDs (required).
-  - Photos (optional).
-  - Device or other IDs (required, automatic).
-  - Other user-generated content (optional).
-  - Purposes: app functionality and account management only.
-- **Shared:** none. Resend and Supabase are processors.
-- **Security:** encrypted in transit; users can request deletion (in app and at https://giftiary.app/account-deletion/).
-- **Not collected:** location, contacts, calendar, financial info, health, messages, audio, files, app activity, web browsing, app info and performance.
+  - Name: optional; app functionality and account management.
+  - Email address: required; app functionality and account management.
+  - User IDs: required; app functionality and account management.
+  - Photos: optional; app functionality.
+  - Other user-generated content: optional; app functionality.
+  - No analytics, marketing or personalisation purpose.
+- **Not selected:** Contacts, and every type not listed above.
+- **Security:** data is encrypted in transit.
+- **Accounts:** created with a username and password, or with OAuth. Account deletion resource:
+  https://giftiary.app/account-deletion/. There is no separate way to request deletion of data
+  without deleting the account.
+
+Where a draft answer in the table differs (for example Device or other IDs), this declaration is
+what was entered.
 
 ## Before submitting
 
@@ -48,9 +56,8 @@
 - [ ] Answers consistent with the published privacy policy (`docs/legal/privacy-policy-en.md`,
       `-hu.md`, effective 12 November 2026, covering device proofs and the F5 other-device
       removal) and with the account-deletion page. Both pages are already published and verified
-      live (website PR #9, `a675918`, 12 November 2026; `docs/release-checklist.md`, Gate B). This
-      check is still open: the answers above are a working draft, and the Play Data safety form has
-      **NOT been submitted**.
-- [ ] Deletion URL https://giftiary.app/account-deletion/ entered in Play Console.
+      live (website PR #9, `a675918`, 12 November 2026; `docs/release-checklist.md`, Gate B). The
+      Play Data safety form has been completed with the declaration above.
+- [x] Deletion URL https://giftiary.app/account-deletion/ entered in Play Console.
 - [ ] Account-deletion answer consistent with the current Play policy check in
       `docs/release-checklist.md`, Gate B.

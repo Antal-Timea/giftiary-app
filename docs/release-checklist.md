@@ -205,18 +205,23 @@ All of Gate A passed on the build to upload, then:
       clears the session. The **external web deletion resource** is published at
       https://giftiary.app/account-deletion/ (privacy policy section 12,
       `docs/legal/privacy-policy-en.md`; runbook `docs/operations/account-deletion-by-email.md`).
-      Still to do: enter that URL in Play Console, and the Meta data deletion instructions URL if
-      Facebook sign-in ships.
+      That URL is entered in Play Console as the Data safety deletion resource. Still to do: the
+      Meta data deletion instructions URL if Facebook sign-in ships.
 - [ ] **Privacy policy (human):** the canonical texts are `docs/legal/privacy-policy-hu.md` and
       `docs/legal/privacy-policy-en.md`, effective 12 November 2026 (F6: device proofs and the F5
       other-device removal). Published byte-identically at https://giftiary.app/privacy/ (linked
       from Settings) by website PR #9 (`Antal-Timea/giftiary-website` master `a675918`), live since
       12 November 2026. Still to do: enter the URL in Play Console.
       (`docs/legal/privacy-policy-draft.md` is superseded; it is only the evidence behind them.)
-- [ ] **Data safety (human):** form completed from `docs/legal/data-safety-draft.md`, the current
-      answer sheet (brought up to date in F6 against `docs/legal/release-data-inventory.md`), every
-      `[VERIFY]` item resolved first. Current state: the answer sheet is a **DRAFT**, and the Play
-      Data safety form has **NOT been submitted**.
+- [x] **Data safety (human):** completed in Play Console (App content), confirmed by the owner on
+      13 November 2026. Collected: Name (optional), Email address and User IDs (required), each for
+      app functionality and account management; Photos and Other user-generated content
+      (optional), for app functionality. No analytics, marketing or personalisation purpose;
+      Contacts not selected; encrypted in transit; accounts by username and password or OAuth;
+      deletion resource https://giftiary.app/account-deletion/, with no separate request to delete
+      data without deleting the account. The App content page shows nothing needing attention.
+      Declaration and answer sheet: `docs/legal/data-safety-draft.md`. This is the App content
+      declaration only, not a submission for production review.
 - [x] **Privacy texts after F5 (human):** the 12 November policy and the account-deletion page
       changes in `docs/legal/account-deletion-page-f5-update.md` were published together in website
       PR #9 (`a675918`), deployed by the owner on 12 November 2026. Evidence: the reviewer's F6
