@@ -209,17 +209,20 @@ All of Gate A passed on the build to upload, then:
       Facebook sign-in ships.
 - [ ] **Privacy policy (human):** the canonical texts are `docs/legal/privacy-policy-hu.md` and
       `docs/legal/privacy-policy-en.md`, effective 12 November 2026 (F6: device proofs and the F5
-      other-device removal). The published https://giftiary.app/privacy/ (linked from Settings) is
-      still the 10 November version (app PR #3, website PR #7). Still to do: publish the
-      12 November texts byte-identically on the website, and enter the URL in Play Console.
+      other-device removal). Published byte-identically at https://giftiary.app/privacy/ (linked
+      from Settings) by website PR #9 (`Antal-Timea/giftiary-website` master `a675918`), live since
+      12 November 2026. Still to do: enter the URL in Play Console.
       (`docs/legal/privacy-policy-draft.md` is superseded; it is only the evidence behind them.)
 - [ ] **Data safety (human):** form completed from `docs/legal/data-safety-draft.md`, the current
       answer sheet (brought up to date in F6 against `docs/legal/release-data-inventory.md`), every
-      `[VERIFY]` item resolved first.
-- [ ] **Privacy texts after F5 (human):** publish the 12 November policy and the
-      account-deletion page changes in `docs/legal/account-deletion-page-f5-update.md` in one
-      website PR, before a build with F5 reaches testers. Until then the live pages say a deleted
-      account's other devices are not cleared automatically and do not mention device proofs.
+      `[VERIFY]` item resolved first. Current state: the answer sheet is a **DRAFT**, and the Play
+      Data safety form has **NOT been submitted**.
+- [x] **Privacy texts after F5 (human):** the 12 November policy and the account-deletion page
+      changes in `docs/legal/account-deletion-page-f5-update.md` were published together in website
+      PR #9 (`a675918`), deployed by the owner on 12 November 2026. Evidence: the reviewer's F6
+      merge approval (REVIEW at `764ee68`), and a GET on 13 November 2026: `/privacy/` shows
+      "12 November 2026" / "2026. november 12." and the device proof; `/account-deletion/` has the
+      new HU/EN paragraphs and none of the old "not deleted automatically" ones.
 - [x] Play Console app with package `app.giftiary` (permanent once uploaded), Play App Signing. Evidence: the owner supplied
       the Play app signing certificate (CURRENT_TASK at `94389a7`), and a Play-installed build
       was tested (CURRENT_TASK at `79fec2a`).

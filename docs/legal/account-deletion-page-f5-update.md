@@ -1,14 +1,15 @@
 # Account-deletion page: F5 update (for the website)
 
-> **Status:** reviewed text, **not yet published**. The page https://giftiary.app/account-deletion/
-> is served from the website repository (`Antal-Timea/giftiary-website`,
-> `site/account-deletion/index.html`, deployed to Netlify by the owner). That source is not in this
-> repository, so this file holds the exact replacements. Apply them in a website PR together with
-> the updated `source/legal/privacy-policy-{en,hu}.md`. The website copies must be byte-identical to
-> `docs/legal/privacy-policy-{en,hu}.md` (effective 12 November 2026).
+> **Status:** **published.** These replacements went live on 12 November 2026 in website PR #9
+> (`Antal-Timea/giftiary-website` master `a675918`), together with the 12 November privacy policy,
+> whose website copies are byte-identical to `docs/legal/privacy-policy-{en,hu}.md`. The checks under
+> "After publishing" passed (reviewer and owner on 12 November; GET again on 13 November 2026).
+> This file is kept as the record of the change.
 >
-> The "Old" paragraphs were taken from the live page on 12 November 2026. Replace each one whole,
-> and change nothing else on the page.
+> The page https://giftiary.app/account-deletion/ is served from the website repository
+> (`site/account-deletion/index.html`, deployed to Netlify by the owner); that source is not in this
+> repository. The "Old" paragraphs were taken from the live page on 12 November 2026; each was
+> replaced whole, and nothing else on the page changed.
 
 ## Hungarian
 
