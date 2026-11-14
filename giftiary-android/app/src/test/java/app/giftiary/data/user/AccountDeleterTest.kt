@@ -159,7 +159,7 @@ class AccountDeleterTest {
         deleter.deleteAccount()
 
         assertNull(session.ownerId.value)
-        assertEquals(OwnerSessionState.SignedOut, session.state.value)
+        session.awaitState(OwnerSessionState.SignedOut)
         assertTrue(FakeSyncScheduler.CANCEL in syncScheduler.calls)
         assertTrue(FakeReminderScheduler.CANCEL in reminderScheduler.calls)
         assertTrue("the digest naming Alice's people is gone", activeDigests().isEmpty())
@@ -272,7 +272,7 @@ class AccountDeleterTest {
         assertEquals(everyTable, database.rowsOf(bob.id))
         assertEquals(1, auth.clearLocalSessionCalls)
         assertNull(marker.owner())
-        assertEquals(OwnerSessionState.SignedOut, session.state.value)
+        session.awaitState(OwnerSessionState.SignedOut)
         assertEquals(AccountDeletionState.Deleted, deleter.state.value)
     }
 
@@ -370,6 +370,12 @@ class AccountDeleterTest {
 
     // Room runs the purge on its own thread, so finishing on start is awaited in real time.
     private suspend fun AccountDeleter.awaitState(expected: AccountDeletionState) =
+        withContext(Dispatchers.Default) { withTimeout(5_000) { state.first { it == expected } } }
+
+    // The session follows the signed-out state in its own collector. The purge sets that state on a
+    // database thread, which runs the collector only after the deletion has finished there, so the
+    // session can still be settling when the deletion is already Deleted.
+    private suspend fun OwnerSession.awaitState(expected: OwnerSessionState) =
         withContext(Dispatchers.Default) { withTimeout(5_000) { state.first { it == expected } } }
 
     private fun activeDigests() = context.getSystemService(NotificationManager::class.java).activeNotifications

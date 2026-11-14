@@ -9,6 +9,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -89,6 +90,10 @@ class GiftDetailScreenTest {
     @Test
     fun `the page reads hero, person, facts, then the note`() {
         show(loaded(full, photo = GiftDetailPhoto(jpeg(), loading = false)))
+        // The photo is decoded off the main thread, which waiting for Compose to be idle does not cover.
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithContentDescription("Photo of the gift").fetchSemanticsNodes().isNotEmpty()
+        }
 
         val order = listOf("Given to Peter", "Wireless headphones", "Husband", "Birthday · October 12, 2026", "42,990", "example.com", "comfortable")
         val tops = order.map(::top)
