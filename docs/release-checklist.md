@@ -220,6 +220,9 @@ All of Gate A passed on the build to upload, then:
       Contacts not selected; encrypted in transit; accounts by username and password or OAuth;
       deletion resource https://giftiary.app/account-deletion/, with no separate request to delete
       data without deleting the account. The App content page shows nothing needing attention.
+      On 14 November 2026 the owner added Device or other IDs (the F5 device proof: collected,
+      not shared, not ephemeral, required; app functionality and account management) and
+      submitted the corrected declaration for review; Google's review is not recorded yet.
       Declaration and answer sheet: `docs/legal/data-safety-draft.md`. This is the App content
       declaration only, not a submission for production review.
 - [x] **Privacy texts after F5 (human):** the 12 November policy and the account-deletion page

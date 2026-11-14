@@ -1,9 +1,10 @@
 # Google Play Data safety: working draft
 
-> **Status: declaration completed.** The owner completed the Data safety form in Play Console
-> (App content) with the answers under "Declared in Play Console" below, and the App content page
-> shows nothing needing attention. This records the App content declaration only; it does not mean
-> a release was submitted for production review. The facts table is the answer sheet behind it, from
+> **Status: declaration submitted for review.** The owner completed the Data safety form in Play
+> Console (App content) on 13 November 2026, added Device or other IDs on 14 November 2026 and
+> submitted the corrected declaration for review that day; it is listed under "Declared in Play
+> Console" below. Google's review of it is not recorded here. This covers the App content
+> declaration only; no release was submitted for production review. The facts table is the answer sheet behind it, from
 > `release-data-inventory.md` (develop `763adc5`, F5 merged). Play's categories and wording change;
 > re-check the declaration whenever the inventory changes.
 
@@ -19,7 +20,7 @@
 | Name | Optional display name, shown to people the user shares wishlists with or invites. With Google or Facebook sign-in, the provider's name (and picture URL) is also stored by the auth service in the account record; the app does not use it | Collected, optional; app functionality | `[VERIFY]` whether user-initiated sharing with other users counts as "shared" on the current form, and whether the provider profile counts as collected "Name" / "Photos" |
 | Sign-in with Google or Facebook | Browser-based OAuth through Supabase; no Google or Facebook SDK in the app | Google and Meta act as identity providers at the user's choice | `[VERIFY]` how the current form treats identity providers |
 | User IDs | The account's id (UUID), used for sign-in and sync, stored on the server and on the device | Collected; required; app functionality / account management | `[VERIFY]` category mapping |
-| Device or other IDs | F5 device proof: each signed-in install makes a random secret, keeps it on the device (excluded from backup) and registers its SHA-256 with the account (at most 20 per account). It is used only to confirm that a deleted account's data may be removed from that device. Deleted with the account. Not an Android/advertising/hardware id | Collected; required (automatic while signed in); account management / app functionality; not shared | `[VERIFY]` whether an app-generated per-install identifier belongs here on the current form (recommended: declare it) |
+| Device or other IDs | F5 device proof: each signed-in install makes a random secret, keeps it on the device (excluded from backup) and registers its SHA-256 with the account (at most 20 per account). It is used only to confirm that a deleted account's data may be removed from that device. Deleted with the account. Not an Android/advertising/hardware id | Collected; required (automatic while signed in); account management / app functionality; not shared | `[VERIFY]` whether an app-generated per-install identifier belongs here on the current form (recommended: declare it). Resolved: declared on 14 November 2026 |
 | Other user-generated content | People, occasions (incl. birthdays of others), gift ideas, gifts, prices, notes, product links, wishlists, wishes; stored on the device and synced. Deleted records are kept on the server as tombstones until the account is deleted | Collected; optional (typed in by the user); app functionality | `[VERIFY]` category ("other user-generated content" or similar) |
 | Sharing data | Invite links (secret stored only as a hash), email invites (above), memberships, reservations; server only. Members see a wish only as available, reserved by them or reserved by someone else; the list owner never sees reservations (for a list kept for a person, only a neutral "Reserved") | Collected; optional; app functionality. Shown only to people the user invites | `[VERIFY]` category mapping; whether user-initiated sharing counts as "shared" |
 | Reminder settings | Per account, on the device only (included in Android backup); removed when the account's local data is purged | Not sent to the backend | |
@@ -40,15 +41,19 @@
   - User IDs: required; app functionality and account management.
   - Photos: optional; app functionality.
   - Other user-generated content: optional; app functionality.
-  - No analytics, marketing or personalisation purpose.
+  - Device or other IDs (the F5 device proof): required, the user cannot opt out; not processed
+    ephemerally, because the proof stays until the account is deleted; app functionality and
+    account management.
+  - No analytics, developer communications, advertising or marketing, fraud prevention, security
+    and compliance, or personalisation purpose.
+- **Shared:** Device or other IDs is not shared.
 - **Not selected:** Contacts, and every type not listed above.
 - **Security:** data is encrypted in transit.
 - **Accounts:** created with a username and password, or with OAuth. Account deletion resource:
   https://giftiary.app/account-deletion/. There is no separate way to request deletion of data
   without deleting the account.
 
-Where a draft answer in the table differs (for example Device or other IDs), this declaration is
-what was entered.
+Where a draft answer in the table differs, this declaration is what was entered.
 
 ## Before submitting
 
@@ -57,7 +62,7 @@ what was entered.
       `-hu.md`, effective 12 November 2026, covering device proofs and the F5 other-device
       removal) and with the account-deletion page. Both pages are already published and verified
       live (website PR #9, `a675918`, 12 November 2026; `docs/release-checklist.md`, Gate B). The
-      Play Data safety form has been completed with the declaration above.
+      corrected Play Data safety declaration above was submitted for review on 14 November 2026.
 - [x] Deletion URL https://giftiary.app/account-deletion/ entered in Play Console.
 - [ ] Account-deletion answer consistent with the current Play policy check in
       `docs/release-checklist.md`, Gate B.
