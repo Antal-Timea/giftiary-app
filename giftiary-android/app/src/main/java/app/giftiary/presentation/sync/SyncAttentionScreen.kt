@@ -66,8 +66,9 @@ fun SyncAttentionScreen(
 
 /**
  * What this device could not settle with the account, as a utility page: the task header, then one
- * uncontained row per item, with Open and Dismiss only where the item allows them. Loading and an
- * unreadable status are the DS-05 task states; nothing claims the device matches the account.
+ * uncontained row per item, with Open and Got it (which closes the notice) only where the item allows
+ * them. Loading and an unreadable status are the DS-05 task states; nothing claims the device matches
+ * the account.
  */
 @Composable
 fun SyncAttentionScreen(

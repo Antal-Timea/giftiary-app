@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import app.giftiary.domain.model.GiftIdeaStatus
@@ -97,26 +98,26 @@ class GiftIdeaEditorScreenTest {
     }
 
     @Test
-    fun `adding reads idea, for whom, occasion, then the details toggle and save`() {
+    fun `adding reads idea, for whom, occasion, the photo, then the details toggle and save`() {
         show(adding)
 
         assertTopToBottom(
             listOf(
                 "Add a gift idea", "Save an idea for someone, before you forget it.", "Gift idea", "For", "Peter",
-                "Occasion (optional)", "Add more details (optional)", "Save idea",
+                "Occasion (optional)", "Photo", "Add more details (optional)", "Save idea",
             ),
         )
+        compose.onNodeWithText("Add photo").performScrollTo().performClick()
+        compose.onNodeWithText("Take photo").assertExists()
         compose.onNodeWithText("Estimated price", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
-    fun `the details keep every current field, and no photo an idea cannot hold`() {
+    fun `the details keep every current field, with the photo above them`() {
         show(adding.copy(estimatedPrice = "45000"))
 
         compose.onNodeWithText("Add more details (optional)").performClick()
-        assertTopToBottom(listOf("Fewer details", "Status", "Estimated price", "Product link", "Note", "Save idea"))
-        compose.onNodeWithText("Photo", useUnmergedTree = true).assertDoesNotExist()
-        compose.onNodeWithText("Add photo").assertDoesNotExist()
+        assertTopToBottom(listOf("Photo", "Fewer details", "Status", "Estimated price", "Product link", "Note", "Save idea"))
 
         compose.onNodeWithText("Fewer details").performClick()
         compose.onNodeWithText("Add more details (optional)").performClick()

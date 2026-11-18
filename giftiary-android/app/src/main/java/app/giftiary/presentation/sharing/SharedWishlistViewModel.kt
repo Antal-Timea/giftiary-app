@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.ReservationState
 import app.giftiary.domain.model.SharedWishlist
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.SharingException
 import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.domain.repository.WishlistSharingRepository
+import app.giftiary.presentation.gifts.ShownPhotos
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -23,7 +25,11 @@ import java.util.UUID
 class SharedWishlistViewModel @AssistedInject constructor(
     @Assisted private val wishlistId: UUID,
     private val sharing: WishlistSharingRepository,
+    photoRepository: GiftPhotoRepository,
 ) : ViewModel() {
+
+    /** The owner's photos of the wishes on screen, read from the server and kept only in memory. */
+    val photos = ShownPhotos(viewModelScope, photoRepository::loadSharedPhoto)
 
     private val loader = OnlineLoader { sharing.sharedWishlist(wishlistId) }
     val state: StateFlow<OnlineState<SharedWishlist>> = loader.state.asStateFlow()

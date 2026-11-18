@@ -48,6 +48,10 @@ interface WishDao {
     @Query("SELECT * FROM wish WHERE id = :id AND ownerUserId = :ownerUserId")
     suspend fun findById(id: UUID, ownerUserId: UUID): WishEntity?
 
+    /** Every photo the owner's wishes name, deleted ones included. */
+    @Query("SELECT photoPath FROM wish WHERE ownerUserId = :ownerUserId AND photoPath IS NOT NULL")
+    suspend fun getPhotoPaths(ownerUserId: UUID): List<String>
+
     /** Whichever account's row has [id]; for sync, which must tell another account's row from none. */
     @Query("SELECT * FROM wish WHERE id = :id")
     suspend fun findByIdForAnyOwner(id: UUID): WishEntity?

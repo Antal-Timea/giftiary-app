@@ -1,5 +1,6 @@
 package app.giftiary.presentation.occasions
 
+import android.graphics.Bitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -7,6 +8,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -16,7 +18,12 @@ import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
+import app.giftiary.presentation.giftideas.IDEA_PHOTO_TAG
+import app.giftiary.presentation.giftideas.IDEA_THUMBNAIL_TAG
+import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.awaitPhoto
 import app.giftiary.testing.ideaDetails
 import app.giftiary.testing.ideaEntry
 import app.giftiary.testing.occasion
@@ -27,6 +34,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.io.ByteArrayOutputStream
 import java.time.LocalDate
 
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -45,7 +54,7 @@ class OccasionPlanScreenTest {
 
     private val calls = mutableListOf<String>()
 
-    private fun show(state: OccasionPlanUiState) {
+    private fun show(state: OccasionPlanUiState, photos: ShownPhotos = ShownPhotos.of(emptyMap())) {
         compose.setContent {
             GiftiaryTheme {
                 OccasionPlanScreen(
@@ -55,6 +64,7 @@ class OccasionPlanScreenTest {
                     onOpenPerson = { calls += "person ${it.name}" },
                     onOpenGiftIdea = { calls += "idea ${it.idea.name}" },
                     onAddGiftIdea = { calls += "add ${it.type}" },
+                    photos = photos,
                 )
             }
         }
@@ -77,6 +87,21 @@ class OccasionPlanScreenTest {
     )
 
     private fun ideas(vararg entries: GiftIdeaEntry) = OccasionIdeas.Loaded(entries.toList())
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `an idea with a photo shows its thumbnail, one without stays a text row`() {
+        val book = ideaEntry(ideaDetails(anna, name = "Book about Japanese gardens", photoPath = "cover.jpg"), recipient = anna)
+        val pottery = ideaEntry(ideaDetails(anna, name = "Pottery workshop"), recipient = anna)
+        val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
+        val cover = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
+
+        show(loaded(christmas, null, ideas(book, pottery)), ShownPhotos.of(mapOf("cover.jpg" to LoadedPhoto(cover))))
+
+        compose.awaitPhoto(IDEA_PHOTO_TAG)
+        compose.onAllNodesWithTag(IDEA_THUMBNAIL_TAG, useUnmergedTree = true).assertCountEquals(1)
+        compose.onNodeWithText("Pottery workshop").assertExists()
+    }
 
     private val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
 

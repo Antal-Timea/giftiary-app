@@ -96,6 +96,7 @@ class SyncRunnerTest {
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue,
             activeOwner, clock,
             SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},
@@ -103,6 +104,7 @@ class SyncRunnerTest {
         )
         wishlists = WishlistRepositoryImpl(
             database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         backend = FakeBackend(database)
         runner = newRunner()
@@ -1023,7 +1025,7 @@ class SyncRunnerTest {
         newPusher(),
         activeOwner,
         GiftPhotoSync(
-            database.photoTransferDao(), database.giftDao(), database.personDao(), database.syncOperationDao(),
+            database.photoTransferDao(), database.giftDao(), database.giftIdeaDao(), database.personDao(), database.wishDao(), database.syncOperationDao(),
             GiftPhotoFiles(ApplicationProvider.getApplicationContext()), FakeGiftPhotoRemote(), clock,
         ),
     )
@@ -1088,7 +1090,7 @@ class SyncRunnerTest {
         return list.id to wish.id
     }
 
-    private fun wishDetails(name: String) = WishDetails(name, note = null, estimatedPrice = Money(4990, "EUR"), productUrl = null)
+    private fun wishDetails(name: String) = WishDetails(name, note = null, estimatedPrice = Money(4990, "EUR"), productUrl = null, photoPath = null)
 
     private fun ideaFor(personId: UUID) = GiftIdeaDetails(
         recipientPersonId = personId, occasionId = null, name = "Scarf", status = GiftIdeaStatus.PURCHASED,

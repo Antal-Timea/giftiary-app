@@ -55,12 +55,16 @@ interface WishlistRepository {
     /** Deletes the wishlist and its wishes. Deleting one that is already gone is a no-op. */
     suspend fun deleteWishlist(id: UUID)
 
-    /** @throws WishlistNotFoundException if [wishlistId] is not one of the account's active wishlists. */
+    /**
+     * @throws WishlistNotFoundException if [wishlistId] is not one of the account's active wishlists.
+     * @throws GiftPhotoUnavailableException if the photo is not on this device.
+     */
     suspend fun addWish(wishlistId: UUID, details: WishDetails): Wish
 
     /**
      * @throws WishNotFoundException if the wish does not exist or has been deleted.
      * @throws WishlistNotFoundException if its wishlist has been deleted.
+     * @throws GiftPhotoUnavailableException if a newly chosen photo is not on this device.
      */
     suspend fun updateWish(id: UUID, details: WishDetails)
 
@@ -68,12 +72,16 @@ interface WishlistRepository {
     suspend fun deleteWish(id: UUID)
 }
 
-/** The user-editable part of a [Wish]. Photos are not part of it yet. */
+/**
+ * The user-editable part of a [Wish]. [photoPath] is a photo imported through [GiftPhotoRepository]
+ * for the signed-in account, or null for none.
+ */
 data class WishDetails(
     val name: String,
     val note: String?,
     val estimatedPrice: Money?,
     val productUrl: String?,
+    val photoPath: String?,
 )
 
 class WishlistNotFoundException(id: UUID) : Exception("Wishlist $id does not exist")

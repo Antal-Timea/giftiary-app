@@ -12,6 +12,7 @@ import app.giftiary.domain.model.WishlistAccess
 import app.giftiary.domain.model.WishlistMember
 import app.giftiary.domain.repository.ProfileFailure
 import app.giftiary.domain.repository.SharingFailure
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeProfileRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.FakeWishlistSharingRepository
@@ -33,6 +34,7 @@ class SharingViewModelsTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val sharing = FakeWishlistSharingRepository()
+    private val photos = FakeGiftPhotoRepository()
     private val pending = PendingWishlistJoin()
     private val listId = UUID.randomUUID()
     private val token = InviteToken.of("A".repeat(43))!!
@@ -355,7 +357,7 @@ class SharingViewModelsTest {
     @Test
     fun `a shared list that became unavailable is no longer shown`() = runTest {
         sharing.sharedWishlist = SharedWishlist(listId, "Birthday", "Bea", emptyList())
-        val viewModel = SharedWishlistViewModel(listId, sharing)
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
         viewModel.refresh()
         assertTrue(viewModel.state.value.content is OnlineContent.Loaded)
 
@@ -368,7 +370,7 @@ class SharingViewModelsTest {
     @Test
     fun `a first shared list load that fails can be retried`() = runTest {
         sharing.sharedWishlist = SharedWishlist(listId, "Birthday", null, emptyList())
-        val viewModel = SharedWishlistViewModel(listId, sharing)
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
         sharing.failNext += SharingFailure.SERVER
 
         viewModel.refresh()
@@ -380,7 +382,7 @@ class SharingViewModelsTest {
 
     @Test
     fun `leaving a shared list asks first, then ends the membership`() = runTest {
-        val viewModel = SharedWishlistViewModel(listId, sharing)
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
 
         viewModel.onLeaveRequested()
         assertTrue(viewModel.leaving.value.confirming)
@@ -397,7 +399,7 @@ class SharingViewModelsTest {
 
     @Test
     fun `a list already gone counts as left`() = runTest {
-        val viewModel = SharedWishlistViewModel(listId, sharing)
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
         sharing.failNext += SharingFailure.UNAVAILABLE
 
         viewModel.onLeaveConfirmed()
@@ -408,7 +410,7 @@ class SharingViewModelsTest {
 
     @Test
     fun `a failed leave stays on the list, is reported once and can be tried again`() = runTest {
-        val viewModel = SharedWishlistViewModel(listId, sharing)
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
         sharing.failNext += SharingFailure.NETWORK
 
         viewModel.onLeaveConfirmed()
@@ -424,7 +426,7 @@ class SharingViewModelsTest {
     @Test
     fun `a leave in progress or done is not repeated`() = runTest {
         sharing.gate = CompletableDeferred()
-        val viewModel = SharedWishlistViewModel(listId, sharing)
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
 
         viewModel.onLeaveConfirmed()
         viewModel.onLeaveConfirmed()
@@ -443,7 +445,7 @@ class SharingViewModelsTest {
         sharing.sharedWishlists = listOf(left, kept)
         val shared = SharedWishlistsViewModel(sharing)
         shared.refresh()
-        val detail = SharedWishlistViewModel(listId, sharing)
+        val detail = SharedWishlistViewModel(listId, sharing, photos)
 
         detail.onLeaveConfirmed()
         assertTrue("the detail is told to close", detail.leaving.value.left)
@@ -461,7 +463,7 @@ class SharingViewModelsTest {
 
     private fun reservationViewModel(vararg wishes: SharedWish): SharedWishlistViewModel {
         sharing.sharedWishlist = SharedWishlist(listId, "Birthday", null, wishes.toList())
-        return SharedWishlistViewModel(listId, sharing).also { it.refresh() }
+        return SharedWishlistViewModel(listId, sharing, photos).also { it.refresh() }
     }
 
     private fun SharedWishlistViewModel.stateOf(wish: SharedWish): ReservationState? =
@@ -854,5 +856,23 @@ class SharingViewModelsTest {
         val state = JoinWishlistUiState(input = joinLink(token), confirmingOpenedInvite = true)
 
         assertFalse(state.toString().contains(token.value))
+    }
+
+    @Test
+    fun `a shared list's wish photos are read through the member's loader and kept only in memory`() = runTest {
+        val path = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/00000000-0000-4000-8000-000000000001.jpg"
+        photos.stored[path] = "lamp".encodeToByteArray()
+        sharing.sharedWishlist = SharedWishlist(
+            listId, "Birthday", "Bea",
+            listOf(SharedWish(UUID.randomUUID(), "Lamp", null, null, null, ReservationState.RESERVED_BY_OTHER, photoPath = path)),
+        )
+        val viewModel = SharedWishlistViewModel(listId, sharing, photos)
+        viewModel.refresh()
+
+        viewModel.photos.show(path)
+
+        assertEquals(listOf(path), photos.sharedLoads)
+        assertTrue(photos.loads.isEmpty())
+        assertEquals("lamp", viewModel.photos[path]!!.bytes.decodeToString())
     }
 }

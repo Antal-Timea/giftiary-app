@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -34,6 +35,7 @@ import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
 import app.giftiary.presentation.giftideas.GiftIdeaRow
 import app.giftiary.presentation.gifts.DetailContextCard
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.home.DaysCountdown
 import app.giftiary.presentation.home.occasionPlanText
 import app.giftiary.presentation.theme.GiftiaryShapes
@@ -59,6 +61,7 @@ fun OccasionPlanScreen(
         onOpenPerson = { onOpenPerson(it.id) },
         onOpenGiftIdea = { onOpenGiftIdea(it.idea.id) },
         onAddGiftIdea = onAddGiftIdea,
+        photos = viewModel.photos,
     )
 }
 
@@ -76,6 +79,7 @@ fun OccasionPlanScreen(
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     onAddGiftIdea: (Occasion) -> Unit,
     modifier: Modifier = Modifier,
+    photos: ShownPhotos = remember { ShownPhotos.of(emptyMap()) },
 ) {
     Scaffold(modifier = modifier, containerColor = GiftiaryTheme.colors.background) { contentPadding ->
         val contentModifier = Modifier.padding(contentPadding)
@@ -92,6 +96,7 @@ fun OccasionPlanScreen(
                 onOpenPerson = onOpenPerson,
                 onOpenGiftIdea = onOpenGiftIdea,
                 onAddGiftIdea = { onAddGiftIdea(state.occasion) },
+                photos = photos,
                 modifier = contentModifier,
             )
         }
@@ -106,6 +111,7 @@ private fun PlanContent(
     onOpenPerson: (Person) -> Unit,
     onOpenGiftIdea: (GiftIdeaEntry) -> Unit,
     onAddGiftIdea: () -> Unit,
+    photos: ShownPhotos,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -163,6 +169,7 @@ private fun PlanContent(
                         onClick = { onOpenGiftIdea(entry) },
                         modifier = Modifier.padding(horizontal = GiftiarySpacing.taskGutter - GiftiarySpacing.l),
                         showRecipient = state.person == null,
+                        photo = photos.photoOf(entry.idea.photoPath),
                     )
                     GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.taskGutter))
                 }

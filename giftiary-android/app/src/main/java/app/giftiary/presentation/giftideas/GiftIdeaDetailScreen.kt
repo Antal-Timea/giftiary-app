@@ -1,7 +1,6 @@
 package app.giftiary.presentation.giftideas
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -56,10 +54,10 @@ import app.giftiary.presentation.gifts.DetailFactRow
 import app.giftiary.presentation.gifts.DetailFactValue
 import app.giftiary.presentation.gifts.DetailLinkValue
 import app.giftiary.presentation.gifts.DetailNote
+import app.giftiary.presentation.gifts.PhotoOrPlaceholder
 import app.giftiary.presentation.gifts.giftPrice
 import app.giftiary.presentation.occasions.occasionDayMonth
 import app.giftiary.presentation.occasions.occasionTitle
-import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.presentation.theme.GiftiaryType
@@ -91,6 +89,7 @@ fun GiftIdeaDetailScreen(
         onDeleteConfirmed = viewModel::onDeleteConfirmed,
         onDeleteDismissed = viewModel::onDeleteDismissed,
         onWriteErrorShown = viewModel::onWriteErrorShown,
+        onPhotoRetry = viewModel::onPhotoRetry,
     )
 }
 
@@ -106,6 +105,7 @@ fun GiftIdeaDetailScreen(
     onDeleteConfirmed: () -> Unit,
     onDeleteDismissed: () -> Unit,
     onWriteErrorShown: () -> Unit,
+    onPhotoRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -131,6 +131,7 @@ fun GiftIdeaDetailScreen(
             is GiftIdeaDetailContent.Loaded -> GiftIdeaDetails(
                 entry = content.entry,
                 waitingToSync = state.waitingToSync,
+                photo = state.photo,
                 busy = state.actions.isBusy,
                 onBack = onBack,
                 onEdit = { onEdit(content.entry) },
@@ -138,6 +139,7 @@ fun GiftIdeaDetailScreen(
                 onOpenPerson = onOpenPerson,
                 onStatusChange = onStatusChange,
                 onDeleteRequested = onDeleteRequested,
+                onPhotoRetry = onPhotoRetry,
                 modifier = contentModifier,
             )
         }
@@ -155,14 +157,15 @@ fun GiftIdeaDetailScreen(
 }
 
 /**
- * The approved gift idea boards: who it is for and how far along it is on aqua, the branded
- * fallback where the photo would be (ideas have none), the facts it has, the note, and one next
- * step. The step follows the status: an idea is planned, a planned one bought, a bought one given.
+ * The approved gift idea boards: who it is for and how far along it is on aqua, the photo if it has
+ * one, the facts it has, the note, and one next step. Without a photo the page stays compact. The
+ * step follows the status: an idea is planned, a planned one bought, a bought one given.
  */
 @Composable
 private fun GiftIdeaDetails(
     entry: GiftIdeaEntry,
     waitingToSync: Boolean,
+    photo: GiftIdeaDetailPhoto?,
     busy: Boolean,
     onBack: (() -> Unit)?,
     onEdit: () -> Unit,
@@ -170,6 +173,7 @@ private fun GiftIdeaDetails(
     onOpenPerson: (Person) -> Unit,
     onStatusChange: (GiftIdeaStatus) -> Unit,
     onDeleteRequested: () -> Unit,
+    onPhotoRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val idea = entry.idea
@@ -198,7 +202,21 @@ private fun GiftIdeaDetails(
         )
         IdeaContext(entry = entry, onOpenPerson = onOpenPerson, modifier = Modifier.padding(top = GiftiarySpacing.l))
         if (waitingToSync) PendingSyncStatus(modifier = Modifier.padding(top = GiftiarySpacing.m))
-        IdeaPhotoFallback(modifier = Modifier.padding(top = GiftiarySpacing.l))
+        // Nothing while it is read, rather than "not available" for a moment.
+        if (photo != null && !photo.loading) {
+            Box(modifier = Modifier.padding(top = GiftiarySpacing.l)) {
+                PhotoOrPlaceholder(photo.photo, stringResource(R.string.gift_idea_photo_description))
+            }
+            if (photo.photo == null) {
+                TextButton(
+                    onClick = onPhotoRetry,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = GiftiaryTheme.colors.textPrimary),
+                ) {
+                    Text(text = stringResource(R.string.gift_idea_photo_retry), style = GiftiaryType.actionSmall)
+                }
+            }
+        }
         IdeaFacts(idea = idea, modifier = Modifier.padding(top = GiftiarySpacing.s))
         idea.note?.takeIf { it.isNotBlank() }?.let { DetailNote(it) }
         NextStep(
@@ -253,21 +271,6 @@ private val GiftIdeaStatus.icon: Int
         GiftIdeaStatus.PLANNED -> R.drawable.ic_calendar
         GiftIdeaStatus.PURCHASED -> R.drawable.ic_check
     }
-
-/** Ideas have no photo; the branded glyph keeps the board's place for one without pretending. */
-@Composable
-private fun IdeaPhotoFallback(modifier: Modifier = Modifier) {
-    val colors = GiftiaryTheme.colors
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(158.dp)
-            .background(colors.thumbnailFallback, GiftiaryShapes.container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(painterResource(R.drawable.ic_gift_glyph), contentDescription = null, modifier = Modifier.size(56.dp), tint = colors.textLabel)
-    }
-}
 
 /**
  * What was paid once it is known, with the estimate beneath; otherwise the estimate. The link
@@ -385,6 +388,7 @@ private fun GiftIdeaDetailPreview() {
             onDeleteConfirmed = {},
             onDeleteDismissed = {},
             onWriteErrorShown = {},
+            onPhotoRetry = {},
         )
     }
 }

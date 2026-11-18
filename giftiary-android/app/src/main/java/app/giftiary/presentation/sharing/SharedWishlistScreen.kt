@@ -57,6 +57,7 @@ import app.giftiary.presentation.components.GiftiaryConfirmDialog
 import app.giftiary.presentation.components.LoadingContent
 import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -83,6 +84,7 @@ fun SharedWishlistScreen(viewModel: SharedWishlistViewModel, onBack: () -> Unit)
         state = state,
         leaving = leaving,
         reservations = reservations,
+        photos = viewModel.photos,
         actions = SharedWishlistActions(
             onBack = onBack,
             onRetry = viewModel::refresh,
@@ -123,6 +125,7 @@ fun SharedWishlistScreen(
     reservations: ReservationActions,
     actions: SharedWishlistActions,
     modifier: Modifier = Modifier,
+    photos: ShownPhotos = ShownPhotos.of(emptyMap()),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val refreshFailure = state.refreshFailure?.let { retryableFailureText(it) }
@@ -175,6 +178,7 @@ fun SharedWishlistScreen(
                 isLeaving = leaving.isLeaving,
                 inFlight = reservations.inFlight,
                 actions = actions,
+                photos = photos,
                 modifier = contentModifier,
             )
         }
@@ -219,6 +223,7 @@ private fun SharedWishes(
     isLeaving: Boolean,
     inFlight: Set<UUID>,
     actions: SharedWishlistActions,
+    photos: ShownPhotos,
     modifier: Modifier = Modifier,
 ) {
     val colors = GiftiaryTheme.colors
@@ -280,6 +285,7 @@ private fun SharedWishes(
                 note = wish.note,
                 price = wish.estimatedPrice,
                 productUrl = wish.productUrl,
+                photo = photos.photoOf(wish.photoPath),
                 below = {
                     Reservation(
                         wishName = wish.name,

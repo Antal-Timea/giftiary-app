@@ -242,6 +242,7 @@ class SupabaseWishlistSharingRepository @Inject constructor(
             note = wish.note,
             estimatedPrice = price,
             productUrl = wish.productUrl,
+            photoPath = wish.photoPath,
             reservation = ReservationState.entries.find { it.name == wish.reservationState },
         )
     }

@@ -12,6 +12,7 @@ import app.giftiary.data.local.entity.SyncOperation
 import app.giftiary.data.local.entity.SyncOperationEntity
 import app.giftiary.data.local.entity.WishEntity
 import app.giftiary.data.local.entity.WishlistEntity
+import app.giftiary.data.photos.GiftPhotoFiles
 import app.giftiary.data.sync.BlockReason
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.domain.model.Money
@@ -52,6 +53,7 @@ class WishlistRepositoryImplTest {
     private val clock = MutableClock(Instant.parse("2026-05-01T12:00:00.123Z"))
     private val activeOwner = FakeActiveOwner(ownerUserId)
     private var syncRequests = 0
+    private val photoFiles by lazy { GiftPhotoFiles(ApplicationProvider.getApplicationContext()) }
     private lateinit var database: GiftiaryDatabase
     private lateinit var repository: WishlistRepositoryImpl
 
@@ -61,7 +63,7 @@ class WishlistRepositoryImplTest {
     private val syncDao get() = database.syncOperationDao()
 
     private val anna = person(ownerUserId)
-    private val lamp = WishDetails("Lamp", note = "Brass", estimatedPrice = Money(12990, "HUF"), productUrl = "https://example.com/lamp")
+    private val lamp = WishDetails("Lamp", note = "Brass", estimatedPrice = Money(12990, "HUF"), productUrl = "https://example.com/lamp", photoPath = null)
 
     @Before
     fun setUp() = runTest {
@@ -78,6 +80,8 @@ class WishlistRepositoryImplTest {
             activeOwner = activeOwner,
             clock = clock,
             syncRequester = SyncRequester { syncRequests++ },
+            photoTransfers = database.photoTransferDao(),
+            photoFiles = photoFiles,
         )
         personDao.insert(anna)
     }
@@ -236,21 +240,24 @@ class WishlistRepositoryImplTest {
     }
 
     @Test
-    fun `updating a synced wish keeps its photo and sync metadata and queues an update`() = runTest {
+    fun `updating a synced wish with its photo keeps it and the sync metadata, queues an update and no photo work`() = runTest {
         val wishlist = repository.addWishlist(anna.id, "Birthday")
         val wish = repository.addWish(wishlist.id, lamp)
         markSynced(SyncEntityType.WISH, wish.id)
+        // A photo another device added, synced down: the editor saves it back unchanged.
+        val photo = "$ownerUserId/${UUID.randomUUID()}.jpg"
         val stored = wishDao.findActiveById(wish.id, ownerUserId)!!
-        wishDao.update(stored.copy(photoPath = "users/$ownerUserId/wishes/${wish.id}.jpg"))
+        wishDao.update(stored.copy(photoPath = photo))
         clock.advanceBy(Duration.ofMinutes(1))
 
-        repository.updateWish(wish.id, lamp.copy(note = null, estimatedPrice = null))
+        repository.updateWish(wish.id, lamp.copy(note = null, estimatedPrice = null, photoPath = photo))
 
         val entity = wishDao.findActiveById(wish.id, ownerUserId)!!
         assertNull(entity.note)
         assertNull(entity.estimatedPriceAmountMinor)
         assertNull(entity.estimatedPriceCurrencyCode)
-        assertEquals("users/$ownerUserId/wishes/${wish.id}.jpg", entity.photoPath)
+        assertEquals(photo, entity.photoPath)
+        assertTrue(database.photoTransferDao().getPaths(ownerUserId).isEmpty())
         assertEquals(clock.instant, entity.updatedAt)
         assertEquals(3L, entity.version)
         assertEquals(SyncOperation.UPDATE, pending(SyncEntityType.WISH, wish.id))

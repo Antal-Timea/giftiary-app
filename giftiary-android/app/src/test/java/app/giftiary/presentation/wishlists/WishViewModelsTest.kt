@@ -1,10 +1,13 @@
 package app.giftiary.presentation.wishlists
 
 import app.giftiary.domain.model.Money
+import app.giftiary.domain.repository.GiftPhotoUnavailableException
 import app.giftiary.domain.repository.WishDetails
 import app.giftiary.domain.usecase.SaveWishUseCase
+import app.giftiary.presentation.gifts.GiftPhotoError
 import app.giftiary.presentation.gifts.PriceError
 import app.giftiary.presentation.gifts.PriceFormat
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.keepSubscribed
@@ -30,7 +33,9 @@ class WishViewModelsTest {
     private val repository = FakeWishlistRepository()
     private val list = wishlist("Birthday").also { repository.givenWishlists(it) }
 
-    private fun editor(target: WishEditorTarget) = WishEditorViewModel(target, repository, SaveWishUseCase(repository))
+    private val photos = FakeGiftPhotoRepository()
+
+    private fun editor(target: WishEditorTarget) = WishEditorViewModel(target, repository, SaveWishUseCase(repository), photos)
 
     // ---- editor ----
 
@@ -117,17 +122,149 @@ class WishViewModelsTest {
         assertEquals(WishEditorStatus.EDITING, viewModel.uiState.value.status)
     }
 
+    // ---- photo ----
+
+    @Test
+    fun `a new wish can be saved with a picked photo`() = runTest {
+        val viewModel = editor(WishEditorTarget.New(list.id))
+        viewModel.onNameChange("Lamp")
+        viewModel.onPhotoPicked("content://lamp")
+
+        val path = viewModel.uiState.value.photoPath!!
+        assertEquals("content://lamp", viewModel.uiState.value.photo!!.bytes.decodeToString())
+        viewModel.save()
+
+        assertEquals(path, repository.currentWishes.single().photoPath)
+    }
+
+    @Test
+    fun `a wish saved without a photo names none`() = runTest {
+        val viewModel = editor(WishEditorTarget.New(list.id))
+        viewModel.onNameChange("Lamp")
+        viewModel.save()
+
+        assertNull(repository.currentWishes.single().photoPath)
+        assertTrue(photos.imported.isEmpty())
+    }
+
+    @Test
+    fun `an existing wish shows its photo, and it can be added, replaced or removed`() = runTest {
+        val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
+        val viewModel = editor(WishEditorTarget.Existing(lamp.id))
+        assertNull(viewModel.uiState.value.photo)
+
+        viewModel.onPhotoPicked("content://first")
+        viewModel.save()
+        val first = repository.currentWishes.single().photoPath!!
+
+        val again = editor(WishEditorTarget.Existing(lamp.id))
+        assertEquals("the stored photo is shown", "content://first", again.uiState.value.photo!!.bytes.decodeToString())
+        again.onPhotoPicked("content://second")
+        again.save()
+        val second = repository.currentWishes.single().photoPath!!
+        assertTrue(second != first)
+
+        val last = editor(WishEditorTarget.Existing(lamp.id))
+        last.onPhotoRemoved()
+        assertNull(last.uiState.value.photo)
+        last.save()
+        assertNull(repository.currentWishes.single().photoPath)
+        assertEquals("the other fields are kept", "Lamp", repository.currentWishes.single().name)
+    }
+
+    @Test
+    fun `a camera photo is used, and a cancelled capture discards its file`() = runTest {
+        val viewModel = editor(WishEditorTarget.New(list.id))
+        val cancelled = viewModel.newCaptureTarget()!!
+        viewModel.onCaptureCancelled(cancelled)
+        assertEquals(listOf(cancelled), photos.discarded)
+        assertNull(viewModel.uiState.value.photoPath)
+
+        val target = viewModel.newCaptureTarget()!!
+        photos.captured[target] = "camera"
+        viewModel.onPhotoCaptured(target)
+
+        assertEquals("camera", viewModel.uiState.value.photo!!.bytes.decodeToString())
+        assertTrue(photos.openCaptures.isEmpty())
+    }
+
+    @Test
+    fun `an unreadable photo is reported and the earlier one kept`() = runTest {
+        val viewModel = editor(WishEditorTarget.New(list.id))
+        viewModel.onPhotoPicked("content://good")
+        val kept = viewModel.uiState.value.photoPath
+        photos.unreadable += "content://bad"
+
+        viewModel.onPhotoPicked("content://bad")
+
+        assertEquals(GiftPhotoError.UNREADABLE, viewModel.uiState.value.photoError)
+        assertEquals(kept, viewModel.uiState.value.photoPath)
+        viewModel.onPhotoErrorShown()
+        assertNull(viewModel.uiState.value.photoError)
+    }
+
+    @Test
+    fun `a photo gone from the device when saving is dropped and reported, and the form stays`() = runTest {
+        repository.writeFailure = GiftPhotoUnavailableException()
+        val viewModel = editor(WishEditorTarget.New(list.id))
+        viewModel.onNameChange("Lamp")
+        viewModel.onPhotoPicked("content://lamp")
+
+        viewModel.save()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.photoUnavailableOnSave)
+        assertFalse(state.saveFailed)
+        assertNull(state.photoPath)
+        assertEquals("Lamp", state.name)
+        assertEquals(WishEditorStatus.EDITING, state.status)
+        viewModel.onSaveErrorShown()
+        assertFalse(viewModel.uiState.value.photoUnavailableOnSave)
+    }
+
     // ---- detail ----
+
+    @Test
+    fun `a wish's photo is shown, follows a replacement, and is gone once removed`() = runTest {
+        val first = photos.importPhoto("content://first")
+        val lamp = wish(list.id, "Lamp", photoPath = first).also { repository.givenWishes(it) }
+        val viewModel = WishDetailViewModel(lamp.id, repository, photos)
+        keepSubscribed(viewModel.uiState)
+
+        assertEquals("content://first", viewModel.uiState.value.photo!!.photo!!.bytes.decodeToString())
+
+        val second = photos.importPhoto("content://second")
+        repository.updateWish(lamp.id, WishDetails("Lamp", null, null, null, second))
+        assertEquals("content://second", viewModel.uiState.value.photo!!.photo!!.bytes.decodeToString())
+
+        repository.updateWish(lamp.id, WishDetails("Lamp", null, null, null, null))
+        assertNull(viewModel.uiState.value.photo)
+    }
+
+    @Test
+    fun `a wish without a photo shows none, and one that cannot be fetched is not loading`() = runTest {
+        val plain = wish(list.id, "Lamp").also { repository.givenWishes(it) }
+        val withoutPhoto = WishDetailViewModel(plain.id, repository, photos)
+        keepSubscribed(withoutPhoto.uiState)
+        assertNull(withoutPhoto.uiState.value.photo)
+        assertTrue(photos.loads.isEmpty())
+
+        val missing = wish(list.id, "Mug", photoPath = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/00000000-0000-4000-8000-000000000099.jpg")
+        repository.givenWishes(plain, missing)
+        val unavailable = WishDetailViewModel(missing.id, repository, photos)
+        keepSubscribed(unavailable.uiState)
+        assertEquals(WishDetailPhoto(photo = null, loading = false), unavailable.uiState.value.photo)
+    }
 
     @Test
     fun `a wish shows with its wishlist's name and follows edits`() = runTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
-        val viewModel = WishDetailViewModel(lamp.id, repository)
+        val viewModel = WishDetailViewModel(lamp.id, repository, photos)
         keepSubscribed(viewModel.uiState)
 
         assertEquals(WishDetailContent.Loaded(lamp, "Birthday"), viewModel.uiState.value.content)
 
-        repository.updateWish(lamp.id, WishDetails("Brass lamp", null, null, null))
+        repository.updateWish(lamp.id, WishDetails("Brass lamp", null, null, null, null))
         repository.renameWishlist(list.id, "Name day")
 
         val content = viewModel.uiState.value.content as WishDetailContent.Loaded
@@ -138,7 +275,7 @@ class WishViewModelsTest {
     @Test
     fun `a wish deleted elsewhere, or with its wishlist, shows not found`() = runTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
-        val viewModel = WishDetailViewModel(lamp.id, repository)
+        val viewModel = WishDetailViewModel(lamp.id, repository, photos)
         keepSubscribed(viewModel.uiState)
 
         repository.deleteWishlist(list.id)
@@ -151,7 +288,7 @@ class WishViewModelsTest {
         val lamp = wish(list.id, "Lamp")
         val mug = wish(list.id, "Mug")
         repository.givenWishes(lamp, mug)
-        val viewModel = WishDetailViewModel(lamp.id, repository)
+        val viewModel = WishDetailViewModel(lamp.id, repository, photos)
         keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
@@ -168,7 +305,7 @@ class WishViewModelsTest {
     fun `a failed wish deletion is reported and the wish stays`() = runTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
         repository.writeFailure = IOException("disk")
-        val viewModel = WishDetailViewModel(lamp.id, repository)
+        val viewModel = WishDetailViewModel(lamp.id, repository, photos)
         keepSubscribed(viewModel.uiState)
 
         viewModel.onDeleteRequested()
@@ -254,7 +391,7 @@ class WishViewModelsTest {
     @Test
     fun `a wish's detail shows waiting to sync only for its own queued change`() = runTest {
         val lamp = wish(list.id, "Lamp").also { repository.givenWishes(it) }
-        val viewModel = WishDetailViewModel(lamp.id, repository)
+        val viewModel = WishDetailViewModel(lamp.id, repository, photos)
         keepSubscribed(viewModel.uiState)
         assertFalse(viewModel.uiState.value.waitingToSync)
 

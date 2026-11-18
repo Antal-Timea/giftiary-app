@@ -86,6 +86,22 @@ class GiftPhotoRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun loadSharedPhoto(path: String): ByteArray? {
+        val owner = activeOwner.ownerId.value ?: return null
+        val pathOwner = GiftPhotoFiles.ownerOf(path) ?: return null
+        // A list of the user's own is never a shared one, but its photo is theirs to read anyway.
+        if (pathOwner == owner) return loadPhoto(path)
+        // Another account's photo stays out of this account's folder, where pruning and deletion
+        // would treat it as the user's own; the screen keeps it in memory while it is shown.
+        return withContext(Dispatchers.IO) {
+            try {
+                remote.download(accounts.capture(owner), path)
+            } catch (_: RemoteException) {
+                null
+            }
+        }
+    }
+
     override suspend fun loadLocalPhoto(path: String): ByteArray? {
         val owner = activeOwner.ownerId.value ?: return null
         if (GiftPhotoFiles.ownerOf(path) != owner) return null

@@ -14,7 +14,10 @@ class SaveWishUseCase @Inject constructor(
     private val repository: WishlistRepository,
 ) {
 
-    /** @throws app.giftiary.domain.repository.WishlistNotFoundException if the wishlist is gone. */
+    /**
+     * @throws app.giftiary.domain.repository.WishlistNotFoundException if the wishlist is gone.
+     * @throws app.giftiary.domain.repository.GiftPhotoUnavailableException if the photo is not on this device.
+     */
     suspend fun add(wishlistId: UUID, input: WishInput): SaveWishResult {
         val details = input.toDetails() ?: return SaveWishResult.BLANK_NAME
         repository.addWish(wishlistId, details)
@@ -24,6 +27,7 @@ class SaveWishUseCase @Inject constructor(
     /**
      * @throws app.giftiary.domain.repository.WishNotFoundException if the wish is gone.
      * @throws app.giftiary.domain.repository.WishlistNotFoundException if its wishlist is gone.
+     * @throws app.giftiary.domain.repository.GiftPhotoUnavailableException if a new photo is not on this device.
      */
     suspend fun update(id: UUID, input: WishInput): SaveWishResult {
         val details = input.toDetails() ?: return SaveWishResult.BLANK_NAME
@@ -38,6 +42,7 @@ class SaveWishUseCase @Inject constructor(
             note = note.trimToNull(),
             estimatedPrice = estimatedPrice,
             productUrl = productUrl.trimToNull(),
+            photoPath = photoPath,
         )
     }
 
@@ -49,6 +54,7 @@ data class WishInput(
     val note: String,
     val estimatedPrice: Money?,
     val productUrl: String,
+    val photoPath: String?,
 )
 
 enum class SaveWishResult {

@@ -17,7 +17,7 @@ enum class AppSection(@StringRes val label: Int, @DrawableRes val icon: Int, val
     HOME(R.string.nav_home, R.drawable.ic_nav_home, HomeRoute),
     PEOPLE(R.string.people_title, R.drawable.ic_nav_people, PeopleRoute),
     GIFTS(R.string.gifts_title, R.drawable.ic_nav_gifts, GiftHistoryRoute),
-    WISHLISTS(R.string.wishlists_title, R.drawable.ic_nav_wishlists, WishlistsRoute),
+    WISHLISTS(R.string.nav_lists, R.drawable.ic_nav_wishlists, WishlistsRoute),
     SETTINGS(R.string.settings_title, R.drawable.ic_nav_settings, SettingsRoute),
 }
 

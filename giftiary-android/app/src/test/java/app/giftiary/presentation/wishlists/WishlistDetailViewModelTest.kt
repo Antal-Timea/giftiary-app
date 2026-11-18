@@ -2,6 +2,7 @@ package app.giftiary.presentation.wishlists
 
 import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.domain.repository.WishDetails
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.FakeWishlistRepository
 import app.giftiary.testing.FakeWishlistSharingRepository
@@ -70,7 +71,7 @@ class WishlistDetailViewModelTest {
         keepSubscribed(viewModel.uiState)
 
         wishlists.renameWishlist(forAnna.id, "Name day")
-        wishlists.addWish(forAnna.id, WishDetails("Lamp", null, null, null))
+        wishlists.addWish(forAnna.id, WishDetails("Lamp", null, null, null, null))
         people.givenPeople()
 
         val content = viewModel.uiState.value.content as WishlistDetailContent.Loaded
@@ -203,10 +204,25 @@ class WishlistDetailViewModelTest {
         assertEquals(setOf(ball.id), loaded(viewModel).reservedWishIds)
     }
 
-    private fun viewModel(id: UUID) = WishlistDetailViewModel(id, wishlists, people, sharing)
+    private val photos = FakeGiftPhotoRepository()
+
+    private fun viewModel(id: UUID) = WishlistDetailViewModel(id, wishlists, people, sharing, photos)
 
     private fun TestScope.loaded(viewModel: WishlistDetailViewModel): WishlistDetailContent.Loaded {
         keepSubscribed(viewModel.uiState)
         return viewModel.uiState.value.content as WishlistDetailContent.Loaded
+    }
+
+    @Test
+    fun `the owner's wish photos are read as their own, only for the rows shown`() = runTest {
+        val path = photos.importPhoto("content://lamp")
+        val list = wishlist("Birthday").also { wishlists.givenWishlists(it) }
+        val viewModel = viewModel(list.id)
+
+        viewModel.photos.show(path)
+
+        assertEquals(listOf(path), photos.loads)
+        assertTrue("never through the member's loader", photos.sharedLoads.isEmpty())
+        assertEquals("content://lamp", viewModel.photos[path]!!.bytes.decodeToString())
     }
 }

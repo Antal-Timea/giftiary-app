@@ -57,7 +57,7 @@ select is(
 select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('authenticated', oid, 'execute')),
-    19, 'signed-in users can execute exactly the sixteen sharing functions, the account deletion and the two device proof calls');
+    20, 'signed-in users can execute exactly the sixteen sharing functions, the account deletion, the two device proof calls and the wish photo check');
 select is(
     (select count(*)::int from pg_proc
      where pronamespace = 'public'::regnamespace and has_function_privilege('service_role', oid, 'execute')),
@@ -512,8 +512,8 @@ select is(
     (select string_agg(distinct k, ',' order by k)
      from jsonb_array_elements(public.get_shared_wishlist('10000000-0000-4000-8000-000000000003') -> 'wishes') w,
           jsonb_object_keys(w) k),
-    'estimated_price_amount_minor,estimated_price_currency_code,name,note,product_url,reservation_state,wish_id',
-    'and its wishes the same display fields');
+    'estimated_price_amount_minor,estimated_price_currency_code,name,note,photo_path,product_url,reservation_state,wish_id',
+    'and its wishes the same display fields, with the wish photo''s path (19_wish_photos)');
 select ok(
     (select bool_and(position(secret in public.get_shared_wishlist('10000000-0000-4000-8000-000000000003')::text
                                         || public.get_shared_wishlists()::text) = 0)

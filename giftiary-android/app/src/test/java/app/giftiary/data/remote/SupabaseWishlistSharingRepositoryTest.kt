@@ -440,7 +440,8 @@ class SupabaseWishlistSharingRepositoryTest {
             respondJson(
                 """{"wishlist_id":"$LIST","name":"Birthday","owner_display_name":"Bea","wishes":[
                    {"wish_id":"$INVITE","name":"Lamp","note":"small","estimated_price_amount_minor":12990,
-                    "estimated_price_currency_code":"HUF","product_url":"https://example.com","reservation_state":"RESERVED_BY_OTHER"},
+                    "estimated_price_currency_code":"HUF","product_url":"https://example.com","reservation_state":"RESERVED_BY_OTHER",
+                    "photo_path":"$OTHER/$INVITE.jpg"},
                    {"wish_id":"$MEMBER","name":"Socks","note":null,"estimated_price_amount_minor":null,
                     "estimated_price_currency_code":null,"product_url":null,"reservation_state":"SOMETHING_NEW"}]}""",
             )
@@ -455,6 +456,9 @@ class SupabaseWishlistSharingRepositoryTest {
         assertEquals(ReservationState.RESERVED_BY_OTHER, list.wishes[0].reservation)
         // A state this version does not know is not guessed at.
         assertNull(list.wishes[1].reservation)
+        // A photo is named by its Storage path; a wish without one, or a server before photos, names none.
+        assertEquals("$OTHER/$INVITE.jpg", list.wishes[0].photoPath)
+        assertNull(list.wishes[1].photoPath)
         assertRpc("get_shared_wishlist", """{"p_wishlist_id":"$LIST"}""")
     }
 

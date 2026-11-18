@@ -7,7 +7,6 @@ import app.giftiary.testing.wishlist
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SaveWishUseCasesTest {
@@ -44,7 +43,7 @@ class SaveWishUseCasesTest {
     fun `a wish is stored trimmed, with blank optional text stored as nothing`() = runTest {
         val list = wishlist("Birthday").also { repository.givenWishlists(it) }
 
-        val result = saveWish.add(list.id, WishInput(name = " Lamp ", note = "  ", estimatedPrice = Money(12990, "HUF"), productUrl = " "))
+        val result = saveWish.add(list.id, WishInput(name = " Lamp ", note = "  ", estimatedPrice = Money(12990, "HUF"), productUrl = " ", photoPath = null))
 
         assertEquals(SaveWishResult.SAVED, result)
         val stored = repository.currentWishes.single()
@@ -59,22 +58,36 @@ class SaveWishUseCasesTest {
         val list = wishlist("Birthday").also { repository.givenWishlists(it) }
         val lamp = wish(list.id, "Lamp", note = "Brass").also { repository.givenWishes(it) }
 
-        assertEquals(SaveWishResult.BLANK_NAME, saveWish.add(list.id, WishInput(" ", "", null, "")))
-        assertEquals(SaveWishResult.BLANK_NAME, saveWish.update(lamp.id, WishInput("", "Other", null, "")))
+        assertEquals(SaveWishResult.BLANK_NAME, saveWish.add(list.id, WishInput(" ", "", null, "", null)))
+        assertEquals(SaveWishResult.BLANK_NAME, saveWish.update(lamp.id, WishInput("", "Other", null, "", null)))
 
         assertEquals(listOf(lamp), repository.currentWishes)
     }
 
     @Test
-    fun `an edited wish keeps trimmed text and its photo`() = runTest {
+    fun `an edited wish keeps trimmed text, and the photo it is saved with is the one it names`() = runTest {
         val list = wishlist("Birthday").also { repository.givenWishlists(it) }
-        val lamp = wish(list.id, "Lamp", photoPath = "users/u/wishes/w.jpg").also { repository.givenWishes(it) }
+        val photo = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/00000000-0000-4000-8000-000000000001.jpg"
+        val lamp = wish(list.id, "Lamp", photoPath = photo).also { repository.givenWishes(it) }
 
-        saveWish.update(lamp.id, WishInput("Brass lamp", " Small ", null, " https://example.com/lamp "))
+        saveWish.update(lamp.id, WishInput("Brass lamp", " Small ", null, " https://example.com/lamp ", photo))
 
         val stored = repository.currentWishes.single()
         assertEquals("Small", stored.note)
         assertEquals("https://example.com/lamp", stored.productUrl)
-        assertTrue(stored.photoPath == "users/u/wishes/w.jpg")
+        assertEquals(photo, stored.photoPath)
+
+        saveWish.update(lamp.id, WishInput("Brass lamp", "", null, "", null))
+        assertNull("saved without a photo, it names none", repository.currentWishes.single().photoPath)
+    }
+
+    @Test
+    fun `a new wish names the photo it is saved with`() = runTest {
+        val list = wishlist("Birthday").also { repository.givenWishlists(it) }
+        val photo = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/00000000-0000-4000-8000-000000000002.jpg"
+
+        saveWish.add(list.id, WishInput("Lamp", "", null, "", photo))
+
+        assertEquals(photo, repository.currentWishes.single().photoPath)
     }
 }

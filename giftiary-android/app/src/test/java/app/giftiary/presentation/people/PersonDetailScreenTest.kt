@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -29,6 +30,8 @@ import app.giftiary.domain.model.Wishlist
 import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.OccasionDetails
+import app.giftiary.presentation.giftideas.IDEA_PHOTO_TAG
+import app.giftiary.presentation.giftideas.IDEA_THUMBNAIL_TAG
 import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -133,6 +136,22 @@ class PersonDetailScreenTest {
         assertEquals(gifts.take(reads.size).map { it.gift.photoPath }, reads)
     }
 
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `an idea with a photo shows its thumbnail, one without stays a text row`() {
+        val book = ideaEntry(ideaDetails(peter, name = "Book about Japanese gardens", photoPath = "cover.jpg"), peter)
+        val pottery = ideaEntry(ideaDetails(peter, name = "Pottery workshop"), peter)
+        val reads = mutableListOf<String>()
+        val photos = ShownPhotos(CoroutineScope(Dispatchers.Unconfined), { path -> reads += path; jpeg().bytes })
+
+        showDetail(loaded(ideas = listOf(book, pottery)), giftPhotos = photos)
+
+        compose.awaitPhoto(IDEA_PHOTO_TAG)
+        compose.onAllNodesWithTag(IDEA_THUMBNAIL_TAG, useUnmergedTree = true).assertCountEquals(1)
+        compose.onNodeWithText("Pottery workshop").assertExists()
+        assertEquals(listOf("cover.jpg"), reads)
+    }
+
     private fun top(text: String) = compose.onAllNodesWithText(text, useUnmergedTree = true)[0].getBoundsInRoot().top
 
     private fun loaded(
@@ -158,24 +177,49 @@ class PersonDetailScreenTest {
 
     @Test
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun `with a photo it fills the hero's circle, cropped and unannounced, beside the name`() {
+    fun `with a photo the photo is the hero, cropped and unannounced, under the name and buttons`() {
         showDetail(loaded(), photo = jpeg())
 
         compose.awaitPhoto(PERSON_PHOTO_TAG)
         val photo = compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true)
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
             .getBoundsInRoot()
-        // The circle runs off the hero's end, so only its height is whole: a 4:3 photo fitted
-        // inside rather than cropped would be 147dp tall.
-        assertEquals("fills the 196dp circle", 196f, (photo.bottom - photo.top).value, 0.5f)
-        // Cropped, the photo's colour reaches the top of the circle; fitted, the circle's own fill
-        // would show above and below it.
+        val name = compose.onNodeWithText("Peter").getBoundsInRoot()
+        // Edge to edge and at least the photo hero's height: no empty hero beside a small photo.
+        assertEquals("full width", 390f, (photo.right - photo.left).value, 0.5f)
+        assertTrue("at least 360dp tall, was ${photo.bottom - photo.top}", (photo.bottom - photo.top).value >= 359.5f)
+        assertTrue("the name sits on the photo", name.top >= photo.top && name.bottom <= photo.bottom)
+        // Cropped, the photo's colour reaches the hero's top edge; fitted, a 4:3 photo would leave
+        // the hero's own fill above and below it. Sampled under the scrim's lightest band.
         val pixels = compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).captureToImage().toPixelMap()
-        val nearTop = pixels[pixels.width / 2, pixels.height / 20]
-        assertEquals("photo colour near the top", 0x5A / 255f, nearTop.red, 0.06f)
-        assertEquals(0x40 / 255f, nearTop.green, 0.06f)
-        compose.onNodeWithText("Peter").assertExists()
-        compose.onNodeWithContentDescription("Edit Peter").assertExists()
+        val upper = pixels[pixels.width / 2, pixels.height * 3 / 10]
+        assertEquals("photo colour in the upper hero", 0x5A / 255f, upper.red, 0.06f)
+        assertEquals(0x40 / 255f, upper.green, 0.06f)
+
+        compose.onNodeWithText("Husband").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Edit Peter").performClick()
+        assertEquals(listOf("edit Peter"), actions)
+        compose.onNodeWithContentDescription("More for Peter").performClick()
+        compose.onNodeWithText("Delete Peter").assertExists()
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `with a photo at large text a long name grows the hero under its buttons, the photo with it`() {
+        val name = "Kovácsné Szabó Erzsébet Mária Terézia Katalin Ilona"
+        showDetail(
+            PersonDetailUiState.Loaded(person(name, relationship = "Nagymama"), emptyList(), emptyList(), emptyList(), emptyList()),
+            photo = jpeg(),
+            fontScale = 2f,
+        )
+
+        compose.awaitPhoto(PERSON_PHOTO_TAG)
+        val title = compose.onNodeWithText(name).getBoundsInRoot()
+        val back = compose.onNodeWithContentDescription("Back").getBoundsInRoot()
+        val photo = compose.onNodeWithTag(PERSON_PHOTO_TAG, useUnmergedTree = true).getBoundsInRoot()
+        assertTrue("name ${title.top} below the buttons ${back.bottom}", title.top >= back.bottom)
+        assertTrue("the photo ${photo.bottom} reaches below the name ${title.bottom}", photo.bottom >= title.bottom)
+        compose.onNodeWithText("Nagymama").assertIsDisplayed()
     }
 
     private fun jpeg(): LoadedPhoto {

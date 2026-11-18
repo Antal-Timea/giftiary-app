@@ -48,6 +48,10 @@ import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.GiftPhotoCamera
+import app.giftiary.presentation.gifts.GiftPhotoError
+import app.giftiary.presentation.gifts.GiftPhotoSources
+import app.giftiary.presentation.gifts.GiftPhotoTile
 import app.giftiary.presentation.gifts.priceErrorText
 import app.giftiary.presentation.occasions.occasionTitle
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -89,6 +93,13 @@ fun GiftIdeaEditorScreen(
             onDeleteRequested = viewModel::onDeleteRequested,
             onDeleteDismissed = viewModel::onDeleteDismissed,
             onDeleteConfirmed = viewModel::onDeleteConfirmed,
+            onPhotoPicked = viewModel::onPhotoPicked,
+            onNewCaptureTarget = viewModel::newCaptureTarget,
+            onPhotoCaptured = viewModel::onPhotoCaptured,
+            onCaptureCancelled = viewModel::onCaptureCancelled,
+            onCameraUnavailable = viewModel::onCameraUnavailable,
+            onPhotoRemoved = viewModel::onPhotoRemoved,
+            onPhotoErrorShown = viewModel::onPhotoErrorShown,
         ),
     )
 }
@@ -111,6 +122,13 @@ class GiftIdeaEditorActions(
     val onDeleteRequested: () -> Unit = {},
     val onDeleteDismissed: () -> Unit = {},
     val onDeleteConfirmed: () -> Unit = {},
+    val onPhotoPicked: (String) -> Unit = {},
+    val onNewCaptureTarget: () -> String? = { null },
+    val onPhotoCaptured: (String) -> Unit = {},
+    val onCaptureCancelled: (String) -> Unit = {},
+    val onCameraUnavailable: (String) -> Unit = {},
+    val onPhotoRemoved: () -> Unit = {},
+    val onPhotoErrorShown: () -> Unit = {},
 )
 
 @Composable
@@ -127,6 +145,7 @@ fun GiftIdeaEditorScreen(
                 GiftIdeaWriteError.PERSON_UNAVAILABLE -> R.string.gift_person_unavailable
                 GiftIdeaWriteError.OCCASION_UNAVAILABLE -> R.string.gift_occasion_unavailable
                 GiftIdeaWriteError.DELETE_FAILED -> R.string.gift_delete_failed
+                GiftIdeaWriteError.PHOTO_UNAVAILABLE -> R.string.gift_photo_unavailable_on_save
             },
         )
     }
@@ -134,6 +153,20 @@ fun GiftIdeaEditorScreen(
         if (writeErrorMessage != null) {
             snackbarHostState.showSnackbar(writeErrorMessage)
             actions.onWriteErrorShown()
+        }
+    }
+    val photoErrorMessage = state.photoError?.let {
+        stringResource(
+            when (it) {
+                GiftPhotoError.UNREADABLE -> R.string.gift_photo_unreadable
+                GiftPhotoError.CAMERA_UNAVAILABLE -> R.string.gift_photo_camera_unavailable
+            },
+        )
+    }
+    LaunchedEffect(photoErrorMessage) {
+        if (photoErrorMessage != null) {
+            snackbarHostState.showSnackbar(photoErrorMessage)
+            actions.onPhotoErrorShown()
         }
     }
 
@@ -166,13 +199,33 @@ fun GiftIdeaEditorScreen(
 }
 
 /**
- * The approved Add gift idea: what, for whom and for which occasion, then the optional details.
- * Ideas have no photo, so the board's photo tile is left out. Status and the actual price are
- * real parts of an idea that the board does not show; they join the details. Edit opens with the
- * details shown.
+ * The approved Add gift idea: what, for whom and for which occasion, and the photo, then the
+ * optional details. The photo stays outside the folded details so it is found at once. Status and
+ * the actual price are real parts of an idea that the board does not show; they join the details.
+ * Edit opens with the details shown.
  */
 @Composable
 private fun GiftIdeaForm(state: GiftIdeaEditorUiState, actions: GiftIdeaEditorActions, modifier: Modifier = Modifier) {
+    GiftPhotoSources(
+        onPick = actions.onPhotoPicked,
+        camera = GiftPhotoCamera(
+            newTarget = actions.onNewCaptureTarget,
+            onCaptured = actions.onPhotoCaptured,
+            onCancelled = actions.onCaptureCancelled,
+            onUnavailable = actions.onCameraUnavailable,
+        ),
+    ) { choosePhoto ->
+        GiftIdeaFormContent(state, actions, choosePhoto, modifier)
+    }
+}
+
+@Composable
+private fun GiftIdeaFormContent(
+    state: GiftIdeaEditorUiState,
+    actions: GiftIdeaEditorActions,
+    onChoosePhoto: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val canEdit = state.status == GiftIdeaEditorStatus.EDITING && !state.isBusy
     var detailsShown by rememberSaveable { mutableStateOf(!state.isNew) }
     // A price error is in the details: they open so it can be seen.
@@ -260,6 +313,16 @@ private fun GiftIdeaForm(state: GiftIdeaEditorUiState, actions: GiftIdeaEditorAc
                     Icon(painter = painterResource(R.drawable.ic_calendar), contentDescription = null, modifier = Modifier.size(16.dp))
                 },
             )
+            GiftPhotoTile(
+                hasPhoto = state.photoPath != null,
+                photo = state.photo,
+                busy = state.photoBusy,
+                enabled = canEdit,
+                onChoose = onChoosePhoto,
+                onRemove = actions.onPhotoRemoved,
+                modifier = Modifier.fillMaxWidth(),
+                description = stringResource(R.string.gift_idea_photo_description),
+            )
         }
 
         GiftiarySupportButton(
@@ -280,7 +343,7 @@ private fun GiftIdeaForm(state: GiftIdeaEditorUiState, actions: GiftIdeaEditorAc
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 28.dp),
-            enabled = state.status == GiftIdeaEditorStatus.EDITING && !state.isDeleting,
+            enabled = state.status == GiftIdeaEditorStatus.EDITING && !state.isDeleting && !state.photoBusy,
             loading = state.isBusy && !state.isDeleting,
             trailingArrow = true,
         )

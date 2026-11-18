@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.GiftIdeaRepository
+import app.giftiary.domain.repository.GiftPhotoRepository
+import app.giftiary.presentation.gifts.LoadedPhoto
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -15,6 +17,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -25,6 +31,7 @@ import java.util.UUID
 class GiftIdeaDetailViewModel @AssistedInject constructor(
     @Assisted private val giftIdeaId: UUID,
     private val repository: GiftIdeaRepository,
+    private val photos: GiftPhotoRepository,
 ) : ViewModel() {
 
     private val actions = MutableStateFlow(GiftIdeaDetailActions())
@@ -37,13 +44,33 @@ class GiftIdeaDetailViewModel @AssistedInject constructor(
 
     private val waitingToSync = repository.observeWaitingToSync(giftIdeaId).catch { emit(false) }
 
+    private val photoRetries = MutableStateFlow(0)
+
+    // Read again when the idea names another photo or the user retries, not on every other change.
+    private val photo = combine(
+        repository.observeGiftIdea(giftIdeaId).map { it?.idea?.photoPath }.distinctUntilChanged(),
+        photoRetries,
+    ) { path, _ -> path }
+        .flatMapLatest { path ->
+            if (path == null) {
+                flowOf<GiftIdeaDetailPhoto?>(null)
+            } else {
+                flow {
+                    emit(GiftIdeaDetailPhoto(photo = null, loading = true))
+                    emit(GiftIdeaDetailPhoto(photo = readPhoto(path), loading = false))
+                }
+            }
+        }
+        .catch { emit(null) }
+
     val uiState: StateFlow<GiftIdeaDetailUiState> =
-        combine(idea, actions, waitingToSync) { content, actions, waiting ->
+        combine(idea, actions, waitingToSync, photo) { content, actions, waiting, photo ->
             // Once deleted, the idea is gone from Room too; keep reporting the deletion, not "not found".
             GiftIdeaDetailUiState(
                 content = if (actions.deleted) GiftIdeaDetailContent.Deleted else content,
                 actions = actions,
                 waitingToSync = waiting,
+                photo = photo,
             )
         }.stateIn(
             scope = viewModelScope,
@@ -70,6 +97,20 @@ class GiftIdeaDetailViewModel @AssistedInject constructor(
             repository.deleteGiftIdea(giftIdeaId)
             actions.update { it.copy(deleted = true) }
         }
+    }
+
+    // A failed read is one attempt: the path still has a photo, which Retry can read again.
+    private suspend fun readPhoto(path: String): LoadedPhoto? = try {
+        photos.loadPhoto(path)?.let(::LoadedPhoto)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+    /** A photo that could not be read, e.g. offline before it was ever downloaded, is read again. */
+    fun onPhotoRetry() {
+        photoRetries.update { it + 1 }
     }
 
     fun onWriteErrorShown() {
@@ -106,7 +147,12 @@ data class GiftIdeaDetailUiState(
     val actions: GiftIdeaDetailActions = GiftIdeaDetailActions(),
     /** Saved on this device, not yet in the account; never inferred from the absence of an error. */
     val waitingToSync: Boolean = false,
+    /** Null when the idea has no photo. */
+    val photo: GiftIdeaDetailPhoto? = null,
 )
+
+/** [photo] is null while it is read ([loading]) or when it is not on this device and cannot be fetched now. */
+data class GiftIdeaDetailPhoto(val photo: LoadedPhoto?, val loading: Boolean)
 
 data class GiftIdeaDetailActions(
     val confirmingDelete: Boolean = false,

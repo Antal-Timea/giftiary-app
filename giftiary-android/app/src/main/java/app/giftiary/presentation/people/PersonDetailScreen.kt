@@ -44,9 +44,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -319,6 +324,7 @@ private fun PersonDetailContent(
                     onClick = { onOpenGiftIdea(entry) },
                     showRecipient = false,
                     horizontalPadding = GiftiarySpacing.browseGutter,
+                    photo = giftPhotos.photoOf(entry.idea.photoPath),
                 )
                 GiftiaryDivider(modifier = Modifier.padding(horizontal = GiftiarySpacing.browseGutter))
             }
@@ -363,38 +369,56 @@ internal fun nextOccasion(occasions: List<Occasion>, today: LocalDate): Pair<Occ
         .minByOrNull { it.second }
 
 /**
- * A quiet aqua surface with the person's photo, cropped, in its large circle; without one the circle
- * carries a large monogram instead, never an empty photo slot. Either is decorative, as the name is
- * written in the hero.
+ * With a photo, the photo is the hero: cropped to fill it, darkened only where the buttons and the
+ * name sit. Without one, a quiet aqua surface whose large circle carries the monogram instead, never
+ * an empty photo slot. The photo and the monogram are decorative either way, as the name is written
+ * in the hero.
  */
 @Composable
 private fun PersonHero(person: Person, photo: LoadedPhoto?, onBack: (() -> Unit)?, onEdit: () -> Unit, onMore: () -> Unit) {
     val colors = GiftiaryTheme.colors
+    val image = rememberDecodedImage(photo)
+    val onImage = image != null
+    val circle = if (onImage) colors.background.copy(alpha = 0.85f) else colors.background
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = HERO_HEIGHT)
+            .heightIn(min = if (onImage) PHOTO_HERO_HEIGHT else HERO_HEIGHT)
             .clip(GiftiaryShapes.hero)
             .background(colors.surfaceContext),
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 28.dp, y = 18.dp)
-                .size(HERO_PHOTO_SIZE)
-                .clip(GiftiaryShapes.pill)
-                .background(colors.surfaceContextQuiet),
-            contentAlignment = Alignment.Center,
-        ) {
-            val image = rememberDecodedImage(photo, HERO_PHOTO_SIZE)
-            if (image != null) {
-                Image(
-                    bitmap = image,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize().testTag(PERSON_PHOTO_TAG),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
+        if (image != null) {
+            Image(
+                bitmap = image,
+                contentDescription = null,
+                // Matched to the hero rather than filling it, so a long name still sets its height.
+                modifier = Modifier.matchParentSize().testTag(PERSON_PHOTO_TAG),
+                contentScale = ContentScale.Crop,
+                // A face usually sits above the middle of a portrait; keep it when the crop trims.
+                alignment = BiasAlignment(horizontalBias = 0f, verticalBias = -0.4f),
+            )
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to colors.photoScrim.copy(alpha = 0.18f),
+                            0.25f to Color.Transparent,
+                            0.5f to colors.photoScrim.copy(alpha = 0.08f),
+                            1f to colors.photoScrim.copy(alpha = 0.58f),
+                        ),
+                    ),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 28.dp, y = 18.dp)
+                    .size(HERO_PHOTO_SIZE)
+                    .clip(GiftiaryShapes.pill)
+                    .background(colors.surfaceContextQuiet),
+                contentAlignment = Alignment.Center,
+            ) {
                 // Sized to its circle, not to the text size: the name is written in the hero, and
                 // the monogram only gives it a face.
                 val monogramSize = with(LocalDensity.current) { MONOGRAM_SIZE.toSp() }
@@ -413,11 +437,11 @@ private fun PersonHero(person: Person, photo: LoadedPhoto?, onBack: (() -> Unit)
                 .padding(horizontal = 10.dp, vertical = GiftiarySpacing.s),
         ) {
             if (onBack != null) {
-                HeroCircleButton(R.drawable.ic_arrow_back, stringResource(R.string.navigate_back), onBack)
+                HeroCircleButton(R.drawable.ic_arrow_back, stringResource(R.string.navigate_back), onBack, containerColor = circle)
             }
             Spacer(Modifier.weight(1f))
-            HeroCircleButton(R.drawable.ic_edit, stringResource(R.string.person_detail_edit, person.name), onEdit)
-            HeroCircleButton(R.drawable.ic_more, stringResource(R.string.person_detail_more, person.name), onMore)
+            HeroCircleButton(R.drawable.ic_edit, stringResource(R.string.person_detail_edit, person.name), onEdit, containerColor = circle)
+            HeroCircleButton(R.drawable.ic_more, stringResource(R.string.person_detail_more, person.name), onMore, containerColor = circle)
         }
         Column(
             modifier = Modifier
@@ -426,18 +450,19 @@ private fun PersonHero(person: Person, photo: LoadedPhoto?, onBack: (() -> Unit)
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(start = GiftiarySpacing.browseGutter, end = GiftiarySpacing.browseGutter, top = HERO_BAR_HEIGHT, bottom = GiftiarySpacing.xl),
         ) {
+            val shadow = if (onImage) Shadow(colors.photoScrim.copy(alpha = 0.45f), Offset(0f, 2f), blurRadius = 12f) else null
             Text(
                 text = person.name,
                 modifier = Modifier.semantics { heading() },
-                style = GiftiaryType.display,
-                color = colors.textPrimary,
+                style = GiftiaryType.display.copy(shadow = shadow),
+                color = if (onImage) colors.onPhoto else colors.textPrimary,
             )
             person.relationship?.takeIf { it.isNotBlank() }?.let { relationship ->
                 Text(
                     text = relationship,
                     modifier = Modifier.padding(top = GiftiarySpacing.xs),
-                    style = GiftiaryType.body.copy(fontWeight = GiftiaryType.contentTitle.fontWeight),
-                    color = colors.textSecondary,
+                    style = GiftiaryType.body.copy(fontWeight = GiftiaryType.contentTitle.fontWeight, shadow = shadow),
+                    color = if (onImage) colors.onPhoto else colors.textSecondary,
                 )
             }
         }
@@ -690,6 +715,8 @@ private fun HistoryCards(pair: List<GiftEntry>, giftPhotos: ShownPhotos, onOpenG
 }
 
 private val HERO_HEIGHT = 266.dp
+// Taller with a photo, so a cropped portrait keeps the face clear of the buttons and the name.
+private val PHOTO_HERO_HEIGHT = 360.dp
 private val MONOGRAM_SIZE = 104.dp
 private val HERO_PHOTO_SIZE = 196.dp
 

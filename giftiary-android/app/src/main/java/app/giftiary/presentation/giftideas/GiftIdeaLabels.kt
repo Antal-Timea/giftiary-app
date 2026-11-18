@@ -1,5 +1,6 @@
 package app.giftiary.presentation.giftideas
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -26,7 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -38,7 +42,10 @@ import androidx.compose.ui.unit.dp
 import app.giftiary.R
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.repository.GiftIdeaEntry
+import app.giftiary.presentation.components.GiftThumbnail
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.gifts.giftPrice
+import app.giftiary.presentation.gifts.rememberDecodedImage
 import app.giftiary.presentation.occasions.occasionTitle
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -144,12 +151,20 @@ private fun StatusOption(label: String, selected: Boolean, enabled: Boolean, onC
 }
 
 private val STATUS_OPTION_PADDING = GiftiarySpacing.xs
+
+/** The same size as a wish's thumbnail, so a photo reads alike in every list. */
+internal val IDEA_THUMBNAIL = 72.dp
+internal const val IDEA_THUMBNAIL_TAG = "idea_thumbnail"
+internal const val IDEA_PHOTO_TAG = "idea_photo"
 private const val DISABLED_ALPHA = 0.38f
 
 /**
  * One idea in a list: what it is, for whom, how far along, and what it may cost. [selectable] rows,
  * beside a detail pane, show and announce whether they are the one open there. [horizontalPadding]
  * lines the text up with the page's gutter while the whole width stays clickable.
+ *
+ * An idea with a photo leads with a thumbnail sized and cropped like a wish's: its [photo], or the
+ * branded glyph while it is read or not available now. An idea without one stays a text row.
  */
 @Composable
 fun GiftIdeaRow(
@@ -160,10 +175,11 @@ fun GiftIdeaRow(
     selectable: Boolean = false,
     selected: Boolean = false,
     horizontalPadding: Dp = GiftiarySpacing.l,
+    photo: LoadedPhoto? = null,
 ) {
     val colors = GiftiaryTheme.colors
     val idea = entry.idea
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
             .background(if (selected) colors.surfaceContext else Color.Transparent)
@@ -171,8 +187,40 @@ fun GiftIdeaRow(
             .clickable(onClickLabel = stringResource(R.string.gift_idea_open), onClick = onClick)
             .heightIn(min = 48.dp)
             .padding(horizontal = horizontalPadding, vertical = GiftiarySpacing.m),
-        verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.Top,
     ) {
+        if (idea.photoPath != null) IdeaThumbnail(photo)
+        IdeaRowText(entry, showRecipient, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun IdeaThumbnail(photo: LoadedPhoto?) {
+    val image = rememberDecodedImage(photo, IDEA_THUMBNAIL)
+    GiftThumbnail(
+        modifier = Modifier.testTag(IDEA_THUMBNAIL_TAG),
+        size = IDEA_THUMBNAIL,
+        shape = GiftiaryShapes.photoCard,
+        photo = image?.let {
+            // The idea's name is written beside it; the photo adds no information of its own.
+            {
+                Image(
+                    bitmap = it,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().testTag(IDEA_PHOTO_TAG),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun IdeaRowText(entry: GiftIdeaEntry, showRecipient: Boolean, modifier: Modifier = Modifier) {
+    val colors = GiftiaryTheme.colors
+    val idea = entry.idea
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.xs)) {
         Text(text = idea.name, style = GiftiaryType.contentTitle, color = colors.textPrimary)
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s),

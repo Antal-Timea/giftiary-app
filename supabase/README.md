@@ -31,8 +31,8 @@ Columns are the Room columns in snake_case. What does **not** cross over:
 - The sharing tables (`20261017100000_wishlist_sharing.sql`) have no Room counterpart: shared
   lists, memberships and reservations are server-owned and read online only.
 
-**Hosted project.** At the last recorded apply (2026-11-12, `20261112100000_device_account_proofs`)
-all 17 migrations in `supabase/migrations` were applied to the hosted project and verified. Check
+**Hosted project.** At the last recorded apply (2026-11-17, `20261117120000_gift_idea_photos`)
+all 19 migrations in `supabase/migrations` were applied to the hosted project and verified. Check
 `migration list --linked` (read-only, with approval) before relying on this for a release.
 
 ## Rules the schema enforces

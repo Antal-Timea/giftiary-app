@@ -46,6 +46,10 @@ import app.giftiary.presentation.components.GiftiaryTaskStatus
 import app.giftiary.presentation.components.GiftiaryTextField
 import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.GiftPhotoCamera
+import app.giftiary.presentation.gifts.GiftPhotoError
+import app.giftiary.presentation.gifts.GiftPhotoSources
+import app.giftiary.presentation.gifts.GiftPhotoTile
 import app.giftiary.presentation.gifts.PriceError
 import app.giftiary.presentation.gifts.priceErrorText
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -80,6 +84,13 @@ fun WishEditorScreen(
             onDeleteDismissed = viewModel::onDeleteDismissed,
             onDeleteConfirmed = viewModel::onDeleteConfirmed,
             onDeleteErrorShown = viewModel::onDeleteErrorShown,
+            onPhotoPicked = viewModel::onPhotoPicked,
+            onNewCaptureTarget = viewModel::newCaptureTarget,
+            onPhotoCaptured = viewModel::onPhotoCaptured,
+            onCaptureCancelled = viewModel::onCaptureCancelled,
+            onCameraUnavailable = viewModel::onCameraUnavailable,
+            onPhotoRemoved = viewModel::onPhotoRemoved,
+            onPhotoErrorShown = viewModel::onPhotoErrorShown,
         ),
     )
 }
@@ -98,16 +109,41 @@ class WishEditorActions(
     val onDeleteDismissed: () -> Unit = {},
     val onDeleteConfirmed: () -> Unit = {},
     val onDeleteErrorShown: () -> Unit = {},
+    val onPhotoPicked: (String) -> Unit = {},
+    val onNewCaptureTarget: () -> String? = { null },
+    val onPhotoCaptured: (String) -> Unit = {},
+    val onCaptureCancelled: (String) -> Unit = {},
+    val onCameraUnavailable: (String) -> Unit = {},
+    val onPhotoRemoved: () -> Unit = {},
+    val onPhotoErrorShown: () -> Unit = {},
 )
 
 @Composable
 fun WishEditorScreen(state: WishEditorUiState, actions: WishEditorActions, modifier: Modifier = Modifier) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val saveFailedMessage = stringResource(R.string.wish_save_failed)
-    LaunchedEffect(state.saveFailed) {
-        if (state.saveFailed) {
+    val saveFailedMessage = when {
+        state.photoUnavailableOnSave -> stringResource(R.string.gift_photo_unavailable_on_save)
+        state.saveFailed -> stringResource(R.string.wish_save_failed)
+        else -> null
+    }
+    LaunchedEffect(saveFailedMessage) {
+        if (saveFailedMessage != null) {
             snackbarHostState.showSnackbar(saveFailedMessage)
             actions.onSaveErrorShown()
+        }
+    }
+    val photoErrorMessage = state.photoError?.let {
+        stringResource(
+            when (it) {
+                GiftPhotoError.UNREADABLE -> R.string.gift_photo_unreadable
+                GiftPhotoError.CAMERA_UNAVAILABLE -> R.string.gift_photo_camera_unavailable
+            },
+        )
+    }
+    LaunchedEffect(photoErrorMessage) {
+        if (photoErrorMessage != null) {
+            snackbarHostState.showSnackbar(photoErrorMessage)
+            actions.onPhotoErrorShown()
         }
     }
     val deleteFailedMessage = stringResource(R.string.wish_delete_failed)
@@ -149,9 +185,9 @@ fun WishEditorScreen(state: WishEditorUiState, actions: WishEditorActions, modif
 
 /**
  * The approved Add / Edit wish: the list, what is wished for, then the optional details one tap
- * away. A wish stays on the list it was added to, so the list is shown but cannot be changed. Wish
- * photos cannot be added or changed yet, so the board's photo tile is left out; the price keeps
- * the wish's own currency, as there is no currency choice. Edit opens with the details shown.
+ * away. A wish stays on the list it was added to, so the list is shown but cannot be changed. The
+ * price keeps the wish's own currency, as there is no currency choice. Edit opens with the details
+ * shown.
  */
 @Composable
 private fun WishForm(state: WishEditorUiState, actions: WishEditorActions, modifier: Modifier = Modifier) {
@@ -159,6 +195,29 @@ private fun WishForm(state: WishEditorUiState, actions: WishEditorActions, modif
     var detailsShown by rememberSaveable { mutableStateOf(!state.isNew) }
     // A price error is in the details: they open so it can be seen.
     val showDetails = detailsShown || state.priceError != null
+    GiftPhotoSources(
+        onPick = actions.onPhotoPicked,
+        camera = GiftPhotoCamera(
+            newTarget = actions.onNewCaptureTarget,
+            onCaptured = actions.onPhotoCaptured,
+            onCancelled = actions.onCaptureCancelled,
+            onUnavailable = actions.onCameraUnavailable,
+        ),
+    ) { choosePhoto ->
+        WishFormContent(state, actions, canEdit, showDetails, { detailsShown = !showDetails }, choosePhoto, modifier)
+    }
+}
+
+@Composable
+private fun WishFormContent(
+    state: WishEditorUiState,
+    actions: WishEditorActions,
+    canEdit: Boolean,
+    showDetails: Boolean,
+    onToggleDetails: () -> Unit,
+    onChoosePhoto: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -224,14 +283,20 @@ private fun WishForm(state: WishEditorUiState, actions: WishEditorActions, modif
 
         GiftiarySupportButton(
             text = stringResource(if (showDetails) R.string.gift_editor_fewer_details else R.string.gift_editor_more_details),
-            onClick = { detailsShown = !showDetails },
+            onClick = onToggleDetails,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = GiftiarySpacing.xl),
             leadingIcon = painterResource(if (showDetails) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down),
         )
         if (showDetails) {
-            WishDetails(state = state, actions = actions, enabled = canEdit, modifier = Modifier.padding(top = GiftiarySpacing.browseGutter))
+            WishDetails(
+                state = state,
+                actions = actions,
+                onChoosePhoto = onChoosePhoto,
+                enabled = canEdit,
+                modifier = Modifier.padding(top = GiftiarySpacing.browseGutter),
+            )
         }
 
         GiftiaryPrimaryButton(
@@ -240,17 +305,33 @@ private fun WishForm(state: WishEditorUiState, actions: WishEditorActions, modif
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 28.dp),
-            enabled = state.status == WishEditorStatus.EDITING && !state.isDeleting,
+            enabled = state.status == WishEditorStatus.EDITING && !state.isDeleting && !state.photoBusy,
             loading = state.isSaving,
             trailingArrow = true,
         )
     }
 }
 
-/** The board's order, less the photo: note, approximate price, then the product link. */
+/** The photo first, as what a wish looks like matters most; then note, approximate price and link. */
 @Composable
-private fun WishDetails(state: WishEditorUiState, actions: WishEditorActions, enabled: Boolean, modifier: Modifier = Modifier) {
+private fun WishDetails(
+    state: WishEditorUiState,
+    actions: WishEditorActions,
+    onChoosePhoto: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.fieldGroup)) {
+        GiftPhotoTile(
+            hasPhoto = state.photoPath != null,
+            photo = state.photo,
+            busy = state.photoBusy,
+            enabled = enabled,
+            onChoose = onChoosePhoto,
+            onRemove = actions.onPhotoRemoved,
+            modifier = Modifier.fillMaxWidth(),
+            description = stringResource(R.string.wish_photo_description),
+        )
         GiftiaryTextField(
             value = state.note,
             onValueChange = actions.onNoteChange,

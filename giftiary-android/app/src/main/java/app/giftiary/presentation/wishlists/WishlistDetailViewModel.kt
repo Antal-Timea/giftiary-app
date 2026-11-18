@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.Person
 import app.giftiary.domain.model.Wish
 import app.giftiary.domain.model.Wishlist
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.PersonRepository
 import app.giftiary.domain.repository.SharingException
 import app.giftiary.domain.repository.WishlistSharingRepository
 import app.giftiary.domain.repository.WishlistRepository
+import app.giftiary.presentation.gifts.ShownPhotos
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -35,7 +37,11 @@ class WishlistDetailViewModel @AssistedInject constructor(
     private val repository: WishlistRepository,
     personRepository: PersonRepository,
     private val sharing: WishlistSharingRepository,
+    photoRepository: GiftPhotoRepository,
 ) : ViewModel() {
+
+    /** The wishes' photos, read only for the rows on screen. */
+    val photos = ShownPhotos(viewModelScope, photoRepository::loadPhoto)
 
     private val actions = MutableStateFlow(WishlistDetailActions())
 

@@ -53,6 +53,8 @@ import app.giftiary.presentation.components.OptionsMenu
 import app.giftiary.presentation.components.PendingSyncStatus
 import app.giftiary.presentation.components.TrailingActionRow
 import app.giftiary.presentation.components.giftiaryReadableWidth
+import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.sharing.ReservedTag
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
@@ -83,6 +85,7 @@ fun WishlistDetailScreen(
     }
     WishlistDetailScreen(
         state = state,
+        photos = viewModel.photos,
         actions = WishlistDetailScreenActions(
             onBack = onBack,
             onEditList = onEditList,
@@ -120,6 +123,7 @@ fun WishlistDetailScreen(
     state: WishlistDetailUiState,
     actions: WishlistDetailScreenActions,
     modifier: Modifier = Modifier,
+    photos: ShownPhotos = ShownPhotos.of(emptyMap()),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val writeFailedMessage = stringResource(R.string.wishlist_delete_failed)
@@ -148,6 +152,7 @@ fun WishlistDetailScreen(
                 waitingToSync = state.waitingToSync,
                 busy = state.actions.isBusy,
                 actions = actions,
+                photos = photos,
                 modifier = contentModifier,
             )
         }
@@ -175,6 +180,7 @@ private fun WishlistContents(
     waitingToSync: Boolean,
     busy: Boolean,
     actions: WishlistDetailScreenActions,
+    photos: ShownPhotos,
     modifier: Modifier = Modifier,
 ) {
     val wishlist = content.wishlist
@@ -224,6 +230,7 @@ private fun WishlistContents(
             if (index > 0) WishDivider()
             OwnerWishRow(
                 wish = wish,
+                photo = photos.photoOf(wish.photoPath),
                 reserved = wish.id in content.reservedWishIds,
                 onOpen = { actions.onOpenWish(wish.id) },
                 onEdit = { actions.onEditWish(wish.id) },
@@ -308,12 +315,13 @@ private fun WishesHeading(onAddWish: () -> Unit) {
 }
 
 @Composable
-private fun OwnerWishRow(wish: Wish, reserved: Boolean, onOpen: () -> Unit, onEdit: () -> Unit) {
+private fun OwnerWishRow(wish: Wish, photo: LoadedPhoto?, reserved: Boolean, onOpen: () -> Unit, onEdit: () -> Unit) {
     WishRowContent(
         name = wish.name,
         note = wish.note,
         price = wish.estimatedPrice,
         productUrl = wish.productUrl,
+        photo = photo,
         modifier = Modifier.clickable(onClickLabel = stringResource(R.string.wish_open), onClick = onOpen),
         trailing = {
             OptionsMenu(

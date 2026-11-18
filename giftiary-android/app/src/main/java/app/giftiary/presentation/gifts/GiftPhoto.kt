@@ -121,7 +121,8 @@ fun GiftPhotoSources(
 /**
  * The photo in the form: a compact dashed tile while there is none, as on the approved board;
  * once there is one, the whole photo, uncropped, with Replace and Remove under it. [hasPhoto] with
- * no [photo] is a photo that is not available right now.
+ * no [photo] is a photo that is not available right now. [description] is what the photo is read
+ * out as.
  */
 @Composable
 fun GiftPhotoTile(
@@ -132,6 +133,7 @@ fun GiftPhotoTile(
     onChoose: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    description: String = stringResource(R.string.gift_photo_description),
 ) {
     val colors = GiftiaryTheme.colors
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
@@ -140,7 +142,7 @@ fun GiftPhotoTile(
             AddPhotoTile(busy = busy, enabled = enabled && !busy, onClick = onChoose)
             return@Column
         }
-        PhotoOrPlaceholder(photo)
+        PhotoOrPlaceholder(photo, description)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GiftiarySpacing.s)) {
             GiftiarySecondaryButton(
                 text = stringResource(R.string.gift_photo_replace),
@@ -229,7 +231,7 @@ private fun PhotoSource(label: String, onClick: () -> Unit) {
  * but no taller than [PHOTO_MAX_HEIGHT], so a tall portrait does not fill the screen.
  */
 @Composable
-private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
+internal fun PhotoOrPlaceholder(photo: LoadedPhoto?, description: String) {
     val decoded = photo?.let { rememberDecoded(it) }
     // A moment while it decodes: nothing yet, rather than "not available".
     if (decoded == DecodedPhoto.Decoding) return
@@ -239,7 +241,7 @@ private fun PhotoOrPlaceholder(photo: LoadedPhoto?) {
             val ratio = image.width.toFloat() / image.height
             Image(
                 bitmap = image,
-                contentDescription = stringResource(R.string.gift_photo_description),
+                contentDescription = description,
                 modifier = Modifier
                     .testTag(PHOTO_TAG)
                     .width(min(maxWidth, PHOTO_MAX_HEIGHT * ratio))

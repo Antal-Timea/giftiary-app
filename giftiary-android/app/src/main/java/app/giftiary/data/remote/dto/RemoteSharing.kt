@@ -91,5 +91,7 @@ data class RemoteSharedWish(
     @SerialName("estimated_price_amount_minor") val estimatedPriceAmountMinor: Long?,
     @SerialName("estimated_price_currency_code") val estimatedPriceCurrencyCode: String?,
     @SerialName("product_url") val productUrl: String?,
+    // Absent from servers older than wish photos.
+    @SerialName("photo_path") val photoPath: String? = null,
     @SerialName("reservation_state") val reservationState: String,
 )

@@ -26,10 +26,12 @@ interface PhotoTransferDao {
     @Query("SELECT EXISTS(SELECT 1 FROM photo_transfer WHERE path = :path AND ownerUserId = :ownerUserId AND kind = :kind)")
     fun observeExists(path: String, ownerUserId: UUID, kind: PhotoTransferKind): Flow<Boolean>
 
-    /** Whether any of the owner's gifts or people, deleted ones included, names the photo. */
+    /** Whether any of the owner's gifts, gift ideas, people or wishes, deleted ones included, names the photo. */
     @Query(
         "SELECT EXISTS(SELECT 1 FROM gift WHERE ownerUserId = :ownerUserId AND photoPath = :path) " +
-            "OR EXISTS(SELECT 1 FROM person WHERE ownerUserId = :ownerUserId AND photoPath = :path)",
+            "OR EXISTS(SELECT 1 FROM gift_idea WHERE ownerUserId = :ownerUserId AND photoPath = :path) " +
+            "OR EXISTS(SELECT 1 FROM person WHERE ownerUserId = :ownerUserId AND photoPath = :path) " +
+            "OR EXISTS(SELECT 1 FROM wish WHERE ownerUserId = :ownerUserId AND photoPath = :path)",
     )
     suspend fun isNamed(path: String, ownerUserId: UUID): Boolean
 

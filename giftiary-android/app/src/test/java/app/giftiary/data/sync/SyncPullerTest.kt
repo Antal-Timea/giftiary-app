@@ -91,6 +91,7 @@ class SyncPullerTest {
         )
         wishlists = WishlistRepositoryImpl(
             database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         backend = FakeBackend(database)
         puller = SyncPuller(
@@ -356,7 +357,7 @@ class SyncPullerTest {
     fun `a queued local wishlist or wish change wins over the backend's row`() = runTest {
         val (list, lamp) = syncedWishlistWithWish(version = 1)
         wishlists.renameWishlist(list, "Local name")
-        wishlists.updateWish(lamp, WishDetails("Local lamp", null, null, null))
+        wishlists.updateWish(lamp, WishDetails("Local lamp", null, null, null, null))
         backend.seed(list, alice, 2, UUID.randomUUID(), RemoteWishlistFields(null, "Remote name", null))
         backend.seed(lamp, alice, 2, UUID.randomUUID(), wishFields(list).copy(name = "Remote lamp"))
 
@@ -749,7 +750,7 @@ class SyncPullerTest {
     /** A wishlist without a person and a wish on it, which Room and the backend both have at [version], with nothing queued. */
     private suspend fun syncedWishlistWithWish(version: Long): Pair<UUID, UUID> {
         val list = wishlists.addWishlist(null, "Birthday")
-        val wish = wishlists.addWish(list.id, WishDetails("Lamp", null, null, null))
+        val wish = wishlists.addWish(list.id, WishDetails("Lamp", null, null, null, null))
         val listEntity = database.wishlistDao().findById(list.id, alice)!!.copy(version = version, remoteState = RemoteState.SYNCED)
         database.wishlistDao().update(listEntity)
         val wishEntity = database.wishDao().findById(wish.id, alice)!!.copy(version = version, remoteState = RemoteState.SYNCED)

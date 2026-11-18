@@ -1,13 +1,17 @@
 package app.giftiary.presentation.giftideas
 
+import app.giftiary.presentation.gifts.GiftPhotoError
+import app.giftiary.domain.repository.GiftPhotoUnavailableException
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Money
+import app.giftiary.domain.model.PhotoEdit
 import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.usecase.GiftIdeaInputError
 import app.giftiary.domain.usecase.SaveGiftIdeaUseCase
 import app.giftiary.presentation.gifts.PriceError
 import app.giftiary.testing.FakeGiftIdeaRepository
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.testing.FakePersonRepository
 import app.giftiary.testing.MainDispatcherRule
@@ -37,6 +41,7 @@ class GiftIdeaEditorViewModelTest {
     private val bela = person("Béla")
     private val people = FakePersonRepository().apply { givenPeople(anna, bela) }
     private val occasions = FakeOccasionRepository()
+    private val photos = FakeGiftPhotoRepository()
     private val ideas = FakeGiftIdeaRepository().apply {
         people[anna.id] = anna
         people[bela.id] = bela
@@ -59,7 +64,7 @@ class GiftIdeaEditorViewModelTest {
     }
 
     private fun viewModel(target: GiftIdeaEditorTarget = GiftIdeaEditorTarget.New()) =
-        GiftIdeaEditorViewModel(target, people, occasions, ideas, SaveGiftIdeaUseCase(ideas))
+        GiftIdeaEditorViewModel(target, people, occasions, ideas, SaveGiftIdeaUseCase(ideas), photos)
 
     @Test
     fun `a new idea starts as an idea and can preselect its recipient`() {
@@ -351,5 +356,185 @@ class GiftIdeaEditorViewModelTest {
         assertEquals(GiftIdeaWriteError.DELETE_FAILED, state.writeError)
         assertFalse(state.isBusy)
         assertEquals("Wool scarf", state.name)
+    }
+
+    // ---- photo ----
+
+    @Test
+    fun `a new idea can be saved with a picked photo, and without one names none`() = runTest {
+        val withPhoto = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        withPhoto.onNameChange("Scarf")
+        withPhoto.onPhotoPicked("content://scarf")
+        val path = withPhoto.uiState.value.photoPath!!
+        assertEquals("content://scarf", withPhoto.uiState.value.photo!!.bytes.decodeToString())
+        withPhoto.save()
+        assertEquals(PhotoEdit.Replace(path), ideas.lastSaved!!.photo)
+
+        val plain = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        plain.onNameChange("Mug")
+        plain.save()
+        assertNull(ideas.currentIdeas.last().idea.photoPath)
+        assertEquals(listOf("content://scarf"), photos.imported)
+    }
+
+    @Test
+    fun `an existing idea shows its photo, and it can be added, replaced or removed`() = runTest {
+        val scarf = ideaEntry(ideaDetails(anna, status = GiftIdeaStatus.PLANNED), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        assertNull(viewModel.uiState.value.photo)
+
+        viewModel.onPhotoPicked("content://first")
+        viewModel.save()
+        val first = ideas.getGiftIdea(scarf.idea.id)!!.idea.photoPath!!
+
+        val again = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        assertEquals("the stored photo is shown", "content://first", again.uiState.value.photo!!.bytes.decodeToString())
+        again.onPhotoPicked("content://second")
+        again.save()
+        val second = ideas.getGiftIdea(scarf.idea.id)!!.idea.photoPath!!
+        assertTrue(second != first)
+
+        val last = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        last.onPhotoRemoved()
+        assertNull(last.uiState.value.photo)
+        last.save()
+        assertNull(ideas.getGiftIdea(scarf.idea.id)!!.idea.photoPath)
+        assertEquals("the other fields are kept", GiftIdeaStatus.PLANNED, ideas.getGiftIdea(scarf.idea.id)!!.idea.status)
+    }
+
+    @Test
+    fun `a name or price save keeps a photo another device changed while the editor was open`() = runTest {
+        val opened = photos.importPhoto("content://opened")
+        val scarf = ideaEntry(ideaDetails(anna, photoPath = opened), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        // Synced in while the editor is open: replaced on another device.
+        val synced = photos.importPhoto("content://synced")
+        ideas.updateGiftIdea(scarf.idea.id, ideaDetails(anna, photoPath = synced))
+
+        viewModel.onNameChange("Green scarf")
+        viewModel.onEstimatedPriceChange("9900")
+        viewModel.save()
+
+        assertEquals(PhotoEdit.Unchanged, ideas.lastSaved!!.photo)
+        val saved = ideas.getGiftIdea(scarf.idea.id)!!.idea
+        assertEquals("Green scarf", saved.name)
+        assertEquals(synced, saved.photoPath)
+    }
+
+    @Test
+    fun `a photo removed on another device is not brought back by a save here`() = runTest {
+        val opened = photos.importPhoto("content://opened")
+        val scarf = ideaEntry(ideaDetails(anna, photoPath = opened), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        ideas.updateGiftIdea(scarf.idea.id, ideaDetails(anna).copy(photo = PhotoEdit.Remove))
+
+        viewModel.onNameChange("Green scarf")
+        viewModel.save()
+
+        assertNull(ideas.getGiftIdea(scarf.idea.id)!!.idea.photoPath)
+    }
+
+    @Test
+    fun `a failed photo read leaves the save unchanged, not a removal`() = runTest {
+        val opened = photos.importPhoto("content://opened")
+        val scarf = ideaEntry(ideaDetails(anna, photoPath = opened), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        photos.unreadable += "content://bad"
+
+        viewModel.onPhotoPicked("content://bad")
+        viewModel.save()
+
+        assertEquals(PhotoEdit.Unchanged, ideas.lastSaved!!.photo)
+        assertEquals(opened, ideas.getGiftIdea(scarf.idea.id)!!.idea.photoPath)
+    }
+
+    @Test
+    fun `editing other fields or the status keeps the photo`() = runTest {
+        val photo = photos.importPhoto("content://scarf")
+        val scarf = ideaEntry(ideaDetails(anna, photoPath = photo), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+
+        viewModel.onNameChange("Green scarf")
+        viewModel.onIdeaStatusChange(GiftIdeaStatus.PURCHASED)
+        viewModel.save()
+
+        val saved = ideas.getGiftIdea(scarf.idea.id)!!.idea
+        assertEquals("Green scarf", saved.name)
+        assertEquals(GiftIdeaStatus.PURCHASED, saved.status)
+        assertEquals(photo, saved.photoPath)
+    }
+
+    @Test
+    fun `a camera photo is used, and a cancelled capture discards its file`() = runTest {
+        val viewModel = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        val cancelled = viewModel.newCaptureTarget()!!
+        viewModel.onCaptureCancelled(cancelled)
+        assertEquals(listOf(cancelled), photos.discarded)
+        assertNull(viewModel.uiState.value.photoPath)
+
+        val target = viewModel.newCaptureTarget()!!
+        photos.captured[target] = "camera"
+        viewModel.onPhotoCaptured(target)
+
+        assertEquals("camera", viewModel.uiState.value.photo!!.bytes.decodeToString())
+        assertTrue(photos.openCaptures.isEmpty())
+    }
+
+    @Test
+    fun `an unreadable photo is reported and the earlier one kept`() = runTest {
+        val viewModel = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        viewModel.onPhotoPicked("content://good")
+        val kept = viewModel.uiState.value.photoPath
+        photos.unreadable += "content://bad"
+
+        viewModel.onPhotoPicked("content://bad")
+
+        assertEquals(GiftPhotoError.UNREADABLE, viewModel.uiState.value.photoError)
+        assertEquals(kept, viewModel.uiState.value.photoPath)
+        viewModel.onPhotoErrorShown()
+        assertNull(viewModel.uiState.value.photoError)
+    }
+
+    @Test
+    fun `a photo gone from the device when saving is dropped and reported, and the form stays`() = runTest {
+        ideas.writeFailure = GiftPhotoUnavailableException()
+        val viewModel = viewModel(GiftIdeaEditorTarget.New(anna.id))
+        viewModel.onNameChange("Scarf")
+        viewModel.onPhotoPicked("content://scarf")
+
+        viewModel.save()
+
+        val state = viewModel.uiState.value
+        assertEquals(GiftIdeaWriteError.PHOTO_UNAVAILABLE, state.writeError)
+        assertNull(state.photoPath)
+        assertNull(state.photo)
+        assertEquals("back to no change", PhotoEdit.Unchanged, state.photoEdit)
+        assertFalse(state.isBusy)
+        assertEquals("Scarf", state.name)
+        assertEquals(GiftIdeaEditorStatus.EDITING, state.status)
+    }
+
+    @Test
+    fun `a replacement gone from the device returns to the idea's photo, so the next save keeps it`() = runTest {
+        val opened = photos.importPhoto("content://opened")
+        val scarf = ideaEntry(ideaDetails(anna, photoPath = opened), anna)
+        ideas.givenIdeas(scarf)
+        val viewModel = viewModel(GiftIdeaEditorTarget.Existing(scarf.idea.id))
+        viewModel.onPhotoPicked("content://new")
+        ideas.writeFailure = GiftPhotoUnavailableException()
+
+        viewModel.save()
+        assertEquals(opened, viewModel.uiState.value.photoPath)
+        assertEquals("content://opened", viewModel.uiState.value.photo!!.bytes.decodeToString())
+        ideas.writeFailure = null
+        viewModel.save()
+
+        assertEquals(PhotoEdit.Unchanged, ideas.lastSaved!!.photo)
+        assertEquals(opened, ideas.getGiftIdea(scarf.idea.id)!!.idea.photoPath)
     }
 }

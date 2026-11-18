@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * A gift or person photo's pending Storage work on this device; local only, never synced. Written
+ * A gift, gift idea, person or wish photo's pending Storage work on this device; local only, never synced. Written
  * in the same transaction as the row change that needs it, so a selected photo is never lost: the
  * upload survives restarts until it succeeds, and a replaced or removed photo's object is
  * eventually deleted.
@@ -20,7 +20,7 @@ data class PhotoTransferEntity(
     /** The Storage path, "<owner>/<photo id>.jpg"; also the local file's path. One transfer per photo. */
     @PrimaryKey val path: String,
     val ownerUserId: UUID,
-    /** The row (a gift or a person) that named the photo when this was queued. */
+    /** The row (a gift, a person or a wish) that named the photo when this was queued. */
     val entityType: SyncEntityType,
     val entityId: UUID,
     val kind: PhotoTransferKind,

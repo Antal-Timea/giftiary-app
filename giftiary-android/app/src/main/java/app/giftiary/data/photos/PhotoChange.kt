@@ -9,7 +9,7 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Queues the Storage work a gift's or person's photo change needs. Called inside the row's write
+ * Queues the Storage work a gift's, gift idea's, person's or wish's photo change needs. Called inside the row's write
  * transaction, after the row itself was written: the new photo's upload, and the old one's removal
  * (or, if it was never uploaded, nothing to remove).
  *
