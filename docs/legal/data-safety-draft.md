@@ -14,7 +14,7 @@
 |---|---|---|---|
 | Does the app collect or share user data? | Yes: an account (email) and user-entered content are sent to the backend | Collects: yes | `[VERIFY]` category mapping on the current form |
 | Data encrypted in transit? | All backend traffic is HTTPS (Supabase client) | Yes | |
-| Can users request deletion? | **In the app:** Settings → Delete account. The app first deletes the account's gift and person photos, then its profile photos, from Storage. The backend then hard-deletes the account and all data associated with it in one transaction: records, change log, profile, own email invites, sharing memberships and reservations, device proofs and the sign-in account. The deleting device removes that account's local data and signs out. Other devices that registered a device proof remove their local copy once their session is refused and they get the server's confirmation (see Device or other IDs). **On the web:** https://giftiary.app/account-deletion/ (live; deletion by email, `docs/operations/account-deletion-by-email.md`) | Yes, in-app and by web request | `[VERIFY]` deletion URL entered in Play Console; hosted backup retention |
+| Can users request deletion? | **In the app:** Settings → Delete account. The app first deletes the account's gift, gift idea, person and wish photos, then its profile photos, from Storage. The backend then hard-deletes the account and all data associated with it in one transaction: records, change log, profile, own email invites, sharing memberships and reservations, device proofs and the sign-in account. The deleting device removes that account's local data and signs out. Other devices that registered a device proof remove their local copy once their session is refused and they get the server's confirmation (see Device or other IDs). **On the web:** https://giftiary.app/account-deletion/ (live; deletion by email, `docs/operations/account-deletion-by-email.md`) | Yes, in-app and by web request | `[VERIFY]` deletion URL entered in Play Console; hosted backup retention |
 | Email address (the user's) | Required for an email account; received from Google or Facebook when the user signs in with them and the provider shares it | Collected; required; account management | `[VERIFY]` optional vs required wording when a provider account has no email |
 | Email address (someone the user invites) | Optional email invite to one of the user's own wishlists. The address is stored only while the invite is pending (at most 14 days), then erased; Resend sends that address one invitation email | Collected; optional; app functionality. Sent to an email processor, not shared | `[VERIFY]` whether data about non-users typed in by the user is declared under Email address, and whether the email processor counts as sharing |
 | Name | Optional display name, shown to people the user shares wishlists with or invites. With Google or Facebook sign-in, the provider's name (and picture URL) is also stored by the auth service in the account record; the app does not use it | Collected, optional; app functionality | `[VERIFY]` whether user-initiated sharing with other users counts as "shared" on the current form, and whether the provider profile counts as collected "Name" / "Photos" |
@@ -26,12 +26,34 @@
 | Reminder settings | Per account, on the device only (included in Android backup); removed when the account's local data is purged | Not sent to the backend | |
 | Contacts | Not read from the device; people are typed in by the user | Not collected (as device contacts) | `[VERIFY]` that typed-in people are not a "Contacts" category answer |
 | Calendar | Occasions (e.g. birthdays) are typed in, not read from the device calendar | Not collected (as calendar events) | `[VERIFY]` same question as Contacts |
-| Photos | Three optional kinds, all chosen with the system photo picker or taken with the device's camera app (no storage or camera permission), re-encoded as JPEG with metadata removed: a gift photo (≤1600 px), a person photo (640 px square; usually depicts a third party) and the user's own profile photo (640 px square). Gift and person photos are on the device and in the private `gift-photos` bucket (owner-only folder, no public link), deleted from Storage when replaced, removed or their gift/person deleted (after sync). The profile photo is online only, in the separate private `profile-avatars` bucket; the old one is deleted right after a change, best effort. None is shown to other users or returned by sharing/invite RPCs. All are deleted before account deletion | Collected; optional; app functionality; not shared (processor only) | Re-confirm against any declaration already in Play Console |
+| Photos | Five optional kinds, all chosen with the system photo picker or taken with the device's camera app (no storage or camera permission), re-encoded as JPEG with metadata removed: gift, gift idea and wish photos (≤1600 px), person photos (640 px square; usually depict a third party) and the user's own profile photo (640 px square). Gift, gift idea, person and wish photos are on the device and in the private `gift-photos` bucket (owner folder, no public link), deleted from Storage when replaced, removed or their item (or a wish's list) is deleted (after sync); marking an idea as given moves its photo to the gift. **Wish photos are not owner-only:** a member of a wishlist the user shared can read (never write) the photo of a wish currently on that list while still a member; the member's app keeps it in memory only. Gift, gift idea, person and profile photos are never shown to other users or returned by sharing/invite RPCs. The profile photo is online only, in the separate private `profile-avatars` bucket; the old one is deleted right after a change, best effort. All are deleted before account deletion | Collected; optional; app functionality. Wish photos reach other users only through the user's own sharing of a list: user-initiated, so not "shared" (see "Photos and the sharing question") | `[VERIFY]` Photos answer in Play Console against this row (see below) |
 | Location, files, audio, health, messages | Not accessed | Not collected | |
 | Financial info | No payments. Gift prices are user notes about gifts, not the user's finances | Not collected | `[VERIFY]` that user-typed prices are not "purchase history" |
 | App activity, analytics, crash logs, diagnostics | No analytics or crash SDK. Logs stay in the device's logcat. Play Console vitals only | Not collected by the app | `[VERIFY]` at each release that no SDK was added |
 | Shared with third parties | Processors only: Supabase (auth, database, storage), Resend (confirmation, recovery and invitation emails). No advertising or analytics partners | Processing by service providers; not "sharing" | `[VERIFY]` how the current form treats processors |
-| Data processed ephemerally | Shared lists of other users are read online and not stored on the device. The device-proof check sends the secret and stores nothing | n/a | `[VERIFY]` whether the check counts as ephemeral processing |
+| Data processed ephemerally | Shared lists of other users, including their wish photos, are read online and kept in memory only, not stored on the device. The device-proof check sends the secret and stores nothing | n/a | `[VERIFY]` whether the check counts as ephemeral processing. Photos as a whole are not ephemeral: the owner's copies are stored |
+
+## Photos and the sharing question (checked 18 November 2026)
+
+- **What changed:** since the declaration work above, the app added gift idea photos (owner-only)
+  and wish photos. A wish photo on a list the user shares is readable by that list's members
+  (read only, while members, and only for wishes currently on the list).
+- **Google's guidance** (Play Console Help, "Provide information for Google Play's Data safety
+  section", https://support.google.com/googleplay/android-developer/answer/10787469, read on
+  18 November 2026): "sharing" means transferring user data to a third party, and a third party is
+  any organisation other than the developer or its service providers. Transfers that need not be
+  disclosed as sharing include those based on "a specific user-initiated action, where the user
+  reasonably expects the data to be shared".
+- **Assessment (not a legal opinion):** the user chooses to share a list and whom to invite, and the
+  privacy policy says what members see. Members are other users invited by the user, not organisations, and
+  each transfer follows the user's own sharing action. So wish photos are **not** "shared" in
+  Play's sense, and Photos stays "collected, not shared". The owner should confirm this on the
+  current form; this assessment does not change anything in Play Console.
+- **Manual Console checks (owner):**
+  - [ ] Photos is still declared as collected (optional, app functionality) and not shared.
+  - [ ] No other answer claims that photos are visible only to the user.
+  - [ ] The privacy policy URL serves the 18 November 2026 version after the website PR is
+        merged.
 
 ## Declared in Play Console
 
@@ -53,15 +75,18 @@
   https://giftiary.app/account-deletion/. There is no separate way to request deletion of data
   without deleting the account.
 
-Where a draft answer in the table differs, this declaration is what was entered.
+Where a draft answer in the table differs, this declaration is what was entered. It was made
+before gift idea and wish photos existed and has not been changed since; re-check it against the
+Photos row and the section above.
 
 ## Before submitting
 
 - [ ] Every `[VERIFY]` above resolved by the owner.
 - [ ] Answers consistent with the published privacy policy (`docs/legal/privacy-policy-en.md`,
-      `-hu.md`, effective 12 November 2026, covering device proofs and the F5 other-device
-      removal) and with the account-deletion page. Both pages are already published and verified
-      live (website PR #9, `a675918`, 12 November 2026; `docs/release-checklist.md`, Gate B). The
+      `-hu.md`, effective 18 November 2026, covering device proofs, the F5 other-device
+      removal and members' access to wish photos) and with the account-deletion page. Their 12 November versions were published and
+      verified live (website PR #9, `a675918`; `docs/release-checklist.md`, Gate B); the 18 November
+      versions go live only when website PR #16 is merged. The
       corrected Play Data safety declaration above was submitted for review on 14 November 2026.
 - [x] Deletion URL https://giftiary.app/account-deletion/ entered in Play Console.
 - [ ] Account-deletion answer consistent with the current Play policy check in

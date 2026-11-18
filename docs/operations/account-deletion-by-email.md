@@ -26,8 +26,10 @@ reply says so and tells them to clear the app's data or uninstall where needed.
 
 - **Photos** are Storage objects in two private buckets, each under the folder `<user id>/`, in
   the flat shape `<user id>/<uuid>.jpg` (no subfolders):
-  - `gift-photos`: gift photos **and person photos** (migrations `20261101120000_gift_photos.sql`
-    and `20261109100000_person_profile_photos.sql`);
+  - `gift-photos`: gift photos **and gift idea, person and wish photos** (migrations
+    `20261101120000_gift_photos.sql`, `20261109100000_person_profile_photos.sql`,
+    `20261117100000_wish_photos.sql` and `20261117120000_gift_idea_photos.sql`). Members of a shared
+    list can read its wish photos, so emptying this folder also ends their access;
   - `profile-avatars`: profile photos, kept apart from every other photo
     (`20261109100000_person_profile_photos.sql`).
 
@@ -48,7 +50,7 @@ pointed to it (`people.linked_user_id`). It is not callable by `anon`, `authenti
 
 The app's own order (`SupabaseAccountDeletionRemote.deleteAccount`, develop `7b88fc7`):
 
-1. `gift-photos` folder `<uid>/` emptied (gift and person photos), page by page;
+1. `gift-photos` folder `<uid>/` emptied (gift, gift idea, person and wish photos), page by page;
 2. `profile-avatars` folder `<uid>/` emptied (profile photos);
 3. `public.delete_my_account()`, which runs `private.delete_account(auth.uid())`.
 
@@ -158,6 +160,8 @@ union all select 'gift_ideas', count(*) from public.gift_ideas where owner_user_
 union all select 'gifts', count(*) from public.gifts where owner_user_id = '<uid>'
 union all select 'gifts_with_photo', count(*) from public.gifts where owner_user_id = '<uid>' and photo_path is not null
 union all select 'people_with_photo', count(*) from public.people where owner_user_id = '<uid>' and photo_path is not null
+union all select 'gift_ideas_with_photo', count(*) from public.gift_ideas where owner_user_id = '<uid>' and photo_path is not null
+union all select 'wishes_with_photo', count(*) from public.wishes where owner_user_id = '<uid>' and photo_path is not null
 union all select 'wishlists', count(*) from public.wishlists where owner_user_id = '<uid>'
 union all select 'wishes', count(*) from public.wishes where owner_user_id = '<uid>'
 union all select 'wishlist_invites', count(*) from public.wishlist_invites where owner_user_id = '<uid>'
@@ -173,15 +177,15 @@ union all select 'gift_photos_objects', count(*) from storage.objects where buck
 union all select 'profile_avatars_objects', count(*) from storage.objects where bucket_id = 'profile-avatars' and name like '<uid>/%';
 ```
 
-`gift_photos_objects` holds gift and person photos together; it may be larger than
-`gifts_with_photo + people_with_photo` (an unsaved or replaced photo still waiting for cleanup).
+`gift_photos_objects` holds gift, gift idea, person and wish photos together; it may be larger than
+the sum of the four `*_with_photo` counts (an unsaved or replaced photo still waiting for cleanup).
 `profile_avatars_objects` may likewise be more than one.
 
 ## 4. Delete every photo of the account (Storage API), before the account
 
 Same order as the app. Do **not** go on to step 5 until both checks below return 0.
 
-1. **Gift and person photos:** Dashboard → Storage → bucket `gift-photos` → folder `<uid>` →
+1. **Gift, gift idea, person and wish photos:** Dashboard → Storage → bucket `gift-photos` → folder `<uid>` →
    select every file → Delete. The browser shows a limited page of files: repeat until the folder
    is empty.
 2. **Profile photos:** Dashboard → Storage → bucket `profile-avatars` → folder `<uid>` → select
