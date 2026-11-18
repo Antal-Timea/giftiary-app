@@ -6,6 +6,7 @@ import app.giftiary.domain.model.GiftIdea
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Person
+import app.giftiary.domain.model.PhotoEdit
 import app.giftiary.domain.repository.GiftIdeaAlreadyGivenException
 import app.giftiary.domain.repository.GiftIdeaDetails
 import app.giftiary.domain.repository.GiftIdeaEntry
@@ -86,7 +87,13 @@ class FakeGiftIdeaRepository : GiftIdeaRepository {
         }
         lastSaved = details
         val recipient = people[details.recipientPersonId] ?: existing.recipient
-        entries.update { list -> list.map { if (it.idea.id == id) ideaEntry(details, recipient, id) else it } }
+        val photoPath = when (val photo = details.photo) {
+            PhotoEdit.Unchanged -> existing.idea.photoPath
+            is PhotoEdit.Replace -> photo.path
+            PhotoEdit.Remove -> null
+        }
+        val updated = ideaEntry(details, recipient, id).let { it.copy(idea = it.idea.copy(photoPath = photoPath)) }
+        entries.update { list -> list.map { if (it.idea.id == id) updated else it } }
     }
 
     override suspend fun updateStatus(id: UUID, status: GiftIdeaStatus) {
@@ -120,7 +127,7 @@ class FakeGiftIdeaRepository : GiftIdeaRepository {
             name = entry.idea.name,
             givenAt = givenAt,
             price = price,
-            photoPath = null,
+            photoPath = entry.idea.photoPath,
             productUrl = entry.idea.productUrl,
             note = entry.idea.note,
             createdAt = Instant.EPOCH,
@@ -135,6 +142,7 @@ fun ideaDetails(
     status: GiftIdeaStatus = GiftIdeaStatus.IDEA,
     estimatedPrice: Money? = null,
     actualPrice: Money? = null,
+    photoPath: String? = null,
 ) = GiftIdeaDetails(
     recipientPersonId = person.id,
     occasionId = null,
@@ -144,6 +152,7 @@ fun ideaDetails(
     actualPrice = actualPrice,
     productUrl = null,
     note = null,
+    photo = photoPath?.let(PhotoEdit::Replace) ?: PhotoEdit.Unchanged,
 )
 
 fun ideaEntry(details: GiftIdeaDetails, recipient: Person?, id: UUID = UUID.randomUUID()) = GiftIdeaEntry(
@@ -155,7 +164,7 @@ fun ideaEntry(details: GiftIdeaDetails, recipient: Person?, id: UUID = UUID.rand
         status = details.status,
         estimatedPrice = details.estimatedPrice,
         actualPrice = details.actualPrice,
-        photoPath = null,
+        photoPath = (details.photo as? PhotoEdit.Replace)?.path,
         productUrl = details.productUrl,
         note = details.note,
         createdAt = Instant.EPOCH,

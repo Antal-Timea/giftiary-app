@@ -53,7 +53,8 @@ data class SharedWishlist(
 
 /**
  * A wish of a shared list. [reservation] is read for the reservations still to come; null when
- * the server reports a state this version does not know.
+ * the server reports a state this version does not know. [photoPath] names the owner's photo of the
+ * wish, which members may read ([app.giftiary.domain.repository.GiftPhotoRepository.loadSharedPhoto]).
  */
 data class SharedWish(
     val id: UUID,
@@ -62,6 +63,7 @@ data class SharedWish(
     val estimatedPrice: Money?,
     val productUrl: String?,
     val reservation: ReservationState?,
+    val photoPath: String? = null,
 )
 
 enum class ReservationState { AVAILABLE, RESERVED_BY_ME, RESERVED_BY_OTHER }

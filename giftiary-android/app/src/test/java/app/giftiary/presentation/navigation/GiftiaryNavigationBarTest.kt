@@ -112,7 +112,7 @@ class GiftiaryNavigationBarTest {
     }
 
     @Test
-    fun `the rail badges Wishlists the same way`() {
+    fun `the rail badges Lists the same way`() {
         compose.setContent {
             GiftiaryTheme {
                 GiftiaryNavigationRail(selected = AppSection.HOME, onSelect = {}, invitationCount = 1)
@@ -120,7 +120,7 @@ class GiftiaryNavigationBarTest {
         }
 
         compose.onNodeWithText("1", useUnmergedTree = true).assertExists()
-        compose.onNodeWithText("Wishlists").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "1 invitation"))
+        compose.onNodeWithText("Lists").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "1 invitation"))
     }
 
     @Test

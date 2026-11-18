@@ -3,7 +3,9 @@ package app.giftiary.presentation.wishlists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.giftiary.domain.model.Wish
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.WishlistRepository
+import app.giftiary.presentation.gifts.LoadedPhoto
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -15,7 +17,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -23,12 +27,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-/** A wish, live, with the name of the wishlist it is on. */
+/** A wish, live, with the name of the wishlist it is on and its photo. */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel(assistedFactory = WishDetailViewModel.Factory::class)
 class WishDetailViewModel @AssistedInject constructor(
     @Assisted private val wishId: UUID,
     private val repository: WishlistRepository,
+    private val photos: GiftPhotoRepository,
 ) : ViewModel() {
 
     private val actions = MutableStateFlow(WishDetailActions())
@@ -43,14 +48,32 @@ class WishDetailViewModel @AssistedInject constructor(
         }
         .catch { emit(WishDetailContent.LoadFailed) }
 
+    // Read once per photo: from this device, or downloaded the first time it is shown here.
+    private val photo = repository.observeWish(wishId)
+        .map { it?.photoPath }
+        .distinctUntilChanged()
+        .flatMapLatest { path ->
+            if (path == null) {
+                flowOf<WishDetailPhoto?>(null)
+            } else {
+                flow {
+                    emit(WishDetailPhoto(photo = null, loading = true))
+                    emit(WishDetailPhoto(photo = photos.loadPhoto(path)?.let(::LoadedPhoto), loading = false))
+                }
+            }
+        }
+        .catch { emit(null) }
+
+    // A wish whose photo is still uploading is held back with it, so this covers the photo too.
     private val waitingToSync = repository.observeWishWaitingToSync(wishId).catch { emit(false) }
 
     val uiState: StateFlow<WishDetailUiState> =
-        combine(wish, actions, waitingToSync) { content, actions, waiting ->
+        combine(wish, actions, photo, waitingToSync) { content, actions, photo, waiting ->
             // Once deleted, the wish is gone from Room too; keep reporting the deletion, not "not found".
             WishDetailUiState(
                 content = if (actions.deleted) WishDetailContent.Deleted else content,
                 actions = actions,
+                photo = photo,
                 waitingToSync = waiting,
             )
         }.stateIn(
@@ -99,9 +122,14 @@ class WishDetailViewModel @AssistedInject constructor(
 data class WishDetailUiState(
     val content: WishDetailContent = WishDetailContent.Loading,
     val actions: WishDetailActions = WishDetailActions(),
+    /** Null for a wish without a photo. */
+    val photo: WishDetailPhoto? = null,
     /** Saved on this device, not yet in the account; never inferred from the absence of an error. */
     val waitingToSync: Boolean = false,
 )
+
+/** [photo] is null while [loading], and after it if the photo is not available now. */
+data class WishDetailPhoto(val photo: LoadedPhoto?, val loading: Boolean)
 
 data class WishDetailActions(
     val confirmingDelete: Boolean = false,

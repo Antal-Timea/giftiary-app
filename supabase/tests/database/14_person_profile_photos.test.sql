@@ -3,7 +3,7 @@
 -- its own avatars. Nothing about gift photos, people or sharing becomes visible to anyone else.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(29);
 
 create function pg_temp.as_user(id uuid) returns void language sql as $$
     select set_config('request.jwt.claims', json_build_object('sub', id, 'role', 'authenticated')::text, true)
@@ -33,7 +33,7 @@ select ok(
 select is(
     (select count(*)::int from pg_policies where schemaname = 'storage' and tablename = 'objects'
         and (policyname like 'gift_photos_%' or qual like '%gift-photos%' or with_check like '%gift-photos%')),
-    4, 'the gift photo bucket keeps exactly its four owner-only policies');
+    5, 'the gift photo bucket keeps exactly its four owner-only policies and the members'' wish photo read');
 
 -- ---- avatar objects: only the account's own, in the one flat shape ----
 
@@ -130,11 +130,19 @@ select is((select count(*)::int from public.profiles where id = 'aaaaaaaa-aaaa-4
     'nor her profile or its avatar path');
 reset role;
 
--- The sharing and invite functions return names only: no function hands out a photo or avatar path.
+-- The sharing and invite functions return names only: no function hands out a person's photo or an
+-- avatar. The only functions reading a photo path are the two of a shared list's wish photos
+-- (19_wish_photos), which read wishes.photo_path and nothing else.
+select is(
+    (select coalesce(string_agg(p.proname, ',' order by p.proname), '')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname in ('public', 'private') and p.prosrc ~ '(photo_path|avatar_path)'),
+    'can_read_shared_wish_photo,get_shared_wishlist',
+    'no database function reads a person photo or avatar path; only wish photos of shared lists');
 select is(
     (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname in ('public', 'private') and p.prosrc ~ '(photo_path|avatar_path)'),
-    0, 'no database function reads a photo or avatar path');
+        where n.nspname in ('public', 'private') and p.prosrc ~ 'avatar_path'),
+    0, 'and none reads an avatar path');
 
 select * from finish();
 rollback;

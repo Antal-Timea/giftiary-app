@@ -132,7 +132,7 @@ class ForegroundSyncCoordinatorTest {
         )
         backend = FakeBackend(database)
         photoSync = GiftPhotoSync(
-            database.photoTransferDao(), database.giftDao(), database.personDao(), database.syncOperationDao(),
+            database.photoTransferDao(), database.giftDao(), database.giftIdeaDao(), database.personDao(), database.wishDao(), database.syncOperationDao(),
             GiftPhotoFiles(ApplicationProvider.getApplicationContext()), photoRemote, clock,
         )
         runner = SyncRunner(

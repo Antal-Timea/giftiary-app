@@ -200,6 +200,9 @@ big stories</string>
     <string name="gift_photo_unreadable">This image couldn’t be opened. Try another one.</string>
     <string name="gift_photo_unavailable">The photo isn’t available right now.</string>
     <string name="gift_photo_unavailable_on_save">The photo is no longer on this device. Add it again.</string>
+    <string name="wish_photo_description">Photo of the wish</string>
+    <string name="gift_idea_photo_retry">Retry</string>
+    <string name="gift_idea_photo_description">Photo of the gift idea</string>
     <string name="gift_delete">Delete gift</string>
     <string name="gift_delete_dialog_title">Delete %1$s?</string>
     <string name="gift_delete_dialog_message">This gift will be removed from your history.</string>
@@ -354,9 +357,9 @@ big stories</string>
     <string name="sync_attention_refused">Your account did not accept this change. Check its details.</string>
     <string name="sync_attention_unavailable">This change cannot reach your account.</string>
     <string name="sync_attention_open">Open</string>
-    <string name="sync_attention_dismiss">Dismiss</string>
+    <string name="sync_attention_dismiss">Got it</string>
     <string name="sync_attention_open_label">Open %1$s</string>
-    <string name="sync_attention_dismiss_label">Dismiss the note about %1$s</string>
+    <string name="sync_attention_dismiss_label">Close notice: %1$s</string>
     <string name="sync_item_person">Person</string>
     <string name="sync_item_occasion">Occasion</string>
     <string name="sync_item_gift_idea">Gift idea</string>
@@ -366,7 +369,6 @@ big stories</string>
     <string name="sync_item_unnamed">Unnamed item</string>
 
     <!-- Wishlists -->
-    <string name="wishlists_title">Wishlists</string>
     <string name="wishlists_add">New wishlist</string>
     <string name="wishlist_open">Open</string>
     <string name="wish_open">Open</string>

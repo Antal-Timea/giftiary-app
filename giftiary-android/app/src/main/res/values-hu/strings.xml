@@ -199,6 +199,9 @@ nagy történetek</string>
     <string name="gift_photo_unreadable">Ezt a képet nem sikerült megnyitni. Próbálj egy másikat.</string>
     <string name="gift_photo_unavailable">A fotó most nem érhető el.</string>
     <string name="gift_photo_unavailable_on_save">A fotó már nincs ezen az eszközön. Add hozzá újra.</string>
+    <string name="wish_photo_description">A kívánság fotója</string>
+    <string name="gift_idea_photo_retry">Újrapróbálás</string>
+    <string name="gift_idea_photo_description">Az ajándékötlet fotója</string>
     <string name="gift_delete">Ajándék törlése</string>
     <string name="gift_delete_dialog_title">Törlöd: %1$s?</string>
     <string name="gift_delete_dialog_message">Az ajándék lekerül az előzményeid közül.</string>
@@ -353,9 +356,9 @@ nagy történetek</string>
     <string name="sync_attention_refused">A fiókod nem fogadta el ezt a változást. Ellenőrizd az adatait.</string>
     <string name="sync_attention_unavailable">Ez a változás nem jut el a fiókodba.</string>
     <string name="sync_attention_open">Megnyitás</string>
-    <string name="sync_attention_dismiss">Elvetés</string>
+    <string name="sync_attention_dismiss">Rendben</string>
     <string name="sync_attention_open_label">Megnyitás: %1$s</string>
-    <string name="sync_attention_dismiss_label">Jelzés elvetése: %1$s</string>
+    <string name="sync_attention_dismiss_label">Jelzés lezárása: %1$s</string>
     <string name="sync_item_person">Személy</string>
     <string name="sync_item_occasion">Alkalom</string>
     <string name="sync_item_gift_idea">Ajándékötlet</string>
@@ -365,7 +368,6 @@ nagy történetek</string>
     <string name="sync_item_unnamed">Névtelen elem</string>
 
     <!-- Wishlists -->
-    <string name="wishlists_title">Kívánságlisták</string>
     <string name="wishlists_add">Új kívánságlista</string>
     <string name="wishlist_open">Megnyitás</string>
     <string name="wish_open">Megnyitás</string>

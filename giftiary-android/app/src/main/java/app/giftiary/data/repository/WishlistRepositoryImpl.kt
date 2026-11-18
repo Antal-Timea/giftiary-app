@@ -4,13 +4,17 @@ import androidx.room.withTransaction
 import app.giftiary.data.local.GiftiaryDatabase
 import app.giftiary.data.local.SyncOperationQueue
 import app.giftiary.data.local.dao.PersonDao
+import app.giftiary.data.local.dao.PhotoTransferDao
 import app.giftiary.data.local.dao.WishDao
 import app.giftiary.data.local.dao.WishlistDao
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.local.entity.SyncOperation
+import app.giftiary.data.local.entity.WishEntity
 import app.giftiary.data.local.entity.WishlistEntity
 import app.giftiary.data.local.mapper.toDomain
 import app.giftiary.data.local.mapper.toNewEntity
+import app.giftiary.data.photos.GiftPhotoFiles
+import app.giftiary.data.photos.queuePhotoChange
 import app.giftiary.data.sync.SyncRequester
 import app.giftiary.data.user.ActiveOwner
 import app.giftiary.data.user.scoped
@@ -38,6 +42,8 @@ class WishlistRepositoryImpl @Inject constructor(
     private val activeOwner: ActiveOwner,
     private val clock: Clock,
     private val syncRequester: SyncRequester,
+    private val photoTransfers: PhotoTransferDao,
+    private val photoFiles: GiftPhotoFiles,
 ) : WishlistRepository {
 
     override fun observeWishlists(): Flow<List<Wishlist>> =
@@ -102,17 +108,20 @@ class WishlistRepositoryImpl @Inject constructor(
 
     override suspend fun deleteWishlist(id: UUID) {
         val ownerUserId = activeOwner.requireOwnerId()
+        val removed = mutableListOf<String>()
         database.withTransaction {
             val existing = wishlistDao.findActiveById(id, ownerUserId) ?: return@withTransaction
             val now = now()
             // A wish is only ever shown on its wishlist, so it goes with it, each a change of its own.
             wishDao.findActiveForWishlist(ownerUserId, id).forEach { wish ->
+                removePhoto(wish, ownerUserId)?.let(removed::add)
                 wishDao.softDelete(wish.id, ownerUserId, now)
                 syncQueue.enqueue(ownerUserId, SyncEntityType.WISH, wish.id, SyncOperation.DELETE, wish.remoteState)
             }
             wishlistDao.softDelete(id, ownerUserId, now)
             syncQueue.enqueue(ownerUserId, SyncEntityType.WISHLIST, id, SyncOperation.DELETE, existing.remoteState)
         }
+        removed.forEach(photoFiles::delete)
         syncRequester.requestSync()
     }
 
@@ -126,7 +135,7 @@ class WishlistRepositoryImpl @Inject constructor(
             note = details.note,
             estimatedPrice = details.estimatedPrice,
             productUrl = details.productUrl,
-            photoPath = null,
+            photoPath = details.photoPath,
             createdAt = now,
             updatedAt = now,
         )
@@ -134,6 +143,7 @@ class WishlistRepositoryImpl @Inject constructor(
         database.withTransaction {
             requireActiveWishlist(wishlistId, ownerUserId)
             wishDao.insert(entity)
+            changePhoto(ownerUserId, entity.id, old = null, new = details.photoPath)
             syncQueue.enqueue(ownerUserId, SyncEntityType.WISH, entity.id, SyncOperation.CREATE, entity.remoteState)
         }
         syncRequester.requestSync()
@@ -142,6 +152,7 @@ class WishlistRepositoryImpl @Inject constructor(
 
     override suspend fun updateWish(id: UUID, details: WishDetails) {
         val ownerUserId = activeOwner.requireOwnerId()
+        var replaced: String? = null
         database.withTransaction {
             val existing = wishDao.findActiveById(id, ownerUserId) ?: throw WishNotFoundException(id)
             requireActiveWishlist(existing.wishlistId, ownerUserId)
@@ -151,23 +162,42 @@ class WishlistRepositoryImpl @Inject constructor(
                 estimatedPriceAmountMinor = details.estimatedPrice?.amountMinor,
                 estimatedPriceCurrencyCode = details.estimatedPrice?.currencyCode,
                 productUrl = details.productUrl,
+                photoPath = details.photoPath,
             )
             if (updated == existing) return@withTransaction
             wishDao.update(updated.copy(updatedAt = now()))
+            replaced = changePhoto(ownerUserId, id, old = existing.photoPath, new = details.photoPath)
             syncQueue.enqueue(ownerUserId, SyncEntityType.WISH, id, SyncOperation.UPDATE, existing.remoteState)
         }
+        replaced?.let(photoFiles::delete)
         syncRequester.requestSync()
     }
 
     override suspend fun deleteWish(id: UUID) {
         val ownerUserId = activeOwner.requireOwnerId()
+        var removed: String? = null
         database.withTransaction {
             val existing = wishDao.findActiveById(id, ownerUserId) ?: return@withTransaction
+            removed = removePhoto(existing, ownerUserId)
             wishDao.softDelete(id, ownerUserId, now())
             syncQueue.enqueue(ownerUserId, SyncEntityType.WISH, id, SyncOperation.DELETE, existing.remoteState)
         }
+        removed?.let(photoFiles::delete)
         syncRequester.requestSync()
     }
+
+    /**
+     * As for a gift: a deleted wish's tombstone names no photo, and the photo's object goes once
+     * the tombstone is pushed. Returns the path whose file to delete after the transaction.
+     */
+    private suspend fun removePhoto(wish: WishEntity, ownerUserId: UUID): String? {
+        if (wish.photoPath == null) return null
+        wishDao.update(wish.copy(photoPath = null))
+        return changePhoto(ownerUserId, wish.id, old = wish.photoPath, new = null)
+    }
+
+    private suspend fun changePhoto(ownerUserId: UUID, wishId: UUID, old: String?, new: String?): String? =
+        queuePhotoChange(photoTransfers, photoFiles, ownerUserId, SyncEntityType.WISH, wishId, old, new, now())
 
     private suspend fun requireActiveWishlist(id: UUID, ownerUserId: UUID): WishlistEntity =
         wishlistDao.findActiveById(id, ownerUserId) ?: throw WishlistNotFoundException(id)

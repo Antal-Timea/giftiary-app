@@ -28,7 +28,7 @@
 | Occasions: day, month, optional year, type, title (e.g. **other people's birthdays**) | entered by the user | device + Supabase | nobody else |
 | Gift ideas and gifts: names, direction, prices, notes, product links, who gave or received | entered by the user | device + Supabase | nobody else |
 | Wishlists and wishes: names, notes, prices, product links | entered by the user | device + Supabase | for a shared own wishlist: its members (name, wishes, owner's display name) |
-| Sharing: invites, memberships, reservations | created by using sharing | Supabase only (an invite's secret is stored only as a hash) | members see only whether a wish is available, reserved by them or reserved by someone else; the list owner never sees reservations |
+| Sharing: invites, memberships, reservations | created by using sharing | Supabase only (an invite's secret is stored only as a hash) | members see only whether a wish is available, reserved by them or reserved by someone else, never who; the list owner never learns who reserved a wish: nothing about reservations on their own list, only whether each wish is reserved on a list kept for a person |
 | Reminder preference and reminder notifications | the user's choice | on the device only | nobody |
 
 The app is designed to work offline: data is saved on the device first and synced when online.

@@ -2,6 +2,7 @@ package app.giftiary.domain.usecase
 
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Money
+import app.giftiary.domain.model.PhotoEdit
 import app.giftiary.domain.repository.GiftIdeaDetails
 import app.giftiary.domain.repository.GiftIdeaRepository
 import java.util.UUID
@@ -18,7 +19,10 @@ class SaveGiftIdeaUseCase @Inject constructor(
     suspend fun add(input: GiftIdeaInput): SaveGiftIdeaResult =
         withValidInput(input) { details -> repository.addGiftIdea(details) }
 
-    /** @throws app.giftiary.domain.repository.GiftIdeaNotFoundException if the idea is no longer active. */
+    /**
+     * @throws app.giftiary.domain.repository.GiftIdeaNotFoundException if the idea is no longer active.
+     * @throws app.giftiary.domain.repository.GiftPhotoUnavailableException if a new photo is not on this device.
+     */
     suspend fun update(id: UUID, input: GiftIdeaInput): SaveGiftIdeaResult =
         withValidInput(input) { details -> repository.updateGiftIdea(id, details) }
 
@@ -45,6 +49,7 @@ class SaveGiftIdeaUseCase @Inject constructor(
                 actualPrice = input.actualPrice,
                 productUrl = input.productUrl.trimToNull(),
                 note = input.note.trimToNull(),
+                photo = input.photo,
             ),
         )
         return SaveGiftIdeaResult.Saved
@@ -63,6 +68,7 @@ data class GiftIdeaInput(
     val actualPrice: Money?,
     val productUrl: String?,
     val note: String?,
+    val photo: PhotoEdit,
 )
 
 sealed interface SaveGiftIdeaResult {

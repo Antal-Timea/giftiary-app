@@ -301,7 +301,7 @@ class GiftPhotoSyncTest {
 
     /** New instances over the same database and files, as after the process was restarted. */
     private fun restart() {
-        photos = GiftPhotoSync(transfers, database.giftDao(), database.personDao(), database.syncOperationDao(), files, remote, clock)
+        photos = GiftPhotoSync(transfers, database.giftDao(), database.giftIdeaDao(), database.personDao(), database.wishDao(), database.syncOperationDao(), files, remote, clock)
         runner = SyncRunner(
             database.syncOperationDao(),
             SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),

@@ -1,6 +1,7 @@
 package app.giftiary.domain.usecase
 
 import app.giftiary.domain.model.GiftIdeaStatus
+import app.giftiary.domain.model.PhotoEdit
 import app.giftiary.testing.FakeGiftIdeaRepository
 import app.giftiary.testing.person
 import kotlinx.coroutines.test.runTest
@@ -23,6 +24,7 @@ class SaveGiftIdeaUseCaseTest {
         actualPrice = null,
         productUrl = null,
         note = null,
+        photo = PhotoEdit.Unchanged,
     )
 
     @Test

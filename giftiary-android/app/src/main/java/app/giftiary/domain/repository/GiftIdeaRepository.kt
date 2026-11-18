@@ -6,6 +6,7 @@ import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
+import app.giftiary.domain.model.PhotoEdit
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.util.UUID
@@ -38,6 +39,7 @@ interface GiftIdeaRepository {
     /**
      * @throws PersonNotFoundException if the recipient is not one of the user's active people.
      * @throws OccasionNotFoundException if the occasion is not one of the recipient's active occasions.
+     * @throws GiftPhotoUnavailableException if the photo is not on this device.
      */
     suspend fun addGiftIdea(details: GiftIdeaDetails): GiftIdea
 
@@ -48,18 +50,19 @@ interface GiftIdeaRepository {
      * @throws GiftIdeaNotFoundException if the idea is not active.
      * @throws PersonNotFoundException if a newly assigned recipient is not available.
      * @throws OccasionNotFoundException if the occasion is not available for the recipient.
+     * @throws GiftPhotoUnavailableException if a new photo is not on this device.
      */
     suspend fun updateGiftIdea(id: UUID, details: GiftIdeaDetails)
 
     /** @throws GiftIdeaNotFoundException if the idea is not active. */
     suspend fun updateStatus(id: UUID, status: GiftIdeaStatus)
 
-    /** Deleting an idea that is already gone is a no-op. */
+    /** Deleting an idea that is already gone is a no-op. Its photo goes with it. */
     suspend fun deleteGiftIdea(id: UUID)
 
     /**
      * Records the idea as an actual gift the user gave and archives the idea, all at once.
-     * The gift copies the idea's details and refers back to it.
+     * The gift copies the idea's details and refers back to it, and takes over its photo.
      *
      * @throws GiftIdeaNotFoundException if the idea is missing or deleted.
      * @throws GiftIdeaAlreadyGivenException if the idea has already been given.
@@ -77,6 +80,8 @@ data class GiftIdeaDetails(
     val actualPrice: Money?,
     val productUrl: String?,
     val note: String?,
+    /** For a new idea, [PhotoEdit.Replace] gives it a photo and anything else none. */
+    val photo: PhotoEdit = PhotoEdit.Unchanged,
 )
 
 /**

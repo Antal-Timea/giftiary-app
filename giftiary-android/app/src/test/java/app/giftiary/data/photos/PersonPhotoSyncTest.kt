@@ -83,7 +83,7 @@ class PersonPhotoSyncTest {
             transfers, files,
         )
         backend = FakeBackend(database)
-        photos = GiftPhotoSync(transfers, database.giftDao(), database.personDao(), operations, files, remote, clock)
+        photos = GiftPhotoSync(transfers, database.giftDao(), database.giftIdeaDao(), database.personDao(), database.wishDao(), operations, files, remote, clock)
         runner = SyncRunner(
             operations,
             SyncDependencies(database.personDao(), database.occasionDao(), database.giftIdeaDao(), database.giftDao(), database.wishlistDao(), database.wishDao()),

@@ -76,10 +76,12 @@ class SyncStatusRepositoryImplTest {
         ideas = GiftIdeaRepositoryImpl(
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner,
             clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         gifts = GiftRepositoryImpl(database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {}, database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()))
         wishlists = WishlistRepositoryImpl(
             database, database.wishlistDao(), database.wishDao(), database.personDao(), queue, activeOwner, clock, SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         repository = SyncStatusRepositoryImpl(
             database, database.syncOperationDao(), database.syncConflictDao(), database.personDao(), database.occasionDao(),
@@ -200,7 +202,7 @@ class SyncStatusRepositoryImplTest {
     @Test
     fun `wishlist and wish changes are waiting, and refused or replaced ones open while their rows are active`() = runTest {
         val list = later { wishlists.addWishlist(null, "Birthday") }
-        val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null)) }
+        val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null, null)) }
         assertEquals(2, status().waitingCount)
 
         block(SyncEntityType.WISHLIST, list.id, BlockReason.REJECTED)
@@ -221,7 +223,7 @@ class SyncStatusRepositoryImplTest {
     @Test
     fun `deleted wishlists and wishes stay named but cannot be opened`() = runTest {
         val list = later { wishlists.addWishlist(null, "Birthday") }
-        val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null)) }
+        val lamp = later { wishlists.addWish(list.id, WishDetails("Lamp", null, null, null, null)) }
         operations.findForEntity(SyncEntityType.WISHLIST, list.id)?.let { operations.delete(it) }
         operations.findForEntity(SyncEntityType.WISH, lamp.id)?.let { operations.delete(it) }
         conflict(SyncEntityType.WISHLIST, list.id, baseVersion = 2)
@@ -250,7 +252,7 @@ class SyncStatusRepositoryImplTest {
     fun `another account's wishlist and wish are neither named nor openable`() = runTest {
         activeOwner.ownerId.value = bob
         val bobsList = wishlists.addWishlist(null, "Bob's list")
-        val bobsWish = wishlists.addWish(bobsList.id, WishDetails("Bob's wish", null, null, null))
+        val bobsWish = wishlists.addWish(bobsList.id, WishDetails("Bob's wish", null, null, null, null))
         activeOwner.ownerId.value = alice
         // Only reachable through corrupted data: Alice's conflict pointing at Bob's rows.
         conflict(SyncEntityType.WISHLIST, bobsList.id, baseVersion = 2)

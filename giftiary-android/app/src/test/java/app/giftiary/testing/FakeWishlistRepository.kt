@@ -101,7 +101,7 @@ class FakeWishlistRepository : WishlistRepository {
     override suspend fun addWish(wishlistId: UUID, details: WishDetails): Wish {
         writeFailure?.let { throw it }
         if (wishlists.value.none { it.id == wishlistId }) throw WishlistNotFoundException(wishlistId)
-        return wish(wishlistId, details.name, details.note, details.estimatedPrice, details.productUrl)
+        return wish(wishlistId, details.name, details.note, details.estimatedPrice, details.productUrl, details.photoPath)
             .also { added -> wishes.update { it + added } }
     }
 
@@ -112,7 +112,10 @@ class FakeWishlistRepository : WishlistRepository {
         wishes.update { list ->
             list.map {
                 if (it.id == id) {
-                    it.copy(name = details.name, note = details.note, estimatedPrice = details.estimatedPrice, productUrl = details.productUrl)
+                    it.copy(
+                        name = details.name, note = details.note, estimatedPrice = details.estimatedPrice, productUrl = details.productUrl,
+                        photoPath = details.photoPath,
+                    )
                 } else {
                     it
                 }

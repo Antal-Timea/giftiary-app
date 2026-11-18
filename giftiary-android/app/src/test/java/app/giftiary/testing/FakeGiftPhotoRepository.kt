@@ -58,8 +58,20 @@ class FakeGiftPhotoRepository : GiftPhotoRepository {
     val loads = mutableListOf<String>()
     val localLoads = mutableListOf<String>()
 
+    /** Thrown by the next [loadPhoto] calls, one each, standing in for a failing file read. */
+    val loadFailures = ArrayDeque<Exception>()
+
     override suspend fun loadPhoto(path: String): ByteArray? {
         loads += path
+        loadFailures.removeFirstOrNull()?.let { throw it }
+        return stored[path]
+    }
+
+    /** Every path [loadSharedPhoto] was asked for, in order. */
+    val sharedLoads = mutableListOf<String>()
+
+    override suspend fun loadSharedPhoto(path: String): ByteArray? {
+        sharedLoads += path
         return stored[path]
     }
 

@@ -1,5 +1,6 @@
 package app.giftiary.presentation.wishlists
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,7 @@ import app.giftiary.presentation.gifts.DetailFactRow
 import app.giftiary.presentation.gifts.DetailFactValue
 import app.giftiary.presentation.gifts.DetailLinkValue
 import app.giftiary.presentation.gifts.DetailNote
+import app.giftiary.presentation.gifts.PhotoOrPlaceholder
 import app.giftiary.presentation.gifts.giftPrice
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -92,6 +94,7 @@ fun WishDetailScreen(
             WishDetailContent.LoadFailed -> GiftiaryTaskStatus(stringResource(R.string.wish_load_failed), onBack, contentModifier)
             is WishDetailContent.Loaded -> WishDetails(
                 content = content,
+                photo = state.photo,
                 waitingToSync = state.waitingToSync,
                 busy = state.actions.isBusy,
                 onBack = onBack,
@@ -115,13 +118,15 @@ fun WishDetailScreen(
 
 /**
  * There is no Wish detail board, so this follows the gift idea boards as far as a wish has the
- * same things: the title, the list it is on in place of the person, the facts and the note.
- * A wish has no photo and no next step of its own, so there is no hero and no primary action;
- * editing and deleting wait in the options. What guests reserve is never shown to the owner.
+ * same things: the title, the list it is on in place of the person, the photo, the facts and the
+ * note. A wish has no next step of its own, so there is no primary action; editing and deleting wait
+ * in the options. The photo is shown whole, as in the editor, not as a hero: most wishes have none,
+ * and the page should not change shape around it. What guests reserve is never shown to the owner.
  */
 @Composable
 private fun WishDetails(
     content: WishDetailContent.Loaded,
+    photo: WishDetailPhoto?,
     waitingToSync: Boolean,
     busy: Boolean,
     onBack: () -> Unit,
@@ -158,6 +163,12 @@ private fun WishDetails(
             )
         }
         if (waitingToSync) PendingSyncStatus(modifier = Modifier.padding(top = GiftiarySpacing.m))
+        // Nothing while it is read, rather than "not available" for a moment.
+        if (photo != null && !photo.loading) {
+            Box(modifier = Modifier.padding(top = GiftiarySpacing.l)) {
+                PhotoOrPlaceholder(photo.photo, stringResource(R.string.wish_photo_description))
+            }
+        }
         Column(modifier = Modifier.padding(top = GiftiarySpacing.s).fillMaxWidth()) {
             wish.estimatedPrice?.let {
                 DetailFactRow(stringResource(R.string.wish_editor_approx_price)) {

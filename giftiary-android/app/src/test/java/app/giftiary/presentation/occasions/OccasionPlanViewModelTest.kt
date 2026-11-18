@@ -8,6 +8,7 @@ import app.giftiary.domain.model.Person
 import app.giftiary.domain.repository.OccasionDetails
 import app.giftiary.domain.usecase.occasionPlans
 import app.giftiary.testing.FakeGiftIdeaRepository
+import app.giftiary.testing.FakeGiftPhotoRepository
 import app.giftiary.testing.FakeOccasionRepository
 import app.giftiary.testing.MainDispatcherRule
 import app.giftiary.testing.MutableClock
@@ -137,7 +138,7 @@ class OccasionPlanViewModelTest {
         ideaEntry(ideaDetails(person, status = status).copy(occasionId = occasion.id), person)
 
     private fun TestScope.collected(occasionId: UUID): OccasionPlanViewModel {
-        val viewModel = OccasionPlanViewModel(occasionId, occasions, ideas, clock, ZoneOffset.UTC)
+        val viewModel = OccasionPlanViewModel(occasionId, occasions, ideas, clock, ZoneOffset.UTC, FakeGiftPhotoRepository())
         keepSubscribed(viewModel.uiState)
         return viewModel
     }

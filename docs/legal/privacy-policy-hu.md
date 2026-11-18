@@ -1,6 +1,6 @@
 # Giftiary – Adatkezelési tájékoztató
 
-**Hatályos:** 2026. november 12.
+**Hatályos:** 2026. november 16.
 
 Ez a tájékoztató azt írja le, hogyan kezeli a Giftiary Android-alkalmazás és a hozzá tartozó szolgáltatás a személyes adatokat. Az angol nyelvű változat tartalmilag megegyezik ezzel a szöveggel.
 
@@ -63,7 +63,7 @@ Ezeket az adatokat te írod be; a készülékedről semmit nem olvasunk be autom
 - **Meghívók:** amikor egy saját kívánságlistádat megosztod, meghívó jön létre. A meghívó titkos kódját a szerver csak visszafejthetetlen (hash-elt) formában tárolja; a kód csak a megosztott hivatkozásban szerepel. A meghívó létrehozásának, lejáratának és esetleges visszavonásának időpontját is tároljuk.
 - **E-mailes meghívók:** egy saját kívánságlistádra valakit az e-mail-címe megadásával is meghívhatsz. Ilyenkor a szerver tárolja a meghívott e-mail-címét (kisbetűsítve, a szóközök levágásával), a lista azonosítóját, a meghívó állapotát (függőben, elfogadva, elutasítva, visszavonva vagy lejárt), valamint a létrehozás, a lejárat (14 nappal a létrehozás után) és a lezárás időpontját. Az e-mail-címet kizárólag ehhez a meghíváshoz használjuk: hogy a meghívottnak egy meghívó e-mailt küldjünk (lásd 3.7. pont), és hogy a meghívó annak jelenjen meg az alkalmazásban, aki megerősített e-mail-címként pontosan ezzel a címmel jelentkezik be, és ő elfogadhatja vagy elutasíthatja. Elfogadás előtt a lista nevét, a megjelenített nevedet és – ha a listát egy személyed számára vezeted – a személy nevét látja. A címet reklám- vagy más célra nem használjuk. A meghívóban a meghívott fiókjának azonosítóját nem tároljuk, és neked sem jelezzük, hogy a címhez tartozik-e Giftiary-fiók. A meghívott e-mail-címét a függő meghívóid között csak te látod. Amikor a meghívó lezárul (elfogadják, elutasítják, visszavonják vagy lejár), az e-mail-címet töröljük belőle; ezután a meghívóid között sem jelenik meg.
 - **Tagságok:** ki csatlakozott egy listához, és mikor.
-- **Foglalások:** melyik tag foglalt le egy kívánságot.
+- **Foglalások:** melyik tag foglalt le egy kívánságot, és mikor.
 
 ### 3.6. Technikai adatok
 
@@ -136,7 +136,8 @@ A profilfotód nem a készülékeden mentődik először: azonnal feltöltődik 
 - Valakit az e-mail-címével is meghívhatsz (lásd 3.5. pont). Erre a címre egy meghívó e-mailt küldünk (lásd 3.7. pont). A meghívó 14 napig érvényes, és csak az fogadhatja el, aki megerősített e-mail-címként pontosan ezzel a címmel jelentkezik be. A függő e-mailes meghívót bármikor visszavonhatod.
 - **A tagok látják:** a lista nevét, a kívánságokat (név, megjegyzés, becsült ár, termékhivatkozás) és a lista tulajdonosának megjelenített nevét.
 - **A lista tulajdonosa látja:** a tagok megjelenített nevét és a csatlakozásuk idejét, a nyitott meghívó-hivatkozásokat, valamint a függő e-mailes meghívókat (a meghívott címével).
-- **Foglalások:** a tagok egy kívánságnál csak azt látják, hogy szabad, általuk foglalt, vagy valaki más foglalta – azt nem, hogy ki. **A lista tulajdonosa a foglalásokról semmit nem lát**, így a meglepetés megmarad.
+- **Foglalások:** a tagok egy kívánságnál csak azt látják, hogy szabad, általuk foglalt, vagy valaki más foglalta – azt nem, hogy ki.
+- **Mit tud meg a lista tulajdonosa a foglalásokról:** **azt soha, hogy ki foglalt le egy kívánságot.** A saját magadnak vezetett listádnál a foglalásokról semmit nem látsz – azt sem, hogy egy kívánság foglalt-e –, így a meglepetés megmarad. Az egy személyed számára vezetett listánál csak azt látod, hogy egy kívánság foglalt-e („Lefoglalva”), hogy ne vedd meg ugyanazt az ajándékot; azt nem, hogy ki és mikor foglalta le, és a foglalásról mást sem.
 - A tulajdonos eltávolíthat tagot, és a tag kiléphet; ilyenkor a tag foglalásai érvényüket vesztik.
 - A megosztás csak az adott kívánságlistához ad hozzáférést. A személyeid (és fotóik), alkalmaid, ajándékötleteid, ajándékaid (és azok fotói), a profilfotód és más listáid nem válnak láthatóvá. Ez arra a listára is igaz, amelyet egy személyed számára vezetsz: a tagok a lista címzettjeként a személy nevét látják, a fotóját soha.
 
@@ -238,7 +239,7 @@ Panaszt tehetsz a Nemzeti Adatvédelmi és Információszabadság Hatóságnál 
 - A jelszavakat, a meghívókódokat és az eszközigazolásokat a szerveren csak visszafejthetetlen (hash-elt) formában tároljuk.
 - A fotók privát fájltárolóban vannak: minden fiók csak a saját mappájához fér hozzá, nyilvános hivatkozás nincs, a profilfotókat pedig minden más fotótól elkülönítve tároljuk.
 - A személy- és profilfotók a kívánságlista-megosztáson és a meghívókon keresztül sem érhetők el; a szerver a tulajdonosukon kívül senkinek nem adja ki őket.
-- A megosztott listák tulajdonosa a foglalásokat a szerveren keresztül sem kapja meg.
+- A szerver a lista tulajdonosának soha nem adja ki, hogy ki foglalt le egy kívánságot. A tulajdonos saját magának vezetett listájánál a foglalásokról semmit nem ad ki neki; az egy személye számára vezetett listánál csak azt, hogy egy kívánság foglalt-e.
 - A bejelentkezési munkamenetet, a helyi adatbázist, a fotókat és az eszközigazolások titkos kódjait az Android biztonsági mentése nem menti.
 
 Teljes biztonságot egyetlen rendszer sem tud garantálni, de észszerű intézkedésekkel védjük az adataidat.

@@ -1,5 +1,6 @@
 package app.giftiary.presentation.giftideas
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,18 +9,21 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import app.giftiary.domain.model.GiftIdea
 import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.OccasionType
 import app.giftiary.domain.repository.GiftIdeaEntry
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.person
 import org.junit.Assert.assertEquals
@@ -29,6 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.util.UUID
 
@@ -77,6 +82,7 @@ class GiftIdeaDetailScreenTest {
                     onDeleteConfirmed = { events += "confirm" },
                     onDeleteDismissed = { events += "dismiss" },
                     onWriteErrorShown = { events += "error shown" },
+                    onPhotoRetry = { events += "retry photo" },
                 )
             }
         }
@@ -158,6 +164,76 @@ class GiftIdeaDetailScreenTest {
     }
 
     @Test
+    fun `without a photo the facts follow the context closely, with no empty photo space`() {
+        show(idea())
+
+        val gap = top("Estimated price") - top("Birthday · October 12")
+        // The old empty placeholder alone was 158dp tall.
+        assertTrue("gap $gap", gap < 100.dp)
+    }
+
+    @Test
+    fun `an idea's photo shows between the context and the facts`() {
+        show(
+            GiftIdeaDetailUiState(
+                content = GiftIdeaDetailContent.Loaded(idea()),
+                photo = GiftIdeaDetailPhoto(jpeg(), loading = false),
+            ),
+        )
+        // The photo is decoded off the main thread, which waiting for Compose to be idle does not cover.
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithContentDescription("Photo of the gift idea").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        val photoTop = compose.onNodeWithContentDescription("Photo of the gift idea").getBoundsInRoot().top
+        assertTrue(top("Birthday · October 12") < photoTop)
+        assertTrue(photoTop < top("Estimated price"))
+    }
+
+    @Test
+    fun `a photo that cannot be read now says so and offers Retry`() {
+        show(
+            GiftIdeaDetailUiState(
+                content = GiftIdeaDetailContent.Loaded(idea()),
+                photo = GiftIdeaDetailPhoto(photo = null, loading = false),
+            ),
+        )
+
+        compose.onNodeWithText("available right now", substring = true).assertExists()
+        compose.onNodeWithText("Retry").performClick()
+        assertEquals(listOf("retry photo"), events)
+    }
+
+    @Test
+    fun `a shown photo and an idea without one offer no Retry`() {
+        show(idea())
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+
+        show(GiftIdeaDetailUiState(content = GiftIdeaDetailContent.Loaded(idea()), photo = GiftIdeaDetailPhoto(jpeg(), loading = false)))
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithContentDescription("Photo of the gift idea").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a photo still being read takes no space and claims nothing`() {
+        show(
+            GiftIdeaDetailUiState(
+                content = GiftIdeaDetailContent.Loaded(idea()),
+                photo = GiftIdeaDetailPhoto(photo = null, loading = true),
+            ),
+        )
+
+        assertEquals(0, compose.onAllNodes(hasContentDescription("photo", substring = true, ignoreCase = true)).fetchSemanticsNodes().size)
+    }
+
+    private fun jpeg(): LoadedPhoto {
+        val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
+        return LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())
+    }
+
+    @Test
     fun `the person leads to their page, and the link is offered by name`() {
         show(idea())
 
@@ -220,7 +296,7 @@ class GiftIdeaDetailScreenTest {
                 GiftiaryTheme {
                     GiftIdeaDetailScreen(
                         GiftIdeaDetailUiState(GiftIdeaDetailContent.Loaded(idea(status = GiftIdeaStatus.PURCHASED, paid = Money(42990, "HUF")))),
-                        {}, {}, {}, {}, {}, {}, {}, {}, {},
+                        {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
                     )
                 }
             }

@@ -7,9 +7,12 @@ import app.giftiary.domain.model.GiftIdeaStatus
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Occasion
 import app.giftiary.domain.model.Person
+import app.giftiary.domain.model.PhotoEdit
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.GiftIdeaNotFoundException
 import app.giftiary.domain.repository.GiftIdeaRepository
+import app.giftiary.domain.repository.GiftPhotoRepository
+import app.giftiary.domain.repository.GiftPhotoUnavailableException
 import app.giftiary.domain.repository.OccasionNotFoundException
 import app.giftiary.domain.repository.OccasionRepository
 import app.giftiary.domain.repository.PersonNotFoundException
@@ -18,6 +21,8 @@ import app.giftiary.domain.usecase.GiftIdeaInput
 import app.giftiary.domain.usecase.GiftIdeaInputError
 import app.giftiary.domain.usecase.SaveGiftIdeaResult
 import app.giftiary.domain.usecase.SaveGiftIdeaUseCase
+import app.giftiary.presentation.gifts.GiftPhotoError
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.gifts.PriceError
 import app.giftiary.presentation.gifts.PriceFormat
 import app.giftiary.presentation.gifts.fitsPerson
@@ -48,7 +53,8 @@ import java.util.UUID
 
 /**
  * Backs adding and editing a gift idea. Existing prices are pre-filled with the app's current
- * default locale.
+ * default locale. A picked or captured photo is stored on this device at once and becomes the
+ * idea's only when it is saved.
  */
 @HiltViewModel(assistedFactory = GiftIdeaEditorViewModel.Factory::class)
 class GiftIdeaEditorViewModel @AssistedInject constructor(
@@ -57,7 +63,11 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
     private val occasionRepository: OccasionRepository,
     private val giftIdeaRepository: GiftIdeaRepository,
     private val saveGiftIdea: SaveGiftIdeaUseCase,
+    private val photos: GiftPhotoRepository,
 ) : ViewModel() {
+
+    /** The photo the idea had when the editor opened. */
+    private var openedPhotoPath: String? = null
 
     private val _uiState = MutableStateFlow(
         when (target) {
@@ -129,6 +139,65 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
         _uiState.update { it.copy(writeError = null) }
     }
 
+    /** [source]: the content URI the photo picker returned. */
+    fun onPhotoPicked(source: String) {
+        if (_uiState.value.photoBusy) return
+        importPhoto { photos.importPhoto(source) }
+    }
+
+    /** Where the camera app is to write a new photo; null if there is nowhere, which is reported. */
+    fun newCaptureTarget(): String? = try {
+        photos.newCaptureTarget()
+    } catch (e: Exception) {
+        _uiState.update { it.copy(photoError = GiftPhotoError.CAMERA_UNAVAILABLE) }
+        null
+    }
+
+    /** The camera app wrote a photo into [target] (from [newCaptureTarget]). */
+    fun onPhotoCaptured(target: String) {
+        if (_uiState.value.photoBusy) {
+            onCaptureCancelled(target)
+            return
+        }
+        importPhoto { photos.importCapture(target) }
+    }
+
+    /** The camera app returned without a photo. */
+    fun onCaptureCancelled(target: String) {
+        viewModelScope.launch { photos.discardCapture(target) }
+    }
+
+    /** No camera app could be opened for [target]. */
+    fun onCameraUnavailable(target: String) {
+        onCaptureCancelled(target)
+        _uiState.update { it.copy(photoError = GiftPhotoError.CAMERA_UNAVAILABLE) }
+    }
+
+    private fun importPhoto(import: suspend () -> String) {
+        _uiState.update { it.copy(photoBusy = true, photoError = null) }
+        viewModelScope.launch {
+            try {
+                val path = import()
+                val bytes = photos.loadPhoto(path)
+                _uiState.update {
+                    it.copy(photoBusy = false, photoPath = path, photo = bytes?.let(::LoadedPhoto), photoEdit = PhotoEdit.Replace(path))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                _uiState.update { it.copy(photoBusy = false, photoError = GiftPhotoError.UNREADABLE) }
+            }
+        }
+    }
+
+    fun onPhotoRemoved() {
+        _uiState.update { it.copy(photoPath = null, photo = null, photoError = null, photoEdit = PhotoEdit.Remove) }
+    }
+
+    fun onPhotoErrorShown() {
+        _uiState.update { it.copy(photoError = null) }
+    }
+
     fun onDeleteRequested() {
         _uiState.update { if (target is GiftIdeaEditorTarget.Existing && it.status == GiftIdeaEditorStatus.EDITING) it.copy(confirmingDelete = true) else it }
     }
@@ -156,7 +225,8 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
 
     fun save() {
         val state = _uiState.value
-        if (state.status != GiftIdeaEditorStatus.EDITING || state.isBusy) return
+        // A photo still being read would be left out; the save waits for it.
+        if (state.status != GiftIdeaEditorStatus.EDITING || state.isBusy || state.photoBusy) return
 
         val estimated = PriceFormat.parse(state.estimatedPrice, state.estimatedCurrencyCode)
         val actual = PriceFormat.parse(state.actualPrice, state.actualCurrencyCode)
@@ -169,6 +239,7 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
             actualPrice = actual.moneyOrNull(),
             productUrl = state.productUrl,
             note = state.note,
+            photo = state.photoEdit,
         )
         val errors = saveGiftIdea.validate(input)
         val estimatedError = estimated.toError()
@@ -201,6 +272,18 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
                 _uiState.update { it.copy(isBusy = false, writeError = GiftIdeaWriteError.PERSON_UNAVAILABLE) }
             } catch (_: OccasionNotFoundException) {
                 _uiState.update { it.copy(isBusy = false, writeError = GiftIdeaWriteError.OCCASION_UNAVAILABLE) }
+            } catch (_: GiftPhotoUnavailableException) {
+                // Back to the photo the idea had, so the next save is not a silent removal.
+                _uiState.update {
+                    it.copy(
+                        isBusy = false,
+                        photoPath = openedPhotoPath,
+                        photo = null,
+                        photoEdit = PhotoEdit.Unchanged,
+                        writeError = GiftIdeaWriteError.PHOTO_UNAVAILABLE,
+                    )
+                }
+                openedPhotoPath?.let(::showPhoto)
             } catch (_: Exception) {
                 _uiState.update { it.copy(isBusy = false, writeError = GiftIdeaWriteError.FAILED) }
             }
@@ -212,11 +295,27 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
             try {
                 val entry = giftIdeaRepository.getGiftIdea(id)
                 _uiState.update { if (entry == null) it.copy(status = GiftIdeaEditorStatus.NOT_FOUND) else it.loaded(entry) }
+                openedPhotoPath = entry?.idea?.photoPath
+                openedPhotoPath?.let(::showPhoto)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 _uiState.update { it.copy(status = GiftIdeaEditorStatus.LOAD_FAILED) }
             }
+        }
+    }
+
+    private fun showPhoto(path: String) {
+        viewModelScope.launch {
+            val bytes = try {
+                photos.loadPhoto(path)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            // Only if the user has not picked or removed a photo meanwhile.
+            _uiState.update { if (it.photoPath == path) it.copy(photo = bytes?.let(::LoadedPhoto)) else it }
         }
     }
 
@@ -303,6 +402,7 @@ class GiftIdeaEditorViewModel @AssistedInject constructor(
                 actualCurrencyCode = idea.actualPrice?.currencyCode ?: DefaultCurrency.CODE,
                 productUrl = idea.productUrl.orEmpty(),
                 note = idea.note.orEmpty(),
+                photoPath = idea.photoPath,
             )
         }
 
@@ -337,6 +437,15 @@ data class GiftIdeaEditorUiState(
     val actualCurrencyCode: String = DefaultCurrency.CODE,
     val productUrl: String = "",
     val note: String = "",
+    /** The photo shown; null for none. */
+    val photoPath: String? = null,
+    /** What the save does to the photo: only a pick or a removal changes it. */
+    val photoEdit: PhotoEdit = PhotoEdit.Unchanged,
+    /** [photoPath]'s image once read; null while reading or if it is not available now. */
+    val photo: LoadedPhoto? = null,
+    /** A picked or captured photo is being stored. */
+    val photoBusy: Boolean = false,
+    val photoError: GiftPhotoError? = null,
     val activePeople: List<Person> = emptyList(),
     val peopleLoaded: Boolean = false,
     val recipientOccasions: List<Occasion> = emptyList(),
@@ -397,4 +506,7 @@ enum class GiftIdeaWriteError {
     OCCASION_UNAVAILABLE,
 
     DELETE_FAILED,
+
+    /** The picked photo is no longer on this device; it was dropped and the idea not saved. */
+    PHOTO_UNAVAILABLE,
 }

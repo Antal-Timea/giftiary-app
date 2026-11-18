@@ -100,6 +100,7 @@ class PersonRepositoryImplTest {
             activeOwner = activeOwner,
             clock = clock,
             SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
     }
 

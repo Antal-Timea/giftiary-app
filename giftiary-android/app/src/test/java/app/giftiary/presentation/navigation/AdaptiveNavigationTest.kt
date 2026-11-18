@@ -133,7 +133,7 @@ class AdaptiveNavigationTest {
         compose.onNodeWithText("People").assertIsSelected()
         compose.onNodeWithText("Home").assertIsNotSelected()
         compose.onNodeWithText("Settings").assertIsNotSelected()
-        compose.onNodeWithText("Wishlists").performClick()
+        compose.onNodeWithText("Lists").performClick()
         compose.onNodeWithText("Settings").performClick()
 
         assertEquals(listOf(AppSection.WISHLISTS, AppSection.SETTINGS), selections)
@@ -162,7 +162,7 @@ class AdaptiveNavigationTest {
                 )
             }
         }
-        listOf("Gifts", "People", "Wishlists").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
+        listOf("Gifts", "People", "Lists").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         compose.onNodeWithContentDescription("Settings").assertDoesNotExist()
 
         WidthClass.entries.forEach {

@@ -14,6 +14,9 @@ Giftiary is a native Android app for remembering, planning and sharing gifts.
 - **Share:** keep wishlists and share one privately by link or by email invitation. Guests can
   reserve a wish. On your own list you never learn whether a wish was reserved, or by whom, so the
   surprise is kept.
+- **Photos:** gifts, people, gift ideas and wishes can each carry a photo, shown as a thumbnail in
+  their lists. Photos stay private to your account; the people a wishlist is shared with see only the
+  photos of that list's wishes.
 
 Everything you add is saved on the phone first and works without a network. A Supabase backend
 syncs it between your devices and handles sharing.

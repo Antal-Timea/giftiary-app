@@ -94,6 +94,7 @@ class SyncPusherTest {
             database, database.giftIdeaDao(), database.giftDao(), database.personDao(), database.occasionDao(), queue,
             activeOwner, clock,
             SyncRequester {},
+            database.photoTransferDao(), GiftPhotoFiles(ApplicationProvider.getApplicationContext()),
         )
         gifts = GiftRepositoryImpl(
             database, database.giftDao(), database.personDao(), database.occasionDao(), queue, activeOwner, clock, SyncRequester {},

@@ -121,22 +121,22 @@ class SyncAttentionScreenTest {
     }
 
     @Test
-    fun `Open and Dismiss appear only where allowed, each naming its item and acting once`() {
+    fun `Open and Got it appear only where allowed, each naming its item and acting once`() {
         show(loaded(replaced, refused, duplicate, unavailable))
 
-        // Back, Anna's two, the birthday's Open, the scarf's Dismiss; nothing for the wish.
+        // Back, Anna's two, the birthday's Open, the scarf's Got it; nothing for the wish.
         compose.onAllNodes(hasClickAction()).assertCountEquals(5)
         compose.onAllNodesWithText("Open").assertCountEquals(2)
-        compose.onAllNodesWithText("Dismiss").assertCountEquals(2)
+        compose.onAllNodesWithText("Got it").assertCountEquals(2)
         action("Open Unnamed item").assertDoesNotExist()
-        action("Dismiss the note about Unnamed item").assertDoesNotExist()
-        action("Dismiss the note about Birthday").assertDoesNotExist()
+        action("Close notice: Unnamed item").assertDoesNotExist()
+        action("Close notice: Birthday").assertDoesNotExist()
         action("Open Scarf").assertDoesNotExist()
 
         action("Open Anna").performClick()
-        action("Dismiss the note about Anna").performClick()
+        action("Close notice: Anna").performClick()
         action("Open Birthday").performClick()
-        action("Dismiss the note about Scarf").performClick()
+        action("Close notice: Scarf").performClick()
         assertEquals(listOf("open Anna", "dismiss Anna", "open OCCASION", "dismiss Scarf"), events)
     }
 
@@ -174,14 +174,14 @@ class SyncAttentionScreenTest {
             compose.onNodeWithText("Figyelmet igényel"),
             compose.onNodeWithText("Ezt egy másik eszközön is módosították.", substring = true),
             action("Megnyitás: Anna"),
-            action("Jelzés elvetése: Anna"),
+            action("Jelzés lezárása: Anna"),
         ).forEach { node ->
             val bounds = node.getBoundsInRoot()
             assertTrue("$bounds outside the screen", bounds.left >= 0.dp && bounds.right <= width)
         }
         val open = action("Megnyitás: Anna").getBoundsInRoot()
         assertTrue(open.bottom - open.top >= 48.dp)
-        action("Jelzés elvetése: Anna").performClick()
+        action("Jelzés lezárása: Anna").performClick()
         assertEquals(listOf("dismiss Anna"), events)
     }
 }

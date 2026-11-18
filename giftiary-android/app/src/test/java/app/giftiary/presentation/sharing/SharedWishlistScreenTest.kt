@@ -1,5 +1,6 @@
 package app.giftiary.presentation.sharing
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -24,8 +25,13 @@ import app.giftiary.domain.model.SharedWish
 import app.giftiary.domain.model.SharedWishlist
 import app.giftiary.domain.repository.SharingFailure
 import app.giftiary.presentation.components.ANONYMOUS_AVATAR_TAG
+import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.presentation.wishlists.WISH_PHOTO_TAG
+import app.giftiary.presentation.wishlists.WISH_THUMBNAIL_TAG
 import app.giftiary.testing.WithFontScale
+import app.giftiary.testing.awaitPhoto
 import app.giftiary.testing.lineCount
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -34,8 +40,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.UUID
 import org.robolectric.annotation.GraphicsMode
+import java.io.ByteArrayOutputStream
+import java.util.UUID
 
 /** A list shared with the user: the owner's context, no owner controls, and the guest's reservations. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -55,6 +62,7 @@ class SharedWishlistScreenTest {
     private var state by mutableStateOf(OnlineState<SharedWishlist>())
     private var reservations by mutableStateOf(ReservationActions())
     private var leaving by mutableStateOf(LeaveState())
+    private var photos = ShownPhotos.of(emptyMap())
     private var shown = false
     private var fontScale = 1f
 
@@ -73,6 +81,7 @@ class SharedWishlistScreenTest {
                 GiftiaryTheme {
                     SharedWishlistScreen(
                         state = this.state,
+                        photos = photos,
                         leaving = this.leaving,
                         reservations = this.reservations,
                         actions = SharedWishlistActions(
@@ -274,4 +283,27 @@ class SharedWishlistScreenTest {
     }
 
     private fun hasContentDescriptionExactly(text: String) = SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(text))
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `a guest sees the owner's wish photos with every reservation state, and nothing of who reserved`() {
+        val withPhotos = listOf(headphones, coffee, backpack).mapIndexed { i, wish -> wish.copy(photoPath = "p$i.jpg") }
+        photos = ShownPhotos.of(withPhotos.associate { it.photoPath!! to jpeg() })
+
+        show(loaded(*withPhotos.toTypedArray(), unknown))
+        compose.awaitPhoto(WISH_PHOTO_TAG)
+
+        compose.onAllNodesWithTag(WISH_THUMBNAIL_TAG, useUnmergedTree = true).assertCountEquals(4)
+        compose.onAllNodesWithTag(WISH_PHOTO_TAG, useUnmergedTree = true).assertCountEquals(3)
+        compose.onNodeWithText("I’ll get this").assertExists()
+        compose.onNodeWithText("You’re getting this").assertExists()
+        compose.onNodeWithText("Reserved").assertExists()
+        compose.onAllNodes(hasText("Reserved by", substring = true)).assertCountEquals(0)
+    }
+
+    private fun jpeg(): LoadedPhoto {
+        val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
+        return LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())
+    }
+
 }

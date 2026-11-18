@@ -9,9 +9,11 @@ import app.giftiary.domain.model.nextOccurrence
 import app.giftiary.domain.model.turningAge
 import app.giftiary.domain.repository.GiftIdeaEntry
 import app.giftiary.domain.repository.GiftIdeaRepository
+import app.giftiary.domain.repository.GiftPhotoRepository
 import app.giftiary.domain.repository.OccasionEntry
 import app.giftiary.domain.repository.OccasionRepository
 import app.giftiary.domain.usecase.occasionPlans
+import app.giftiary.presentation.gifts.ShownPhotos
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -40,7 +42,11 @@ class OccasionPlanViewModel @AssistedInject constructor(
     giftIdeaRepository: GiftIdeaRepository,
     private val clock: Clock,
     private val zone: ZoneId,
+    photoRepository: GiftPhotoRepository,
 ) : ViewModel() {
+
+    /** The ideas' photos, read only for the rows on screen. */
+    val photos = ShownPhotos(viewModelScope, photoRepository::loadPhoto)
 
     private val occasion = occasionRepository.observeOccasions()
         .map { entries -> entries.find { it.occasion.id == occasionId } }

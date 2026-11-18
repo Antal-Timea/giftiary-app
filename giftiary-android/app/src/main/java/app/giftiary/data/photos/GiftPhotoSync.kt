@@ -2,9 +2,11 @@ package app.giftiary.data.photos
 
 import android.util.Log
 import app.giftiary.data.local.dao.GiftDao
+import app.giftiary.data.local.dao.GiftIdeaDao
 import app.giftiary.data.local.dao.PersonDao
 import app.giftiary.data.local.dao.PhotoTransferDao
 import app.giftiary.data.local.dao.SyncOperationDao
+import app.giftiary.data.local.dao.WishDao
 import app.giftiary.data.local.entity.PhotoTransferKind
 import app.giftiary.data.local.entity.SyncEntityType
 import app.giftiary.data.remote.GiftPhotoRemote
@@ -18,8 +20,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Gift and person photos' part of a sync drain, around the push of the rows. Both live in the
- * same bucket and folder, so a row of either kind is a reference to the photo it names.
+ * Gift, person and wish photos' part of a sync drain, around the push of the rows. All live in the
+ * same bucket and folder, so a row of any of these kinds is a reference to the photo it names.
  *
  * - [upload] first: a photo selected on this device goes to Storage before any row naming it is
  *   pushed ([isUploadPending] holds that row back), so the backend never names a missing object.
@@ -34,7 +36,9 @@ import javax.inject.Singleton
 class GiftPhotoSync @Inject constructor(
     private val transfers: PhotoTransferDao,
     private val gifts: GiftDao,
+    private val ideas: GiftIdeaDao,
     private val people: PersonDao,
+    private val wishes: WishDao,
     private val operations: SyncOperationDao,
     private val files: GiftPhotoFiles,
     private val remote: GiftPhotoRemote,
@@ -45,7 +49,9 @@ class GiftPhotoSync @Inject constructor(
     suspend fun isUploadPending(owner: UUID, entityType: SyncEntityType, entityId: UUID): Boolean {
         val path = when (entityType) {
             SyncEntityType.GIFT -> gifts.findById(entityId, owner)?.photoPath
+            SyncEntityType.GIFT_IDEA -> ideas.findById(entityId, owner)?.photoPath
             SyncEntityType.PERSON -> people.findById(entityId, owner)?.photoPath
+            SyncEntityType.WISH -> wishes.findById(entityId, owner)?.photoPath
             else -> null
         } ?: return false
         return transfers.find(path, owner)?.kind == PhotoTransferKind.UPLOAD
@@ -117,7 +123,8 @@ class GiftPhotoSync @Inject constructor(
             .forEach { (path, _) -> files.delete(path) }
     }
 
-    private suspend fun namedPaths(owner: UUID): Set<String> = (gifts.getPhotoPaths(owner) + people.getPhotoPaths(owner)).toSet()
+    private suspend fun namedPaths(owner: UUID): Set<String> =
+        (gifts.getPhotoPaths(owner) + ideas.getPhotoPaths(owner) + people.getPhotoPaths(owner) + wishes.getPhotoPaths(owner)).toSet()
 
     private companion object {
         const val TAG = "GiftPhotoSync"

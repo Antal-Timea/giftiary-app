@@ -1,5 +1,6 @@
 package app.giftiary.presentation.wishlists
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -17,8 +19,11 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import app.giftiary.domain.model.Money
 import app.giftiary.domain.model.Wish
+import app.giftiary.presentation.gifts.LoadedPhoto
+import app.giftiary.presentation.gifts.ShownPhotos
 import app.giftiary.presentation.theme.GiftiaryTheme
 import app.giftiary.testing.WithFontScale
+import app.giftiary.testing.awaitPhoto
 import app.giftiary.testing.lineCount
 import app.giftiary.testing.wish
 import app.giftiary.testing.wishlist
@@ -29,8 +34,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.UUID
 import org.robolectric.annotation.GraphicsMode
+import java.io.ByteArrayOutputStream
+import java.util.UUID
 
 /** The owner's wishlist: identity, sharing, the wishes, and where every owner action went. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
@@ -49,6 +55,7 @@ class WishlistDetailScreenTest {
 
     private val actions = mutableListOf<String>()
     private var state by mutableStateOf(WishlistDetailUiState())
+    private var photos = ShownPhotos.of(emptyMap())
     private var shown = false
     private var fontScale = 1f
 
@@ -61,6 +68,7 @@ class WishlistDetailScreenTest {
                 GiftiaryTheme {
                     WishlistDetailScreen(
                         state = this.state,
+                        photos = photos,
                         actions = WishlistDetailScreenActions(
                             onBack = { actions += "back" },
                             onEditList = { actions += "edit list" },
@@ -240,4 +248,45 @@ class WishlistDetailScreenTest {
         show(WishlistDetailUiState(WishlistDetailContent.LoadFailed))
         compose.onNodeWithText("The wishlist could not be loaded.").assertExists()
     }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `a wish with a photo shows it beside its words, and one without keeps the gift mark`() {
+        val withPhoto = headphones.copy(photoPath = "headphones.jpg")
+        val notHere = coffee.copy(photoPath = "coffee.jpg")
+        photos = ShownPhotos.of(mapOf("headphones.jpg" to jpeg()))
+
+        show(own(withPhoto, notHere))
+        compose.awaitPhoto(WISH_PHOTO_TAG)
+
+        compose.onAllNodesWithTag(WISH_THUMBNAIL_TAG, useUnmergedTree = true).assertCountEquals(2)
+        compose.onAllNodesWithTag(WISH_PHOTO_TAG, useUnmergedTree = true).assertCountEquals(1)
+        // The photo is part of the row's one target.
+        compose.onAllNodesWithTag(WISH_THUMBNAIL_TAG, useUnmergedTree = true)[0].performClick()
+        assertEquals(listOf("open Wireless headphones"), actions)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `a long wish name beside a photo wraps beside it, with its price, and nothing overlaps`() {
+        val long = headphones.copy(name = "Noise-cancelling over-ear wireless headphones with a hard travel case", photoPath = "h.jpg")
+        photos = ShownPhotos.of(mapOf("h.jpg" to jpeg()))
+        fontScale = 1.5f
+
+        show(own(long, coffee))
+        compose.awaitPhoto(WISH_PHOTO_TAG)
+
+        val photo = compose.onAllNodesWithTag(WISH_THUMBNAIL_TAG, useUnmergedTree = true)[0].getBoundsInRoot()
+        val name = compose.onNodeWithText(long.name, useUnmergedTree = true).getBoundsInRoot()
+        assertTrue("the name wraps rather than being cut", compose.onNodeWithText(long.name, useUnmergedTree = true).lineCount() > 1)
+        assertTrue("the name starts after the photo", name.left >= photo.right)
+        compose.onNodeWithText("45,000", substring = true).assertExists()
+        assertTrue("the next wish starts below both", top("Coffee subscription") >= maxOf(photo.bottom, name.bottom))
+    }
+
+    private fun jpeg(): LoadedPhoto {
+        val bitmap = Bitmap.createBitmap(80, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(0xFF5A4032.toInt()) }
+        return LoadedPhoto(ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray())
+    }
+
 }

@@ -1,5 +1,6 @@
 package app.giftiary.presentation.wishlists
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -20,8 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -35,7 +39,9 @@ import app.giftiary.domain.model.Money
 import app.giftiary.presentation.components.GiftThumbnail
 import app.giftiary.presentation.components.GiftiaryBackButton
 import app.giftiary.presentation.components.monogramInitial
+import app.giftiary.presentation.gifts.LoadedPhoto
 import app.giftiary.presentation.gifts.giftPrice
+import app.giftiary.presentation.gifts.rememberDecodedImage
 import app.giftiary.presentation.theme.GiftiaryShapes
 import app.giftiary.presentation.theme.GiftiarySpacing
 import app.giftiary.presentation.theme.GiftiaryTheme
@@ -137,7 +143,8 @@ internal fun WishlistHeader(
 
 /**
  * One wish as both the owner and guests see it: the thumbnail, its name, note, estimated price and
- * link. [trailing] is the owner's options; [below] the guest's reservation.
+ * link. The thumbnail is the wish's [photo], cropped, or the branded glyph while there is none or it
+ * is not read yet. [trailing] is the owner's options; [below] the guest's reservation.
  */
 @Composable
 internal fun WishRowContent(
@@ -146,6 +153,7 @@ internal fun WishRowContent(
     price: Money?,
     productUrl: String?,
     modifier: Modifier = Modifier,
+    photo: LoadedPhoto? = null,
     trailing: @Composable () -> Unit = {},
     below: @Composable ColumnScope.() -> Unit = {},
 ) {
@@ -157,8 +165,23 @@ internal fun WishRowContent(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        // Wishes have no photos yet; the branded glyph tile keeps the row's shape.
-        GiftThumbnail(size = WISH_THUMBNAIL, shape = GiftiaryShapes.photoCard)
+        val image = rememberDecodedImage(photo, WISH_THUMBNAIL)
+        GiftThumbnail(
+            modifier = Modifier.testTag(WISH_THUMBNAIL_TAG),
+            size = WISH_THUMBNAIL,
+            shape = GiftiaryShapes.photoCard,
+            photo = image?.let {
+                // The wish's name is written beside it; the photo adds no information of its own.
+                {
+                    Image(
+                        bitmap = it,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().testTag(WISH_PHOTO_TAG),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            },
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(text = name, style = GiftiaryType.actionLarge, color = colors.textPrimary)
             note?.let {
@@ -211,6 +234,8 @@ private fun WishMeta(price: Money?, productUrl: String?) {
 private fun String.isWebLink(): Boolean = startsWith("https://", ignoreCase = true) || startsWith("http://", ignoreCase = true)
 
 internal val WISH_THUMBNAIL = 72.dp
+internal const val WISH_THUMBNAIL_TAG = "wish_thumbnail"
+internal const val WISH_PHOTO_TAG = "wish_photo"
 
 /**
  * Lays a 48dp target out as if it were [inset] shorter at top and bottom, as the boards' small

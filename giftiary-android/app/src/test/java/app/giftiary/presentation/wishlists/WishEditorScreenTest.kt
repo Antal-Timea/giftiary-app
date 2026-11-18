@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import app.giftiary.presentation.gifts.PriceError
@@ -90,13 +91,14 @@ class WishEditorScreenTest {
     }
 
     @Test
-    fun `the details keep every wish field in the board's order, without a photo a wish cannot take`() {
+    fun `the details offer a photo first, then keep every wish field in the board's order`() {
         show(adding)
 
         compose.onNodeWithText("Add more details (optional)").performClick()
-        assertTopToBottom(listOf("Fewer details", "Note", "Approximate price", "A rough amount is enough.", "Product link", "Save wish"))
-        compose.onNodeWithText("Photo", useUnmergedTree = true).assertDoesNotExist()
-        compose.onNodeWithText("Add photo").assertDoesNotExist()
+        assertTopToBottom(listOf("Fewer details", "Photo", "Note", "Approximate price", "A rough amount is enough.", "Product link", "Save wish"))
+        compose.onNodeWithText("Add photo").performScrollTo().performClick()
+        compose.onNodeWithText("Take photo").assertExists()
+        compose.onNodeWithText("Choose from gallery").assertExists()
     }
 
     @Test

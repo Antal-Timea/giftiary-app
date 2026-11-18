@@ -3,16 +3,17 @@ package app.giftiary.domain.repository
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Gift and person photos. A photo is stored on this device first and attached to a gift or person
- * by saving it with its path ([GiftDetails.photoPath], [PersonRepository.addPerson],
- * [PersonRepository.setPersonPhoto]); it then uploads in the background with that row.
+ * Gift, person and wish photos. A photo is stored on this device first and attached to a gift,
+ * person or wish by saving it with its path ([GiftDetails.photoPath], [PersonRepository.addPerson],
+ * [PersonRepository.setPersonPhoto], [WishDetails.photoPath]); it then uploads in the background
+ * with that row.
  */
 interface GiftPhotoRepository {
 
     /**
      * Stores the image the user picked ([source]: a content URI) as a new photo of the signed-in
      * account, shaped for [kind] and without metadata, and returns its path. Nothing refers to it
-     * until a gift or person is saved with it.
+     * until a gift, gift idea, person or wish is saved with it.
      *
      * @throws GiftPhotoUnreadableException if the image cannot be read.
      */
@@ -40,6 +41,13 @@ interface GiftPhotoRepository {
      * available now, e.g. offline on a device that has not seen it yet.
      */
     suspend fun loadPhoto(path: String): ByteArray?
+
+    /**
+     * The photo of a wish on a list someone shared with the user: downloaded each time it is asked
+     * for and never stored, as the shared list itself is read from the server. Null if it cannot be
+     * read now, e.g. offline, or once the wish is no longer on a list the user is a member of.
+     */
+    suspend fun loadSharedPhoto(path: String): ByteArray?
 
     /** The photo's JPEG bytes only if they are on this device already; never downloads. */
     suspend fun loadLocalPhoto(path: String): ByteArray?

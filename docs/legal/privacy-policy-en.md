@@ -1,6 +1,6 @@
 # Giftiary – Privacy Policy
 
-**Effective date:** 12 November 2026
+**Effective date:** 16 November 2026
 
 This policy explains how the Giftiary Android app and its service handle personal data. A Hungarian version with the same content is also available.
 
@@ -63,7 +63,7 @@ You type this data in yourself; nothing is read automatically from your device (
 - **Invites:** when you share one of your own wishlists, an invite is created. The server stores the invite's secret code only in an irreversible (hashed) form; the code itself appears only in the shared link. We also store when the invite was created, when it expires and, if applicable, when it was revoked.
 - **Email invites:** you can also invite someone to one of your own wishlists by entering their email address. The server then stores the invited email address (lowercased, with surrounding spaces removed), the list's identifier, the invite's status (pending, accepted, declined, revoked or expired), and when the invite was created, when it expires (14 days after creation) and when it was closed. We use the email address only for this invitation: to send the invitee one invitation email (see section 3.7) and to show the invite in the app to someone who signs in with exactly that address as a confirmed email address, who can accept or decline it. Before accepting, they see the list's name, your display name and, if you keep the list for one of your people, that person's name. We do not use the address for advertising or any other purpose. The invite does not store the invited account's identifier, and we do not tell you whether the address belongs to a Giftiary account. Only you see the invited email address, among your pending invites. When the invite closes (it is accepted, declined, revoked or expires), we erase the email address from it; it then no longer appears among your invites.
 - **Memberships:** who joined a list, and when.
-- **Reservations:** which member reserved a wish.
+- **Reservations:** which member reserved a wish, and when.
 
 ### 3.6. Technical data
 
@@ -136,7 +136,8 @@ Your profile photo is not saved on your device first: it is uploaded straight aw
 - You can also invite someone by their email address (see section 3.5). We send that address one invitation email (see section 3.7). The invite is valid for 14 days, and only someone who signs in with exactly that address as a confirmed email address can accept it. You can withdraw a pending email invite at any time.
 - **Members see:** the list name, the wishes (name, note, estimated price, product link) and the list owner's display name.
 - **The list owner sees:** the members' display names and when they joined, the open invite links, and the pending email invites (with the invited address).
-- **Reservations:** for each wish, members see only whether it is available, reserved by them or reserved by someone else. They do not see who reserved it. **The list owner sees nothing about reservations**, so the surprise is kept.
+- **Reservations:** for each wish, members see only whether it is available, reserved by them or reserved by someone else. They do not see who reserved it.
+- **What the list owner learns about reservations:** **the owner never learns who reserved a wish.** On a list you keep for yourself, you see nothing about reservations, not even whether a wish is reserved, so the surprise is kept. On a list you keep for one of your people, you see only whether each wish is reserved ("Reserved"), so that you do not buy the same gift; you do not see who reserved it, when, or anything else about the reservation.
 - The owner can remove a member, and a member can leave; the member's reservations then no longer count.
 - Sharing gives access to that wishlist only. Your people (and their photos), occasions, gift ideas, gifts (and their photos), your profile photo and other lists do not become visible. This also holds for a list you keep for one of your people: members see that person's name as the list's recipient, never their photo.
 
@@ -238,7 +239,7 @@ You can lodge a complaint with the Hungarian National Authority for Data Protect
 - Passwords, invite codes and device proofs are stored on the server only in an irreversible (hashed) form.
 - Photos are in private file storage: every account can access only its own folder, there are no public links, and profile photos are kept apart from all other photos.
 - Person and profile photos are never exposed through wishlist sharing or invites; the server does not return them to anyone but their owner.
-- The owner of a shared list does not receive reservations, not even through the server.
+- The server never gives a list's owner the identity of the person who reserved a wish. For a list the owner keeps for themselves, it gives them nothing about reservations; for a list kept for one of their people, only whether each wish is reserved.
 - Android backup does not include the sign-in session, the local database, photos or device proof secrets.
 
 No system can guarantee complete security, but we protect your data with reasonable measures.

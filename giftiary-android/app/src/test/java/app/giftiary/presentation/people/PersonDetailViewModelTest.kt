@@ -116,7 +116,7 @@ class PersonDetailViewModelTest {
         val viewModel = PersonDetailViewModel(anna.id, people, occasions, gifts, ideas, wishlists, photos)
         keepSubscribed(viewModel.uiState)
 
-        wishlists.addWish(christmas.id, WishDetails("Lamp", null, null, null))
+        wishlists.addWish(christmas.id, WishDetails("Lamp", null, null, null, null))
         assertEquals(listOf(PersonWishlist(christmas, 1)), (viewModel.uiState.value as PersonDetailUiState.Loaded).wishlists)
 
         wishlists.deleteWishlist(christmas.id)
