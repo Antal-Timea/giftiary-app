@@ -1,6 +1,6 @@
 # Giftiary – Privacy Policy
 
-**Effective date:** 16 November 2026
+**Effective date:** 18 November 2026
 
 This policy explains how the Giftiary Android app and its service handle personal data. A Hungarian version with the same content is also available.
 
@@ -16,7 +16,7 @@ Giftiary is operated by a private individual. No data protection officer is requ
 
 - Giftiary helps you remember, plan and share gifts. You can record people, occasions, gift ideas, gifts and wishlists.
 - Your data is first stored on your device and then synced to our server under your account, so that you can use it on more than one device.
-- We do **not** use analytics, advertising, tracking or advertising identifiers, and we do **not** collect location, contacts or files from your device. We process a photo only if you add one yourself: to a gift, to a person, or as your own profile photo. Every photo is private to your account in this release. There are no payments in the app.
+- We do **not** use analytics, advertising, tracking or advertising identifiers, and we do **not** collect location, contacts or files from your device. We process a photo only if you add one yourself: to a gift, a gift idea, a person or a wish, or as your own profile photo. The members of a wishlist you share can see the photos of that list's wishes; your other photos are visible only to your account. There are no payments in the app.
 - We do not sell your data or share it for advertising.
 - You can delete your account in the app at any time (Settings → Delete account), or ask for its deletion by email without the app (see section 12).
 
@@ -53,7 +53,7 @@ If you already have a Giftiary account with the same verified email address, the
 - **Occasions:** type (e.g. birthday, name day, anniversary, Christmas, custom), day, month, optionally year, and a title for custom occasions.
 - **Gift ideas and gifts:** name, direction (given or received), who gave or received it, occasion, price or estimated price, product link, note, status.
 - **Wishlists and wishes:** list name, wish name, note, estimated price, product link.
-- **Gift photo (optional):** at most one image per gift, which you choose with the system photo picker or take with your device's camera app. Before it is stored we resize it (at most 1600 pixels on the longer side), convert it to JPEG and remove its metadata (for example location and device data).
+- **Gift, gift idea and wish photos (optional):** at most one image per gift, per gift idea and per wish, which you choose with the system photo picker or take with your device's camera app. Before it is stored we resize it (at most 1600 pixels on the longer side), convert it to JPEG and remove its metadata (for example location and device data). When you mark a gift idea as given, its photo is not copied: it becomes the photo of the gift created from the idea, and the archived idea no longer has a photo.
 - **Person photo (optional):** at most one image per person you record, chosen or taken the same way. We crop it to a square, resize it to 640 × 640 pixels, convert it to JPEG and remove its metadata. Such a photo usually shows someone else (see section 5).
 
 You type this data in yourself; nothing is read automatically from your device (for example, not your contacts or your calendar). The photo picker gives the app only the one image you choose; we have no access to your other photos. If you take a new photo, your camera app saves it into a temporary file that Giftiary creates for this purpose only. Giftiary processes it as above and deletes the temporary file right after processing. If the app stops while you are taking the photo, the leftover temporary file is deleted after one day, the next time you take a photo (or earlier by the system when it clears the cache). Giftiary does not save the photo to your gallery; however, some camera apps may keep a copy according to their own settings, which you can check in your camera app.
@@ -80,7 +80,8 @@ We send emails from no-reply@giftiary.app to confirm your registration and to re
 ### 3.8. Data stored on your device
 
 - A local copy of your data in the app's own database, so the app works offline.
-- Local copies of your gift and person photos in the app's own storage, and the list of photos waiting to be uploaded or deleted from the file storage.
+- Local copies of your gift, gift idea, person and wish photos in the app's own storage, and the list of photos waiting to be uploaded or deleted from the file storage.
+- The wish photos of a wishlist someone else shared with you are downloaded when the list shows them and kept only in the app's memory while you use the list; the app does not save them to your device's storage.
 - A profile photo you have just picked, only until it is uploaded. If it cannot be uploaded and you do not try again, the app deletes it automatically later.
 - While you take a photo, a temporary image file in the app's cache (see section 3.4).
 - Your sign-in session (while you are signed in).
@@ -102,7 +103,7 @@ If you email us, we process your message and your email address to answer your r
 | Creating your account, sign-in (email, Google, Facebook), account management | 3.1, 3.2 | (b) providing the service (performance of a contract) |
 | Removing a deleted account's data from your other devices (device proof) | 3.1, 3.8 | (b) |
 | Storing, syncing and displaying the content you enter | 3.4, 3.8 | (b) |
-| Sharing wishlists, joining, reserving (except the email address of a person invited by email) | 3.3, 3.5 | (b) |
+| Sharing wishlists (including wish photos), joining, reserving (except the email address of a person invited by email) | 3.3, 3.4 (wishes and their photos), 3.5 | (b) |
 | Inviting by email address: processing the invited third person's email address | 3.5 (Email invites) | (f) legitimate interest: the Giftiary user's legitimate interest in being able to invite a specific person to their shared wishlist |
 | Confirmation and password-reset emails | 3.7 | (b) |
 | Invitation email to an invited person | 3.7 | (f) legitimate interest: as for email invites above; the email also gives the invitee the information required by Article 14 |
@@ -115,8 +116,8 @@ Showing notifications requires Android's notification permission. You grant it, 
 
 ## 5. Data about other people
 
-In Giftiary you can record data about other people (for example their names, birthdays, gifts meant for them or received from them, and optionally a photo of them), and other people may also appear in gift photos. We process this data only to provide the service to you:
-- only you can see it, except the content of shared wishlists (see section 7); a person's photo is never shown to anyone else;
+In Giftiary you can record data about other people (for example their names, birthdays, gifts meant for them or received from them, and optionally a photo of them), and other people may also appear in gift, gift idea and wish photos. We process this data only to provide the service to you:
+- only you can see it, except the content of the wishlists you share, including their wish photos (see section 7); a person's photo is never shown to anyone else;
 - we do not contact or notify those people (except the invitation email of section 3.7, if you invite someone by their email address);
 - we do not use their data for any other purpose.
 
@@ -124,9 +125,9 @@ Please record only what you need for your own personal gift planning, and add a 
 
 ## 6. Storage and sync
 
-Giftiary works offline: changes are saved on your device first and, when you are online, synced to the server over an encrypted (HTTPS) connection. On the server, every account can access only its own data; database-level access control enforces this.
+Giftiary works offline: changes are saved on your device first and, when you are online, synced to the server over an encrypted (HTTPS) connection. On the server, every account can access only its own data, apart from the wishlists shared with it (see section 7); database-level access control enforces this.
 
-Gift and person photos are also saved on your device first and uploaded to a private file storage when you are online; the gift or person syncs with its photo only after the photo is uploaded. In the storage, every account can access only its own folder, photos have no public link, and your other devices download them from there when needed.
+Gift, gift idea, person and wish photos are also saved on your device first and uploaded to a private file storage when you are online; the item syncs with its photo only after the photo is uploaded. The storage is not public: photos have no public link, and it serves a photo only to a signed-in account that its access rules allow. Every account can access its own folder, and your other devices download your photos from there when needed. The only photos another account can open are wish photos: a member of a wishlist you share can view, but not change or delete, the photo of a wish that is currently on that list (see section 7).
 
 Your profile photo is not saved on your device first: it is uploaded straight away to a separate private file storage that only your account can access, and it counts as changed only once the upload has succeeded.
 
@@ -134,12 +135,13 @@ Your profile photo is not saved on your device first: it is uploaded straight aw
 
 - You can share your own wishlist with an invite link. You pass the link on yourself, in any way you choose (for example in a messaging app). Anyone who receives the link can join the list while the invite is valid (currently 7 days), after signing in. You can revoke an invite at any time.
 - You can also invite someone by their email address (see section 3.5). We send that address one invitation email (see section 3.7). The invite is valid for 14 days, and only someone who signs in with exactly that address as a confirmed email address can accept it. You can withdraw a pending email invite at any time.
-- **Members see:** the list name, the wishes (name, note, estimated price, product link) and the list owner's display name.
+- **Members see:** the list name, the wishes (name, note, estimated price, product link and photo) and the list owner's display name.
 - **The list owner sees:** the members' display names and when they joined, the open invite links, and the pending email invites (with the invited address).
 - **Reservations:** for each wish, members see only whether it is available, reserved by them or reserved by someone else. They do not see who reserved it.
 - **What the list owner learns about reservations:** **the owner never learns who reserved a wish.** On a list you keep for yourself, you see nothing about reservations, not even whether a wish is reserved, so the surprise is kept. On a list you keep for one of your people, you see only whether each wish is reserved ("Reserved"), so that you do not buy the same gift; you do not see who reserved it, when, or anything else about the reservation.
 - The owner can remove a member, and a member can leave; the member's reservations then no longer count.
-- Sharing gives access to that wishlist only. Your people (and their photos), occasions, gift ideas, gifts (and their photos), your profile photo and other lists do not become visible. This also holds for a list you keep for one of your people: members see that person's name as the list's recipient, never their photo.
+- **Wish photos:** a member can view a wish's photo only while they are a member of the list and neither the wish nor the list has been deleted; members can never change or delete it. If you replace or remove a wish photo, or delete the wish or the list, members can no longer open the old photo once the change has synced from your device; a removed member, or one who left, can no longer open the list's photos either. The member's app keeps these photos only in memory while the list is in use and does not save them to the device's storage. We cannot withdraw a copy that someone has already seen or saved in another way, for example as a screenshot.
+- Sharing gives access to that wishlist only. Your people (and their photos), occasions, gift ideas (and their photos), gifts (and their photos), your profile photo and your other lists (and their wishes and photos) do not become visible. This also holds for a list you keep for one of your people: members see that person's name as the list's recipient, never their photo.
 
 ## 8. Reminders and notifications
 
@@ -149,7 +151,7 @@ If you turn reminders on, the app builds the notification about upcoming occasio
 
 We do not sell your data or share it with third parties for advertising or marketing. We use the following providers to run the service:
 
-- **Supabase** (Supabase, Inc.): authentication (user accounts, sign-in, handling Google and Facebook sign-in), database and file storage (gift, person and profile photos). Our project runs in a data centre in the European Union, in Frankfurt (eu-central-1). Supabase may use further subprocessors (for example a cloud infrastructure provider). Privacy policy: https://supabase.com/privacy
+- **Supabase** (Supabase, Inc.): authentication (user accounts, sign-in, handling Google and Facebook sign-in), database and file storage (gift, gift idea, person, wish and profile photos). Our project runs in a data centre in the European Union, in Frankfurt (eu-central-1). Supabase may use further subprocessors (for example a cloud infrastructure provider). Privacy policy: https://supabase.com/privacy
 - **Resend**: delivery of confirmation and password-reset emails, as the authentication system's custom SMTP provider, and of invitation emails to invited email addresses. Privacy policy: https://resend.com/legal/privacy-policy
 - **Porkbun**: the mailbox provider for support@giftiary.app, receiving and storing the privacy and support enquiries sent to that address.
 - **Google**: distributing the app on Google Play.
@@ -170,16 +172,18 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
   - If you delete an item in the app (for example a person or a gift), it disappears from all views.
   - On the server it is kept, marked as deleted, so that your other devices learn of the deletion; the sync change log is kept too.
   - Both are kept until the account is deleted; there is currently no automatic permanent deletion.
-- **Gift and person photos:**
-  - If you replace or remove a photo, or delete the gift or person, the old photo's local copy on the device where you do it is deleted right away.
+- **Gift, gift idea, person and wish photos:**
+  - If you replace or remove a photo, or delete the gift, gift idea, person or wish (or the wishlist the wish is on), the old photo's local copy on the device where you do it is deleted right away.
   - It is deleted from the file storage once the change has synced from that device; while the device is offline, the photo stays in the file storage.
   - On your other devices the local copy is deleted during the syncs after they receive the change; if that device downloaded the copy within the last day, up to about one day later. On a signed-out device this does not happen until the next sign-in.
   - Photos are not kept marked as deleted.
+  - A gift idea's photo that became a gift's photo when you marked the idea as given is kept and deleted like any other gift photo.
+  - For when members of a shared wishlist stop being able to open a wish photo, see section 7.
 - **Profile photo:** if you replace or remove it, the previous photo is deleted from the file storage right after the change. If that deletion fails (for example the connection drops), the leftover is deleted at a later profile photo change, or with the account.
 - **Expired and revoked invites:** kept as rows (with their expiry and revocation time) until the account is deleted.
 - **Email invites:** the invited email address is kept only while the invite is pending, for at most 14 days. When the invite is accepted, declined or revoked, we erase the address at once; when it expires, an automatic job erases it within minutes of the expiry. The invite's row is then kept without the address (with the list, status and the times of creation, expiry and closing) until your account is deleted; deleting the invitee's account does not delete it. Email delivery data is kept by our email provider according to its settings.
 - **Signing out:**
-  - Signing out is not deletion. On the device, the account's data and its gift and person photos stay stored but hidden, so that you can reach it again when you sign back in with the same account.
+  - Signing out is not deletion. On the device, the account's data and its photos stay stored but hidden, so that you can reach it again when you sign back in with the same account.
   - To remove the data from the device as well, delete the account, or clear the app's data / uninstall the app.
 - **Technical logs and email delivery data:** for a limited period, according to our providers' settings.
 - **Backups:** backups made by our hosting provider may contain deleted data until they are overwritten in the normal backup cycle.
@@ -193,14 +197,14 @@ Our server is located in the EU (Frankfurt). Our providers and their subprocesso
 
 **What happens:**
 
-- **On the server**, first all of the account's gift and person photos, and then its profile photos, are deleted from the file storage; then, in a single step, the following are permanently deleted:
+- **On the server**, first all of the account's gift, gift idea, person and wish photos, and then its profile photos, are deleted from the file storage; then, in a single step, the following are permanently deleted:
   - all of your account's people, occasions, gift ideas, gifts, wishlists and wishes;
   - your invites (your email invites included) and the sync change log;
   - your profile (display name and the reference to your profile photo);
   - your memberships and reservations on other people's lists, and every membership and reservation on your own lists;
   - finally the user account itself, together with its sign-in sessions, linked Google/Facebook identities and device proofs.
 
-  This data is not kept marked as deleted; it is actually removed. If deleting the account fails after the photos were deleted, some photos may already be gone; the account deletion can then be tried again.
+  This data is not kept marked as deleted; it is actually removed. From then on, the members of your shared lists can no longer open those lists or their wish photos. If deleting the account fails after the photos were deleted, some photos may already be gone; the account deletion can then be tried again.
 - **On the device you delete from:** the app removes the account's local data and photos, reminder settings and pending reminders, then signs you out. If the app stops part way, it finishes on its next start.
 - **On the account's other devices**, an installation that registered a device proof (see section 3.1) removes the account's local data and photos by itself, but not immediately: only once that device is online and its sign-in is refused (when the app next starts, returns to the foreground or renews its sign-in, usually within about an hour while the app is open), and only after our server has confirmed that the proof no longer belongs to an existing account. If the server cannot be reached or its answer is unclear, nothing is deleted, and the device asks again later. Other accounts' data on that device is not affected. An older version of the app, or an installation that never registered a proof (for example because it was never online while signed in), may keep the data in its local database; you can remove it there by clearing the app's data or uninstalling the app.
 - Email invites that other users sent to your email address belong to their accounts, so deleting your account does not delete them (see section 11).
@@ -235,10 +239,10 @@ You can lodge a complaint with the Hungarian National Authority for Data Protect
 ## 14. Security
 
 - The connection between the app and the server is encrypted (HTTPS).
-- Every account can access only its own data; database-level access control enforces this.
+- Every account can access only its own data, apart from the wishlists shared with it (section 7); database-level access control enforces this.
 - Passwords, invite codes and device proofs are stored on the server only in an irreversible (hashed) form.
-- Photos are in private file storage: every account can access only its own folder, there are no public links, and profile photos are kept apart from all other photos.
-- Person and profile photos are never exposed through wishlist sharing or invites; the server does not return them to anyone but their owner.
+- Photos are in private file storage with no public links, and profile photos are kept apart from all other photos. Every account can access its own folder; another account can only view the photo of a wish currently on a shared list it is a member of, and can never change or delete it.
+- Person, profile, gift and gift idea photos are never exposed through wishlist sharing or invites; the server does not return them to anyone but their owner.
 - The server never gives a list's owner the identity of the person who reserved a wish. For a list the owner keeps for themselves, it gives them nothing about reservations; for a list kept for one of their people, only whether each wish is reserved.
 - Android backup does not include the sign-in session, the local database, photos or device proof secrets.
 

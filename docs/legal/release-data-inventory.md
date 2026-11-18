@@ -1,7 +1,8 @@
 # Release data inventory
 
 > **Canonical evidence for privacy and Play answers.** It records what the app and its backend do
-> as of develop `763adc5` (F5 merged), from the code, the manifest and `supabase/migrations`. The
+> as of develop `763adc5` (F5 merged), from the code, the manifest and `supabase/migrations`; the
+> photo rows were re-checked for 0.1.0-beta.5 (`0d8e80c`, wish and gift idea photos). The
 > privacy policy (`privacy-policy-en.md` / `-hu.md`), the account-deletion page and
 > `data-safety-draft.md` must agree with it. Update it in the same change as any feature that adds,
 > moves or deletes user data.
@@ -36,7 +37,8 @@
 | Display name | Edit profile | no | `profiles.display_name` | members and owners of shared lists; invite recipient sees it before accepting | Supabase | optional | cleared by the user or account deletion |
 | Profile photo | photo picker / camera | only until uploaded | `profile-avatars/<uid>/<uuid>.jpg`, `profiles.avatar_path` | no | Supabase | optional | replaced/removed (old object deleted, best effort), account deletion |
 | People, occasions, gift ideas, gifts (incl. prices, links, notes) | typed by the user | Room | rows per account; deletions kept as tombstones; `sync_mutations` ledger | no | Supabase | optional | tombstones and ledger until account deletion |
-| Gift and person photos | photo picker / camera; metadata stripped | app files `gift-photos/<uid>/` | `gift-photos/<uid>/<uuid>.jpg` | no (never via sharing RPCs) | Supabase | optional | photo removed / item deleted (after sync), account deletion |
+| Gift, gift idea and person photos | photo picker / camera; metadata stripped; gift and idea ≤1600 px, person 640 px square | app files `gift-photos/<uid>/` | `gift-photos/<uid>/<uuid>.jpg`, named by `gifts` / `gift_ideas` / `people.photo_path` | no (owner-only folder policies; never via sharing RPCs) | Supabase | optional | photo replaced/removed or item deleted (after sync), account deletion. Marking an idea as given moves its photo to the new gift (same object, not copied); the archived idea names none |
+| Wish photos | photo picker / camera; metadata stripped; ≤1600 px | app files `gift-photos/<uid>/` (owner's devices only) | `gift-photos/<uid>/<uuid>.jpg`, named by `wishes.photo_path`; `get_shared_wishlist` returns the path to members | members of the shared list the wish is on, **read only**, while still a member and neither the wish nor the list is deleted (`wish_photos_select_shared` → `can_read_shared_wish_photo`); a member's app downloads it when shown and keeps it in memory only (`loadSharedPhoto`, never written to storage) | Supabase | optional | photo replaced/removed, wish or list deleted (after sync; members lose read access once the changed row is pushed), account deletion. Copies already shown to a member (or captured by them) cannot be withdrawn |
 | Wishlists, wishes | typed by the user | Room | rows per account | members of a shared list see name, wishes, owner's display name, and for a person-list that person's name | Supabase | optional | tombstones until account deletion |
 | Invite links | Share | token in the shared text only | hash, created/expiry/revoked times | whoever receives the link | Supabase | optional | account deletion |
 | Email invites | owner types the invitee's address | no | `wishlist_recipient_invites`: address while pending (≤14 days), then erased; row kept with status/times | invitee (if they sign in with that confirmed address) sees list name, owner's display name, person name | Supabase; **Resend** sends one HU/EN email to the address (pg_net from the database) | optional | address: on close or expiry (cron, every minute); row: owner's account deletion (not the invitee's) |
@@ -61,7 +63,7 @@ Room database (with WAL/SHM/journal). Reminder and onboarding preferences are in
 ## Account deletion
 
 - **In the app** (Settings → Delete account), in this order:
-  1. empty `gift-photos/<uid>/`, then `profile-avatars/<uid>/`;
+  1. empty `gift-photos/<uid>/` (gift, gift idea, person and wish photos), then `profile-avatars/<uid>/`;
   2. `delete_my_account()` deletes all rows, sharing on both sides and own email invites in one transaction, then `auth.users`, which cascades the profile, identities, sessions, refresh tokens and device proofs;
   3. the device removes the account's rows, photos, reminder state and proof, and signs out.
 - **Other devices (F5):**
@@ -69,3 +71,13 @@ Room database (with WAL/SHM/journal). Reminder and onboarding preferences are in
   - Limitations: a device without a registered proof (an older build, never online while signed in, or past 20 installs) keeps the data until the app's data is cleared. A restore of the hosted database to before a proof's registration could make a live account's device purge its local copy; the server copy is unaffected.
 - **By email:** `docs/operations/account-deletion-by-email.md`; the server result is the same, so the proofs go too.
 - **Not deleted by account deletion:** email invites other users sent to the deleted user's address (their rows), hosted backups until rotated, provider logs.
+
+## Open questions (not determinable from the repositories)
+
+- **Tester email list:** how the closed-testing testers' email addresses are collected, where they
+  are kept (Play Console tester list, a Google Group or elsewhere), for how long, and whether the
+  privacy policy should mention them. Owner to confirm; nothing is recorded here.
+- **Website hosting logs:** what the website host (Netlify) logs for visits to giftiary.app (for
+  example IP addresses and request data), for how long, and on what legal basis. The site has no
+  analytics or scripts of its own that collect data, but the host's logging is not visible in the
+  website repository. Owner to confirm against the host's account settings and terms.
