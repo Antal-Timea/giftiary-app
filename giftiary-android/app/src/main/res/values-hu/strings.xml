@@ -600,6 +600,8 @@ nagy történetek</string>
     <string name="quick_add_person_description">Adj hozzá valakit, aki fontos</string>
     <string name="quick_add_list">Lista</string>
     <string name="quick_add_list_description">Hozz létre egy kívánságlistát</string>
+    <string name="quick_add_occasion">Alkalom</string>
+    <string name="quick_add_occasion_description">Adj hozzá egy fontos dátumot vagy eseményt</string>
     <!-- Lists and wishlists, redesigned -->
     <string name="lists_title">Listák</string>
     <string name="lists_subtitle">Kívánj, tervezz és ossz meg a szeretteiddel.</string>

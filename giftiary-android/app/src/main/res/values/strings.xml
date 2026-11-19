@@ -602,6 +602,8 @@ big stories</string>
     <string name="quick_add_person_description">Add someone important</string>
     <string name="quick_add_list">List</string>
     <string name="quick_add_list_description">Create a wishlist</string>
+    <string name="quick_add_occasion">Occasion</string>
+    <string name="quick_add_occasion_description">Add an important date or event</string>
     <!-- Lists and wishlists, redesigned -->
     <string name="lists_title">Lists</string>
     <string name="lists_subtitle">Wish, plan and share with the people you love.</string>

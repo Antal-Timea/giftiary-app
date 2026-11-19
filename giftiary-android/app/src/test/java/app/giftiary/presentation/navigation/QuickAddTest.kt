@@ -1,5 +1,7 @@
 package app.giftiary.presentation.navigation
 
+import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +20,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import androidx.test.core.app.ApplicationProvider
+import app.giftiary.R
 import app.giftiary.presentation.theme.GiftiaryTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -27,10 +31,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
+import java.util.Locale
 import java.util.UUID
 import kotlin.reflect.KClass
 
-/** The Global Quick Add sheet: its six entries, and the existing flows they open. */
+/** The Global Quick Add sheet: its seven entries, and the existing flows they open. */
 // SDK 34: Espresso, which the Compose test rule drives input through, does not run on later SDKs here.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -41,10 +46,10 @@ class QuickAddTest {
 
     private lateinit var navController: NavHostController
 
-    private val titles = listOf("Gift I gave", "Gift I received", "Gift idea", "Wishlist item", "Person", "List")
+    private val titles = listOf("Gift I gave", "Gift I received", "Gift idea", "Wishlist item", "Person", "List", "Occasion")
 
     @Test
-    fun `the sheet offers the six drawn entries in order, as buttons, and no occasion`() {
+    fun `the sheet offers the seven drawn entries in order, as buttons`() {
         val chosen = mutableListOf<QuickAddAction>()
         compose.setContent {
             GiftiaryTheme { QuickAddContent(onAction = { chosen += it }) }
@@ -55,9 +60,32 @@ class QuickAddTest {
                 .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
                 .performClick()
         }
-        compose.onNodeWithText("Occasion", substring = true).assertDoesNotExist()
 
         assertEquals(QuickAddAction.entries, chosen)
+    }
+
+    @Test
+    fun `Occasion closes Organize, after Person and List`() {
+        compose.setContent {
+            GiftiaryTheme { QuickAddContent(onAction = {}) }
+        }
+
+        compose.onNodeWithText("Add an important date or event").performScrollTo().assertExists()
+        assertEquals(
+            listOf(QuickAddAction.PERSON, QuickAddAction.LIST, QuickAddAction.OCCASION),
+            QuickAddAction.entries.filter { it.group == QuickAddGroup.ORGANIZE },
+        )
+    }
+
+    @Test
+    fun `the occasion entry is named in both languages`() {
+        val en = context(Locale.ENGLISH)
+        assertEquals("Occasion", en.getString(R.string.quick_add_occasion))
+        assertEquals("Add an important date or event", en.getString(R.string.quick_add_occasion_description))
+
+        val hu = context(Locale.forLanguageTag("hu"))
+        assertEquals("Alkalom", hu.getString(R.string.quick_add_occasion))
+        assertEquals("Adj hozzá egy fontos dátumot vagy eseményt", hu.getString(R.string.quick_add_occasion_description))
     }
 
     @Test
@@ -94,6 +122,21 @@ class QuickAddTest {
         assertEquals(AddGiftIdeaRoute(), quickAddRoute(QuickAddAction.GIFT_IDEA, null))
         assertEquals(AddPersonRoute(openWhenSaved = true), quickAddRoute(QuickAddAction.PERSON, null))
         assertEquals(AddWishlistRoute(), quickAddRoute(QuickAddAction.LIST, null))
+        // The user's own occasion, the same editor Your occasions opens.
+        assertEquals(AddOccasionRoute(personId = null), quickAddRoute(QuickAddAction.OCCASION, null))
+        assertEquals(AddOccasionRoute(personId = null), quickAddRoute(QuickAddAction.OCCASION, UUID.randomUUID().toString()))
+    }
+
+    @Test
+    fun `an occasion opens its editor over the current screen, so Back returns there`() {
+        showNavHost()
+        compose.runOnIdle { navController.navigateToSection(AppSection.GIFTS) }
+
+        compose.runOnIdle { navController.openQuickAdd(QuickAddAction.OCCASION) }
+
+        assertEquals(listOf(HomeRoute::class, GiftHistoryRoute::class, AddOccasionRoute::class), stack())
+        compose.runOnIdle { navController.popBackStack() }
+        assertEquals(listOf(HomeRoute::class, GiftHistoryRoute::class), stack())
     }
 
     @Test
@@ -173,14 +216,20 @@ class QuickAddTest {
                 composable<WishlistDetailRoute> { Text("Wishlist") }
                 composable<AddGiftRoute> { Text("Add gift") }
                 composable<AddWishRoute> { Text("Add wish") }
+                composable<AddOccasionRoute> { Text("Add occasion") }
             }
         }
     }
 
     private val routes = listOf(
         HomeRoute::class, PeopleRoute::class, PersonDetailRoute::class, GiftHistoryRoute::class, WishlistsRoute::class,
-        WishlistDetailRoute::class, AddGiftRoute::class, AddWishRoute::class,
+        WishlistDetailRoute::class, AddGiftRoute::class, AddWishRoute::class, AddOccasionRoute::class,
     )
+
+    private fun context(locale: Locale): Context {
+        val base = ApplicationProvider.getApplicationContext<Context>()
+        return base.createConfigurationContext(Configuration(base.resources.configuration).apply { setLocale(locale) })
+    }
 
     private fun stack(): List<KClass<*>> = compose.runOnIdle {
         @Suppress("UNCHECKED_CAST")

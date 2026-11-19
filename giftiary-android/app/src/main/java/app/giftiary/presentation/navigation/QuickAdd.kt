@@ -51,7 +51,7 @@ internal enum class QuickAddGroup(@StringRes val label: Int) {
     ORGANIZE(R.string.quick_add_organize),
 }
 
-/** The Quick Add entries, in the sheet's order. There is deliberately no occasion entry. */
+/** The Quick Add entries, in the sheet's order. */
 internal enum class QuickAddAction(
     val group: QuickAddGroup,
     @StringRes val title: Int,
@@ -114,6 +114,17 @@ internal enum class QuickAddAction(
             "M3.25,18a1.25,1.25 0 1,0 2.5,0a1.25,1.25 0 1,0 -2.5,0",
         ),
     ),
+    OCCASION(
+        QuickAddGroup.ORGANIZE,
+        R.string.quick_add_occasion,
+        R.string.quick_add_occasion_description,
+        listOf(
+            "M5,5.5h14a1.5,1.5 0 0,1 1.5,1.5v12a1.5,1.5 0 0,1 -1.5,1.5h-14a1.5,1.5 0 0,1 -1.5,-1.5v-12a1.5,1.5 0 0,1 1.5,-1.5Z",
+            "M3.5,10h17",
+            "M8,3.5v4M16,3.5v4",
+        ),
+        dots = listOf("M11,15a1,1 0 1,0 2,0a1,1 0 1,0 -2,0"),
+    ),
     ;
 
     val icon: ImageVector by lazy { strokedIcon(paths, dots, strokeWidth = 1.9f) }
@@ -130,6 +141,8 @@ internal fun quickAddRoute(action: QuickAddAction, openWishlistId: String?): Any
     QuickAddAction.WISH -> openWishlistId?.let(::AddWishRoute) ?: WishlistsRoute
     QuickAddAction.PERSON -> AddPersonRoute()
     QuickAddAction.LIST -> AddWishlistRoute()
+    // Of no person: the user's own day, as from Your occasions. A person's is added on their page.
+    QuickAddAction.OCCASION -> AddOccasionRoute()
 }
 
 /** Opens [action]'s flow over the current screen; a section root is opened as a section instead. */

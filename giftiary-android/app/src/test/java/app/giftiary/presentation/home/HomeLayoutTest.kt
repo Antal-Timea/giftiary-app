@@ -4,7 +4,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -55,6 +62,8 @@ class HomeLayoutTest {
     private val sync = "No changes waiting to sync"
     private val recentGifts = "Recent gifts"
 
+    private var ownOccasionsOpened = 0
+
     private fun showHome(
         width: Dp,
         widthClass: WidthClass,
@@ -75,7 +84,7 @@ class HomeLayoutTest {
                             recentGifts = RecentGiftsContent.Loaded(emptyList()),
                             onOpenGift = {},
                             onOpenAllGifts = {},
-                            onOpenOwnOccasions = {},
+                            onOpenOwnOccasions = { ownOccasionsOpened++ },
                             onOpenSyncAttention = {},
                             accountName = "Anna",
                             onOpenProfile = {},
@@ -88,6 +97,19 @@ class HomeLayoutTest {
     }
 
     private fun bounds(text: String): DpRect = compose.onNodeWithText(text).getBoundsInRoot()
+
+    @Test
+    fun `Your occasions is a link that opens the user's occasions, also with nothing coming up`() {
+        showHome(width = 411.dp, widthClass = WidthClass.COMPACT)
+
+        val link = compose.onNode(hasText(ownOccasions) and hasClickAction())
+        link.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        val words = compose.onNodeWithText(ownOccasions, useUnmergedTree = true).getBoundsInRoot()
+        // The chevron sits after the words, inside the same target.
+        assertTrue("the link is wider than its words", link.getBoundsInRoot().right > words.right + 10.dp)
+        link.performClick()
+        assertEquals(1, ownOccasionsOpened)
+    }
 
     @Test
     fun `a phone shows the hero, sync status, coming up, the reminder and recent gifts, top to bottom`() {
