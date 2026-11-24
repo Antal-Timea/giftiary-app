@@ -29,6 +29,7 @@ fun CreateAccountScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val providerState by providerViewModel.state.collectAsStateWithLifecycle()
+    val providers by providerViewModel.providers.collectAsStateWithLifecycle()
     LaunchedEffect(state.confirmationSentTo) {
         state.confirmationSentTo?.let(onConfirmationSent)
     }
@@ -39,7 +40,7 @@ fun CreateAccountScreen(
         onPasswordConfirmationChange = viewModel::onPasswordConfirmationChange,
         onSubmit = viewModel::submit,
         onBack = onBack,
-        providers = providerViewModel.providers,
+        providers = providers,
         providerState = providerState,
         onProvider = rememberProviderClick(providerViewModel),
         modifier = modifier,

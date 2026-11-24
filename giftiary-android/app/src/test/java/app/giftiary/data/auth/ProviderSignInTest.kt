@@ -3,7 +3,9 @@ package app.giftiary.data.auth
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthException
 import app.giftiary.domain.repository.AuthProvider
+import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.testing.FakeAuthRepository
+import app.giftiary.testing.FakeFeatureFlagRemote
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -19,13 +21,127 @@ class ProviderSignInTest {
 
     private val auth = FakeAuthRepository()
 
-    private fun signIn(vararg enabled: AuthProvider) = ProviderSignIn(auth, EnabledAuthProviders(enabled.toSet()))
+    // Facebook Login is switched on remotely unless a test says otherwise.
+    private val flags = FakeFeatureFlagRemote(ProviderSignIn.FACEBOOK_LOGIN_FLAG)
+
+    private fun signIn(vararg enabled: AuthProvider) = ProviderSignIn(auth, EnabledAuthProviders(enabled.toSet()), flags)
 
     @Test
     fun `only providers this build enables are offered, in a fixed order`() = runTest {
-        assertEquals(emptyList<AuthProvider>(), signIn().providers)
-        assertEquals(listOf(AuthProvider.FACEBOOK), signIn(AuthProvider.FACEBOOK).providers)
-        assertEquals(AuthProvider.entries, signIn(AuthProvider.FACEBOOK, AuthProvider.GOOGLE).providers)
+        val none = signIn().apply { refreshProviders() }
+        val facebook = signIn(AuthProvider.FACEBOOK).apply { refreshProviders() }
+        val both = signIn(AuthProvider.FACEBOOK, AuthProvider.GOOGLE).apply { refreshProviders() }
+
+        assertEquals(emptyList<AuthProvider>(), none.providers.value)
+        assertEquals(listOf(AuthProvider.FACEBOOK), facebook.providers.value)
+        assertEquals(AuthProvider.entries, both.providers.value)
+    }
+
+    @Test
+    fun `Facebook is offered only once its remote flag has been read as on`() = runTest {
+        val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+        assertNull(signIn.begin(AuthProvider.FACEBOOK))
+
+        signIn.refreshProviders()
+
+        assertEquals(listOf(ProviderSignIn.FACEBOOK_LOGIN_FLAG), flags.reads)
+        assertEquals(AuthProvider.entries, signIn.providers.value)
+        assertNotNull(signIn.begin(AuthProvider.FACEBOOK))
+    }
+
+    @Test
+    fun `a flag that is off or missing hides Facebook and leaves Google as it was`() = runTest {
+        flags.enabled.clear()
+        val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+
+        signIn.refreshProviders()
+
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+        assertNull(signIn.begin(AuthProvider.FACEBOOK))
+        assertEquals(emptyList<AuthProvider>(), auth.providerUrlCalls)
+        assertNotNull(signIn.begin(AuthProvider.GOOGLE))
+    }
+
+    @Test
+    fun `switching the flag off withdraws Facebook at the next read, and a failed read counts as off`() = runTest {
+        val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        signIn.refreshProviders()
+        assertEquals(AuthProvider.entries, signIn.providers.value)
+
+        flags.enabled.clear()
+        signIn.refreshProviders()
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+
+        flags.enabled += ProviderSignIn.FACEBOOK_LOGIN_FLAG
+        signIn.refreshProviders()
+        flags.failure = RemoteFailure.NETWORK
+        signIn.refreshProviders()
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+    }
+
+    @Test
+    fun `while the flag is being read, Google is offered and can start`() = runTest(UnconfinedTestDispatcher()) {
+        flags.answer = CompletableDeferred()
+        val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        val reading = async { signIn.refreshProviders() }
+
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+        assertNotNull(signIn.begin(AuthProvider.GOOGLE))
+
+        flags.answer!!.complete(Unit)
+        reading.await()
+        assertEquals(AuthProvider.entries, signIn.providers.value)
+    }
+
+    @Test
+    fun `an older flag read that finishes last does not overwrite the newer one`() = runTest(UnconfinedTestDispatcher()) {
+        flags.holdEach = true
+        val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        val older = async { signIn.refreshProviders() }
+        val newer = async { signIn.refreshProviders() }
+        val (olderAnswer, newerAnswer) = flags.held.toList()
+
+        newerAnswer.complete(false)
+        newer.await()
+        olderAnswer.complete(true)
+        older.await()
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+        assertNull(signIn.begin(AuthProvider.FACEBOOK))
+
+        // And the other way round: a stale "off" cannot withdraw a newer "on".
+        val third = async { signIn.refreshProviders() }
+        val fourth = async { signIn.refreshProviders() }
+        val (thirdAnswer, fourthAnswer) = flags.held.drop(2)
+        fourthAnswer.complete(true)
+        fourth.await()
+        thirdAnswer.complete(false)
+        third.await()
+        assertEquals(AuthProvider.entries, signIn.providers.value)
+    }
+
+    @Test
+    fun `a new read hides Facebook until it answers, even if the last read was on`() = runTest(UnconfinedTestDispatcher()) {
+        val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        signIn.refreshProviders()
+        assertEquals(AuthProvider.entries, signIn.providers.value)
+
+        flags.holdEach = true
+        val reading = async { signIn.refreshProviders() }
+        assertEquals(listOf(AuthProvider.GOOGLE), signIn.providers.value)
+        assertNull(signIn.begin(AuthProvider.FACEBOOK))
+        assertNotNull(signIn.begin(AuthProvider.GOOGLE))
+
+        flags.held.single().complete(true)
+        reading.await()
+        assertEquals(AuthProvider.entries, signIn.providers.value)
+    }
+
+    @Test
+    fun `a build without Facebook never reads the flag`() = runTest {
+        signIn(AuthProvider.GOOGLE).refreshProviders()
+
+        assertEquals(emptyList<String>(), flags.reads)
     }
 
     @Test
@@ -40,6 +156,7 @@ class ProviderSignInTest {
     @Test
     fun `beginning opens the provider's page once, however often it is tapped`() = runTest {
         val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        signIn.refreshProviders()
 
         assertNotNull(signIn.begin(AuthProvider.GOOGLE))
         assertNull(signIn.begin(AuthProvider.GOOGLE))
@@ -104,6 +221,7 @@ class ProviderSignInTest {
     fun `while the page is being found the sign-in is under way, and a second tap waits for nothing`() = runTest {
         val gate = CompletableDeferred<Unit>().also { auth.providerUrlGate = it }
         val signIn = signIn(AuthProvider.GOOGLE, AuthProvider.FACEBOOK)
+        signIn.refreshProviders()
 
         val first = async(UnconfinedTestDispatcher(testScheduler)) { signIn.begin(AuthProvider.GOOGLE) }
         assertEquals(ProviderSignInState.Launching(AuthProvider.GOOGLE), signIn.state.value)

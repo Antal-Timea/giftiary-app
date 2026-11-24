@@ -91,6 +91,8 @@ Check on every release build:
         Supabase callback; privacy policy URL, data deletion instructions URL, category and icon
         set; app **Live**; `email` and `public_profile` only. App ID and secret entered in
         Supabase → Auth → Providers → Facebook.
+        Builds after 0.1.0-beta.6 also show the button only while the remote flag
+        `facebook_login_enabled` is on (`docs/operations/feature-flags.md`).
   - [ ] Manual identity linking stays off; "Confirm email" is **on** (needed for safe linking of
         the same email).
   - [ ] No Android OAuth client, SHA-1 fingerprint or Facebook key hash is needed: the browser
