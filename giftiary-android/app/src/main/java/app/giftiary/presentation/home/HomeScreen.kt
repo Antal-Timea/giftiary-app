@@ -51,7 +51,6 @@ import app.giftiary.domain.repository.GiftEntry
 import app.giftiary.presentation.components.EditorialHero
 import app.giftiary.presentation.components.EditorialImage
 import app.giftiary.presentation.components.GiftiaryAdaptivePreviews
-import app.giftiary.presentation.components.GiftiaryTextAction
 import app.giftiary.presentation.components.GiftiaryAvatar
 import app.giftiary.presentation.components.LocalWidthClass
 import app.giftiary.presentation.components.ProvideWidthClass
@@ -98,7 +97,7 @@ fun HomeScreen(
             onOpen = { onOpenComingUp(it.occasionId) },
             modifier = bandModifier,
             // Always here, also with nothing coming up: the user's own occasions have no other place.
-            footer = { GiftiaryTextAction(text = stringResource(R.string.own_occasions_title), onClick = onOpenOwnOccasions) },
+            footer = { ChevronLink(text = stringResource(R.string.own_occasions_title), onClick = onOpenOwnOccasions) },
         )
     }
     val recentGiftsPart: @Composable (Modifier) -> Unit = { partModifier ->
@@ -296,7 +295,7 @@ private fun RecentGifts(
                     color = colors.textSecondary,
                 )
             }
-            if (loaded.gifts.isNotEmpty()) SeeAll(onOpenAll)
+            if (loaded.gifts.isNotEmpty()) ChevronLink(text = stringResource(R.string.home_see_all), onClick = onOpenAll)
         }
         if (loaded.gifts.isEmpty()) {
             Text(text = stringResource(R.string.home_recent_gifts_empty), style = GiftiaryType.bodySmall, color = colors.textLabel)
@@ -321,8 +320,9 @@ private fun RecentGiftCard(entry: GiftEntry, content: RecentGiftsContent.Loaded,
     )
 }
 
+/** A text link that opens another screen; the chevron says so. */
 @Composable
-private fun SeeAll(onClick: () -> Unit) {
+private fun ChevronLink(text: String, onClick: () -> Unit) {
     val colors = GiftiaryTheme.colors
     Row(
         modifier = Modifier
@@ -331,7 +331,7 @@ private fun SeeAll(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(text = stringResource(R.string.home_see_all), style = GiftiaryType.label, color = colors.textPrimary)
+        Text(text = text, style = GiftiaryType.label, color = colors.textPrimary)
         Icon(
             painter = painterResource(R.drawable.ic_chevron_right),
             contentDescription = null,

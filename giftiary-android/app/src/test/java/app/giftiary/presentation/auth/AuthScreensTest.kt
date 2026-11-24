@@ -3,6 +3,7 @@ package app.giftiary.presentation.auth
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,13 +23,20 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.giftiary.data.auth.EnabledAuthProviders
+import app.giftiary.data.auth.ProviderSignIn
 import app.giftiary.data.auth.ProviderSignInState
+import app.giftiary.data.remote.RemoteFailure
 import app.giftiary.data.auth.RecoveryFailure
 import app.giftiary.data.auth.RecoveryState
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.presentation.theme.GiftiaryTheme
+import app.giftiary.testing.FakeAuthRepository
+import app.giftiary.testing.FakeFeatureFlagRemote
 import app.giftiary.testing.lineCount
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -99,6 +107,79 @@ class AuthScreensTest {
         assertTrue(top("Continue with Facebook") < top("or"))
         compose.onNodeWithText("Continue with Facebook").performClick()
         assertEquals(listOf("provider FACEBOOK"), events)
+    }
+
+    // The sign-in screen as the app builds it: a build with both providers, Facebook behind its flag.
+    private fun showSignIn(flags: FakeFeatureFlagRemote) = showSignIn(providerSignIn(flags))
+
+    private fun providerSignIn(flags: FakeFeatureFlagRemote) =
+        ProviderSignIn(FakeAuthRepository(), EnabledAuthProviders(AuthProvider.entries.toSet()), flags)
+
+    private fun showSignIn(providerSignIn: ProviderSignIn) {
+        val viewModel = ProviderSignInViewModel(providerSignIn)
+        compose.setContent {
+            GiftiaryTheme {
+                val providers by viewModel.providers.collectAsState()
+                SignInContent(
+                    state = credentials,
+                    onEmailChange = {},
+                    onPasswordChange = {},
+                    onSubmit = {},
+                    onCreateAccount = {},
+                    onForgotPassword = {},
+                    providers = providers,
+                    providerState = providerState,
+                    onProvider = { events += "provider $it" },
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `the screen does not wait for the Facebook flag, and offers Facebook once it reads as on`() {
+        val flags = FakeFeatureFlagRemote(ProviderSignIn.FACEBOOK_LOGIN_FLAG).apply { answer = CompletableDeferred() }
+        showSignIn(flags)
+
+        compose.onNodeWithText("Continue with Google").assertExists()
+        compose.onNodeWithText("Email").assertExists()
+        compose.onNodeWithText("Continue with Facebook").assertDoesNotExist()
+
+        flags.answer!!.complete(Unit)
+        compose.waitForIdle()
+        assertTrue(top("Continue with Google") < top("Continue with Facebook"))
+        compose.onNodeWithText("Continue with Facebook").performClick()
+        assertEquals(listOf("provider FACEBOOK"), events)
+    }
+
+    @Test
+    fun `a screen opening after Facebook was offered hides it until its own read says on`() {
+        val flags = FakeFeatureFlagRemote(ProviderSignIn.FACEBOOK_LOGIN_FLAG)
+        // The singleton, after an earlier screen read the flag as on.
+        val providerSignIn = providerSignIn(flags).apply { runBlocking { refreshProviders() } }
+        assertEquals(AuthProvider.entries, providerSignIn.providers.value)
+
+        flags.holdEach = true
+        showSignIn(providerSignIn)
+        compose.waitForIdle()
+        compose.onNodeWithText("Continue with Google").assertExists()
+        compose.onNodeWithText("Email").assertExists()
+        compose.onNodeWithText("Continue with Facebook").assertDoesNotExist()
+
+        flags.held.single().complete(true)
+        compose.waitForIdle()
+        compose.onNodeWithText("Continue with Facebook").assertExists()
+    }
+
+    @Test
+    fun `with the flag off, missing or unreadable, Facebook stays hidden and Google and email are unchanged`() {
+        val flags = FakeFeatureFlagRemote().apply { failure = RemoteFailure.NETWORK }
+        showSignIn(flags)
+        compose.waitForIdle()
+
+        assertEquals(listOf(ProviderSignIn.FACEBOOK_LOGIN_FLAG), flags.reads)
+        compose.onNodeWithText("Continue with Facebook").assertDoesNotExist()
+        assertTrue(top("Continue with Google") < top("or"))
+        assertTrue(top("or") < top("Email"))
     }
 
     @Test

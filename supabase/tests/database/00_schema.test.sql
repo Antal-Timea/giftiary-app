@@ -5,8 +5,9 @@ select plan(69);
 
 -- Tables in scope, and Android-local concepts that must not exist on the server.
 select tables_are('public', array['profiles', 'people', 'occasions', 'gift_ideas', 'gifts', 'wishlists', 'wishes', 'sync_mutations',
-                                  'wishlist_invites', 'wishlist_members', 'wish_reservations', 'wishlist_recipient_invites'],
-    'public holds exactly the synced tables, profiles, the mutation ledger and the sharing tables');
+                                  'wishlist_invites', 'wishlist_members', 'wish_reservations', 'wishlist_recipient_invites',
+                                  'feature_flags'],
+    'public holds exactly the synced tables, profiles, the mutation ledger, the sharing tables and the feature flags');
 select hasnt_table('public', 'sync_operations', 'the sync queue is Android-local');
 select hasnt_column('public', 'people', 'remote_state', 'remote state is Android-local');
 

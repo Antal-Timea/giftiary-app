@@ -6,6 +6,7 @@ import app.giftiary.domain.model.AuthState
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.testing.FakeAuthRepository
+import app.giftiary.testing.FakeFeatureFlagRemote
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,7 +25,7 @@ import org.robolectric.RobolectricTestRunner
 class AuthCallbackHandlerTest {
 
     private val auth = FakeAuthRepository().apply { state.value = AuthState.SignedOut }
-    private val providerSignIn = ProviderSignIn(auth, EnabledAuthProviders(setOf(AuthProvider.GOOGLE)))
+    private val providerSignIn = ProviderSignIn(auth, EnabledAuthProviders(setOf(AuthProvider.GOOGLE)), FakeFeatureFlagRemote())
 
     private fun TestScope.handler() =
         AuthCallbackHandler(auth, providerSignIn, CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler)))

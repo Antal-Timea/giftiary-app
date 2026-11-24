@@ -44,6 +44,7 @@ fun SignInScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val providerState by providerViewModel.state.collectAsStateWithLifecycle()
+    val providers by providerViewModel.providers.collectAsStateWithLifecycle()
     SignInContent(
         state = state,
         onEmailChange = viewModel::onEmailChange,
@@ -51,7 +52,7 @@ fun SignInScreen(
         onSubmit = viewModel::submit,
         onCreateAccount = onCreateAccount,
         onForgotPassword = { onForgotPassword(state.email) },
-        providers = providerViewModel.providers,
+        providers = providers,
         providerState = providerState,
         onProvider = rememberProviderClick(providerViewModel),
         joinPending = joinPending,

@@ -12,6 +12,7 @@ import app.giftiary.data.auth.ProviderSignInState
 import app.giftiary.domain.repository.AuthError
 import app.giftiary.domain.repository.AuthProvider
 import app.giftiary.testing.FakeAuthRepository
+import app.giftiary.testing.FakeFeatureFlagRemote
 import app.giftiary.testing.MainDispatcherRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -32,7 +33,7 @@ class ProviderSignInLaunchTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val auth = FakeAuthRepository()
-    private val providerSignIn = ProviderSignIn(auth, EnabledAuthProviders(setOf(AuthProvider.FACEBOOK)))
+    private val providerSignIn = ProviderSignIn(auth, EnabledAuthProviders(setOf(AuthProvider.FACEBOOK)), FakeFeatureFlagRemote(ProviderSignIn.FACEBOOK_LOGIN_FLAG))
     private val viewModel = ProviderSignInViewModel(providerSignIn)
     private val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
     private val page = "https://www.facebook.com/dialog/oauth?state=s"

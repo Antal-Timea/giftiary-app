@@ -40,13 +40,19 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Signing in with the providers this build offers, shared by sign-in and account creation. */
+/** Signing in with the providers offered now, shared by sign-in and account creation. */
 @HiltViewModel
 class ProviderSignInViewModel @Inject constructor(
     private val providerSignIn: ProviderSignIn,
 ) : ViewModel() {
 
-    val providers: List<AuthProvider> = providerSignIn.providers
+    val providers: StateFlow<List<AuthProvider>> = providerSignIn.providers
+
+    init {
+        // Each time sign-in or account creation opens, so a flag changed in the dashboard shows
+        // without a new release. The screen draws at once and gains Facebook if it is switched on.
+        viewModelScope.launch { providerSignIn.refreshProviders() }
+    }
 
     val state: StateFlow<ProviderSignInState> = providerSignIn.state
 
